@@ -17,8 +17,9 @@ runs:
         mkdir -p "$WRAPPERS"
         CLANG=$(xcrun -f clang)
         CLANGXX=$(xcrun -f clang++)
-        printf '#!/bin/sh\nexec ccache "%s" "$@"\n' "$CLANG" > "$WRAPPERS/clang"
-        printf '#!/bin/sh\nexec ccache "%s" "$@"\n' "$CLANGXX" > "$WRAPPERS/clang++"
+        OTHER_TARGETS="MACOSX_DEPLOYMENT_TARGET TVOS_DEPLOYMENT_TARGET WATCHOS_DEPLOYMENT_TARGET XROS_DEPLOYMENT_TARGET DRIVERKIT_DEPLOYMENT_TARGET"
+        printf '#!/bin/sh\nunset %s\nexec ccache "%s" "$@"\n' "$OTHER_TARGETS" "$CLANG" > "$WRAPPERS/clang"
+        printf '#!/bin/sh\nunset %s\nexec ccache "%s" "$@"\n' "$OTHER_TARGETS" "$CLANGXX" > "$WRAPPERS/clang++"
         chmod +x "$WRAPPERS/clang" "$WRAPPERS/clang++"
         {
           echo "CCACHE_DIR=$RUNNER_TEMP/ccache"
