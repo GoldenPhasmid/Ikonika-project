@@ -1,0 +1,39 @@
+name: Install Qt for iOS
+description: Restores Qt for iOS and its macOS host Qt from the cache, or installs them with aqtinstall and saves them
+
+inputs:
+  version:
+    description: Qt version
+    required: true
+  root:
+    description: Directory Qt is installed into
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Restore Qt
+      id: qt-cache
+      uses: actions/cache/restore@v4
+      with:
+        path: ${{ inputs.root }}
+        key: qt-${{ inputs.version }}-ios-${{ runner.os }}-1
+
+    - name: Install Qt
+      if: steps.qt-cache.outputs.cache-hit != 'true'
+      shell: bash
+      env:
+        QT_VERSION: ${{ inputs.version }}
+        QT_ROOT: ${{ inputs.root }}
+      run: |
+        python3 -m pip install aqtinstall
+        MODULES=$(python3 -m aqt list-qt mac ios --modules "$QT_VERSION" ios | tr ' ' '\n' | grep -x -E 'qtpdf' | tr '\n' ' ')
+        python3 -m aqt install-qt mac desktop "$QT_VERSION" clang_64 --outputdir "$QT_ROOT"
+        python3 -m aqt install-qt mac ios "$QT_VERSION" ios --outputdir "$QT_ROOT" ${MODULES:+-m $MODULES}
+
+    - name: Save Qt
+      if: steps.qt-cache.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: ${{ inputs.root }}
+        key: ${{ steps.qt-cache.outputs.cache-primary-key }}
