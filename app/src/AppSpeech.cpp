@@ -74,6 +74,36 @@ void AppSpeech::ReportSpeaking(bool bValue)
                               Qt::QueuedConnection);
 }
 
+void AppSpeech::ReportNarrationStarted(int Id)
+{
+    QMetaObject::invokeMethod(this, [this, Id]() { emit narrationStarted(Id); }, Qt::QueuedConnection);
+}
+
+void AppSpeech::ReportNarrationFinished(int Id)
+{
+    QMetaObject::invokeMethod(this, [this, Id]() { emit narrationFinished(Id); }, Qt::QueuedConnection);
+}
+
+void AppSpeech::ReportNarrationFailed()
+{
+    QMetaObject::invokeMethod(this, [this]() { emit narrationFailed(); }, Qt::QueuedConnection);
+}
+
+void AppSpeech::ReportNarrationPlayRequested()
+{
+    QMetaObject::invokeMethod(this, [this]() { emit narrationPlayRequested(); }, Qt::QueuedConnection);
+}
+
+void AppSpeech::ReportNarrationPauseRequested()
+{
+    QMetaObject::invokeMethod(this, [this]() { emit narrationPauseRequested(); }, Qt::QueuedConnection);
+}
+
+void AppSpeech::ReportNarrationStopRequested()
+{
+    QMetaObject::invokeMethod(this, [this]() { emit narrationStopRequested(); }, Qt::QueuedConnection);
+}
+
 void AppSpeech::holdSpeech()
 {
     ++HoldCount;

@@ -57,6 +57,8 @@ public:
 
     bool IsStyled() const;
 
+    const std::vector<std::string>& GetParagraphs() const;
+
 signals:
     void styledChanged();
 

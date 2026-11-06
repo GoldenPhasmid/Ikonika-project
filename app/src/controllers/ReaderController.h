@@ -1,6 +1,7 @@
 #pragma once
 
 #include "FTParagraphModel.h"
+#include "ReaderReadAloud.h"
 #include "ReaderVocabulary.h"
 
 #include "core/FTReaderDocument.h"
@@ -49,6 +50,8 @@ class ReaderController : public QObject
     Q_PROPERTY(FTParagraphModel* paragraphModel READ GetParagraphModel NOTIFY currentDocumentChanged)
 
     Q_PROPERTY(ReaderVocabulary* vocabulary READ GetVocabulary CONSTANT)
+
+    Q_PROPERTY(ReaderReadAloud* readAloud READ GetReadAloud CONSTANT)
 
     /** True while a reflow document's text is still being read off disk. */
     Q_PROPERTY(bool loading READ IsLoading NOTIFY currentDocumentChanged)
@@ -135,6 +138,7 @@ public:
     bool IsPdf() const;
     FTParagraphModel* GetParagraphModel();
     ReaderVocabulary* GetVocabulary();
+    ReaderReadAloud* GetReadAloud();
     bool IsLoading() const;
     bool IsReading() const;
     bool IsUnreadable() const;
@@ -200,6 +204,7 @@ private:
     QVariantList FreeBooks;
     FTParagraphModel ParagraphModel;
     ReaderVocabulary Vocabulary;
+    ReaderReadAloud ReadAloud;
     QVariantList Chapters;
     QString CurrentId;
     QString CurrentCloudId;

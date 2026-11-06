@@ -3,6 +3,7 @@ import QtQuick.Layouts
 import "MobileIcons.js" as Icons
 import "../ReaderTones.js" as Tones
 import "../ReaderShelf.js" as Shelf
+import "../ReadAloudPlace.js" as ReadAloudPlace
 
 Item
 {
@@ -89,6 +90,7 @@ Item
             return
         }
 
+        readingList.leaveReadAloud()
         readingList.positionViewAtIndex(Math.max(0, Math.min(readingList.count - 1, index)),
                                         ListView.Beginning)
         positionSaveTimer.restart()
@@ -156,6 +158,8 @@ Item
 
             return
         }
+
+        readingList.leaveReadAloud()
 
         const step = readingList.height * 0.9 * (forward ? 1 : -1)
         const bottom = Math.max(0, readingList.contentHeight - readingList.height)
@@ -344,7 +348,17 @@ Item
         onFreeBookFailed: function(message) { toast.show(message) }
     }
 
-    onVisibleChanged: if (root.visible) reader.vocabulary.refresh()
+    onVisibleChanged:
+    {
+        if (root.visible)
+        {
+            reader.vocabulary.refresh()
+
+            return
+        }
+
+        reader.readAloud.pause()
+    }
 
     Connections
     {
@@ -619,6 +633,8 @@ Item
 
             MobileReaderFrame
             {
+                id: readingFrame
+
                 objectName: "reader_frame"
                 anchors.fill: parent
                 controlsVisible: root.chromeVisible
@@ -643,6 +659,17 @@ Item
                         Item
                         {
                             Layout.fillWidth: true
+                        }
+
+                        MobileActionIconButton
+                        {
+                            objectName: "reader_read_aloud"
+
+                            visible: !reader.isPdf && reader.readAloud.available
+                            active: reader.readAloud.enabled
+                            iconSvg: Icons.Icons.headphones.path
+
+                            onClicked: reader.readAloud.enabled = !reader.readAloud.enabled
                         }
 
                         MobileActionIconButton
@@ -913,6 +940,94 @@ Item
                         model: reader.paragraphModel
 
                         property var selectedText: null
+                        property bool followingReadAloud: true
+                        readonly property real readAloudTop: readingFrame.topCover
+                        readonly property real readAloudBottom: readingFrame.bottomCover
+                            + (playBar.visible ? playBar.height + AppMetrics.gapMedium * 2 : 0)
+
+                        function leaveReadAloud()
+                        {
+                            readingList.followingReadAloud = false
+                            followGlide.stop()
+                        }
+
+                        function playReadAloud()
+                        {
+                            readingList.followingReadAloud = true
+
+                            if (reader.readAloud.started)
+                            {
+                                reader.readAloud.resume()
+
+                                return
+                            }
+
+                            const place = ReadAloudPlace.startPlace(readingList, root.topParagraph,
+                                                                    readingList.contentY + readingList.readAloudTop)
+
+                            reader.readAloud.startAt(place.paragraph, place.character)
+                        }
+
+                        function followReadAloud()
+                        {
+                            if (!reader.readAloud.playing || !readingList.followingReadAloud)
+                            {
+                                return
+                            }
+
+                            let span = ReadAloudPlace.sentenceSpan(readingList, reader.readAloud)
+
+                            if (span === null)
+                            {
+                                followGlide.stop()
+                                readingList.positionViewAtIndex(reader.readAloud.paragraph, ListView.Beginning)
+                                readingList.forceLayout()
+                                span = ReadAloudPlace.sentenceSpan(readingList, reader.readAloud)
+
+                                if (span === null)
+                                {
+                                    return
+                                }
+                            }
+
+                            const visibleTop = readingList.contentY + readingList.readAloudTop
+                            const visibleBottom = readingList.contentY + readingList.height - readingList.readAloudBottom
+
+                            if (span.top >= visibleTop && span.bottom <= visibleBottom)
+                            {
+                                return
+                            }
+
+                            const first = readingList.originY
+                            const last = Math.max(first, readingList.originY + readingList.contentHeight - readingList.height)
+
+                            followGlide.stop()
+                            followGlide.from = readingList.contentY
+                            followGlide.to = Math.max(first, Math.min(last, span.top - readingList.readAloudTop - reader.textSize * 2))
+                            followGlide.start()
+                        }
+
+                        onMovementStarted: readingList.leaveReadAloud()
+
+                        NumberAnimation
+                        {
+                            id: followGlide
+
+                            target: readingList
+                            property: "contentY"
+                            duration: AppMetrics.motionSlow
+                            easing.type: Easing.InOutCubic
+                        }
+
+                        Connections
+                        {
+                            target: reader.readAloud
+
+                            function onStateChanged()
+                            {
+                                Qt.callLater(readingList.followReadAloud)
+                            }
+                        }
 
                         function claimSelection(owner)
                         {
@@ -1014,6 +1129,19 @@ Item
                                                         : (paragraph.rule ? reader.textSize : paragraphText.implicitHeight))
                                     + paragraph.topGap
 
+                            function sentenceBounds(start, end)
+                            {
+                                const first = paragraphText.positionToRectangle(start)
+                                const last = paragraphText.positionToRectangle(Math.max(start, end - 1))
+
+                                return { top: paragraphText.y + first.y, bottom: paragraphText.y + last.y + last.height }
+                            }
+
+                            function characterAt(y)
+                            {
+                                return paragraphText.positionAt(0, Math.max(0, y - paragraphText.y))
+                            }
+
                             function holdsText(across)
                             {
                                 return !paragraph.pictured && !paragraph.rule
@@ -1108,11 +1236,17 @@ Item
                                     textDocument: paragraphText.textDocument
                                 }
 
-                                ReaderVocabularyHighlighter
+                                ReaderTextHighlighter
                                 {
-                                    textDocument: reader.vocabulary.enabled ? paragraphText.textDocument : null
+                                    readonly property bool reading: reader.readAloud.started
+                                                                    && reader.readAloud.paragraph === paragraph.index
+
+                                    textDocument: reader.vocabulary.enabled || reading ? paragraphText.textDocument : null
                                     vocabulary: reader.vocabulary
                                     learningColour: AppTheme.faded(AppTheme.colourAccent, AppTheme.alphaMedium)
+                                    sentenceStart: reading ? reader.readAloud.sentenceStart : -1
+                                    sentenceEnd: reading ? reader.readAloud.sentenceEnd : -1
+                                    sentenceColour: AppTheme.faded(root.textInk, AppTheme.alphaSoft)
                                 }
 
                                 TapHandler
@@ -1133,6 +1267,16 @@ Item
                                             return
                                         }
 
+                                        if (reader.readAloud.enabled && !reader.readAloud.started)
+                                        {
+                                            readingList.clearSelection()
+                                            readingList.followingReadAloud = true
+                                            reader.readAloud.startAt(paragraph.index, range.start)
+
+                                            return
+                                        }
+
+                                        reader.readAloud.pause()
                                         readingList.claimSelection(paragraphText)
                                         paragraphText.select(range.start, range.end)
                                         root.openLookup(paragraph.display.substring(range.start, range.end),
@@ -1151,6 +1295,7 @@ Item
                                             return
                                         }
 
+                                        reader.readAloud.pause()
                                         readingList.interactive = false
                                         readingList.claimSelection(paragraphText)
                                         readingList.selectingText = paragraphText
@@ -1207,6 +1352,21 @@ Item
                         }
                     }
                 }
+            }
+
+            MobileReaderPlayBar
+            {
+                id: playBar
+
+                anchors.horizontalCenter: parent.horizontalCenter
+                anchors.bottom: parent.bottom
+                anchors.bottomMargin: readingFrame.bottomCover + AppMetrics.gapMedium
+                                      + (readingFrame.controlsVisible ? 0 : readingFrame.SafeArea.margins.bottom)
+                visible: !reader.isPdf && !reader.loading && reader.readAloud.available && reader.readAloud.enabled
+
+                readAloud: reader.readAloud
+
+                onPlayRequested: readingList.playReadAloud()
             }
 
             LoadingScreen

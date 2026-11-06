@@ -48,6 +48,7 @@ namespace
     constexpr const char* SpeakerKey = "audio/speaker";
 
     constexpr unsigned long PlaybackPollMs = 50;
+    constexpr unsigned long NarrationPollMs = 20;
 }
 
 AppSpeechService::AppSpeechService()
@@ -320,6 +321,196 @@ float AppSpeechService::GetSpeed() const
 QMutex& AppSpeechService::Lock()
 {
     return StateMutex;
+}
+
+bool AppSpeechService::CanNarrate() const
+{
+    return Service.IsAvailable() && Service.IsEnabled();
+}
+
+void AppSpeechService::QueueNarration(int Id, const QString& Text, const QString& LanguageCode)
+{
+    const QMutexLocker Lock(&NarrationMutex);
+
+    NarrationRequests.push_back({Id, Text.toStdString(), LanguageCode.toStdString()});
+
+    if (bNarrationRunning)
+    {
+        return;
+    }
+
+    bNarrationRunning = true;
+
+    QThreadPool::globalInstance()->start([this]() { RunNarration(); });
+}
+
+void AppSpeechService::StopNarration()
+{
+    ++NarrationGeneration;
+
+    {
+        const QMutexLocker Lock(&NarrationMutex);
+
+        NarrationRequests.clear();
+    }
+
+    const QMutexLocker StateLock(&StateMutex);
+
+    Service.Stop();
+}
+
+void AppSpeechService::RunNarration()
+{
+    FNarrationRun Run;
+    Run.Generation = NarrationGeneration.loadRelaxed();
+
+    for (;;)
+    {
+        if (Run.Generation != NarrationGeneration.loadRelaxed())
+        {
+            Run = FNarrationRun{};
+            Run.Generation = NarrationGeneration.loadRelaxed();
+        }
+
+        ReportNarrationProgress(Run);
+
+        const std::optional<FNarrationRequest> Request{TakeNarrationRequest(Run)};
+
+        if (Request.has_value())
+        {
+            PlayNarrationRequest(*Request, Run);
+
+            continue;
+        }
+
+        if (Run.Playing.empty())
+        {
+            const QMutexLocker Lock(&NarrationMutex);
+
+            if (NarrationRequests.empty())
+            {
+                bNarrationRunning = false;
+
+                return;
+            }
+        }
+
+        QThread::msleep(NarrationPollMs);
+    }
+}
+
+std::optional<AppSpeechService::FNarrationRequest> AppSpeechService::TakeNarrationRequest(FNarrationRun& Run)
+{
+    const QMutexLocker Lock(&NarrationMutex);
+
+    if (NarrationRequests.empty() || Run.Generation != NarrationGeneration.loadRelaxed())
+    {
+        return std::nullopt;
+    }
+
+    FNarrationRequest Request{std::move(NarrationRequests.front())};
+    NarrationRequests.pop_front();
+
+    return Request;
+}
+
+void AppSpeechService::PlayNarrationRequest(const FNarrationRequest& Request, FNarrationRun& Run)
+{
+    std::vector<int16_t> Samples;
+
+    {
+        const QMutexLocker Lock(&WorkerMutex);
+
+        EnsureLoaded();
+
+        if (Run.VoiceIndex < 0)
+        {
+            Run.VoiceIndex = Service.FindVoiceForLanguage(Request.LanguageCode);
+        }
+
+        if (Run.VoiceIndex < 0 || !Service.IsEnabled())
+        {
+            qCWarning(LogSpeech) << "narration has no voice to speak with";
+
+            ReportNarrationFailed();
+
+            return;
+        }
+
+        Samples = Service.RenderNarration(Run.VoiceIndex, Request.Text, Request.LanguageCode);
+    }
+
+    if (Samples.empty())
+    {
+        qCWarning(LogSpeech) << "narration synthesis produced nothing, sentence skipped:"
+                             << QString::fromStdString(Request.Text);
+
+        ReportNarrationStarted(Request.Id);
+        ReportNarrationFinished(Request.Id);
+
+        return;
+    }
+
+    const QMutexLocker StateLock(&StateMutex);
+
+    if (Run.Generation != NarrationGeneration.loadRelaxed())
+    {
+        return;
+    }
+
+    const std::optional<FTNarrationChunk> Chunk{Service.PlayNarration(Run.VoiceIndex, std::move(Samples), Run.bContinues)};
+
+    if (!Chunk.has_value())
+    {
+        qCWarning(LogSpeech) << "narration could not reach the audio device";
+
+        ReportNarrationFailed();
+
+        return;
+    }
+
+    Run.bContinues = true;
+    Run.Playing.push_back({Request.Id, *Chunk, false});
+}
+
+void AppSpeechService::ReportNarrationProgress(FNarrationRun& Run)
+{
+    if (Run.Playing.empty())
+    {
+        return;
+    }
+
+    uint64_t Position{0};
+    bool bSounding{false};
+
+    {
+        const QMutexLocker StateLock(&StateMutex);
+
+        if (Run.Generation != NarrationGeneration.loadRelaxed())
+        {
+            return;
+        }
+
+        Position = Service.GetNarrationPosition(Run.VoiceIndex);
+        bSounding = Service.IsNarrationPlaying(Run.VoiceIndex);
+    }
+
+    for (FNarrationPlayback& Entry : Run.Playing)
+    {
+        if (!Entry.bStarted && (Position >= Entry.Chunk.StartFrame || !bSounding))
+        {
+            Entry.bStarted = true;
+
+            ReportNarrationStarted(Entry.Id);
+        }
+    }
+
+    while (!Run.Playing.empty() && (Position >= Run.Playing.front().Chunk.EndFrame || !bSounding))
+    {
+        ReportNarrationFinished(Run.Playing.front().Id);
+
+        Run.Playing.pop_front();
+    }
 }
 
 bool AppSpeechService::IsServicePlaying()

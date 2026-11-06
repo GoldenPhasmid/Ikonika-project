@@ -26,6 +26,8 @@ Item
     property string levelFilter: ""
     readonly property int shelfCount: root.freeShown ? reader.freeBooks.length : root.bookCount
     readonly property real chromeShown: bookMorph.chromeShown
+    readonly property ReaderReadAloud readAloud: reader.readAloud
+    readonly property bool readAloudOffered: root.readable && !reader.isPdf && reader.readAloud.available
 
     property bool immersive: false
     readonly property string sortOrder: Shelf.sortOrders.indexOf(AppReaderSettings.librarySortOrder) >= 0
@@ -430,7 +432,17 @@ Item
         event.accepted = false
     }
 
-    onVisibleChanged: if (root.visible) reader.vocabulary.refresh()
+    onVisibleChanged:
+    {
+        if (root.visible)
+        {
+            reader.vocabulary.refresh()
+
+            return
+        }
+
+        reader.readAloud.pause()
+    }
 
     Connections
     {
@@ -824,6 +836,7 @@ Item
                     inkColour: root.pageTone.ink
 
                     onWordPicked: function(word, sentence) { root.pickText(word, sentence) }
+                    onTranslationWanted: Qt.callLater(translation.show)
                     onCurrentPageChanged: function(page)
                     {
                         root.pdfPendingPage = page
@@ -861,8 +874,11 @@ Item
                     inkColour: root.textInk
                     bookPath: reader.currentPath
                     vocabulary: reader.vocabulary
+                    readAloud: reader.readAloud
+                    readAloudInset: playBar.visible ? playBar.height + AppMetrics.gapMedium * 2 : 0
 
                     onWordPicked: function(word, sentence) { root.pickText(word, sentence) }
+                    onTranslationWanted: Qt.callLater(translation.show)
                     onContentYChanged: positionSaveTimer.restart()
                     onZoomRequested: function(closer) { root.zoom(closer) }
                 }
@@ -877,6 +893,7 @@ Item
 
                     lookup: translationLookup
                     maxStage: root.store.stageCount
+                    selecting: reader.isPdf ? pdfView.selecting : textView.selecting
                     darkPaper: !reader.isPdf && root.textPaper.hslLightness < 0.5
                     contentWidth: reader.isPdf ? Math.min(pageArea.width, pdfView.fitPoints * pdfView.renderScale) : textView.textWidth
                     geometry: reader.isPdf ? pdfView.selectionGeometry() : textView.selectionGeometry()
@@ -886,6 +903,21 @@ Item
                         root.addWordRequested(word, translation, partOfSpeech, hint)
                     }
                     onDictionaryRequested: function(word) { root.lookUpRequested(word) }
+                }
+
+                DesktopReaderPlayBar
+                {
+                    id: playBar
+
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    anchors.bottom: parent.bottom
+                    anchors.bottomMargin: AppMetrics.gapMedium
+                    visible: root.readAloudOffered && reader.readAloud.enabled && !reader.loading
+                    opacity: bookMorph.chromeShown
+
+                    readAloud: reader.readAloud
+
+                    onPlayRequested: textView.playReadAloud()
                 }
 
                 DesktopLabel

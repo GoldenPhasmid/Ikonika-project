@@ -103,7 +103,7 @@ TXT, FB2 and EPUB each have their own extractor, producing a title and an ordere
 
 A click or a tap picks a word only when it lands on one of the word's letters. The space between two lines is split halfway, so a click just under a line belongs to that line. A click on the space between words, beside a short line or between paragraphs picks nothing; on the phone such a tap shows or hides the reading controls, and on both it clears the selection. Only one word or phrase is selected at a time. A drag selects whole words: on desktop, a selection that starts or ends inside a word grows to cover that word when the mouse is released, so sentence translation never receives a cut word. The reader resolves the letter itself rather than asking Qt, because Qt counts only a line's glyph height as the line: with line spacing above 100% the extra space under each line belonged to no line and resolved to the first word of the next one, and a click on the right half of a word's last letter resolved to the space after it.
 
-The unit is the paragraph, not the sentence. Sentence segmentation is a property of in-context translation, not of the reader.
+The unit is the paragraph, not the sentence. Sentence segmentation belongs to in-context translation and to read aloud, not to the layout.
 
 FB2 and EPUB are laid out from their own styles. Each paragraph comes out twice: as plain text, which word picking, selection and search work on, and as a small piece of rich text with the inline styling and line breaks, which the desktop and the phone views both show. The two line up character for character, since a line break is one character in the plain text. Text on both sides of an inline tag joins without an added space.
 
@@ -127,9 +127,9 @@ A selected phrase is rarely a dictionary headword, so the search usually finds n
 
 The reader has no search through the document's own text. The search button looks words up in the dictionary.
 
-The desktop has no dictionary pane and no search button in a book. Any selection, a single word included, shows a Translate button beside it, and the button opens a popup under the selection once the dictionary has answered. The popup shows one of three things:
+The desktop has no dictionary pane and no search button in a book. A click on a word opens the translation popup under it straight away. A drag selection shows a Translate button beside it once the mouse is released, and the button opens the popup once the dictionary has answered. The popup shows one of three things:
 
-- **Dictionary match.** Up to three words are looked up first. When a result matches the selection exactly or as an inflected form, the popup shows that result as the same word row the dictionary lists use: headword, translations, level and learning progress. A click on the row opens the word on the Words screen.
+- **Dictionary match.** Up to three words are looked up first. When a result matches the selection exactly or as an inflected form, the popup shows that result as the same word row the dictionary lists use: headword, translations, level and learning progress. A click on the row opens the add-word dialog for it, the same as the add button.
 - **Machine translation.** A selection with no exact match, or a longer one, is translated by the offline model and shown in large text.
 - **Download.** Without the translation model, the popup is a single download button. When the download finishes with the popup still open, the selection is translated without being selected again.
 
@@ -152,12 +152,29 @@ EPUB, FB2 and TXT books can mark the learner's own words on the page. The settin
 
 The marks are rebuilt when a book opens, when the reader screen comes back into view, and when the app returns to the foreground, but only when the card data or the dictionary changed since the last build. A build for a few thousand cards reads one forms query per five hundred headwords. Marking a paragraph is a lookup per word, done for the paragraphs on screen only.
 
+## Read aloud
+
+EPUB, FB2 and TXT books can be read aloud with the voice the app already uses for words: Piper or Supertonic on the desktop, the platform voice on the phone. A PDF has no read aloud.
+
+- **Voice mode.** A headphones button in the reader's top bar turns it on. It shows a small play bar with play or pause, and stop.
+- **Where reading starts.** In voice mode, with nothing read yet, tapping a word reads from the start of its sentence. Play reads from the sentence at the top of the screen.
+- **A tap pauses.** Tapping a word while the voice reads pauses it and opens the translation, the dictionary sheet on the phone and the popup on the desktop. Play then restarts the paused sentence, so the learner hears it again after the lookup. The phone's voice cannot pause in the middle of a sentence anyway.
+- **Stop.** Stop clears the place, and the next tap on a word starts there.
+- **The sentence is shaded, not the word.** Neither desktop voice reports when each word starts, and an estimate drifts with French liaisons and fast Spanish. Shading the sentence is exact on every platform.
+- **The view follows.** When the read sentence goes past the bottom of the visible text, the view scrolls it near the top. Scrolling by hand stops following until play is pressed again.
+- **Leaving.** Closing the book stops reading. Leaving the reader screen pauses it. On the desktop a minimised window keeps reading.
+- **The phone in the background.** Reading goes on with the screen off or another app open, the way music does. A media notification shows the book's title with play or pause, and stop, and the same controls appear on the lock screen. Headphone buttons and other media keys work. A phone call or another app's audio pauses reading, and it resumes when the call ends. Unplugging headphones pauses it. Swiping the app away from recent apps stops it.
+
+The phone's background reading needs four things. Qt normally freezes the app's event loop in the background, which would stop the queue from refilling after 15 seconds, so the manifest turns that off. A foreground service of the media playback type keeps Android from killing the app, and it stays in the foreground from the first play until stop, since Android does not let a background app start one later. A media session carries the notification and the lock screen controls. The platform voice plays from its own process, so Android would send media keys to whichever app last played audio of its own; a silent audio track plays in the app while reading, which makes the app the one media keys go to.
+
+Sentences are queued about 15 seconds ahead, measured in estimated seconds of audio, not in sentences. A short "Oui." before a long sentence would leave a gap if only one sentence were prepared, since the long one takes longer to synthesise than the short one takes to play. The desktop synthesises the queue on a worker and appends each sentence to the one still playing, with a short pause between them. That audio skips the speech cache, so a book never pushes out the exercise audio. The phone hands the queued sentences to the platform voice, which plays them in order.
+
 ## Screens
 
 The reader holds two states, the same pattern as a list and its detail:
 
 - **Library** - a search field, the sort chips (Last opened, A to Z) with a button that switches between covers and a list, then the books. Open book comes first, a plain + in the primary colours: a cover-sized tile, or a full-width bar in the list. Covers come two to a row, 1.7 times as wide as tall, and nothing sits under them. A cover takes the book's tint, crossed by the darker band the desktop covers carry, and shows the format and where the book is at the top, a menu button in the top right corner, the title at the bottom, and a line along its bottom edge for how far the book was read. The list shows one row per book: a small cover in the same tint, the title, and a second line with where the book is and how far it was read, in percent. Where the book is takes one icon: a phone for a book only on this phone, a cloud with a check for one on the phone and in the cloud, a cloud with an arrow for one only in the cloud, which also shows its size. A book whose file is gone is not shown, since the phone cannot point it at a moved file. Tapping a book opens it, or downloads a cloud book. The menu button, or a long press, opens a sheet with Download, Upload to the cloud, Open in another app, Remove in red and Delete from the cloud in red, whichever apply; both red actions ask first. A download shows its percentage over the cover, and the menu button turns into Cancel while an upload runs. The app remembers the layout.
-- **Reading** - the page view or the paragraph view, selected by format. A top overlay holds back, contents, appearance and search, with the title beneath. A bottom overlay holds previous page, page number and next page, with the page scrubber beneath. Tapping a PDF's page number turns it into a numeric field; entering a page and confirming jumps there. Contents and the dictionary search open as bottom sheets.
+- **Reading** - the page view or the paragraph view, selected by format. A top overlay holds back, read aloud, contents, appearance and search, with the title beneath. A bottom overlay holds previous page, page number and next page, with the page scrubber beneath. Tapping a PDF's page number turns it into a numeric field; entering a page and confirming jumps there. Contents and the dictionary search open as bottom sheets.
 
 The reader is a rail destination, a shell screen at the same level as the Dictionary screen. A document opens under the currently active language pair, and its cards go to that pair's pool.
 
@@ -218,7 +235,11 @@ A zoom step can re-render three pages on the render thread. Word lookup uses the
 | `MobileSettingsReader` | The reading settings rows, used by the reader's sheet and by Settings. |
 | `FTVocabularyMarks` | Finds the learner's words, forms and phrases in a paragraph; see [Vocabulary highlighting](#vocabulary-highlighting). |
 | `ReaderVocabulary` | Builds the marks from the cards and the dictionary's forms, and rebuilds them when either changes. |
-| `ReaderVocabularyHighlighter` | Paints the marks into one paragraph's text, on the phone and the desktop. |
+| `ReaderTextHighlighter` | Paints the vocabulary marks and the sentence being read into one paragraph's text, on the phone and the desktop. |
+| `ReaderReadAloud` | Read aloud: the place in the book, the sentences queued ahead, and pause, resume and stop. |
+| `FTNarration` | Finds the sentence under a tapped character and the next sentence worth reading. |
+| `ReadAloudSession`, `ReadAloudService` | The phone's media session, notification, audio focus and foreground service. |
+| `FTSpeechService` narration | Renders a sentence outside the speech cache and appends it to the voice that is playing. |
 | `FTReaderDocument` | The output of a flowable-format extractor: a title and an ordered `Paragraphs` list. |
 | `FTReaderRepository` | Reads and writes the `ReaderDocuments` table. |
 | `ReaderDocuments` | The library table: `Id`, `FilePath`, `Title`, `Format`, `AddedDate`, `LastOpenedDate`, `Deleted`. |

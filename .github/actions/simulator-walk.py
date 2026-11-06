@@ -128,6 +128,15 @@ class Simulator:
 
         print(f"{label} passed{': ' + found.strip() if found else ''}")
 
+    def check_dictionaries(self, label):
+        directory = self.container() / "tmp/Ikonika-headless/dictionaries"
+
+        for database in sorted(directory.rglob("*.db")):
+            result = subprocess.run(["sqlite3", "-readonly", str(database), "PRAGMA quick_check;"],
+                                    capture_output=True, text=True)
+            verdict = (result.stdout + result.stderr).strip().splitlines()[:3]
+            print(f"  {label}: {database.name} {database.stat().st_size} bytes, quick_check {verdict}", flush=True)
+
 
 def main():
     parser = argparse.ArgumentParser(description="Installs the app in an iPhone simulator, checks the first "
@@ -153,9 +162,12 @@ def main():
 
     simulator.phase("Dictionary install", ["-headless"], {"IKONIKA_INSTALL_PACKAGE": arguments.dictionary},
                     HEADLESS_LOG, ["Package install finished", "Package install failed"], 900, strict=False)
+    time.sleep(10)
+    simulator.check_dictionaries("after install")
 
     simulator.phase("Screen walk", ["-headless", "-keep-dictionaries"], {"IKONIKA_SCREEN_WALK": MOBILE_SCREENS},
                     HEADLESS_LOG, ["screen walk done"], 900, strict=True)
+    simulator.check_dictionaries("after screen walk")
 
     simulator.phase("Navigation walk", ["-headless", "-keep-dictionaries"], {"IKONIKA_NAV_WALK": "1"},
                     HEADLESS_LOG, ["navigation walk done"], 900, strict=True)

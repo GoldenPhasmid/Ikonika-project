@@ -47,6 +47,7 @@ add_library(core STATIC
     src/FTErasure.cpp
     src/FTEnglishForms.cpp
     src/FTJournal.cpp
+    src/FTNarration.cpp
     src/FTSchedule.cpp
     src/FTScheduleManager.cpp
     src/FTScoring.cpp
@@ -92,6 +93,7 @@ add_library(core STATIC
     include/core/FTErasure.h
     include/core/FTEnglishForms.h
     include/core/FTJournal.h
+    include/core/FTNarration.h
     include/core/FTSchedule.h
     include/core/FTScheduleManager.h
     include/core/FTScoring.h

@@ -59,6 +59,28 @@ public:
 
     virtual QMutex& Lock() { return DefaultLock; }
 
+    virtual bool CanNarrate() const { return false; }
+    virtual void QueueNarration(int Id, const QString& Text, const QString& LanguageCode)
+    {
+        Q_UNUSED(Id);
+        Q_UNUSED(Text);
+        Q_UNUSED(LanguageCode);
+    }
+    virtual void StopNarration() {}
+    virtual void UpdateNarrationSession(const QString& Title, bool bStarted, bool bPlaying)
+    {
+        Q_UNUSED(Title);
+        Q_UNUSED(bStarted);
+        Q_UNUSED(bPlaying);
+    }
+
+    void ReportNarrationStarted(int Id);
+    void ReportNarrationFinished(int Id);
+    void ReportNarrationFailed();
+    void ReportNarrationPlayRequested();
+    void ReportNarrationPauseRequested();
+    void ReportNarrationStopRequested();
+
     bool IsSpeaking() const { return bSpeaking.loadRelaxed() != 0; }
 
     /** Safe from any thread: the change reaches listeners on this object's thread. */
@@ -79,6 +101,12 @@ signals:
     void speakingChanged(bool bSpeaking);
     void enabledChanged(bool bEnabled);
     void speechReleased();
+    void narrationStarted(int Id);
+    void narrationFinished(int Id);
+    void narrationFailed();
+    void narrationPlayRequested();
+    void narrationPauseRequested();
+    void narrationStopRequested();
 
 protected:
     AppSpeech();

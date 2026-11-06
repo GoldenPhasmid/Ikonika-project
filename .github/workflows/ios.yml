@@ -199,14 +199,14 @@ jobs:
         run: |
           mkdir -p "$OUTPUT_DIR"
           defaults write com.apple.dt.Xcode IDEBuildingContinueBuildingAfterErrors -bool YES
-          xcodebuild build -project "$BUILD_DIR/Ikonika.xcodeproj" -scheme IkonikaApp -configuration Debug \
+          xcodebuild build -project "$BUILD_DIR/Ikonika.xcodeproj" -scheme IkonikaApp -configuration Release \
             -sdk iphonesimulator -destination "generic/platform=iOS Simulator" CODE_SIGNING_ALLOWED=NO \
             | tee "$OUTPUT_DIR/xcodebuild.log"
           test "${PIPESTATUS[0]}" -eq 0
 
       - name: Launch the app and walk its screens
         run: |
-          APP=$(find "$BUILD_DIR" -path "*Debug-iphonesimulator/IkonikaApp.app" -type d | head -1)
+          APP=$(find "$BUILD_DIR" -path "*Release-iphonesimulator/IkonikaApp.app" -type d | head -1)
           echo "App bundle: $APP"
           python3 "$GITHUB_WORKSPACE/.github/actions/simulator-walk.py" "$APP" "$OUTPUT_DIR"
 

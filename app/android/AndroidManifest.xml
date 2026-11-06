@@ -10,6 +10,8 @@
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" tools:node="remove" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <!-- %%INSERT_FEATURES -->
     <supports-screens
         android:anyDensity="true"
@@ -45,6 +47,10 @@
           <meta-data
                 android:name="android.app.arguments"
                 android:value="-- %%INSERT_APP_ARGUMENTS%% --" />
+
+          <meta-data
+                android:name="android.app.background_running"
+                android:value="true" />
         </activity>
 
         <activity
@@ -64,6 +70,11 @@
                 <data android:mimeType="application/x-fictionbook" />
             </intent-filter>
         </activity>
+
+        <service
+            android:name="com.goldenphasmid.ikonika.ReadAloudService"
+            android:foregroundServiceType="mediaPlayback"
+            android:exported="false" />
 
         <receiver
             android:name="com.goldenphasmid.ikonika.ReminderAlarmReceiver"

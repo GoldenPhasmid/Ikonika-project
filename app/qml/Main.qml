@@ -927,6 +927,19 @@ ApplicationWindow
                     onClicked: readerScreen.toggleContents()
                 }
 
+                DesktopIconButton
+                {
+                    objectName: "topbar_reader_read_aloud"
+
+                    visible: window.readingBook && readerScreen.readAloudOffered
+                    opacity: readerScreen.chromeShown
+                    iconName: "headphones"
+                    active: readerScreen.readAloud.enabled
+                    text: qsTr("Read aloud")
+
+                    onClicked: readerScreen.readAloud.enabled = !readerScreen.readAloud.enabled
+                }
+
                 DesktopReaderAppearanceButton
                 {
                     objectName: "topbar_reader_appearance"

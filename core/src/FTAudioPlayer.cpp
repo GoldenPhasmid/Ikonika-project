@@ -27,6 +27,7 @@ struct FTAudioPlayer::Impl
 
     std::vector<int16_t> Samples;
     size_t Position = 0;
+    uint64_t ConsumedFrames = 0;
 
     ~Impl()
     {
@@ -283,7 +284,37 @@ bool FTAudioPlayer::Play(std::vector<int16_t> Samples, int SampleRate)
 
         Data->Samples = std::move(Converted);
         Data->Position = 0;
+        Data->ConsumedFrames = 0;
     }
+
+    return true;
+}
+
+bool FTAudioPlayer::Append(std::vector<int16_t> Samples, int SampleRate)
+{
+    if (Samples.empty() || SampleRate != Data->SourceSampleRate)
+    {
+        return false;
+    }
+
+    if (!Data->EnsureRunning())
+    {
+        return false;
+    }
+
+    std::vector<int16_t> Converted{Data->Resample(Samples)};
+
+    if (Converted.empty())
+    {
+        return false;
+    }
+
+    const std::lock_guard<std::mutex> Lock(Data->Guard);
+
+    Data->Samples.erase(Data->Samples.begin(), Data->Samples.begin() + static_cast<ptrdiff_t>(Data->Position));
+    Data->ConsumedFrames += Data->Position;
+    Data->Position = 0;
+    Data->Samples.insert(Data->Samples.end(), Converted.begin(), Converted.end());
 
     return true;
 }
@@ -294,6 +325,21 @@ void FTAudioPlayer::Stop()
 
     Data->Samples.clear();
     Data->Position = 0;
+    Data->ConsumedFrames = 0;
+}
+
+uint64_t FTAudioPlayer::GetQueuedFrames() const
+{
+    const std::lock_guard<std::mutex> Lock(Data->Guard);
+
+    return Data->ConsumedFrames + Data->Samples.size();
+}
+
+uint64_t FTAudioPlayer::GetPlayedFrames() const
+{
+    const std::lock_guard<std::mutex> Lock(Data->Guard);
+
+    return Data->ConsumedFrames + std::min(Data->Position, Data->Samples.size());
 }
 
 bool FTAudioPlayer::IsPlaying() const

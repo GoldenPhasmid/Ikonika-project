@@ -21,6 +21,8 @@ inline constexpr float MaximumSpeechSpeed = 1.5f;
     it at runtime. */
 inline constexpr int DefaultMaximumCacheEntries = 50;
 
+inline constexpr float NarrationSentenceGapSeconds = 0.3f;
+
 inline constexpr const char* PiperEngine = "Piper";
 inline constexpr const char* SupertonicEngine = "Supertonic";
 
@@ -119,6 +121,12 @@ private:
     FTSpeechSynthesizer();
 };
 
+struct FTNarrationChunk
+{
+    uint64_t StartFrame = 0;
+    uint64_t EndFrame = 0;
+};
+
 struct FTVoiceModel
 {
     std::string Directory;
@@ -192,6 +200,11 @@ public:
     int FindVoiceForLanguage(const std::string& LanguageCode) const;
 
     int FindFallbackVoice() const;
+
+    std::vector<int16_t> RenderNarration(int VoiceIndex, std::string_view Text, const std::string& LanguageCode) const;
+    std::optional<FTNarrationChunk> PlayNarration(int VoiceIndex, std::vector<int16_t> Samples, bool bContinues);
+    uint64_t GetNarrationPosition(int VoiceIndex) const;
+    bool IsNarrationPlaying(int VoiceIndex) const;
 
     void Stop();
 

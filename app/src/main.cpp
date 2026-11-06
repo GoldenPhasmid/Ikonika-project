@@ -592,7 +592,7 @@ int main(int ArgumentCount, char* Arguments[])
             {
                 AppPackageDownloader::Get().download(Id.trimmed());
             }
-        });
+        }, Qt::SingleShotConnection);
 
         AppPackageDownloader& Downloader = AppPackageDownloader::Get();
 

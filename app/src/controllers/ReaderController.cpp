@@ -222,11 +222,13 @@ namespace
 
 ReaderController::ReaderController(QObject* Parent)
     : QObject(Parent)
+    , ReadAloud(ParagraphModel)
 {
     AppDatabase::Get().Initialise();
 
     connect(this, &ReaderController::currentDocumentChanged, this, [this]()
     {
+        ReadAloud.SetTitle(CurrentTitle);
         ApplyKeepScreenOn(bReading && !bUnreadable);
         UpdateVolumeKeys();
 
@@ -1329,6 +1331,11 @@ FTParagraphModel* ReaderController::GetParagraphModel()
 ReaderVocabulary* ReaderController::GetVocabulary()
 {
     return &Vocabulary;
+}
+
+ReaderReadAloud* ReaderController::GetReadAloud()
+{
+    return &ReadAloud;
 }
 
 bool ReaderController::IsLoading() const

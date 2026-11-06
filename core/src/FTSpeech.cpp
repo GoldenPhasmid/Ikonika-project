@@ -953,6 +953,87 @@ bool FTSpeechService::Speak(std::string_view Text, const std::string& LanguageCo
     return Chosen.Player->Play(*Samples, Chosen.Synthesizer.GetSampleRate());
 }
 
+std::vector<int16_t> FTSpeechService::RenderNarration(int VoiceIndex, std::string_view Text,
+                                                     const std::string& LanguageCode) const
+{
+    if (!bEnabled || Text.empty() || VoiceIndex < 0 || VoiceIndex >= static_cast<int>(Voices.size()))
+    {
+        return {};
+    }
+
+    const Voice& Chosen{Voices[static_cast<size_t>(VoiceIndex)]};
+
+    QElapsedTimer Timer;
+    Timer.start();
+
+    std::vector<int16_t> Samples{Chosen.Synthesizer.Synthesize(Text, Chosen.SpeakerId, Speed, LanguageCode)};
+
+    qCDebug(LogSpeech) << "narration synthesis took" << Timer.elapsed() << "ms for"
+                       << static_cast<int>(Text.size()) << "characters";
+
+    if (Samples.empty())
+    {
+        return Samples;
+    }
+
+    const size_t GapFrames{static_cast<size_t>(Chosen.Synthesizer.GetSampleRate() * NarrationSentenceGapSeconds)};
+    Samples.insert(Samples.end(), GapFrames, int16_t{0});
+
+    return Samples;
+}
+
+std::optional<FTNarrationChunk> FTSpeechService::PlayNarration(int VoiceIndex, std::vector<int16_t> Samples, bool bContinues)
+{
+    if (!bEnabled || Samples.empty() || VoiceIndex < 0 || VoiceIndex >= static_cast<int>(Voices.size()))
+    {
+        return std::nullopt;
+    }
+
+    Voice& Chosen{Voices[static_cast<size_t>(VoiceIndex)]};
+    const int SampleRate{Chosen.Synthesizer.GetSampleRate()};
+
+    if (!bContinues)
+    {
+        Stop();
+
+        if (!Chosen.Player->Play(std::move(Samples), SampleRate))
+        {
+            return std::nullopt;
+        }
+
+        return FTNarrationChunk{0, Chosen.Player->GetQueuedFrames()};
+    }
+
+    const uint64_t StartFrame{Chosen.Player->GetQueuedFrames()};
+
+    if (!Chosen.Player->Append(std::move(Samples), SampleRate))
+    {
+        return std::nullopt;
+    }
+
+    return FTNarrationChunk{StartFrame, Chosen.Player->GetQueuedFrames()};
+}
+
+uint64_t FTSpeechService::GetNarrationPosition(int VoiceIndex) const
+{
+    if (VoiceIndex < 0 || VoiceIndex >= static_cast<int>(Voices.size()))
+    {
+        return 0;
+    }
+
+    return Voices[static_cast<size_t>(VoiceIndex)].Player->GetPlayedFrames();
+}
+
+bool FTSpeechService::IsNarrationPlaying(int VoiceIndex) const
+{
+    if (VoiceIndex < 0 || VoiceIndex >= static_cast<int>(Voices.size()))
+    {
+        return false;
+    }
+
+    return Voices[static_cast<size_t>(VoiceIndex)].Player->IsPlaying();
+}
+
 void FTSpeechService::Stop()
 {
     for (Voice& Entry : Voices)

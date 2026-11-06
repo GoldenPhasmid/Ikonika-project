@@ -15,6 +15,7 @@ Rectangle
     readonly property real iconBoxSize: 18
 
     property bool interactive: true
+    property bool active: false
 
     signal clicked()
 
@@ -22,7 +23,7 @@ Rectangle
     Layout.preferredHeight: 32
 
     radius: AppMetrics.radiusSmall
-    color: AppTheme.colourFaint
+    color: root.active ? AppTheme.colourAccent : AppTheme.colourFaint
     opacity: root.interactive ? 1.0 : 0.5
 
     Text
@@ -48,7 +49,7 @@ Rectangle
         sourceWidth: root.iconWidth
         sourceHeight: root.iconHeight
         svgPath: root.iconSvg
-        color: AppTheme.colourText
+        color: root.active ? AppTheme.colourAccentText : AppTheme.colourText
     }
 
     MouseArea

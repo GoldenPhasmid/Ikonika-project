@@ -126,7 +126,7 @@ Item
             run: function()
             {
                 root.window.testHooks.vocabularyMobile.practiceRequested()
-                root.window.testHooks.practiceMobile.item.exerciseRequested("flashcards", false, 10, 1)
+                root.window.testHooks.practiceMobile.item.exerciseRequested("flashcards", false, 10, 1, [])
             },
             check: function()
             {

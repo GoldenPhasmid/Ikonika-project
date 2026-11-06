@@ -163,3 +163,8 @@ void FTParagraphModel::Clear()
 {
     SetParagraphs({});
 }
+
+const std::vector<std::string>& FTParagraphModel::GetParagraphs() const
+{
+    return Paragraphs;
+}

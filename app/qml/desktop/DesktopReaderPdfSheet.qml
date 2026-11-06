@@ -82,6 +82,8 @@ ReaderPdfPage
 
         onActiveChanged:
         {
+            root.view.selecting = selectionDrag.active
+
             if (selectionDrag.active)
             {
                 root.view.clearSelection()
@@ -120,6 +122,7 @@ ReaderPdfPage
             if (found.text.length > 0)
             {
                 root.view.wordPicked(found.text, root.selectionSentence)
+                root.view.translationWanted()
             }
         }
     }

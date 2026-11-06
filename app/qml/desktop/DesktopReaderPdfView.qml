@@ -14,6 +14,7 @@ Item
     property color inkColour: "black"
 
     signal wordPicked(string word, string sentence)
+    signal translationWanted()
     signal currentPageChanged(int page)
     signal currentZoomChanged(real zoom)
     signal currentScrollChanged(point scroll)
@@ -21,6 +22,7 @@ Item
     property int current: 0
     property real renderScale: 1
     property bool pageDrawn: false
+    property bool selecting: false
 
     readonly property int pageIndex: root.current
     readonly property ReaderPdfDocument document: book

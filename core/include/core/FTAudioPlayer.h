@@ -23,7 +23,12 @@ public:
 
     bool Play(std::vector<int16_t> Samples, int SampleRate);
 
+    bool Append(std::vector<int16_t> Samples, int SampleRate);
+
     void Stop();
+
+    uint64_t GetQueuedFrames() const;
+    uint64_t GetPlayedFrames() const;
 
     bool IsPlaying() const;
 

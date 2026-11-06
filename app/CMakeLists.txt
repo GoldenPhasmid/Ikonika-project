@@ -50,8 +50,10 @@ set(IKONIKA_READER_SOURCES
     src/ReaderTextHitTest.h
     src/ReaderVocabulary.cpp
     src/ReaderVocabulary.h
-    src/ReaderVocabularyHighlighter.cpp
-    src/ReaderVocabularyHighlighter.h
+    src/ReaderReadAloud.cpp
+    src/ReaderReadAloud.h
+    src/ReaderTextHighlighter.cpp
+    src/ReaderTextHighlighter.h
 )
 
 set(IKONIKA_YOUTUBE_SOURCES
@@ -438,6 +440,7 @@ set(IKONIKA_MOBILE_QML_FILES
     qml/mobile/MobileReaderPdfView.qml
     qml/mobile/MobileReaderPdfSheet.qml
     qml/mobile/MobileReaderFrame.qml
+    qml/mobile/MobileReaderPlayBar.qml
     qml/mobile/MobileReaderPageNumber.qml
 )
 
@@ -449,6 +452,7 @@ set(IKONIKA_QML_FILES
     qml/CoverStripe.qml
     qml/Decks.js
     qml/FormsMarkup.js
+    qml/ReadAloudPlace.js
     qml/ReaderShelf.js
     qml/ReaderLevelBadge.qml
     qml/ReaderTones.js
@@ -544,6 +548,7 @@ set(IKONIKA_QML_FILES
     qml/desktop/DesktopProgressRing.qml
     qml/desktop/DesktopPromptLabel.qml
     qml/desktop/DesktopReaderBar.qml
+    qml/desktop/DesktopReaderPlayBar.qml
     qml/desktop/DesktopReaderBookTile.qml
     qml/desktop/DesktopReaderOpenTile.qml
     qml/desktop/DesktopCoverBar.qml

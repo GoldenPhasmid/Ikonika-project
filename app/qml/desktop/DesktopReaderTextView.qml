@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls.Basic
+import "../ReadAloudPlace.js" as ReadAloudPlace
 
 ListView
 {
@@ -13,8 +14,13 @@ ListView
     property string bookPath: ""
     property string fontFamily: AppMetrics.fontFamily
     property ReaderVocabulary vocabulary: null
+    property ReaderReadAloud readAloud: null
+    property real readAloudInset: 0
+    property bool followingReadAloud: true
+    property bool selecting: false
 
     signal wordPicked(string word, string sentence)
+    signal translationWanted()
     signal zoomRequested(bool closer)
 
     DictionaryController { id: contextLookup }
@@ -43,6 +49,7 @@ ListView
 
     function goTo(index)
     {
+        root.leaveReadAloud()
         wheelGlide.stop()
         root.positionViewAtIndex(Math.max(0, Math.min(root.count - 1, index)), ListView.Beginning)
 
@@ -54,12 +61,15 @@ ListView
 
     function scrollBy(pixels)
     {
+        root.leaveReadAloud()
         wheelGlide.stop()
         root.contentY = Math.max(root.scrollStart, Math.min(root.scrollLimit, root.contentY + pixels))
     }
 
     function glideBy(pixels)
     {
+        root.leaveReadAloud()
+
         const from = wheelGlide.running ? root.glideTarget : root.contentY
 
         root.glideTarget = Math.max(root.scrollStart, Math.min(root.scrollLimit, from + pixels))
@@ -72,6 +82,7 @@ ListView
 
     function startAutoscroll(position)
     {
+        root.leaveReadAloud()
         wheelGlide.stop()
         root.autoscrollAnchor = position
         root.autoscrollPointerY = position.y
@@ -86,6 +97,76 @@ ListView
     function turnPage(forward)
     {
         root.scrollBy(root.height * 0.9 * (forward ? 1 : -1))
+    }
+
+    function leaveReadAloud()
+    {
+        root.followingReadAloud = false
+        followGlide.stop()
+    }
+
+    function playReadAloud()
+    {
+        if (root.readAloud === null)
+        {
+            return
+        }
+
+        root.followingReadAloud = true
+
+        if (root.readAloud.started)
+        {
+            root.readAloud.resume()
+
+            return
+        }
+
+        const place = ReadAloudPlace.startPlace(root, root.topParagraph, root.contentY)
+
+        root.readAloud.startAt(place.paragraph, place.character)
+    }
+
+    function followReadAloud()
+    {
+        if (root.readAloud === null || !root.readAloud.playing || !root.followingReadAloud)
+        {
+            return
+        }
+
+        let span = ReadAloudPlace.sentenceSpan(root, root.readAloud)
+
+        if (span === null)
+        {
+            followGlide.stop()
+            root.positionViewAtIndex(root.readAloud.paragraph, ListView.Beginning)
+            root.forceLayout()
+            span = ReadAloudPlace.sentenceSpan(root, root.readAloud)
+
+            if (span === null)
+            {
+                return
+            }
+        }
+
+        if (span.top >= root.contentY && span.bottom <= root.contentY + root.height - root.readAloudInset)
+        {
+            return
+        }
+
+        followGlide.stop()
+        followGlide.from = root.contentY
+        followGlide.to = Math.max(root.scrollStart, Math.min(root.scrollLimit, span.top - root.textSize * 2))
+        followGlide.start()
+    }
+
+    Connections
+    {
+        target: root.readAloud
+
+        function onStateChanged()
+        {
+            Qt.callLater(root.followReadAloud)
+        }
     }
 
     function isWordCharacter(character)
@@ -216,7 +297,20 @@ ListView
 
     Accessible.role: Accessible.Document
 
-    ScrollBar.vertical: DesktopScrollBar {}
+    ScrollBar.vertical: DesktopScrollBar
+    {
+        onPressedChanged: if (pressed) root.leaveReadAloud()
+    }
+
+    NumberAnimation
+    {
+        id: followGlide
+
+        target: root
+        property: "contentY"
+        duration: AppMetrics.motionSlow
+        easing.type: Easing.InOutCubic
+    }
 
     NumberAnimation
     {
@@ -420,6 +514,19 @@ ListView
             return paragraph.heading > 0 ? root.textSize : 0
         }
 
+        function sentenceBounds(start, end)
+        {
+            const first = paragraphText.positionToRectangle(start)
+            const last = paragraphText.positionToRectangle(Math.max(start, end - 1))
+
+            return { top: paragraphText.y + first.y, bottom: paragraphText.y + last.y + last.height }
+        }
+
+        function characterAt(y)
+        {
+            return paragraphText.positionAt(0, Math.max(0, y - paragraphText.y))
+        }
+
         width: ListView.view.width
         height: (paragraph.pictured ? picture.height : (paragraph.rule ? root.textSize : paragraphText.implicitHeight))
                 + paragraph.topGap
@@ -511,6 +618,8 @@ ListView
 
                 onActiveChanged:
                 {
+                    root.selecting = pointer.active
+
                     if (pointer.active)
                     {
                         pointer.releasedAt = pointer.point.position
@@ -524,6 +633,14 @@ ListView
 
                 function pick()
                 {
+                    const readAloud = root.readAloud
+                    const wasReading = readAloud !== null && readAloud.playing
+
+                    if (wasReading)
+                    {
+                        readAloud.pause()
+                    }
+
                     if (paragraph.display.substring(paragraphText.selectionStart, paragraphText.selectionEnd).trim().length > 0)
                     {
                         const first = root.wordRange(paragraph.display, paragraphText.selectionStart)
@@ -544,6 +661,11 @@ ListView
                         paragraphText.select(start, end)
                         root.wordPicked(paragraph.display.substring(start, end).trim(), contextLookup.sentenceAt(paragraph.display, start))
 
+                        if (wasReading)
+                        {
+                            root.translationWanted()
+                        }
+
                         return
                     }
 
@@ -555,8 +677,18 @@ ListView
                         return
                     }
 
+                    if (readAloud !== null && readAloud.enabled && !readAloud.started)
+                    {
+                        root.clearSelection()
+                        root.followingReadAloud = true
+                        readAloud.startAt(paragraph.index, range.start)
+
+                        return
+                    }
+
                     paragraphText.select(range.start, range.end)
                     root.wordPicked(paragraph.display.substring(range.start, range.end), contextLookup.sentenceAt(paragraph.display, range.start))
+                    root.translationWanted()
                 }
             }
 
@@ -567,11 +699,17 @@ ListView
                 textDocument: paragraphText.textDocument
             }
 
-            ReaderVocabularyHighlighter
+            ReaderTextHighlighter
             {
-                textDocument: root.vocabulary !== null && root.vocabulary.enabled ? paragraphText.textDocument : null
+                readonly property bool reading: root.readAloud !== null && root.readAloud.started
+                                                && root.readAloud.paragraph === paragraph.index
+
+                textDocument: (root.vocabulary !== null && root.vocabulary.enabled) || reading ? paragraphText.textDocument : null
                 vocabulary: root.vocabulary
                 learningColour: AppTheme.faded(AppTheme.colourAccent, AppTheme.alphaMedium)
+                sentenceStart: reading ? root.readAloud.sentenceStart : -1
+                sentenceEnd: reading ? root.readAloud.sentenceEnd : -1
+                sentenceColour: AppTheme.faded(root.inkColour, AppTheme.alphaSoft)
             }
 
             HoverHandler

@@ -49,6 +49,7 @@ add_executable(CoreTests
     ScheduleManagerTests.cpp
     ErasureTests.cpp
     JournalTests.cpp
+    NarrationTests.cpp
     ScheduleTests.cpp
     SchemaTests.cpp
     SettingsDefaultsTests.cpp

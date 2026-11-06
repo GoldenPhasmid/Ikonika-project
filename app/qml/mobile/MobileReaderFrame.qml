@@ -10,6 +10,9 @@ Item
     property alias bottomContent: bottomControls.data
     default property alias content: pageArea.data
 
+    readonly property real topCover: root.controlsVisible ? topPanel.height : 0
+    readonly property real bottomCover: root.controlsVisible ? bottomPanel.height : 0
+
     Item
     {
         id: pageArea
@@ -19,6 +22,8 @@ Item
 
     Rectangle
     {
+        id: topPanel
+
         anchors.top: parent.top
         anchors.left: parent.left
         anchors.right: parent.right
@@ -46,6 +51,8 @@ Item
 
     Rectangle
     {
+        id: bottomPanel
+
         anchors.bottom: parent.bottom
         anchors.left: parent.left
         anchors.right: parent.right

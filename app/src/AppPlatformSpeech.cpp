@@ -10,10 +10,12 @@
 #include <QtCore/qjniobject.h>
 
 #include <algorithm>
+#include <iterator>
 
 namespace
 {
     constexpr const char* PlatformSpeechClass = "com/goldenphasmid/ikonika/PlatformSpeech";
+    constexpr const char* ReadAloudSessionClass = "com/goldenphasmid/ikonika/ReadAloudSession";
 
     void PlatformInitialize()
     {
@@ -43,9 +45,65 @@ namespace
         QJniObject::callStaticMethod<void>(PlatformSpeechClass, "setRate", "(F)V", Rate);
     }
 
+    void PlatformNarrate(int Id, const QString& Text, const QString& Language)
+    {
+        QJniObject JniText = QJniObject::fromString(Text);
+        QJniObject JniLanguage = QJniObject::fromString(Language);
+
+        QJniObject::callStaticMethod<void>(PlatformSpeechClass, "narrate",
+            "(ILjava/lang/String;Ljava/lang/String;)V",
+            static_cast<jint>(Id), JniText.object<jstring>(), JniLanguage.object<jstring>());
+    }
+
+    void PlatformStopNarration()
+    {
+        QJniObject::callStaticMethod<void>(PlatformSpeechClass, "stopNarration", "()V");
+    }
+
+    void PlatformUpdateNarrationSession(const QString& Title, bool bStarted, bool bPlaying)
+    {
+        QJniObject Context = QNativeInterface::QAndroidApplication::context();
+        QJniObject JniTitle = QJniObject::fromString(Title);
+
+        QJniObject::callStaticMethod<void>(ReadAloudSessionClass, "update",
+            "(Landroid/content/Context;Ljava/lang/String;ZZ)V",
+            Context.object<jobject>(), JniTitle.object<jstring>(),
+            static_cast<jboolean>(bStarted), static_cast<jboolean>(bPlaying));
+    }
+
+    void NativeOnPlayRequested(JNIEnv*, jclass)
+    {
+        AppSpeech::Get().ReportNarrationPlayRequested();
+    }
+
+    void NativeOnPauseRequested(JNIEnv*, jclass)
+    {
+        AppSpeech::Get().ReportNarrationPauseRequested();
+    }
+
+    void NativeOnStopRequested(JNIEnv*, jclass)
+    {
+        AppSpeech::Get().ReportNarrationStopRequested();
+    }
+
     void NativeOnSpeakingChanged(JNIEnv*, jclass, jboolean Speaking)
     {
         AppSpeech::Get().ReportSpeaking(Speaking == JNI_TRUE);
+    }
+
+    void NativeOnNarrationStarted(JNIEnv*, jclass, jint Id)
+    {
+        AppSpeech::Get().ReportNarrationStarted(static_cast<int>(Id));
+    }
+
+    void NativeOnNarrationFinished(JNIEnv*, jclass, jint Id)
+    {
+        AppSpeech::Get().ReportNarrationFinished(static_cast<int>(Id));
+    }
+
+    void NativeOnNarrationFailed(JNIEnv*, jclass)
+    {
+        AppSpeech::Get().ReportNarrationFailed();
     }
 
     void RegisterSpeakingBridge()
@@ -53,19 +111,38 @@ namespace
         static const JNINativeMethod Methods[] = {
             { "nativeOnSpeakingChanged", "(Z)V",
               reinterpret_cast<void*>(&NativeOnSpeakingChanged) },
+            { "nativeOnNarrationStarted", "(I)V",
+              reinterpret_cast<void*>(&NativeOnNarrationStarted) },
+            { "nativeOnNarrationFinished", "(I)V",
+              reinterpret_cast<void*>(&NativeOnNarrationFinished) },
+            { "nativeOnNarrationFailed", "()V",
+              reinterpret_cast<void*>(&NativeOnNarrationFailed) },
         };
 
         QJniEnvironment Env;
 
-        if (!Env.registerNativeMethods(PlatformSpeechClass, Methods, 1))
+        if (!Env.registerNativeMethods(PlatformSpeechClass, Methods, static_cast<int>(std::size(Methods))))
         {
             qCWarning(LogSpeech) << "Could not register the speaking state bridge";
+        }
+
+        static const JNINativeMethod SessionMethods[] = {
+            { "nativeOnPlayRequested", "()V", reinterpret_cast<void*>(&NativeOnPlayRequested) },
+            { "nativeOnPauseRequested", "()V", reinterpret_cast<void*>(&NativeOnPauseRequested) },
+            { "nativeOnStopRequested", "()V", reinterpret_cast<void*>(&NativeOnStopRequested) },
+        };
+
+        if (!Env.registerNativeMethods(ReadAloudSessionClass, SessionMethods, static_cast<int>(std::size(SessionMethods))))
+        {
+            qCWarning(LogSpeech) << "Could not register the read aloud session bridge";
         }
     }
 }
 
 AppPlatformSpeech::AppPlatformSpeech()
 {
+    NarrationPool.setMaxThreadCount(1);
+
     RegisterSpeakingBridge();
     ApplyStoredSettings();
 }
@@ -143,4 +220,24 @@ bool AppPlatformSpeech::IsEnabled() const
 float AppPlatformSpeech::GetSpeed() const
 {
     return Speed;
+}
+
+bool AppPlatformSpeech::CanNarrate() const
+{
+    return bEnabled;
+}
+
+void AppPlatformSpeech::QueueNarration(int Id, const QString& Text, const QString& LanguageCode)
+{
+    NarrationPool.start([Id, Text, LanguageCode]() { PlatformNarrate(Id, Text, LanguageCode); });
+}
+
+void AppPlatformSpeech::StopNarration()
+{
+    NarrationPool.start([]() { PlatformStopNarration(); });
+}
+
+void AppPlatformSpeech::UpdateNarrationSession(const QString& Title, bool bStarted, bool bPlaying)
+{
+    NarrationPool.start([Title, bStarted, bPlaying]() { PlatformUpdateNarrationSession(Title, bStarted, bPlaying); });
 }

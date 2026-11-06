@@ -13,6 +13,7 @@ Item
     property bool darkPaper: false
     property real contentWidth: root.width
     property int maxStage: 1
+    property bool selecting: false
 
     property bool open: false
     property bool searching: false
@@ -149,7 +150,7 @@ Item
 
         objectName: "reader_translate"
 
-        visible: !root.open && root.onScreen && root.available
+        visible: !root.open && !root.selecting && root.onScreen && root.available
         x: Math.max(AppMetrics.gapSmall, Math.min(root.width - trigger.width - AppMetrics.gapSmall, root.geometry ? root.geometry.endX : 0))
         y: root.geometry ? (root.geometry.bottom + trigger.height + AppMetrics.gapSmall <= root.height
             ? root.geometry.bottom + AppMetrics.gapSmall
@@ -256,7 +257,7 @@ Item
                 completed: root.match ? !!root.match.completed : false
                 maxStage: root.maxStage
 
-                onClicked: root.dictionaryRequested(root.match.word)
+                onClicked: root.addWord()
             }
 
             DesktopLabel

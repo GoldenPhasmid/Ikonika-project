@@ -9,10 +9,20 @@ import android.util.Log
 import java.util.Locale
 
 private const val TAG = "PlatformSpeech"
+private const val NARRATION_PREFIX = "narration-"
 
 object PlatformSpeech {
     @JvmStatic
     external fun nativeOnSpeakingChanged(speaking: Boolean)
+
+    @JvmStatic
+    external fun nativeOnNarrationStarted(id: Int)
+
+    @JvmStatic
+    external fun nativeOnNarrationFinished(id: Int)
+
+    @JvmStatic
+    external fun nativeOnNarrationFailed()
 
     @Volatile private var currentUtterance: String? = null
     @Volatile private var engine: TextToSpeech? = null
@@ -23,8 +33,11 @@ object PlatformSpeech {
 
     private class Request(val text: String, val languageCode: String, val rateScale: Float)
 
+    private class Narration(val id: Int, val text: String, val languageCode: String)
+
     private val requestLock = Any()
     private var heldRequest: Request? = null
+    private val heldNarration = ArrayList<Narration>()
 
     @JvmStatic
     fun initialize(context: Context) {
@@ -40,6 +53,12 @@ object PlatformSpeech {
                 engine?.setSpeechRate(rate)
                 engine?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
                     override fun onStart(id: String?) {
+                        narrationId(id)?.let {
+                            reportNarration { nativeOnNarrationStarted(it) }
+
+                            return
+                        }
+
                         if (id != null && id == currentUtterance) {
                             reportSpeaking(true)
                         }
@@ -51,6 +70,12 @@ object PlatformSpeech {
                     }
 
                     override fun onDone(id: String?) {
+                        narrationId(id)?.let {
+                            reportNarration { nativeOnNarrationFinished(it) }
+
+                            return
+                        }
+
                         if (id == "warmup") {
                             finishWarmup()
                         }
@@ -59,6 +84,13 @@ object PlatformSpeech {
                     }
 
                     override fun onError(id: String?) {
+                        if (narrationId(id) != null) {
+                            Log.w(TAG, "$id: narration failed")
+                            reportNarration { nativeOnNarrationFailed() }
+
+                            return
+                        }
+
                         if (id == "warmup") {
                             finishWarmup()
                         }
@@ -76,6 +108,12 @@ object PlatformSpeech {
 
                     override fun onError(id: String?, errorCode: Int) {
                         Log.i(TAG, "$id: error code=$errorCode")
+
+                        if (narrationId(id) != null) {
+                            reportNarration { nativeOnNarrationFailed() }
+
+                            return
+                        }
 
                         if (id == "warmup") {
                             finishWarmup()
@@ -107,9 +145,29 @@ object PlatformSpeech {
         }
     }
 
+    private fun narrationId(id: String?): Int? {
+        if (id == null || !id.startsWith(NARRATION_PREFIX)) {
+            return null
+        }
+
+        return id.removePrefix(NARRATION_PREFIX).toIntOrNull()
+    }
+
+    private fun reportNarration(report: () -> Unit) {
+        try {
+            report()
+        } catch (exception: UnsatisfiedLinkError) {
+            Log.w(TAG, "narration bridge not registered")
+        }
+    }
+
     private fun finishWarmup() {
+        val narrations = ArrayList<Narration>()
         val held = synchronized(requestLock) {
             warmupComplete = true
+
+            narrations.addAll(heldNarration)
+            heldNarration.clear()
 
             val taken = heldRequest
             heldRequest = null
@@ -119,6 +177,22 @@ object PlatformSpeech {
         if (held != null) {
             Log.i(TAG, "speaking the request held during warmup")
             speak(held.text, held.languageCode, held.rateScale)
+        }
+
+        for (narration in narrations) {
+            narrate(narration.id, narration.text, narration.languageCode)
+        }
+    }
+
+    private fun applyVoice(tts: TextToSpeech, languageCode: String) {
+        val voice = voiceFor(tts, languageCode)
+
+        if (voice != null) {
+            if (tts.voice != voice) {
+                tts.voice = voice
+            }
+        } else {
+            tts.language = Locale(languageCode)
         }
     }
 
@@ -174,15 +248,7 @@ object PlatformSpeech {
             return
         }
 
-        val voice = voiceFor(tts, languageCode)
-
-        if (voice != null) {
-            if (tts.voice != voice) {
-                tts.voice = voice
-            }
-        } else {
-            tts.language = Locale(languageCode)
-        }
+        applyVoice(tts, languageCode)
 
         tts.setSpeechRate(rate * rateScale)
 
@@ -191,6 +257,40 @@ object PlatformSpeech {
         currentUtterance = utteranceId
 
         tts.speak(text, TextToSpeech.QUEUE_FLUSH, Bundle(), utteranceId)
+    }
+
+    @JvmStatic
+    fun narrate(id: Int, text: String, languageCode: String) {
+        synchronized(requestLock) {
+            if (!warmupComplete) {
+                heldNarration.add(Narration(id, text, languageCode))
+
+                return
+            }
+        }
+
+        val tts = engine
+
+        if (tts == null || !ready) {
+            Log.w(TAG, "narration requested without a speech engine")
+            reportNarration { nativeOnNarrationFailed() }
+
+            return
+        }
+
+        applyVoice(tts, languageCode)
+        tts.setSpeechRate(rate)
+
+        tts.speak(text, TextToSpeech.QUEUE_ADD, Bundle(), "$NARRATION_PREFIX$id")
+    }
+
+    @JvmStatic
+    fun stopNarration() {
+        synchronized(requestLock) {
+            heldNarration.clear()
+        }
+
+        engine?.stop()
     }
 
     @JvmStatic
