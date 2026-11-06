@@ -469,14 +469,14 @@ int main(int ArgumentCount, char* Arguments[])
     });
 
     QObject::connect(&WorkspaceHost, &AppWorkspaceHost::switched, &WorkspaceHost,
-                     [&LoadInterface, &RealSpeechService, &SwitchCover]()
+                     [&LoadInterface, &SwitchCover]()
     {
         AppHeartbeat::SetActive(SwitchCover.IsShown());
         AppHeartbeat::Beat();
 
         AppDictionary::Get().OpenSettingsPair();
         AppOnboarding::Get().refresh();
-        RealSpeechService.ReloadFromSettings();
+        AppSpeech::Get().ReloadFromSettings();
 
         QQuickWindow* Reloaded = LoadInterface(SwitchCover.IsShown());
 

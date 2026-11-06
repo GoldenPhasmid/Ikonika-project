@@ -111,7 +111,7 @@ jobs:
         if: env.SIGNED != 'true'
         run: |
           xcodebuild build -project "$BUILD_DIR/Ikonika.xcodeproj" -scheme IkonikaApp -configuration Release \
-            -destination generic/platform=iOS CODE_SIGNING_ALLOWED=NO | tee "$RUNNER_TEMP/xcodebuild.log"
+            -destination generic/platform=iOS -continueBuildingAfterErrors CODE_SIGNING_ALLOWED=NO | tee "$RUNNER_TEMP/xcodebuild.log"
           test "${PIPESTATUS[0]}" -eq 0
 
       - name: Archive and upload to TestFlight

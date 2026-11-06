@@ -13,7 +13,7 @@ class AppSpeechService : public AppSpeech
 public:
     AppSpeechService();
 
-    void ReloadFromSettings();
+    void ReloadFromSettings() override;
 
     void Prewarm() override;
     void Reload() override;

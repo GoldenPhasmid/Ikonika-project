@@ -33,6 +33,7 @@ public:
 
     virtual void Prewarm() {}
     virtual void Reload() {}
+    virtual void ReloadFromSettings() {}
     virtual void Unload() {}
 
     void Speak(const QString& Text, const QString& LanguageCode)

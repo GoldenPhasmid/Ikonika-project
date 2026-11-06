@@ -9,7 +9,7 @@ class AppPlatformSpeech : public AppSpeech
 public:
     AppPlatformSpeech();
 
-    void ReloadFromSettings();
+    void ReloadFromSettings() override;
 
     void Prewarm() override;
 
