@@ -63,6 +63,7 @@
 #endif
 
 #if defined(Q_OS_IOS)
+#include "AppIosSpeech.h"
 #include "AppIosStorage.h"
 #endif
 
@@ -333,8 +334,9 @@ int main(int ArgumentCount, char* Arguments[])
 #elif defined(IKONIKA_DESKTOP)
     AppSpeechService RealSpeechService;
     AppSpeech::SetInstance(&RealSpeechService);
-#else
-    qCInfo(LogSpeech) << "Speech is not part of this build, so every line stays silent";
+#elif defined(Q_OS_IOS)
+    AppIosSpeech RealSpeechService;
+    AppSpeech::SetInstance(&RealSpeechService);
 #endif
 
     AppStartup::Mark("application object");

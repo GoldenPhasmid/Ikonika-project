@@ -32,6 +32,7 @@ public:
 
     QString GetBookPath(const FTCatalogBook& Book) const;
     bool OwnsFile(const QString& FilePath) const;
+    QString GetBooksDirectory() const;
 
     void Refresh();
     void Download(const QString& Id);
@@ -45,7 +46,6 @@ signals:
 
 private:
     QUrl ResolveCatalogUrl() const;
-    QString GetBooksDirectory() const;
     void AddToLibrary(const FTCatalogBook& Book, const QString& Path);
     void FinishTransfer(const QString& Id);
     void CancelTransfers();

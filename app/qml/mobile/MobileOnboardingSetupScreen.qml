@@ -9,8 +9,7 @@ Rectangle
 
     property string chosenCode: ""
     property string chosenNativeCode: ""
-    readonly property bool remindersOffered: Qt.platform.os !== "ios"
-    property bool reminderOn: remindersOffered
+    property bool reminderOn: true
 
     signal continued()
 
@@ -203,7 +202,6 @@ Rectangle
                     MobileSettingsSlider
                     {
                         title: qsTr("Words per day")
-                        lastRow: !root.remindersOffered
                         description: qsTr("%1 minutes per day, up to %2 with reviews")
                             .arg(root.goalWords)
                             .arg(root.goalWords * 3)
@@ -228,7 +226,6 @@ Rectangle
                         title: qsTr("Daily reminder")
                         description: qsTr("A nudge on days you have not studied yet")
                         lastRow: true
-                        visible: root.remindersOffered
 
                         MobileSettingsToggle
                         {

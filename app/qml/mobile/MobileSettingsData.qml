@@ -19,11 +19,10 @@ ColumnLayout
         MobileSettingsRow
         {
             title: qsTr("Export database")
-            visible: Qt.platform.os !== "ios"
 
             onClicked:
             {
-                if (Qt.platform.os === "android")
+                if (Qt.platform.os === "android" || Qt.platform.os === "ios")
                 {
                     AppSyncController.shareDatabase()
                     return

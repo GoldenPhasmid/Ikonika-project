@@ -85,6 +85,16 @@ set(IKONIKA_PLATFORM_TRANSLATION_SOURCES
 )
 
 set(IKONIKA_IOS_SOURCES
+    src/AppIosNotifications.h
+    src/AppIosNotifications.mm
+    src/AppIosPresenter.h
+    src/AppIosPresenter.mm
+    src/AppIosReader.h
+    src/AppIosReader.mm
+    src/AppIosShare.h
+    src/AppIosShare.mm
+    src/AppIosSpeech.h
+    src/AppIosSpeech.mm
     src/AppIosStorage.h
     src/AppIosStorage.mm
     src/AppTranslatorUnavailable.cpp
@@ -258,6 +268,11 @@ if (ANDROID)
     target_sources(IkonikaApp PRIVATE ${IKONIKA_PLATFORM_SPEECH_SOURCES} ${IKONIKA_PLATFORM_TRANSLATION_SOURCES})
 elseif (IOS)
     target_sources(IkonikaApp PRIVATE ${IKONIKA_IOS_SOURCES})
+    target_link_libraries(IkonikaApp PRIVATE
+        "-framework AVFoundation"
+        "-framework UniformTypeIdentifiers"
+        "-framework UserNotifications"
+        "-framework UIKit")
 else()
     target_sources(IkonikaApp PRIVATE
         ${IKONIKA_YOUTUBE_SOURCES} ${IKONIKA_SINGLE_INSTANCE_SOURCES} ${IKONIKA_BUNDLED_SPEECH_SOURCES}

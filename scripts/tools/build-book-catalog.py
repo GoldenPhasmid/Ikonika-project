@@ -19,7 +19,10 @@ BOILERPLATE_START = re.compile(r"<(header|footer|section|div)\b[^>]*\bid=\"pg-(?
 GUTENBERG_CSS_RULE = re.compile(r"[^{}]*gutenberg[^{}]*\{[^{}]*\}", re.IGNORECASE)
 GUTENBERG_PARAGRAPH = re.compile(r"<(p|table|h[1-6])\b[^>]*>(?:(?!</\1>).)*?gutenberg(?:(?!</\1>).)*?</\1>", re.DOTALL | re.IGNORECASE)
 PRINTED_LINE_NUMBER = re.compile(r"\s*<span\b[^>]*\bclass=\"(?:[^\"]*\s)?linenum(?:\s[^\"]*)?\"[^>]*>[^<]*</span>")
-GENERATED_COVER = re.compile(r"\d+_\d+-cover\.png$")
+GENERATED_COVER = re.compile(r"\d+_\d+-cover\.(?:png|jpe?g)$")
+TRANSCRIBER_NOTE = re.compile(r"<div\b[^>]*\bclass=\"[^\"]*\b(?:transnote|tnote)\b[^\"]*\"[^>]*>.*?</div>\s*", re.DOTALL | re.IGNORECASE)
+TRANSCRIBER_LINK = re.compile(r"<p\b[^>]*>(?:(?!</p>).)*?>\s*Nota de transcripci[^<]*</a>\s*</p>\s*", re.DOTALL | re.IGNORECASE)
+PLAIN_TEXT_MARKUP = re.compile(r"\.txt\.(?:xhtml|html)$")
 PLAIN_ITALIC = re.compile(r"_([^_]+?)_")
 CHAPTER_PARAGRAPH = re.compile(r"<p\b([^>]*)>([^<]{1,120})</p>")
 CHAPTER_TITLE = re.compile(r"^(?:(?:CHAPITRE|CHAPTER)\s+)?[IVXLC]{1,7}\s*[.—–-]\s*\S.{0,80}$", re.DOTALL)
@@ -189,19 +192,24 @@ def strip_epub(source, destination, book_id):
 
         markup = entries[name].decode("utf-8")
         markup = remove_boilerplate(markup)
+        markup = TRANSCRIBER_NOTE.sub("", markup)
+        markup = TRANSCRIBER_LINK.sub("", markup)
         markup = GUTENBERG_PARAGRAPH.sub("", markup)
         markup = PRINTED_LINE_NUMBER.sub("", markup)
         markup = re.sub(r"<title>[^<]*gutenberg[^<]*</title>", lambda match: f"<title>{title}</title>", markup, flags=re.IGNORECASE)
 
-        if name.endswith(".txt.xhtml"):
+        if PLAIN_TEXT_MARKUP.search(name):
             markup = italicise_underscores(markup)
         entries[name] = markup.encode("utf-8")
 
         if not visible_text(markup) and "<image" not in markup and "<img" not in markup:
             dropped.add(href)
 
+    cover_meta = re.search(r"<meta\b[^>]*\bname=\"cover\"[^>]*\bcontent=\"([^\"]+)\"", opf)
+    cover_meta_id = cover_meta.group(1) if cover_meta is not None else None
+
     for href, (item_id, item) in manifest.items():
-        if "cover-image" in item and GENERATED_COVER.search(href):
+        if ("cover-image" in item or item_id == cover_meta_id) and GENERATED_COVER.search(href):
             dropped.add(href)
 
             for wrapper_href, (wrapper_id, wrapper_item) in manifest.items():

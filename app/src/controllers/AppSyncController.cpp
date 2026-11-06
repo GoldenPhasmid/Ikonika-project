@@ -17,6 +17,8 @@
 #if defined(Q_OS_ANDROID)
 #include <QtCore/qcoreapplication_platform.h>
 #include <QtCore/qjniobject.h>
+#elif defined(Q_OS_IOS)
+#include "AppIosShare.h"
 #endif
 
 namespace
@@ -481,6 +483,15 @@ void AppSyncController::shareDatabase()
     }
 
     qCInfo(LogDatabase) << "Opened the share sheet for" << SharePath;
+
+    emit exportFinished(true, QString());
+#elif defined(Q_OS_IOS)
+    if (!AppIosShare::ShareFile(SharePath))
+    {
+        emit exportFinished(false, tr("Could not open the share sheet."));
+
+        return;
+    }
 
     emit exportFinished(true, QString());
 #else

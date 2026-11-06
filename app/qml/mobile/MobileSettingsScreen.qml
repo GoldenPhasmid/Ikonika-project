@@ -105,7 +105,7 @@ Item
           description: qsTr("Daily notification") },
         { key: "about", title: qsTr("About"),
           description: qsTr("Version and credits") }
-    ].filter(Category => Qt.platform.os !== "ios" || (Category.key !== "reader" && Category.key !== "reminders"))
+    ]
 
     property string languageCode: ""
 

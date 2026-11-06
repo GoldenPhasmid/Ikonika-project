@@ -36,6 +36,8 @@
 #include <QtCore/qcoreapplication_platform.h>
 #include <QtCore/qjnienvironment.h>
 #include <QtCore/qjniobject.h>
+#elif defined(Q_OS_IOS)
+#include "AppIosReader.h"
 #endif
 
 namespace
@@ -347,6 +349,8 @@ void ReaderController::ApplyKeepScreenOn(bool bEnabled)
 
 #if defined(Q_OS_ANDROID)
     AndroidSetWindowState("setKeepScreenOn", bEnabled);
+#elif defined(Q_OS_IOS)
+    AppIosReader::SetKeepScreenOn(bEnabled);
 #endif
 }
 
@@ -578,6 +582,16 @@ bool ReaderController::pickAndOpen()
     AndroidPickAndOpen();
 
     return false;
+#elif defined(Q_OS_IOS)
+    AppIosReader::PickDocument([Controller = QPointer<ReaderController>(this)](const QString& PickedPath)
+    {
+        if (Controller)
+        {
+            Controller->HandleIosPicked(PickedPath);
+        }
+    });
+
+    return false;
 #else
     const QString Path = QFileDialog::getOpenFileName(
         nullptr, tr("Open a book"),
@@ -624,6 +638,49 @@ void ReaderController::HandleAndroidPickFailed(const QString& Message)
     {
         qCWarning(LogApp) << "Reader: Android file pick failed:" << Message;
     }
+}
+#endif
+
+#if defined(Q_OS_IOS)
+void ReaderController::HandleIosPicked(const QString& PickedPath)
+{
+    AppFreeBooks* Free = AppFreeBooks::GetInstance();
+
+    if (Free == nullptr)
+    {
+        qCWarning(LogApp) << "Reader: no workspace to keep the picked book in";
+
+        return;
+    }
+
+    const QDir Directory(Free->GetBooksDirectory());
+    const QFileInfo Picked(PickedPath);
+
+    if (!Directory.mkpath(QStringLiteral(".")))
+    {
+        qCWarning(LogApp) << "Reader: could not create" << Directory.absolutePath();
+
+        return;
+    }
+
+    QString Destination = Directory.filePath(Picked.fileName());
+
+    for (int Copy = 2; QFileInfo::exists(Destination); ++Copy)
+    {
+        Destination = Directory.filePath(QStringLiteral("%1 (%2).%3")
+            .arg(Picked.completeBaseName()).arg(Copy).arg(Picked.suffix()));
+    }
+
+    if (!QFile::rename(PickedPath, Destination) && !QFile::copy(PickedPath, Destination))
+    {
+        qCWarning(LogApp) << "Reader: could not keep the picked book" << PickedPath << "at" << Destination;
+
+        return;
+    }
+
+    qCInfo(LogApp) << "Reader: kept the picked book at" << Destination;
+
+    OpenFile(Destination);
 }
 #endif
 

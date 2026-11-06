@@ -24,6 +24,8 @@
 #if defined(Q_OS_ANDROID)
 #include <QtCore/qcoreapplication_platform.h>
 #include <QtCore/qjniobject.h>
+#elif defined(Q_OS_IOS)
+#include "AppIosNotifications.h"
 #endif
 
 #if defined(Q_OS_WIN)
@@ -144,7 +146,7 @@ AppReminder::AppReminder(QObject* Parent)
 
     connect(&Clock, &QTimer::timeout, this, &AppReminder::CheckDue);
     connect(&AppLocalization::Get(), &AppLocalization::languageChanged,
-            this, &AppReminder::SyncAndroidSchedule);
+            this, &AppReminder::SyncPlatformSchedule);
     connect(&AppDictionary::Notifier(), &AppDictionaryNotifier::languagesChanged,
             this, &AppReminder::OnLearningLanguageChanged);
 }
@@ -157,13 +159,22 @@ void AppReminder::Start()
         AndroidRequestNotificationPermission();
     }
 
-    SyncAndroidSchedule();
+    SyncPlatformSchedule();
 
     qCInfo(LogApp) << "Reminder scheduled natively, enabled =" << IsEnabled();
 
     return;
 #elif defined(Q_OS_IOS)
-    qCInfo(LogApp) << "Reminders are not part of the iOS build yet, nothing is scheduled";
+    AppIosNotifications::Install();
+
+    if (IsEnabled())
+    {
+        AppIosNotifications::RequestPermission();
+    }
+
+    SyncPlatformSchedule();
+
+    qCInfo(LogApp) << "Reminder scheduled as local notifications, enabled =" << IsEnabled();
 #else
     if (!IsTrayAvailable())
     {
@@ -235,7 +246,7 @@ bool AppReminder::IsTrayAvailable() const
 #if defined(Q_OS_ANDROID)
     return true;
 #elif defined(Q_OS_IOS)
-    return false;
+    return true;
 #else
     return QSystemTrayIcon::isSystemTrayAvailable();
 #endif
@@ -243,7 +254,7 @@ bool AppReminder::IsTrayAvailable() const
 
 bool AppReminder::CanNotify() const
 {
-#if defined(Q_OS_ANDROID)
+#if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
     return true;
 #else
     return Tray != nullptr;
@@ -272,25 +283,27 @@ void AppReminder::CheckDue()
         return;
     }
 
-    if (AppDatabase::Get().IsReady())
+    if (IsTodayDone())
     {
-        const int Due = AppDatabase::Get().GetCardRepository().CountDueCards(GetTodayDayNumber());
-        const int Pool = AppDatabase::Get().GetCardRepository().CountUnlearnedCards();
-
-        if (Due == 0 && Pool == 0)
-        {
-            return;
-        }
-
-        if (DayRequirementMet(Due))
-        {
-            return;
-        }
+        return;
     }
 
     LastNotifiedDay = Today;
 
     Notify(GetMessageOrDefault());
+}
+
+bool AppReminder::IsTodayDone() const
+{
+    if (!AppDatabase::Get().IsReady())
+    {
+        return false;
+    }
+
+    const int Due = AppDatabase::Get().GetCardRepository().CountDueCards(GetTodayDayNumber());
+    const int Pool = AppDatabase::Get().GetCardRepository().CountUnlearnedCards();
+
+    return (Due == 0 && Pool == 0) || DayRequirementMet(Due);
 }
 
 bool AppReminder::DayRequirementMet(int DueCount) const
@@ -319,6 +332,8 @@ void AppReminder::Notify(const QString& Text)
 
 #if defined(Q_OS_ANDROID)
     AndroidNotify(tr("Ikonika"), Text);
+#elif defined(Q_OS_IOS)
+    AppIosNotifications::NotifyNow(tr("Ikonika"), Text);
 #else
     Tray->showMessage(tr("Ikonika"), Text, QSystemTrayIcon::Information, 10000);
 #endif
@@ -402,10 +417,12 @@ void AppReminder::syncDailyProgress()
     AndroidMarkStudiedToday(static_cast<int>(GetTodayDayNumber()));
 
     qCInfo(LogApp) << "Today's goal met, so the reminder will stay quiet";
+#elif defined(Q_OS_IOS)
+    SyncPlatformSchedule();
 #endif
 }
 
-void AppReminder::SyncAndroidSchedule()
+void AppReminder::SyncPlatformSchedule()
 {
 #if defined(Q_OS_ANDROID)
     if (!IsEnabled())
@@ -418,6 +435,17 @@ void AppReminder::SyncAndroidSchedule()
     const int Minutes = GetTimeMinutes();
 
     AndroidScheduleReminder(Minutes / 60, Minutes % 60, GetMessageOrDefault());
+#elif defined(Q_OS_IOS)
+    if (!IsEnabled())
+    {
+        AppIosNotifications::CancelScheduled();
+
+        return;
+    }
+
+    const int Minutes = GetTimeMinutes();
+
+    AppIosNotifications::ScheduleDaily(Minutes / 60, Minutes % 60, tr("Ikonika"), GetMessageOrDefault(), IsTodayDone());
 #endif
 }
 
@@ -425,7 +453,7 @@ void AppReminder::OnLearningLanguageChanged()
 {
     qCInfo(LogApp) << "Reminder text follows the new learning language:" << GetMessageOrDefault();
 
-    SyncAndroidSchedule();
+    SyncPlatformSchedule();
 
     emit settingsChanged();
 }
@@ -435,7 +463,7 @@ void AppReminder::OnSettingsApplied()
     qCInfo(LogApp) << "Reminder re-reads its settings:" << IsEnabled() << GetTimeMinutes();
 
     LastNotifiedDay = -1;
-    SyncAndroidSchedule();
+    SyncPlatformSchedule();
 
     emit settingsChanged();
 }
@@ -444,6 +472,8 @@ bool AppReminder::hasNotificationPermission() const
 {
 #if defined(Q_OS_ANDROID)
     return AndroidHasNotificationPermission();
+#elif defined(Q_OS_IOS)
+    return AppIosNotifications::HasPermission();
 #else
     return true;
 #endif
@@ -476,9 +506,14 @@ void AppReminder::SetEnabled(bool bValue)
     {
         AndroidRequestNotificationPermission();
     }
+#elif defined(Q_OS_IOS)
+    if (bValue)
+    {
+        AppIosNotifications::RequestPermission();
+    }
 #endif
 
-    SyncAndroidSchedule();
+    SyncPlatformSchedule();
 
     emit settingsChanged();
 }
@@ -498,7 +533,7 @@ void AppReminder::SetTimeMinutes(int Minutes)
     FTSettings::Get().SetReminderTimeMinutes(Minutes);
 
     LastNotifiedDay = -1;
-    SyncAndroidSchedule();
+    SyncPlatformSchedule();
 
     emit settingsChanged();
 }
@@ -517,7 +552,7 @@ void AppReminder::SetMessage(const QString& Text)
 
     FTSettings::Get().SetReminderMessage(Text.toStdString());
 
-    SyncAndroidSchedule();
+    SyncPlatformSchedule();
 
     emit settingsChanged();
 }

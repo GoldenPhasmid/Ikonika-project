@@ -21,12 +21,12 @@ Rectangle
             iconMinX: Icons.Icons.tab_dictionary.minX, iconMinY: Icons.Icons.tab_dictionary.minY,
             iconWidth: Icons.Icons.tab_dictionary.width, iconHeight: Icons.Icons.tab_dictionary.height
         },
-        Qt.platform.os !== "ios" ? {
+        {
             key: "reader", label: qsTr("Reader"),
             icon: Icons.Icons.tab_reader.path,
             iconMinX: Icons.Icons.tab_reader.minX, iconMinY: Icons.Icons.tab_reader.minY,
             iconWidth: Icons.Icons.tab_reader.width, iconHeight: Icons.Icons.tab_reader.height
-        } : null,
+        },
         DecksController.available ? {
             key: "decks", label: qsTr("Decks"),
             icon: Icons.Icons.tab_decks.path,

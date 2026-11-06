@@ -57,9 +57,9 @@ signing, uploading, and running the simulator.
 - The verification rule in AGENTS.md assumes a local emulator. On iOS, the CI simulator takes its
   place for screenshots, and the iPhone through TestFlight takes its place for real use. Neither can
   be driven through mobile-mcp.
-- Qt's simulator libraries are x86_64 only, while GitHub's macOS runners are Apple Silicon. The
-  simulator runs under Rosetta. With Xcode 26 it also needs the universal iOS platform, installed
-  with `xcodebuild -downloadPlatform iOS -architectureVariant universal`.
+- Qt's simulator libraries are x86_64 only. The simulator job therefore runs on GitHub's Intel
+  Mac, `macos-15-intel`, where they run natively. On an Apple Silicon Mac the simulator would need
+  Rosetta and, with Xcode 26, the universal iOS platform.
 
 A macOS virtual machine on the PC is not an option. Apple's licence allows macOS only on Apple
 hardware, and such a machine breaks with every Xcode update.
@@ -279,8 +279,14 @@ The steps:
    both from repository secrets.
 5. `xcodebuild archive`, then `xcodebuild -exportArchive` with `destination` set to `upload`. That
    sends the build straight to TestFlight, authenticated with an App Store Connect API key.
-6. Not written yet: a second job that builds for the simulator, boots it under Rosetta, installs the app with
-   `xcrun simctl`, and stores screenshots and the app log as workflow artifacts.
+6. A second job, on a manual run only, builds a Debug app for the simulator on the Intel Mac,
+   boots an iPhone simulator and launches the app. It fails when the app is gone a minute after
+   launch, and keeps screenshots at 30 and 60 seconds, the system log, the app log and any crash
+   report as the `simulator` artifact.
+
+Both jobs restore Qt from one cache entry, about 3 GB, through `.github/actions/install-qt`. A
+device build takes about 10 minutes on the Apple Silicon Mac. The simulator job takes about 50
+minutes, most of it compiling on the slower Intel Mac.
 
 ### Signing without a Mac
 

@@ -166,7 +166,7 @@ jobs:
   simulator:
     if: ${{ !github.event.repository.private && github.event_name == 'workflow_dispatch' && inputs.simulator }}
     runs-on: macos-15-intel
-    timeout-minutes: 120
+    timeout-minutes: 180
 
     env:
       BUILD_DIR: ${{ github.workspace }}/build/ios-simulator
@@ -204,37 +204,19 @@ jobs:
             | tee "$OUTPUT_DIR/xcodebuild.log"
           test "${PIPESTATUS[0]}" -eq 0
 
-      - name: Run the app in the simulator
+      - name: Launch the app and walk its screens
         run: |
           APP=$(find "$BUILD_DIR" -path "*Debug-iphonesimulator/IkonikaApp.app" -type d | head -1)
           echo "App bundle: $APP"
-          UDID=$(xcrun simctl list devices available --json | python3 "$GITHUB_WORKSPACE/.github/actions/pick-simulator.py")
-          echo "Simulator: $UDID"
-          echo "SIMULATOR=$UDID" >> "$GITHUB_ENV"
-          xcrun simctl boot "$UDID"
-          xcrun simctl bootstatus "$UDID" -b
-          xcrun simctl install "$UDID" "$APP"
-          xcrun simctl launch "$UDID" "$BUNDLE_ID"
-          sleep 30
-          xcrun simctl io "$UDID" screenshot "$OUTPUT_DIR/after-30-seconds.png"
-          sleep 30
-          xcrun simctl io "$UDID" screenshot "$OUTPUT_DIR/after-60-seconds.png"
-          if xcrun simctl spawn "$UDID" launchctl list | grep -q "UIKitApplication:$BUNDLE_ID"; then
-            echo "The app is still running a minute after launch"
-          else
-            echo "::error::The app is not running a minute after launch"
-            exit 1
-          fi
+          python3 "$GITHUB_WORKSPACE/.github/actions/simulator-walk.py" "$APP" "$OUTPUT_DIR"
 
-      - name: Collect the logs
-        if: always() && env.SIMULATOR != ''
+      - name: Collect the system log and crash reports
+        if: always()
         run: |
           mkdir -p "$OUTPUT_DIR"
-          xcrun simctl spawn "$SIMULATOR" log show --last 10m --style compact \
-            --predicate 'process == "IkonikaApp"' > "$OUTPUT_DIR/system-log.txt" || true
-          CONTAINER=$(xcrun simctl get_app_container "$SIMULATOR" "$BUNDLE_ID" data 2>/dev/null || true)
-          if [ -n "$CONTAINER" ] && [ -d "$CONTAINER/Documents/logs" ]; then
-            cp -R "$CONTAINER/Documents/logs" "$OUTPUT_DIR/app-logs"
+          if [ -f "$OUTPUT_DIR/simulator-udid.txt" ]; then
+            xcrun simctl spawn "$(cat "$OUTPUT_DIR/simulator-udid.txt")" log show --last 60m --style compact \
+              --predicate 'process == "IkonikaApp"' > "$OUTPUT_DIR/system-log.txt" || true
           fi
           cp "$HOME"/Library/Logs/DiagnosticReports/IkonikaApp* "$OUTPUT_DIR/" 2>/dev/null || true
 

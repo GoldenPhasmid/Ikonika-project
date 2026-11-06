@@ -10,6 +10,9 @@
 
 struct FTAudioPlayer::Impl
 {
+    ma_context Context{};
+    bool bContextReady = false;
+
     ma_device Device{};
     bool bDeviceReady = false;
     int SourceSampleRate = 0;
@@ -29,14 +32,46 @@ struct FTAudioPlayer::Impl
     {
         CloseDevice();
 
+        if (bContextReady)
+        {
+            ma_context_uninit(&Context);
+        }
+
         if (bResamplerReady)
         {
             ma_resampler_uninit(&Resampler, nullptr);
         }
     }
 
+    bool OpenContext()
+    {
+        if (bContextReady)
+        {
+            return true;
+        }
+
+        ma_context_config Config = ma_context_config_init();
+        Config.coreaudio.sessionCategory = ma_ios_session_category_none;
+
+        if (ma_context_init(nullptr, 0, &Config, &Context) != MA_SUCCESS)
+        {
+            qCWarning(LogSpeech) << "audio backend failed to initialise";
+
+            return false;
+        }
+
+        bContextReady = true;
+
+        return true;
+    }
+
     bool OpenDevice()
     {
+        if (!OpenContext())
+        {
+            return false;
+        }
+
         ma_device_config Config = ma_device_config_init(ma_device_type_playback);
         Config.playback.format = ma_format_s16;
         Config.playback.channels = 1;
@@ -44,7 +79,7 @@ struct FTAudioPlayer::Impl
         Config.notificationCallback = &Impl::OnDeviceNotification;
         Config.pUserData = this;
 
-        if (ma_device_init(nullptr, &Config, &Device) != MA_SUCCESS)
+        if (ma_device_init(&Context, &Config, &Device) != MA_SUCCESS)
         {
             qCWarning(LogSpeech) << "audio device failed to open";
 

@@ -161,6 +161,8 @@ public:
 #if defined(Q_OS_ANDROID)
     void HandleAndroidPicked(const QString& Uri, const QString& DisplayName);
     void HandleAndroidPickFailed(const QString& Message);
+#elif defined(Q_OS_IOS)
+    void HandleIosPicked(const QString& PickedPath);
 #endif
 
 signals:

@@ -105,6 +105,7 @@ private:
     void CheckDue();
 
     bool DayRequirementMet(int DueCount) const;
+    bool IsTodayDone() const;
 
     void Notify(const QString& Text);
 
@@ -115,7 +116,7 @@ private:
     bool IsLaunchAtStartup() const;
     void SetLaunchAtStartup(bool bValue);
 
-    void SyncAndroidSchedule();
+    void SyncPlatformSchedule();
     void OnLearningLanguageChanged();
     void OnSettingsApplied();
 
