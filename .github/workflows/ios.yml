@@ -50,7 +50,7 @@ jobs:
 
       - name: Restore Qt
         id: qt-cache
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         with:
           path: ${{ env.QT_ROOT }}
           key: qt-${{ env.QT_VERSION }}-ios-${{ runner.os }}-1
@@ -63,6 +63,13 @@ jobs:
           MODULES=$(python -m aqt list-qt mac ios --modules "$QT_VERSION" ios | tr ' ' '\n' | grep -x -E 'qtpdf|qtwebengine' | tr '\n' ' ')
           python -m aqt install-qt mac desktop "$QT_VERSION" clang_64 --outputdir "$QT_ROOT"
           python -m aqt install-qt mac ios "$QT_VERSION" ios --outputdir "$QT_ROOT" ${MODULES:+-m $MODULES}
+
+      - name: Save Qt
+        if: steps.qt-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ env.QT_ROOT }}
+          key: ${{ steps.qt-cache.outputs.cache-primary-key }}
 
       - name: Import the signing certificate and profile
         if: env.SIGNED == 'true'
@@ -95,6 +102,7 @@ jobs:
             SIGNING=(-DIKONIKA_IOS_TEAM_ID="$IOS_TEAM_ID" -DIKONIKA_IOS_PROFILE="$PROFILE_NAME")
           fi
           "$QT_ROOT/$QT_VERSION/ios/bin/qt-cmake" -S "$SOURCE_DIR" -B "$BUILD_DIR" -G Xcode \
+            -DQT_HOST_PATH="$QT_ROOT/$QT_VERSION/macos" \
             -DCMAKE_XCODE_GENERATE_SCHEME=ON \
             -DIKONIKA_IOS_BUILD_NUMBER="${{ github.run_number }}" \
             "${SIGNING[@]}"
