@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mobile · Multiple choice</title>
+  <link rel="stylesheet" href="../v3/wireframe.css">
+  <link rel="stylesheet" href="./mobile.css">
+  <style>
+    .ex-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      font-size: 16px;
+      line-height: 1;
+    }
+    .mc-option {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 20px 16px;
+      min-height: 96px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="phone">
+
+    <header class="phone-topbar">
+      <button class="icon-btn bare">←</button>
+      <span class="title">Choose a translation</span>
+      <div style="display:flex;gap:4px">
+        <button class="icon-btn bare" title="Mute"><span class="ex-icon">🔇</span></button>
+        <button class="icon-btn bare" title="Ask side"><span class="ex-icon">🔄</span></button>
+      </div>
+    </header>
+
+    <div class="phone-content" style="gap:0;flex:1">
+
+      <!-- Stage segments (10 segments for single exercise) -->
+      <div style="display:flex;gap:6px;padding:0 16px;margin-bottom:12px">
+        <div style="flex:1;height:4px;border-radius:2px;background:var(--wf-ink)"></div>
+        <div style="flex:1;height:4px;border-radius:2px;background:var(--wf-faint)"></div>
+        <div style="flex:1;height:4px;border-radius:2px;background:var(--wf-faint)"></div>
+        <div style="flex:1;height:4px;border-radius:2px;background:var(--wf-faint)"></div>
+        <div style="flex:1;height:4px;border-radius:2px;background:var(--wf-faint)"></div>
+        <div style="flex:1;height:4px;border-radius:2px;background:var(--wf-faint)"></div>
+        <div style="flex:1;height:4px;border-radius:2px;background:var(--wf-faint)"></div>
+        <div style="flex:1;height:4px;border-radius:2px;background:var(--wf-faint)"></div>
+        <div style="flex:1;height:4px;border-radius:2px;background:var(--wf-faint)"></div>
+        <div style="flex:1;height:4px;border-radius:2px;background:var(--wf-faint)"></div>
+      </div>
+
+      <!-- Card filling remaining space -->
+      <div style="flex:1;display:flex;flex-direction:column;background:var(--wf-panel);border:1px solid var(--wf-line);border-radius:2px;padding:32px 24px;position:relative">
+        <!-- Top-left session-ticks (10 ticks for 10 questions) -->
+        <div style="position:absolute;top:16px;left:20px">
+          <span class="session-ticks" style="width:100%;max-width:200px">
+            <i class="right"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+          </span>
+        </div>
+
+        <!-- Word centered in remaining space -->
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center">
+          <div style="font-size:42px;font-weight:600;letter-spacing:-0.01em">vacuous</div>
+        </div>
+
+        <!-- Don't know link -->
+        <div style="text-align:center;padding:4px 0">
+          <button class="btn ghost" style="color:var(--wf-learning)">Don't know</button>
+        </div>
+
+        <!-- 2x3 option grid -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:0 16px 16px">
+          <div class="session-match-item mc-option"><span class="text">swindle or cheat out money</span></div>
+          <div class="session-match-item mc-option"><span class="text">spoken defamation</span></div>
+          <div class="session-match-item mc-option"><span class="text">deliberate act to deceive or trick people</span></div>
+          <div class="session-match-item mc-option"><span class="text">lacking thought or intelligence</span></div>
+          <div class="session-match-item mc-option"><span class="text">(noun) courage and determination in diff situations</span></div>
+          <div class="session-match-item mc-option"><span class="text">spread or expand something outward</span></div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+</body>
+</html>

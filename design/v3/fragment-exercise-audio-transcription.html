@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>V3 · Session · Audio transcription</title>
+  <link rel="stylesheet" href="./wireframe.css">
+</head>
+<body>
+  <div class="session-mode">
+
+    <aside class="session-rail">
+      <div class="session-slots"><i></i><i></i><i></i><i></i><i></i></div>
+    </aside>
+
+    <div class="session-main">
+
+      <header class="session-topbar">
+        <div class="session-bar-left">
+          <button class="btn">← Back</button>
+          <span class="session-topbar-context">Exercise / Transcription from audio</span>
+        </div>
+        <div class="session-bar-centre">
+          <span class="session-ticks">
+            <i class="right"></i><i class="wrong"></i><i class="right"></i><i class="right"></i><i class="right"></i><i class="skipped"></i><i class="right"></i><i class="wrong"></i><i></i><i></i>
+          </span>
+          <span class="session-counter">8 / 10</span>
+          <span class="session-counter">score 96</span>
+          <label class="session-toggle"><span class="track"></span>Endless</label>
+        </div>
+        <div class="session-bar-right">
+          <button class="btn disabled">Settings</button>
+          <button class="btn">Mute</button>
+        </div>
+      </header>
+
+      <div class="session-surface">
+        <div class="session-stage">
+
+          <span class="meta">Listen, then type what you heard · ctrl+space replays</span>
+
+          <!-- nothing is written on screen until the answer is in: the word would
+               give it away, and its translation would make this another exercise -->
+          <button class="btn" style="width:200px;height:56px">Replay</button>
+
+          <div class="session-translation">le marché</div>
+          <!-- the meaning, under the spelling: transcribing a sound is not the
+               same as having learned the word -->
+          <div style="font-size:18px;color:var(--wf-mid);text-align:center">market</div>
+
+          <div class="session-countdown"><i style="width:66%"></i></div>
+
+          <input class="session-input wrong" type="text" value="le marcha">
+
+          <div class="session-accents">
+            <button class="btn">à</button><button class="btn">â</button><button class="btn">æ</button>
+            <button class="btn">è</button><button class="btn">é</button><button class="btn">ê</button>
+            <button class="btn">ë</button><button class="btn">î</button><button class="btn">ï</button>
+            <button class="btn">ô</button><button class="btn">ù</button><button class="btn">û</button>
+            <button class="btn">ü</button><button class="btn">ç</button><button class="btn">œ</button>
+          </div>
+
+          <div class="session-actions-row">
+            <button class="btn">Don't remember</button>
+            <button class="btn primary">Continue →</button>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+</body>
+</html>

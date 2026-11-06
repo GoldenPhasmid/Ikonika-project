@@ -1,0 +1,766 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Book open</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="desktop.css">
+<style>
+    body
+    {
+        margin: 0;
+        min-height: 100vh;
+        background: #161513;
+        color: #d8d5cc;
+        font-family: "Inter", "Segoe UI", sans-serif;
+        font-size: 13px;
+    }
+
+    .viewer
+    {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 20px;
+        padding: 12px 24px;
+        border-bottom: 1px solid #2c2a27;
+    }
+
+    .viewer-group
+    {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .viewer-group > span
+    {
+        color: #8f8b82;
+    }
+
+    .viewer-group button
+    {
+        padding: 5px 10px;
+        border: 1px solid #3a3834;
+        border-radius: 6px;
+        background: transparent;
+        color: inherit;
+        font: inherit;
+        cursor: pointer;
+    }
+
+    .viewer-group button[aria-pressed="true"]
+    {
+        background: #d8d5cc;
+        border-color: #d8d5cc;
+        color: #161513;
+    }
+
+    .viewer-hint
+    {
+        margin-left: auto;
+        color: #8f8b82;
+    }
+
+    .stage
+    {
+        display: grid;
+        place-items: center;
+        padding: 24px;
+    }
+
+    .frame-holder
+    {
+        position: relative;
+        box-shadow: 0 24px 80px rgba(0, 0, 0, 0.5);
+    }
+
+    .window
+    {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 1280px;
+        height: 800px;
+        overflow: hidden;
+        transform-origin: 0 0;
+        background: var(--panel);
+        color: var(--text);
+        font-family: var(--font);
+    }
+
+    .reading
+    {
+        position: absolute;
+        inset: 0;
+        visibility: hidden;
+        pointer-events: none;
+    }
+
+    .window.in-reading .reading,
+    .window.transitioning .reading
+    {
+        visibility: visible;
+    }
+
+    .window.in-reading .reading
+    {
+        pointer-events: auto;
+    }
+
+    .window.in-reading .shelf
+    {
+        visibility: hidden;
+    }
+
+    .window.transitioning .shelf,
+    .window.transitioning .reading
+    {
+        pointer-events: none;
+    }
+
+    .reading-tools
+    {
+        display: flex;
+        gap: var(--gap-tight);
+        visibility: hidden;
+    }
+
+    .window.in-reading .reading-tools,
+    .window.transitioning .reading-tools
+    {
+        visibility: visible;
+    }
+
+    .effects
+    {
+        position: absolute;
+        inset: 0;
+        z-index: 5;
+        pointer-events: none;
+    }
+
+    .morph-ghost
+    {
+        position: absolute;
+        backface-visibility: hidden;
+        transform-origin: 0 50%;
+    }
+
+    .morph-ghost .book-cover
+    {
+        transition: none;
+    }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position: absolute">
+    <symbol id="i-today" viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v9a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z"/></symbol>
+    <symbol id="i-words" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></symbol>
+    <symbol id="i-reader" viewBox="0 0 24 24"><path d="M3 5h6a3 3 0 0 1 3 3v12a2 2 0 0 0-2-2H3z"/><path d="M21 5h-6a3 3 0 0 0-3 3v12a2 2 0 0 1 2-2h7z"/></symbol>
+    <symbol id="i-decks" viewBox="0 0 24 24"><path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/></symbol>
+    <symbol id="i-vocabulary" viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1"/><circle cx="4.5" cy="12" r="1"/><circle cx="4.5" cy="18" r="1"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9L7 7M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-monitor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></symbol>
+    <symbol id="i-cloud" viewBox="0 0 24 24"><path d="M7 18a4 4 0 0 1-.5-8A6 6 0 0 1 18 9a4.5 4.5 0 0 1-.5 9z"/></symbol>
+    <symbol id="i-contents" viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11M4 6h1M4 12h1M4 18h1"/></symbol>
+    <symbol id="i-tone" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor"/></symbol>
+    <symbol id="i-fullscreen" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></symbol>
+    <symbol id="i-left" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></symbol>
+    <symbol id="i-right" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+    <symbol id="i-sort" viewBox="0 0 24 24"><path d="M4 6h10M4 12h7M4 18h4M17 6v12M14 15l3 3 3-3"/></symbol>
+</svg>
+
+<div class="viewer">
+    <div class="viewer-group" data-setting="mode">
+        <span>Open</span>
+        <button data-value="hinge" aria-pressed="true">Cover opens</button>
+        <button data-value="grow" aria-pressed="false">Grow only</button>
+        <button data-value="cut" aria-pressed="false">Cut, as today</button>
+    </div>
+    <div class="viewer-group" data-setting="load">
+        <span>Book loads</span>
+        <button data-value="0" aria-pressed="true">At once</button>
+        <button data-value="1200" aria-pressed="false">In 1.2 s</button>
+    </div>
+    <div class="viewer-group" data-setting="reorder">
+        <span>Shelf on close</span>
+        <button data-value="on" aria-pressed="true">Last opened first</button>
+        <button data-value="off" aria-pressed="false">Stays</button>
+    </div>
+    <div class="viewer-group" data-setting="speed">
+        <span>Speed</span>
+        <button data-value="1" aria-pressed="true">1×</button>
+        <button data-value="0.5" aria-pressed="false">0.5×</button>
+        <button data-value="0.2" aria-pressed="false">0.2×</button>
+    </div>
+    <div class="viewer-group" data-setting="theme">
+        <span>Theme</span>
+        <button data-value="light" aria-pressed="true">Light</button>
+        <button data-value="dark" aria-pressed="false">Dark</button>
+    </div>
+    <div class="viewer-hint">Click a book. Reader or Escape closes it.</div>
+</div>
+
+<div class="stage">
+    <div class="frame-holder" id="holder">
+        <div class="window" id="window">
+
+            <header class="top-bar">
+                <div class="language-badge">FR</div>
+                <div class="crumbs" id="crumbs"></div>
+                <nav class="destinations">
+                    <button class="icon-button destination" aria-label="Today"><svg class="icon"><use href="#i-today"/></svg></button>
+                    <button class="icon-button destination" aria-label="Words"><svg class="icon"><use href="#i-words"/></svg></button>
+                    <button class="icon-button destination current" aria-label="Reader"><svg class="icon"><use href="#i-reader"/></svg></button>
+                    <button class="icon-button destination" aria-label="Decks"><svg class="icon"><use href="#i-decks"/></svg></button>
+                    <button class="icon-button destination" aria-label="Vocabulary"><svg class="icon"><use href="#i-vocabulary"/></svg></button>
+                </nav>
+                <div class="top-bar-end">
+                    <div class="reading-tools" id="tools">
+                        <button class="icon-button" aria-label="Contents"><svg class="icon"><use href="#i-contents"/></svg></button>
+                        <button class="icon-button" aria-label="Look up a word"><svg class="icon"><use href="#i-words"/></svg></button>
+                        <button class="icon-button" aria-label="Page tone"><svg class="icon"><use href="#i-tone"/></svg></button>
+                        <button class="icon-button" aria-label="Hide controls"><svg class="icon"><use href="#i-fullscreen"/></svg></button>
+                    </div>
+                </div>
+            </header>
+
+            <main class="shelf" id="shelf">
+                <div class="shelf-tools" id="shelfTools">
+                    <div class="shelf-search"><svg class="icon"><use href="#i-words"/></svg>Search books</div>
+                    <span id="bookCount"></span>
+                    <span style="margin-left: auto">Last opened</span>
+                    <button class="icon-button" aria-label="Newest first"><svg class="icon"><use href="#i-sort"/></svg></button>
+                </div>
+                <div class="shelf-grid" id="grid">
+                    <button class="open-tile" id="openTile"><svg class="icon"><use href="#i-plus"/></svg>Open book</button>
+                </div>
+            </main>
+
+            <div class="reading" id="reading">
+                <div class="reader-page" id="page">
+                    <div class="hinge-shadow" id="hingeShadow"></div>
+                </div>
+                <footer class="reader-bar" id="readerBar">
+                    <button class="icon-button" aria-label="Previous page"><svg class="icon"><use href="#i-left"/></svg></button>
+                    <span class="position" id="position"></span>
+                    <button class="icon-button" aria-label="Next page"><svg class="icon"><use href="#i-right"/></svg></button>
+                    <div class="reader-slider"><i id="sliderFill"></i><b id="sliderKnob"></b></div>
+                </footer>
+            </div>
+
+            <div class="effects" id="effects"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const FrameWidth = 1280;
+    const FrameHeight = 800;
+
+    const frame = document.getElementById("window");
+    const holder = document.getElementById("holder");
+    const crumbs = document.getElementById("crumbs");
+    const tools = document.getElementById("tools");
+    const shelf = document.getElementById("shelf");
+    const shelfTools = document.getElementById("shelfTools");
+    const grid = document.getElementById("grid");
+    const openTile = document.getElementById("openTile");
+    const bookCount = document.getElementById("bookCount");
+    const page = document.getElementById("page");
+    const hingeShadow = document.getElementById("hingeShadow");
+    const readerBar = document.getElementById("readerBar");
+    const position = document.getElementById("position");
+    const sliderFill = document.getElementById("sliderFill");
+    const sliderKnob = document.getElementById("sliderKnob");
+    const effects = document.getElementById("effects");
+
+    const Settings = { mode: "hinge", load: 0, reorder: "on", speed: 1 };
+
+    const rootStyle = getComputedStyle(document.documentElement);
+    const Morph = parseFloat(rootStyle.getPropertyValue("--motion-morph"));
+    const Base = parseFloat(rootStyle.getPropertyValue("--motion-base"));
+    const Slow = parseFloat(rootStyle.getPropertyValue("--motion-slow"));
+    const Hinge = parseFloat(rootStyle.getPropertyValue("--motion-hinge"));
+    const Perspective = rootStyle.getPropertyValue("--cover-perspective").trim();
+    const EaseOut = rootStyle.getPropertyValue("--ease-out").trim();
+    const EaseIn = rootStyle.getPropertyValue("--ease-in").trim();
+    const EaseInOut = rootStyle.getPropertyValue("--ease-in-out").trim();
+    const StageStagger = 40;
+    const OpenAngle = -100;
+    const TileTitleSize = 18;
+    const BookTitleSize = 36;
+    const SavedStep = 0.03;
+
+    const Prose =
+    [
+        "Le train quitta la gare au lever du jour. Claire regardait les champs défiler derrière la vitre, encore gris de brume, et pensait à la lettre qu'elle n'avait pas osé ouvrir.",
+        "Sa tante l'attendait à Lyon depuis trois semaines. Personne ne savait vraiment pourquoi elle avait vendu la maison du bord de la Saône, ni pourquoi elle voulait la voir si vite.",
+        "Au wagon-restaurant, un vieil homme lisait le journal en tournant les pages avec une lenteur infinie. Il leva les yeux, sourit, et lui demanda si elle allait loin.",
+        "« Assez loin pour changer d'avis », répondit-elle. Il rit doucement, plia son journal et commanda deux cafés sans lui demander si elle en voulait un.",
+        "Dehors, le soleil perçait enfin les nuages. Les vignes apparurent sur les collines, rangées comme les lignes d'un cahier d'écolier que quelqu'un aurait oublié d'écrire."
+    ];
+
+    const Books =
+    [
+        { id: "voyage", title: "Le voyage de Claire", format: "epub", place: "monitor", progress: 0.42, kind: "text", chapter: "Chapitre trois" },
+        { id: "port", title: "Les lumières du port", format: "fb2", place: "cloud", progress: 0.81, kind: "text", chapter: "Chapitre onze" },
+        { id: "grammaire", title: "Grammaire du français, niveau intermédiaire", format: "pdf", place: "monitor", progress: 0.17, kind: "pdf", pages: 212 },
+        { id: "hiver", title: "Un hiver à Bruxelles", format: "epub", place: "cloud", progress: 0.06, kind: "text", chapter: "Chapitre premier" },
+        { id: "recettes", title: "Recettes de grand-mère", format: "pdf", place: "monitor", progress: 0.55, kind: "pdf", pages: 96 },
+        { id: "nuit", title: "La nuit des étoiles filantes", format: "epub", place: "monitor", progress: -1, kind: "text", chapter: "Prologue" },
+        { id: "conte", title: "Contes du soir", format: "txt", place: "cloud", progress: 0.33, kind: "text", chapter: "La petite renarde" }
+    ];
+
+    let order = Books.map(book => book.id);
+    let busy = false;
+    let active = null;
+    let running = [];
+
+    function tint(title)
+    {
+        let hash = 0;
+
+        for (let index = 0; index < title.length; ++index)
+        {
+            hash = (hash * 31 + title.charCodeAt(index)) % 1000003;
+        }
+
+        return `var(--cover-${hash % 8})`;
+    }
+
+    function bookById(id)
+    {
+        return Books.find(book => book.id === id);
+    }
+
+    function rectIn(element)
+    {
+        const outer = frame.getBoundingClientRect();
+        const box = element.getBoundingClientRect();
+        const scale = outer.width / FrameWidth;
+
+        return { x: (box.left - outer.left) / scale, y: (box.top - outer.top) / scale, w: box.width / scale, h: box.height / scale };
+    }
+
+    function geometry(rect)
+    {
+        return { left: rect.x + "px", top: rect.y + "px", width: rect.w + "px", height: rect.h + "px" };
+    }
+
+    function play(element, keyframes, duration, delay = 0, easing = EaseOut)
+    {
+        const animation = element.animate(keyframes, { duration: duration / Settings.speed, delay: delay / Settings.speed, easing, fill: "both" });
+        running.push(animation);
+
+        return animation;
+    }
+
+    function settle()
+    {
+        return Promise.allSettled(running.map(animation => animation.finished));
+    }
+
+    function release()
+    {
+        running.forEach(animation => animation.cancel());
+        running = [];
+    }
+
+    function wait(milliseconds)
+    {
+        return new Promise(resolve => setTimeout(resolve, milliseconds / Settings.speed));
+    }
+
+    function coverMarkup(book)
+    {
+        const progress = book.progress >= 0
+            ? `<div class="cover-progress"><i style="width: ${Math.round(book.progress * 100)}%"></i></div>`
+            : "";
+
+        return `<div class="book-cover" style="background: ${tint(book.title)}">
+                    <div class="cover-stripe"></div>
+                    <div class="cover-format">${book.format.toUpperCase()}<svg class="icon"><use href="#i-${book.place}"/></svg></div>
+                    <div class="cover-title">${book.title}</div>
+                    ${progress}
+                </div>`;
+    }
+
+    function renderShelf()
+    {
+        grid.querySelectorAll(".book-tile").forEach(tile => tile.remove());
+
+        for (const id of order)
+        {
+            const book = bookById(id);
+            const tile = document.createElement("button");
+            tile.className = "book-tile";
+            tile.dataset.book = id;
+            tile.innerHTML = coverMarkup(book);
+            tile.addEventListener("click", () => enter(book, tile));
+            grid.append(tile);
+        }
+
+        bookCount.textContent = `${order.length} books`;
+    }
+
+    function setCrumbs(title)
+    {
+        crumbs.innerHTML = title
+            ? `<button class="crumb link" id="backCrumb">Reader</button><svg class="icon crumb-chevron"><use href="#i-right"/></svg><span class="crumb">${title}</span>`
+            : `<span class="crumb">Reader</span>`;
+
+        const back = document.getElementById("backCrumb");
+
+        if (back)
+        {
+            back.addEventListener("click", leave);
+        }
+    }
+
+    function fillReading(book)
+    {
+        page.querySelectorAll(".reader-column, .pdf-sheet").forEach(element => element.remove());
+        page.classList.toggle("pdf", book.kind === "pdf");
+
+        const landing = document.createElement("div");
+
+        if (book.kind === "pdf")
+        {
+            landing.className = "pdf-sheet";
+            landing.innerHTML = `<h3 data-stage>Leçon 12 · Le passé composé</h3>`
+                + Prose.slice(0, 4).map(text => `<p data-stage>${text}</p>`).join("");
+            position.textContent = `Page ${Math.round(book.progress * book.pages) + 1} of ${book.pages}`;
+        }
+        else
+        {
+            landing.className = "reader-column";
+            landing.innerHTML = `<h2 data-stage>${book.chapter}</h2>` + Prose.map(text => `<p data-stage>${text}</p>`).join("");
+            position.textContent = `${Math.max(0, Math.round(book.progress * 100))}%`;
+        }
+
+        page.prepend(landing);
+
+        const percent = Math.max(0, book.progress) * 100;
+        sliderFill.style.width = percent + "%";
+        sliderKnob.style.left = percent + "%";
+
+        return landing;
+    }
+
+    function makeGhost(book, rect, titleSize)
+    {
+        const ghost = document.createElement("div");
+        ghost.className = "morph-ghost";
+        ghost.innerHTML = coverMarkup(book);
+        Object.assign(ghost.style, geometry(rect));
+
+        const cover = ghost.querySelector(".book-cover");
+        const spine = document.createElement("div");
+        spine.className = "book-spine";
+        const shade = document.createElement("div");
+        shade.className = "cover-shade";
+        cover.append(spine, shade);
+        cover.querySelector(".cover-title").style.fontSize = titleSize + "px";
+
+        effects.append(ghost);
+
+        return { ghost, cover, spine, shade, title: cover.querySelector(".cover-title"), progress: cover.querySelector(".cover-progress") };
+    }
+
+    function stagedParts()
+    {
+        return [...page.querySelectorAll("[data-stage]")];
+    }
+
+    function shelfParts()
+    {
+        return [shelfTools, grid];
+    }
+
+    function hinge(angle)
+    {
+        return `perspective(${Perspective}) rotateY(${angle}deg)`;
+    }
+
+    async function enter(book, tile)
+    {
+        if (busy || active)
+        {
+            return;
+        }
+
+        busy = true;
+        active = book;
+
+        const landing = fillReading(book);
+
+        if (Settings.mode === "cut")
+        {
+            setCrumbs(book.title);
+            frame.classList.add("in-reading");
+            busy = false;
+            return;
+        }
+
+        const started = performance.now();
+        const staged = stagedParts();
+
+        frame.classList.add("transitioning");
+        staged.forEach(part => part.style.opacity = "0");
+        readerBar.style.opacity = "0";
+        tools.style.opacity = "0";
+
+        const from = rectIn(tile.querySelector(".book-cover"));
+        const to = rectIn(landing);
+        const parts = makeGhost(book, from, TileTitleSize);
+        const pageColour = getComputedStyle(page).backgroundColor;
+
+        tile.style.visibility = "hidden";
+        landing.style.visibility = "hidden";
+
+        play(parts.ghost, [geometry(from), geometry(to)], Morph);
+        play(parts.cover, [{ borderRadius: "var(--cover-radius)" }, { borderRadius: "var(--book-radius)" }], Morph);
+        play(parts.title, [{ fontSize: TileTitleSize + "px" }, { fontSize: BookTitleSize + "px" }], Morph);
+        play(parts.spine, [{ opacity: 0 }, { opacity: 1 }], Morph * 0.6, Morph * 0.4);
+        shelfParts().forEach(part => play(part, [{ opacity: 1, transform: "scale(1)" }, { opacity: 0, transform: "scale(0.98)" }], Morph * 0.5, 0, EaseIn));
+        play(page, [{ backgroundColor: "transparent" }, { backgroundColor: pageColour }], Morph, 0, "linear");
+
+        setCrumbs(book.title);
+        play(crumbs, [{ opacity: 0, transform: "translateX(8px)" }, { opacity: 1, transform: "none" }], Slow, Morph * 0.3);
+
+        await settle();
+
+        landing.style.visibility = "";
+
+        const remaining = Settings.load - (performance.now() - started) * Settings.speed;
+
+        if (remaining > 0 && parts.progress)
+        {
+            parts.progress.classList.add("waiting");
+            await wait(remaining);
+            parts.progress.classList.remove("waiting");
+        }
+
+        if (Settings.mode === "hinge")
+        {
+            Object.assign(hingeShadow.style, geometry({ x: to.x, y: to.y - rectIn(page).y, w: to.w, h: to.h }));
+            play(hingeShadow, [{ opacity: 0 }, { opacity: 1, offset: 0.45 }, { opacity: 0 }], Hinge, 0, "linear");
+            play(parts.ghost, [{ transform: hinge(0) }, { transform: hinge(OpenAngle) }], Hinge, 0, EaseInOut);
+            play(parts.shade, [{ opacity: 0 }, { opacity: 0.45 }], Hinge, 0, EaseIn);
+        }
+        else
+        {
+            play(parts.ghost, [{ opacity: 1 }, { opacity: 0 }], Base, Base * 0.5, "linear");
+        }
+
+        const reveal = Settings.mode === "hinge" ? Hinge * 0.35 : 0;
+
+        staged.forEach((part, index) => play(part, [{ opacity: 0, transform: "translateY(4px)" }, { opacity: 1, transform: "none" }], Base, reveal + index * StageStagger));
+        play(readerBar, [{ opacity: 0, transform: "translateY(100%)" }, { opacity: 1, transform: "none" }], Slow, reveal);
+        play(tools, [{ opacity: 0 }, { opacity: 1 }], Base, reveal);
+
+        await settle();
+
+        frame.classList.add("in-reading");
+        frame.classList.remove("transitioning");
+        parts.ghost.remove();
+        staged.forEach(part => part.style.opacity = "");
+        readerBar.style.opacity = "";
+        tools.style.opacity = "";
+        tile.style.visibility = "";
+        release();
+        busy = false;
+    }
+
+    function flipShelf(moveFirst)
+    {
+        const tiles = [...grid.querySelectorAll(".book-tile")];
+        const before = new Map(tiles.map(tile => [tile.dataset.book, rectIn(tile)]));
+
+        order = [moveFirst, ...order.filter(id => id !== moveFirst)];
+        tiles.sort((left, right) => order.indexOf(left.dataset.book) - order.indexOf(right.dataset.book)).forEach(tile => grid.append(tile));
+
+        for (const tile of tiles)
+        {
+            if (tile.dataset.book === moveFirst)
+            {
+                continue;
+            }
+
+            const was = before.get(tile.dataset.book);
+            const now = rectIn(tile);
+
+            if (was.x !== now.x || was.y !== now.y)
+            {
+                play(tile, [{ transform: `translate(${was.x - now.x}px, ${was.y - now.y}px)` }, { transform: "none" }], Morph, Morph * 0.2);
+            }
+        }
+    }
+
+    async function leave()
+    {
+        if (busy || !active)
+        {
+            return;
+        }
+
+        busy = true;
+
+        const book = active;
+        const landing = page.querySelector(".reader-column, .pdf-sheet");
+        const savedProgress = book.progress >= 0 ? book.progress : 0;
+        const newProgress = Math.min(1, savedProgress + SavedStep);
+
+        if (Settings.mode === "cut")
+        {
+            book.progress = newProgress;
+
+            if (Settings.reorder === "on")
+            {
+                order = [book.id, ...order.filter(id => id !== book.id)];
+            }
+
+            renderShelf();
+            setCrumbs("");
+            frame.classList.remove("in-reading");
+            active = null;
+            busy = false;
+            return;
+        }
+
+        const staged = stagedParts();
+        const fade = Base * 0.75;
+        const from = rectIn(landing);
+        const pageTop = rectIn(page).y;
+
+        frame.classList.add("transitioning");
+
+        staged.forEach(part => play(part, [{ opacity: 1 }, { opacity: 0 }], fade, 0, "linear"));
+        play(readerBar, [{ opacity: 1, transform: "none" }, { opacity: 0, transform: "translateY(100%)" }], Base, 0, EaseIn);
+        play(tools, [{ opacity: 1 }, { opacity: 0 }], fade, 0, "linear");
+
+        setCrumbs("");
+        play(crumbs, [{ opacity: 0 }, { opacity: 1 }], Slow, fade);
+
+        const parts = makeGhost(book, from, BookTitleSize);
+        parts.cover.querySelector(".book-spine").style.opacity = "1";
+
+        if (Settings.mode === "hinge")
+        {
+            Object.assign(hingeShadow.style, geometry({ x: from.x, y: from.y - pageTop, w: from.w, h: from.h }));
+            play(parts.ghost, [{ transform: hinge(OpenAngle) }, { transform: hinge(0) }], Hinge * 0.8, fade, EaseInOut);
+            play(parts.shade, [{ opacity: 0.45 }, { opacity: 0 }], Hinge * 0.8, fade, EaseOut);
+            play(hingeShadow, [{ opacity: 0 }, { opacity: 1, offset: 0.55 }, { opacity: 0 }], Hinge * 0.8, fade, "linear");
+        }
+        else
+        {
+            play(parts.ghost, [{ opacity: 0 }, { opacity: 1 }], Base, fade, "linear");
+        }
+
+        await settle();
+
+        staged.forEach(part => part.style.opacity = "0");
+        readerBar.style.opacity = "0";
+        landing.style.visibility = "hidden";
+        frame.classList.remove("in-reading");
+
+        const pageColour = getComputedStyle(page).backgroundColor;
+
+        if (Settings.reorder === "on")
+        {
+            flipShelf(book.id);
+        }
+
+        const tile = grid.querySelector(`[data-book="${book.id}"]`);
+        const to = rectIn(tile.querySelector(".book-cover"));
+
+        tile.style.visibility = "hidden";
+
+        play(parts.ghost, [geometry(from), geometry(to)], Morph);
+        play(parts.cover, [{ borderRadius: "var(--book-radius)" }, { borderRadius: "var(--cover-radius)" }], Morph);
+        play(parts.title, [{ fontSize: BookTitleSize + "px" }, { fontSize: TileTitleSize + "px" }], Morph);
+        play(parts.spine, [{ opacity: 1 }, { opacity: 0 }], Morph * 0.5);
+        shelfParts().forEach(part => play(part, [{ opacity: 0 }, { opacity: 1 }], Morph * 0.7, Morph * 0.3));
+        play(page, [{ backgroundColor: pageColour }, { backgroundColor: "transparent" }], Morph * 0.6, 0, "linear");
+
+        await settle();
+
+        frame.classList.remove("transitioning");
+        landing.style.visibility = "";
+        parts.ghost.remove();
+        staged.forEach(part => part.style.opacity = "");
+        readerBar.style.opacity = "";
+        tile.style.visibility = "";
+        release();
+
+        book.progress = newProgress;
+
+        let bar = tile.querySelector(".cover-progress i");
+
+        if (!bar)
+        {
+            tile.querySelector(".book-cover").insertAdjacentHTML("beforeend", `<div class="cover-progress"><i style="width: 0%"></i></div>`);
+            bar = tile.querySelector(".cover-progress i");
+        }
+
+        bar.animate([{ width: savedProgress * 100 + "%" }, { width: newProgress * 100 + "%" }], { duration: Slow * 2 / Settings.speed, easing: EaseOut, fill: "forwards" })
+            .finished.then(() => bar.style.width = newProgress * 100 + "%");
+
+        active = null;
+        busy = false;
+    }
+
+    document.addEventListener("keydown", event =>
+    {
+        if (event.key === "Escape")
+        {
+            leave();
+        }
+    });
+
+    document.querySelectorAll("[data-setting]").forEach(group =>
+    {
+        group.querySelectorAll("button").forEach(button =>
+        {
+            button.addEventListener("click", () =>
+            {
+                const name = group.dataset.setting;
+                const value = button.dataset.value;
+
+                group.querySelectorAll("button").forEach(other => other.setAttribute("aria-pressed", String(other === button)));
+
+                if (name === "theme")
+                {
+                    document.documentElement.dataset.theme = value;
+                    return;
+                }
+
+                Settings[name] = name === "speed" || name === "load" ? Number(value) : value;
+            });
+        });
+    });
+
+    function fit()
+    {
+        const viewer = document.querySelector(".viewer").offsetHeight;
+        const scale = Math.min(1, (innerWidth - 48) / FrameWidth, (innerHeight - viewer - 48) / FrameHeight);
+
+        frame.style.transform = `scale(${scale})`;
+        holder.style.width = FrameWidth * scale + "px";
+        holder.style.height = FrameHeight * scale + "px";
+    }
+
+    renderShelf();
+    setCrumbs("");
+    addEventListener("resize", fit);
+    fit();
+</script>
+</body>
+</html>

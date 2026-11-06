@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ikonika UI v2</title>
+  <link rel="stylesheet" href="./style.css">
+  <style>
+    body {
+      display: flex;
+      justify-content: center;
+      min-width: 1920px;
+      margin: 0;
+      padding: 64px;
+    }
+
+    .v2-preview {
+      display: flex;
+      flex-direction: column;
+      gap: 48px;
+    }
+
+    .v2-preview-label {
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+    }
+
+    .v2-preview-label strong,
+    .v2-preview-label span {
+      font-family: var(--font-mono);
+      text-transform: uppercase;
+    }
+
+    .v2-preview-label strong {
+      font-size: 11px;
+      letter-spacing: 0.16em;
+      color: var(--color-ink-strong);
+    }
+
+    .v2-preview-label span {
+      font-size: 10px;
+      letter-spacing: 0.14em;
+      color: var(--color-subtle);
+    }
+
+    iframe {
+      display: block;
+      width: 1920px;
+      height: 1080px;
+      border: 0;
+    }
+  </style>
+</head>
+<body>
+  <main class="v2-preview">
+    <div class="v2-preview-label">
+      <strong>V2 · APPROVED FOUNDATIONS</strong>
+      <span>FULL HD · DECK BROWSER · SESSION · BUTTON STATES</span>
+    </div>
+
+    <iframe src="./fragment-decks.html" title="Deck browser"></iframe>
+    <iframe src="./fragment-multiple-choice.html" title="Multiple choice session"></iframe>
+    <iframe src="./fragment-button-states.html" title="Button states"></iframe>
+  </main>
+</body>
+</html>

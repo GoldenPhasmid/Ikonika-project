@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mobile · Words</title>
+  <link rel="stylesheet" href="../v3/wireframe.css">
+  <link rel="stylesheet" href="./mobile.css">
+</head>
+<body>
+  <div class="phone">
+
+    <header class="phone-topbar">
+      <span class="title">Words</span>
+      <button class="icon-btn bare">⚙</button>
+      <button class="icon-btn bare">⌕</button>
+    </header>
+
+    <div class="phone-content" style="gap:0">
+
+      <!-- Search -->
+      <div style="padding:0 0 12px">
+        <input type="text" placeholder="Search words..." style="width:100%;height:44px;border:1px solid var(--wf-line);border-radius:2px;padding:0 16px;font-size:15px;background:var(--wf-panel);outline:none">
+      </div>
+
+      <!-- Sort row -->
+      <div style="display:flex;align-items:center;gap:8px;padding:8px 0">
+        <span style="font-size:14px;color:var(--wf-mid)">↕</span>
+        <span style="font-size:14px;color:var(--wf-mid)">By most due</span>
+      </div>
+
+      <!-- All words section -->
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 0 12px;border-bottom:1px solid var(--wf-faint)">
+        <div style="display:flex;align-items:center;gap:12px">
+          <span style="font-size:20px">◎</span>
+          <div>
+            <div style="font-size:17px;font-weight:500">All words</div>
+            <div style="font-size:13px;color:var(--wf-mid)">1,246 words</div>
+          </div>
+        </div>
+        <span style="font-size:18px;color:var(--wf-mid)">›</span>
+      </div>
+
+      <!-- Learning section -->
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 0 12px;border-bottom:1px solid var(--wf-faint)">
+        <div style="display:flex;align-items:center;gap:12px">
+          <span style="font-size:20px">◉</span>
+          <div>
+            <div style="font-size:17px;font-weight:500">Learning</div>
+            <div style="font-size:13px;color:var(--wf-mid)">48 words</div>
+          </div>
+        </div>
+        <span style="font-size:18px;color:var(--wf-mid)">›</span>
+      </div>
+
+      <!-- Mastered section -->
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 0 12px;border-bottom:1px solid var(--wf-faint)">
+        <div style="display:flex;align-items:center;gap:12px">
+          <span style="font-size:20px">✓</span>
+          <div>
+            <div style="font-size:17px;font-weight:500">Mastered</div>
+            <div style="font-size:13px;color:var(--wf-mid)">16 words</div>
+          </div>
+        </div>
+        <span style="font-size:18px;color:var(--wf-mid)">›</span>
+      </div>
+
+      <!-- Not started section -->
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 0 12px;border-bottom:1px solid var(--wf-faint)">
+        <div style="display:flex;align-items:center;gap:12px">
+          <span style="font-size:20px">○</span>
+          <div>
+            <div style="font-size:17px;font-weight:500">Not started</div>
+            <div style="font-size:13px;color:var(--wf-mid)">64 words</div>
+          </div>
+        </div>
+        <span style="font-size:18px;color:var(--wf-mid)">›</span>
+      </div>
+
+      <!-- Recently learned shelf -->
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 0 12px;border-bottom:1px solid var(--wf-faint)">
+        <div style="display:flex;align-items:center;gap:12px">
+          <span style="font-size:20px">⏱</span>
+          <div>
+            <div style="font-size:17px;font-weight:500">Recently learned</div>
+            <div style="font-size:13px;color:var(--wf-mid)">11 this week</div>
+          </div>
+        </div>
+        <span style="font-size:18px;color:var(--wf-mid)">›</span>
+      </div>
+
+      <!-- Last looked up shelf -->
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 0 12px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <span style="font-size:20px">⌕</span>
+          <div>
+            <div style="font-size:17px;font-weight:500">Last looked up</div>
+            <div style="font-size:13px;color:var(--wf-mid)">9 words</div>
+          </div>
+        </div>
+        <span style="font-size:18px;color:var(--wf-mid)">›</span>
+      </div>
+
+    </div>
+
+    <nav class="phone-tabbar">
+      <button class="tab"><span class="tab-icon"></span><span class="label">Today</span></button>
+      <button class="tab"><span class="tab-icon"><span class="badge-dot">12</span></span><span class="label">Decks</span></button>
+      <button class="tab active"><span class="tab-icon"></span><span class="label">Words</span></button>
+      <button class="tab"><span class="tab-icon"></span><span class="label">Settings</span></button>
+    </nav>
+
+  </div>
+</body>
+</html>

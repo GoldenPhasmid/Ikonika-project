@@ -1,0 +1,2504 @@
+/* Ikonika v3 — structural wireframes.
+   Grayscale, plus the three card states. No other colour, no polish.
+   Purpose: settle layout and flow before any styling exists. */
+
+:root {
+  --wf-rail-w: 240px;
+  --wf-rail-w-collapsed: 56px;
+  --wf-topbar-h: 56px;
+
+  --wf-ink: #111;
+  --wf-mid: #888;
+  --wf-soft: #ccc;
+  --wf-faint: #eee;
+  --wf-line: #d0d0d0;
+  --wf-paper: #fafafa;
+  --wf-panel: #ffffff;
+  --wf-canvas: #f2f2f2;
+
+  /* The three card states, taken from the app's own light palette rather than invented,
+     so the wireframe and the build cannot drift apart. Not started is its Muted, learning
+     its Accent, completed its Correct. */
+  --wf-new: #5b6270;
+  --wf-learning: #2f6fe0;
+  --wf-done: #2f9563;
+
+  /* The same three at text weight. The fill values above read 3.7:1 as small text against
+     white, under the 4.5 minimum, so a figure uses these and a filled shape uses those. */
+  --wf-new-text: #5b6270;
+  --wf-learning-text: #2b66d0;
+  --wf-done-text: #237a50;
+
+  --wf-font: system-ui, sans-serif;
+  --wf-mono: ui-monospace, "Cascadia Mono", monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  overflow: hidden;
+  background: var(--wf-canvas);
+  color: var(--wf-ink);
+  font-family: var(--wf-font);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---------- app frame ---------- */
+
+.app {
+  display: grid;
+  grid-template-columns: var(--wf-rail-w) 1fr;
+  width: 1920px;
+  height: 1080px;
+  background: var(--wf-paper);
+  border: 1px solid var(--wf-line);
+  overflow: hidden;
+}
+
+.app.rail-collapsed {
+  grid-template-columns: var(--wf-rail-w-collapsed) 1fr;
+}
+
+/* ---------- rail ---------- */
+
+.rail {
+  display: flex;
+  flex-direction: column;
+  background: var(--wf-panel);
+  border-right: 1px solid var(--wf-line);
+  overflow: hidden;
+}
+
+.rail-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: var(--wf-topbar-h);
+  flex: none;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--wf-faint);
+}
+
+.rail-mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  flex: none;
+  background: var(--wf-ink);
+  color: var(--wf-paper);
+  font-family: var(--wf-mono);
+  font-size: 12px;
+}
+
+.rail-brand {
+  font-family: var(--wf-mono);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  white-space: nowrap;
+}
+
+.rail-lang {
+  font-size: 12px;
+  color: var(--wf-mid);
+}
+
+.rail-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 8px;
+}
+
+/* The rail's foot. Backward-looking numbers live here rather than on Today: they are
+   habit, not a decision, and the screen's own space belongs to what the learner acts on.
+   It is also the one part of the window that was empty on every screen. */
+.rail-foot {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: auto;
+  padding: 16px;
+  border-top: 1px solid var(--wf-line);
+}
+
+.rail-collapsed .rail-foot {
+  display: none;
+}
+
+.rail-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  font-size: 13px;
+  color: var(--wf-ink);
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+.rail-item.active {
+  background: var(--wf-faint);
+  border: 1px solid var(--wf-line);
+}
+
+.rail-item .count {
+  font-family: var(--wf-mono);
+  font-size: 12px;
+  color: var(--wf-mid);
+}
+
+/* rail collapsed: icons only */
+.rail-collapsed .rail-head,
+.rail-collapsed .rail-brand,
+.rail-collapsed .rail-lang,
+.rail-collapsed .rail-item .label,
+.rail-collapsed .rail-item .count {
+  display: none;
+}
+
+.rail-collapsed .rail-nav {
+  padding: 12px 8px;
+}
+
+.rail-collapsed .rail-item {
+  justify-content: center;
+  padding: 10px 0;
+}
+
+.rail-collapsed .rail-item .label {
+  display: none;
+}
+
+/* ---------- main column ---------- */
+
+.main {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ---------- topbar ---------- */
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  height: var(--wf-topbar-h);
+  flex: none;
+  padding: 0 32px;
+  border-bottom: 1px solid var(--wf-line);
+  background: var(--wf-panel);
+}
+
+.topbar-context {
+  font-family: var(--wf-mono);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  color: var(--wf-mid);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+/* ---------- content ---------- */
+
+.content {
+  flex: 1;
+  padding: 32px;
+  overflow: hidden;
+}
+
+/* ---------- generic wireframe elements ---------- */
+
+.wf-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.wf-grow {
+  flex: 1;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 14px;
+  border: 1px solid var(--wf-line);
+  background: var(--wf-panel);
+  font-size: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.btn.primary {
+  background: var(--wf-ink);
+  color: var(--wf-paper);
+  border-color: var(--wf-ink);
+}
+
+.btn.btn-status {
+  width: 120px;
+  justify-content: center;
+}
+
+.btn.large {
+  height: 48px;
+  padding: 0 24px;
+  font-size: 14px;
+}
+
+.btn.ghost {
+  border-color: transparent;
+  background: transparent;
+}
+
+.search-box {
+  height: 32px;
+  width: 180px;
+  padding: 0 12px;
+  border: 1px solid var(--wf-line);
+  background: var(--wf-panel);
+  font-size: 12px;
+  color: var(--wf-ink);
+  outline: none;
+}
+
+.wf-textarea {
+  width: 100%;
+  min-height: 36px;
+  padding: 8px 12px;
+  border: 1px solid var(--wf-line);
+  background: var(--wf-panel);
+  font-size: 12px;
+  color: var(--wf-ink);
+  font-family: inherit;
+  resize: none;
+  outline: none;
+}
+
+/* ---------- word entry row (decks, today) ---------- */
+
+.wf-word-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--wf-faint);
+}
+
+.wf-word-row .word {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.wf-word-row .translation {
+  width: 160px;
+  flex: none;
+}
+
+.wf-word-row .definition {
+  flex: 1;
+}
+
+.wf-word-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+.wf-word-grid .wf-word-row:nth-child(odd) {
+  border-right: 1px solid var(--wf-faint);
+}
+
+.btn.disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.panel {
+  background: var(--wf-panel);
+  border: 1px solid var(--wf-line);
+}
+
+.card {
+  background: var(--wf-panel);
+  border: 1px solid var(--wf-line);
+}
+
+.kicker {
+  font-family: var(--wf-mono);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--wf-mid);
+}
+
+.meta {
+  font-family: var(--wf-mono);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  color: var(--wf-mid);
+  text-transform: uppercase;
+}
+
+/* ---------- session mode (rail fully gone) ---------- */
+
+.session-mode {
+  display: grid;
+  grid-template-columns: var(--wf-rail-w-collapsed) 1fr;
+  width: 1920px;
+  height: 1080px;
+  background: var(--wf-paper);
+  border: 1px solid var(--wf-line);
+  overflow: hidden;
+}
+
+/* exercise buttons 20% larger than the default app button */
+.session-mode .btn {
+  height: 38px;
+  padding: 0 17px;
+  font-size: 14px;
+}
+
+.session-mode .btn-icon {
+  width: 38px;
+  padding: 0;
+}
+
+.session-mode .btn.session-endless {
+  height: 38px;
+  padding: 0 14px;
+}
+
+.session-mode .btn.btn-status {
+  width: 144px;
+}
+
+.session-mode .session-actions-row .btn,
+.session-mode .session-yesno .btn {
+  height: 44px;
+  font-size: 14px;
+}
+
+.session-rail {
+  display: flex;
+  flex-direction: column;
+  background: var(--wf-panel);
+  border-right: 1px solid var(--wf-line);
+  overflow: hidden;
+}
+
+.session-rail .rail-head {
+  justify-content: center;
+  padding: 0;
+}
+
+.session-rail .rail-nav {
+  padding: 12px 8px;
+}
+
+.session-rail .rail-item {
+  justify-content: center;
+  padding: 8px 0;
+}
+
+.session-rail .rail-item::before {
+  content: "";
+  display: block;
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--wf-soft);
+  background: var(--wf-panel);
+}
+
+.session-rail .rail-item.active::before {
+  background: var(--wf-ink);
+  border-color: var(--wf-ink);
+}
+
+.session-main {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.session-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  height: var(--wf-topbar-h);
+  flex: none;
+  padding: 0 24px;
+  border-bottom: 1px solid var(--wf-line);
+  background: var(--wf-panel);
+}
+
+.session-topbar-context {
+  font-family: var(--wf-mono);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  color: var(--wf-mid);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.session-progress-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  flex: 1;
+  min-width: 0;
+}
+
+.session-progress {
+  display: flex;
+  gap: 3px;
+  width: min(520px, 60%);
+}
+
+.session-progress i {
+  flex: 1;
+  height: 4px;
+  background: var(--wf-soft);
+}
+
+.session-progress i.done {
+  background: var(--wf-ink);
+}
+
+.session-progress i.current {
+  background: var(--wf-ink);
+  outline: 1px solid var(--wf-ink);
+  outline-offset: 1px;
+}
+
+.session-counter {
+  font-family: var(--wf-mono);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  color: var(--wf-mid);
+  white-space: nowrap;
+}
+
+.session-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+}
+
+.session-actions .btn-icon {
+  width: 38px;
+  height: 38px;
+  padding: 0;
+}
+
+/* Endless toggle */
+.session-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 38px;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--wf-mid);
+  white-space: nowrap;
+}
+
+.session-toggle .track {
+  position: relative;
+  width: 34px;
+  height: 18px;
+  border: 1px solid var(--wf-line);
+  background: var(--wf-faint);
+}
+
+.session-toggle .track::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 12px;
+  height: 12px;
+  background: var(--wf-mid);
+}
+
+.session-toggle.on .track {
+  background: var(--wf-ink);
+  border-color: var(--wf-ink);
+}
+
+.session-toggle.on .track::after {
+  left: 18px;
+  background: var(--wf-paper);
+}
+
+.session-surface {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  padding: 32px;
+}
+
+.session-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  width: 640px;
+  flex: none;
+}
+
+.session-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  width: 640px;
+  height: 320px;
+  flex: none;
+  background: var(--wf-panel);
+  border: 1px solid var(--wf-line);
+}
+
+.session-word {
+  font-size: 56px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  text-align: center;
+}
+
+.session-word-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.session-word-row .session-voice-btn {
+  position: absolute;
+  right: 0;
+}
+
+.session-voice-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--wf-line);
+  background: var(--wf-panel);
+  cursor: pointer;
+}
+
+.session-translation {
+  font-size: 24px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.session-phonetic {
+  font-family: var(--wf-mono);
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  color: var(--wf-mid);
+  display: none;
+}
+
+.session-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  width: 640px;
+}
+
+.session-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  background: var(--wf-panel);
+  border: 1px solid var(--wf-line);
+  cursor: pointer;
+}
+
+.session-option .num {
+  font-family: var(--wf-mono);
+  font-size: 12px;
+  color: var(--wf-mid);
+  border: 1px solid var(--wf-soft);
+  padding: 2px 6px;
+}
+
+.session-option .text {
+  font-size: 18px;
+}
+
+.session-hints {
+  display: flex;
+  gap: 16px;
+  font-family: var(--wf-mono);
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  color: var(--wf-mid);
+  text-transform: uppercase;
+}
+
+.session-input {
+  width: 640px;
+  height: 44px;
+  padding: 0 16px;
+  border: 1px solid var(--wf-line);
+  background: var(--wf-panel);
+  font-size: 16px;
+  color: var(--wf-ink);
+  outline: none;
+  text-align: center;
+}
+
+.session-input.wrong {
+  border-color: var(--wf-ink);
+  border-width: 2px;
+}
+
+.session-input.correct {
+  border-color: var(--wf-soft);
+}
+
+.session-match {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  width: 640px;
+}
+
+.session-match-col {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.session-match-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  background: var(--wf-panel);
+  border: 1px solid var(--wf-line);
+  cursor: pointer;
+}
+
+.session-match-item .num {
+  font-family: var(--wf-mono);
+  font-size: 12px;
+  color: var(--wf-mid);
+  border: 1px solid var(--wf-soft);
+  padding: 2px 6px;
+}
+
+.session-match-item .text {
+  font-size: 18px;
+}
+
+.session-yesno {
+  display: flex;
+  gap: 16px;
+  width: 640px;
+}
+
+.session-yesno .btn {
+  position: relative;
+  flex: 1;
+  height: 48px;
+  font-size: 14px;
+}
+
+.session-yesno .btn .num {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  border: none;
+  background: none;
+  padding: 0;
+  width: auto;
+  height: auto;
+  font-size: 12px;
+  color: var(--wf-mid);
+}
+
+.session-yesno .btn .num:first-child {
+  left: 12px;
+}
+
+.session-yesno .btn .num:last-child {
+  right: 12px;
+}
+
+.session-actions-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: 640px;
+}
+
+.session-countdown {
+  width: 640px;
+  height: 6px;
+  background: var(--wf-faint);
+}
+
+.session-countdown i {
+  display: block;
+  height: 6px;
+  background: var(--wf-soft);
+}
+
+.session-empty-fill {
+  flex: 1;
+}
+
+/* ---------- scaffold page (master.html) ---------- */
+
+body.scaffold {
+  padding: 48px;
+}
+
+.scaffold-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 48px;
+  align-items: center;
+}
+
+.scaffold-label {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.scaffold-label strong {
+  font-family: var(--wf-mono);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.scaffold-label span {
+  font-family: var(--wf-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--wf-mid);
+}
+
+/* ================================================================
+   Shell corrections — brought in line with the built app.
+   The rail has no collapse control: it collapses itself when the
+   window falls under 1100px. Every destination carries a placeholder
+   icon in both states, since a collapsed rail is icons alone.
+   ================================================================ */
+
+.rail-item {
+  height: 38px;
+  padding: 0 12px;
+}
+
+.rail-item .label {
+  flex: 1;
+}
+
+.rail-icon {
+  display: block;
+  width: 18px;
+  height: 18px;
+  flex: none;
+  border: 1px solid var(--wf-mid);
+  border-radius: 2px;
+  background: transparent;
+}
+
+.rail-item.active .rail-icon {
+  background: var(--wf-ink);
+  border-color: var(--wf-ink);
+}
+
+/* Outlined until the user signs in, filled once they have. The mark opens
+   the profile screen; it is not decoration. */
+.rail-mark.signed-out {
+  background: transparent;
+  border: 1px solid var(--wf-line);
+  color: var(--wf-mid);
+}
+
+.rail-collapsed .rail-item {
+  padding: 0;
+}
+
+/* ---------- today: the top band ---------- */
+
+/* The figure is anchored left and what is coming sits opposite it, both on one baseline.
+   Today's count and the next five days are the same measure read forward, so they belong
+   in one row. What already happened does not: it moved to the rail's foot. */
+.today-band {
+  display: flex;
+  align-items: flex-end;
+  gap: 64px;
+  flex: none;
+}
+
+.today-band .due-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 300px;
+  flex: none;
+}
+
+/* Five days forward with the count on each. Bars would answer "which day is busiest" and
+   the learner is asking "how much is coming", so the number is the element and the bar is
+   the aside. */
+.due-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.due-row {
+  display: grid;
+  grid-template-columns: 44px 1fr 40px;
+  align-items: center;
+  gap: 12px;
+  height: 26px;
+}
+
+.due-row .day {
+  font-family: var(--wf-mono);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--wf-mid);
+}
+
+.due-row .track {
+  height: 6px;
+  background: var(--wf-faint);
+}
+
+.due-row .track i {
+  display: block;
+  height: 6px;
+  background: var(--wf-soft);
+}
+
+.due-row .count {
+  font-size: 14px;
+  text-align: right;
+  color: var(--wf-ink);
+}
+
+/* A day with nothing due keeps its row. A forecast that skips its empty days is a
+   forecast the reader has to count on their fingers. */
+.due-row.none .count {
+  color: var(--wf-mid);
+}
+
+/* ---------- today: the goal ---------- */
+
+/* The figure owns the top of the screen undivided. It is the one thing the learner came
+   to find out, and nothing shares the row with it. No weekday: the bar above already
+   says which screen this is, and the date is not a thing anyone acts on. */
+.today-goal {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  flex: 1;
+  min-width: 0;
+}
+
+.today-goal .figure {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.today-goal .value {
+  font-size: 96px;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+.today-goal .of {
+  font-size: 26px;
+  color: var(--wf-mid);
+}
+
+.today-goal .track {
+  height: 12px;
+  background: var(--wf-faint);
+}
+
+.today-goal .track i {
+  display: block;
+  height: 12px;
+  background: var(--wf-ink);
+}
+
+/* What the figure is made of. Deliberately neutral: the three colours in this sheet
+   already mean card state, and spending them on an activity would give them two
+   meanings at once. */
+.today-split {
+  display: flex;
+  gap: 24px;
+}
+
+/* ---------- today: the three actions ---------- */
+
+/* Three ordinary buttons, not three posters. The count sits opposite the verb at label
+   size, because a learner who has already read the figure above does not need it shouted
+   twice. Train is filled because it is the press the app recommends; the other two are
+   drawn as what they are, available rather than urgent. */
+.act-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  flex: none;
+}
+
+.act {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  height: 120px;
+  padding: 0 28px;
+  background: var(--wf-panel);
+  border: 1px solid var(--wf-line);
+  text-align: left;
+  cursor: pointer;
+}
+
+.act:hover {
+  border-color: var(--wf-mid);
+}
+
+.act.primary:hover {
+  background: var(--wf-ink);
+  border-color: var(--wf-ink);
+  box-shadow: inset 0 0 0 1px var(--wf-soft);
+}
+
+/* An icon, a label and a number. The description under each title said what the title
+   already said, and three of them turned a row of presses into a row of paragraphs. */
+.act .body {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+}
+
+/* The same outlined placeholder the rail uses, one step larger. Real icons come with the
+   icon set; the square is here so the label is not the only thing to aim at. */
+.act .icon {
+  display: block;
+  width: 28px;
+  height: 28px;
+  flex: none;
+  border: 1px solid var(--wf-mid);
+  border-radius: 2px;
+  background: transparent;
+}
+
+/* On the filled card the placeholder has to invert with everything else on it. */
+.act.primary .icon {
+  border-color: var(--wf-soft);
+}
+
+/* All caps in the sheet's mono, which is the register every other label on the screen
+   uses. */
+.act .title {
+  font-family: var(--wf-mono);
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--wf-ink);
+}
+
+.act .count {
+  font-size: 34px;
+  line-height: 1;
+  letter-spacing: -0.01em;
+  color: var(--wf-ink);
+}
+
+/* The press the app recommends. One filled button in the row, so the eye lands on a
+   recommendation rather than a choice between two equals. */
+.act.primary {
+  background: var(--wf-ink);
+  border-color: var(--wf-ink);
+}
+
+.act.primary .title,
+.act.primary .count {
+  color: var(--wf-paper);
+}
+
+.act.primary .meta {
+  color: var(--wf-soft);
+}
+
+/* Nothing due. The button keeps its place in the row rather than vanishing, since a row
+   that changes length is a row the hand has to re-learn every morning, but it stops
+   answering a press: no pointer cursor, no hover, the icon drops to the same mid tone as
+   the text so nothing on the card reads as live. */
+/* pointer-events: none already keeps :hover from ever matching here, which is the point:
+   a spent card takes no interaction of any kind. */
+.act.spent {
+  cursor: default;
+  pointer-events: none;
+}
+
+.act.spent .icon {
+  border-color: var(--wf-soft);
+}
+
+.act.spent .title,
+.act.spent .count {
+  color: var(--wf-mid);
+}
+
+/* ---------- today: the quiet band ---------- */
+
+/* Four columns under one rule. This is the half of the screen the learner does not need,
+   so it gets room rather than emphasis: real lists at readable size, no fills, no boxes
+   around boxes. */
+.today-secondary {
+  display: grid;
+  grid-template-columns: 2.4fr 1fr 1fr;
+  gap: 40px;
+  flex: 1;
+  min-height: 0;
+  padding-top: 16px;
+  border-top: 1px solid var(--wf-line);
+}
+
+.today-col {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+}
+
+/* One height for every column heading, whether or not it carries a button. Letting the
+   button set the height dropped the headings that had none by a few pixels, and four
+   headings on four baselines is the thing the eye catches first. */
+.today-col-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  height: 24px;
+  flex: none;
+}
+
+.today-col-head .btn {
+  height: 24px;
+  padding: 0;
+}
+
+/* The column that scrolls says so. A real scrollbar is only drawn while the pointer is
+   over the area and it steals width from the grid when it appears; this one is painted at
+   the column's right edge and takes no layout at all, which is how QML's own overlay
+   scrollbar behaves. The offset is the head's height plus the column gap. */
+.today-col {
+  position: relative;
+}
+
+.scroll-rail {
+  position: absolute;
+  right: 0;
+  top: 34px;
+  bottom: 0;
+  width: 4px;
+  background: var(--wf-faint);
+}
+
+.scroll-rail i {
+  display: block;
+  width: 4px;
+  background: var(--wf-soft);
+}
+
+/* Tiles keep their own proportions and the column scrolls past them. Stretching them to
+   fill the band made a tile's shape depend on how many decks happened to be recent, and
+   a four-deck row and a six-deck row drew two different components. */
+.today-col .deck-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 16px;
+}
+
+/* The browser's own bar is hidden everywhere the sheet scrolls. The drawn rail is the
+   indication, and a second bar appearing beside it once the content happens to overflow
+   would be two scrollbars on one region. */
+.deck-scroll,
+.learned-list,
+.due-list {
+  scrollbar-width: none;
+}
+
+.deck-scroll::-webkit-scrollbar,
+.learned-list::-webkit-scrollbar,
+.due-list::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+.today-col .deck-grid {
+  grid-auto-rows: 168px;
+}
+
+.today-col .deck-swatch {
+  height: 72px;
+}
+
+/* Two lists, one shape. Recently learned and the lookup history are both a column of
+   words the learner can press, so drawing one as rows and the other as chips made them
+   read as different kinds of thing when they are not. */
+.learned-list {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* Two columns, not a word with its gloss trailing behind it. Every gloss starts at the
+   same x, so the column can be read straight down either side. Rows keep their own height
+   and the list scrolls: stretching them to fill the band made a row's height depend on how
+   many words happened to be in the list. */
+.learned-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  height: 40px;
+  flex: none;
+  border-bottom: 1px solid var(--wf-faint);
+  cursor: pointer;
+}
+
+.learned-row .word,
+.learned-row .gloss {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.learned-row .word {
+  font-size: 14px;
+}
+
+.learned-row .gloss {
+  font-size: 13px;
+  color: var(--wf-mid);
+}
+
+/* ---------- today: the last five days ---------- */
+
+/* Five days behind and today, each bar that day's finished words against the tallest of
+   the six. One scale, so today cannot be drawn against a denominator of its own. Nothing
+   ahead: work owed on Friday is not something the learner can act on this morning. It
+   lives down here with the rest of the background, since knowing Sunday went well is not
+   a reason to press anything. */
+.day-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  height: 64px;
+  flex: none;
+}
+
+.day-bars .day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  justify-content: flex-end;
+}
+
+.day-bars .bar {
+  display: flex;
+  align-items: flex-end;
+  width: 100%;
+  flex: 1;
+}
+
+.day-bars .bar i {
+  display: block;
+  width: 100%;
+  background: var(--wf-soft);
+}
+
+/* A day with nothing on it. No bar, one rule on the floor. */
+.day-bars .day.none .bar {
+  border-bottom: 2px solid var(--wf-faint);
+}
+
+/* Today is the one bar still moving, so it is the one drawn in ink. */
+.day-bars .day.now .bar i {
+  background: var(--wf-ink);
+}
+
+.day-bars .day.now .label {
+  color: var(--wf-ink);
+  font-weight: 700;
+}
+
+.day-bars .label {
+  font-family: var(--wf-mono);
+  font-size: 12px;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--wf-mid);
+}
+
+/* ---------- hero actions (today) ---------- */
+
+/* Train and Review are the day's work and share the weight. The third slot goes to
+   the dictionary, so it is narrower and hollow: it is a real action, but it is not
+   the thing the day is measured by. */
+.hero-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 0.68fr;
+  gap: 16px;
+}
+
+.hero {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 10px;
+  height: 96px;
+  padding: 24px;
+  background: var(--wf-ink);
+  border: 1px solid var(--wf-ink);
+  cursor: pointer;
+}
+
+.hero .title {
+  font-size: 15px;
+  color: var(--wf-paper);
+}
+
+.hero .meta {
+  color: var(--wf-soft);
+}
+
+.hero.quiet {
+  background: var(--wf-panel);
+  border-color: var(--wf-line);
+}
+
+.hero.quiet .title {
+  color: var(--wf-ink);
+}
+
+.hero.quiet .meta {
+  color: var(--wf-mid);
+}
+
+/* Nothing due, nothing to continue. Drawn unfilled rather than hidden, so the
+   row keeps its shape on a day with no review. */
+.hero.disabled {
+  background: var(--wf-panel);
+  border-color: var(--wf-line);
+  opacity: 0.45;
+  cursor: default;
+}
+
+.hero.disabled .title {
+  color: var(--wf-ink);
+}
+
+.hero.disabled .meta {
+  color: var(--wf-mid);
+}
+
+/* ---------- deck tile ---------- */
+
+.deck-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+/* The tile sizes to its content rather than holding a ratio. Under the old 5 by 3 the
+   colour block took half the height and the four things worth reading shared the rest. */
+.deck-tile {
+  display: flex;
+  flex-direction: column;
+  background: var(--wf-panel);
+  border: 1px solid var(--wf-line);
+  cursor: pointer;
+}
+
+/* A colour block, one per deck, stored on the deck itself. Grey here because
+   the wireframes carry no palette. */
+/* Randomised per deck, so it is how a deck is recognised at a glance. It keeps a real
+   band rather than a stripe, just not half the tile. */
+.deck-swatch {
+  flex: none;
+  height: 56px;
+  background: var(--wf-faint);
+  border-bottom: 1px solid var(--wf-line);
+}
+
+.deck-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+}
+
+.deck-name-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.deck-name-row .name {
+  font-size: 15px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Three states, and they sum to the deck's size: still in the pool, on the
+   ladder, past the last box. The bar below is the same three figures. */
+.deck-counts {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+/* Colour says which state. Weight still marks the deck's live figure, so a reader who
+   cannot separate the hues has the order and the bold to go on. */
+.deck-counts .pool {
+  color: var(--wf-new-text);
+}
+
+.deck-counts .learning {
+  color: var(--wf-learning-text);
+  font-weight: 700;
+}
+
+.deck-counts .done {
+  color: var(--wf-done-text);
+}
+
+/* The track is the not-started share rather than a separate segment, and it stays the
+   quiet line colour: a deck barely begun is mostly track, and paying for that in a
+   strong tone made every new deck shout. The figure above it carries the state colour.
+   An empty deck is the track on its own. */
+.bar3 {
+  display: flex;
+  height: 4px;
+  background: var(--wf-line);
+}
+
+.bar3 i {
+  display: block;
+  height: 4px;
+}
+
+.bar3 i.learning {
+  background: var(--wf-learning);
+}
+
+.bar3 i.done {
+  background: var(--wf-done);
+}
+
+/* ---------- lookup history (today) ---------- */
+
+/* One line, newest at the left. Two columns of full-width rows gave a four-letter word
+   an 800px cell and cost 132px of height to show six of them; a reading order problem
+   only existed because the shape was wrong. A chip is also the shape the dictionary
+   already uses for a word you can press, so the row says what it does without a label.
+   These carry no frequency bars, since a lookup has no strength to report. */
+.lookup-flow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.lookup-flow .chip {
+  font-weight: 700;
+}
+
+/* ---------- create tile ---------- */
+
+/* Muted solid border, not dashed: a Rectangle border in QML cannot be dashed,
+   so the tile reads as different through its border colour and centred content. */
+.deck-tile.create {
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  border-color: var(--wf-mid);
+}
+
+.deck-tile.create .plus {
+  font-size: 28px;
+  line-height: 1;
+}
+
+.deck-tile.create .label {
+  font-size: 14px;
+}
+
+/* ---------- filters and sort ---------- */
+
+.wf-filters {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* The app's ComboBox: a value with an indicator, not a button. */
+.wf-select {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 170px;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--wf-line);
+  background: var(--wf-panel);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+/* ---------- dialogs ---------- */
+
+.modal-scrim {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(17, 17, 17, 0.4);
+  z-index: 10;
+}
+
+.dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 24px;
+  background: var(--wf-panel);
+  border: 1px solid var(--wf-line);
+}
+
+.dialog-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.dialog-head .title {
+  font-size: 15px;
+}
+
+.dialog-close {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--wf-line);
+  background: var(--wf-panel);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field input {
+  width: 100%;
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--wf-line);
+  background: var(--wf-panel);
+  font-size: 12px;
+  color: var(--wf-ink);
+  outline: none;
+}
+
+.dialog-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.dialog-actions .btn {
+  flex: 1;
+}
+
+/* ---------- deck detail header ---------- */
+
+.deck-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 24px;
+  padding: 24px;
+  background: var(--wf-panel);
+  border: 1px solid var(--wf-line);
+}
+
+.deck-head-swatch {
+  width: 88px;
+  height: 88px;
+  flex: none;
+  background: var(--wf-faint);
+}
+
+.deck-head .name {
+  font-size: 24px;
+}
+
+.deck-head .description {
+  font-size: 13px;
+  color: var(--wf-mid);
+}
+
+/* A training run in progress, as the five stages it goes through. Filled up to
+   the stage it reached, hollow past it, so what is left is visible too. */
+.stage-pips {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.stage-pips i {
+  display: block;
+  width: 26px;
+  height: 6px;
+  border: 1px solid var(--wf-line);
+  border-radius: 3px;
+}
+
+.stage-pips i.done {
+  background: var(--wf-ink);
+  border-color: var(--wf-ink);
+}
+
+/* ---------- exercise buttons ---------- */
+
+.exercise-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+.exercise-grid .btn {
+  height: 56px;
+  font-size: 12px;
+}
+
+/* ---------- word list ---------- */
+
+.word-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.word-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+.word-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  height: 44px;
+  padding: 0 20px;
+  border-bottom: 1px solid var(--wf-faint);
+  cursor: pointer;
+}
+
+.word-grid .word-row:nth-child(odd) {
+  border-right: 1px solid var(--wf-faint);
+}
+
+.word-row .word {
+  width: 40%;
+  flex: none;
+  font-size: 14px;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.word-row .translation {
+  flex: 1;
+  font-size: 14px;
+  color: var(--wf-mid);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Edit and Delete belong to the row under the pointer. Shown on every row at
+   once they turn a word list into a wall of buttons. */
+.word-row .row-actions {
+  display: none;
+  gap: 8px;
+}
+
+.word-row.hovered .row-actions {
+  display: flex;
+}
+
+.word-row.hovered .due,
+.word-row.hovered .mark {
+  display: none;
+}
+
+/* ---------- learned mark ---------- */
+
+/* A dot, not a tick: this is a state the learner is in, not the outcome of
+   something they just did. A word still in the pool carries no mark at all. */
+.mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  flex: none;
+  border-radius: 50%;
+  border: 1px solid var(--wf-ink);
+  font-family: var(--wf-mono);
+  font-size: 12px;
+}
+
+.mark.completed {
+  background: var(--wf-ink);
+  color: var(--wf-paper);
+}
+
+.mark.small {
+  width: 8px;
+  height: 8px;
+  background: var(--wf-ink);
+  font-size: 0;
+}
+
+/* ---------- translation chip ---------- */
+
+/* Sized to its text: a chip is a word, and a row of equal-width chips reads as
+   a chart rather than as vocabulary. */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 34px;
+  padding: 0 12px;
+  background: var(--wf-panel);
+  border: 1px solid var(--wf-line);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.chip.in-use {
+  background: var(--wf-faint);
+  border-color: var(--wf-ink);
+}
+
+.chip.learned {
+  border-color: var(--wf-mid);
+}
+
+/* Four rising bars on a log scale, one always filled: a translation the corpus
+   rarely saw is still a translation. */
+.bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 12px;
+}
+
+.bars i {
+  display: block;
+  width: 3px;
+  background: var(--wf-soft);
+}
+
+.bars i.on {
+  background: var(--wf-ink);
+}
+
+.bars i:nth-child(1) { height: 4px; }
+.bars i:nth-child(2) { height: 6px; }
+.bars i:nth-child(3) { height: 9px; }
+.bars i:nth-child(4) { height: 12px; }
+
+/* ---------- dictionary ----------
+   Read rather than operated, so its text runs about a fifth larger than the
+   rest of the app. Laid out as a reference entry, not a set of cards: boxing
+   each meaning made a word with six of them read as six unrelated results. */
+
+.dict-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 560px;
+  margin: 0 auto;
+}
+
+.dict-search input {
+  flex: 1;
+  height: 38px;
+  padding: 0 12px;
+  border: 1px solid var(--wf-line);
+  background: var(--wf-panel);
+  font-size: 16px;
+  text-align: center;
+  color: var(--wf-ink);
+  outline: none;
+}
+
+.dict-search .btn {
+  height: 38px;
+}
+
+.entry {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.entry-head {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px;
+  background: var(--wf-panel);
+  border: 1px solid var(--wf-line);
+}
+
+.entry-head .headword {
+  font-size: 29px;
+}
+
+.entry-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-left: 4px;
+}
+
+/* One meaning: definition and gender on the left, translations opposite.
+   Seven senses in ten carry no translation, so that column is dropped rather
+   than left as an empty third. The divider belongs to the row above it. */
+.sense {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--wf-faint);
+}
+
+.sense .num {
+  font-size: 16px;
+  color: var(--wf-mid);
+}
+
+.sense .target {
+  flex: 7;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 16px;
+}
+
+.sense .native {
+  flex: 3;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.dict-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.chip-flow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.form-flow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  font-size: 13px;
+}
+
+/* The sentence in the language being learned, its translation dimmer beneath:
+   the language being learned is the one being read. */
+.example .sentence {
+  font-size: 13px;
+  font-style: italic;
+  color: var(--wf-mid);
+}
+
+.example .translated {
+  font-size: 13px;
+  color: var(--wf-soft);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 6px;
+  border: 1px solid var(--wf-line);
+  background: var(--wf-faint);
+  font-family: var(--wf-mono);
+  font-size: 12px;
+  color: var(--wf-mid);
+}
+
+/* ---------- settings ----------
+   A title with its explanation under it, and whatever control the setting
+   needs on the right. Rows stack inside a card and draw their own separator. */
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 64px;
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--wf-faint);
+}
+
+.settings-row:last-child {
+  border-bottom: 0;
+}
+
+.settings-row-title {
+  font-size: 14px;
+}
+
+.settings-row-desc {
+  margin-top: 4px;
+}
+
+/* Minus, value, plus. A spin box would bring the Basic style's own chrome, and
+   most of these values are nudged rather than typed. */
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.stepper .btn {
+  width: 32px;
+  padding: 0;
+}
+
+.stepper .value {
+  min-width: 56px;
+  text-align: center;
+  font-size: 14px;
+}
+
+.switch {
+  position: relative;
+  width: 40px;
+  height: 20px;
+  flex: none;
+  border: 1px solid var(--wf-line);
+  background: var(--wf-faint);
+  cursor: pointer;
+}
+
+.switch::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  background: var(--wf-mid);
+}
+
+.switch.on {
+  background: var(--wf-ink);
+  border-color: var(--wf-ink);
+}
+
+.switch.on::after {
+  left: 22px;
+  background: var(--wf-paper);
+}
+
+.slider {
+  position: relative;
+  width: 200px;
+  height: 4px;
+  background: var(--wf-faint);
+}
+
+.slider i {
+  display: block;
+  height: 4px;
+  background: var(--wf-ink);
+}
+
+.slider::after {
+  content: "";
+  position: absolute;
+  top: -5px;
+  left: calc(var(--at, 50%) - 7px);
+  width: 14px;
+  height: 14px;
+  border: 1px solid var(--wf-ink);
+  background: var(--wf-panel);
+}
+
+/* ================================================================
+   Session shell corrections.
+   The rail is inert: five placeholder slots in the same places the
+   app's rail has them, none of them current, and nothing to click.
+   Leaving is the back button, which says so.
+   ================================================================ */
+
+.session-rail .session-slots {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding-top: calc(var(--wf-topbar-h) + 12px);
+}
+
+.session-rail .session-slots i {
+  display: flex;
+  width: 18px;
+  height: 18px;
+  margin: 10px 0;
+  border: 1px solid var(--wf-mid);
+  border-radius: 2px;
+  opacity: 0.4;
+}
+
+.session-topbar {
+  position: relative;
+  justify-content: space-between;
+}
+
+.session-bar-left,
+.session-bar-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+/* Centred on the bar's own width, not flowed between the two clusters: those
+   are never equal width, so flowing would put this off centre. */
+.session-bar-centre {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+/* The last ten answers, oldest left. Always ten: past that the window slides
+   rather than the ticks shrinking. Grey is untouched, and a skipped card is
+   neither a right answer nor a wrong guess, so it gets its own shade. */
+.session-ticks {
+  display: flex;
+  gap: 3px;
+  width: 400px;
+}
+
+.session-ticks i {
+  flex: 1;
+  height: 5px;
+  background: var(--wf-faint);
+}
+
+.session-ticks i.right {
+  background: var(--wf-ink);
+}
+
+.session-ticks i.wrong {
+  background: var(--wf-panel);
+  outline: 1px solid var(--wf-ink);
+  outline-offset: -1px;
+}
+
+.session-ticks i.skipped {
+  background: var(--wf-soft);
+}
+
+/* What the next answer is worth, falling as time passes. Colour shifts as it
+   drains in the app; grey here carries only the length. */
+.session-countdown i {
+  background: var(--wf-ink);
+}
+
+/* The letters a target-language keyboard has and the learner's does not.
+   Kept on screen through feedback rather than collapsing, which shifted
+   everything below on every answer. */
+.session-accents {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  width: 640px;
+}
+
+.session-accents .btn {
+  width: 38px;
+  padding: 0;
+}
+
+/* A finished pass has no card left, so each exercise ends on its own panel
+   rather than an empty stage behind buttons that do nothing. */
+.session-finish {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.session-finish .figure {
+  font-size: 28px;
+}
+
+/* ================================================================
+   Training and review frame.
+   Neither uses the session shell: they take the whole window, put a
+   header row across the top and hold the exercise in one panel
+   below. The exercise inside drops its own frame.
+   ================================================================ */
+
+.stage-frame {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 1920px;
+  height: 1080px;
+  padding: 24px;
+  background: var(--wf-paper);
+  border: 1px solid var(--wf-line);
+  overflow: hidden;
+}
+
+.stage-header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-height: 32px;
+  flex: none;
+}
+
+.stage-header .right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+/* Segments rather than "stage 3 of 5": the shape of the whole run reads at a
+   glance, and the one still running shows how far into it we are. */
+.stage-segments {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.stage-segments .segs {
+  display: flex;
+  gap: 4px;
+}
+
+.stage-segments .segs i {
+  display: block;
+  width: 24px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--wf-line);
+}
+
+.stage-segments .segs i.done {
+  background: var(--wf-ink);
+}
+
+.stage-segments .segs i.running {
+  position: relative;
+  width: 64px;
+  overflow: hidden;
+}
+
+.stage-segments .segs i.running::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--at, 40%);
+  background: var(--wf-ink);
+}
+
+.stage-panel {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--wf-panel);
+  border: 1px solid var(--wf-line);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* ================================================================
+   Setup.
+   A fresh install has no dictionary and no voice, so nothing can be
+   learned until this has fetched something. It takes the whole
+   window, since there is nothing to navigate to yet.
+   ================================================================ */
+
+.setup-frame {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  width: 1920px;
+  height: 1080px;
+  padding-top: 240px;
+  background: var(--wf-panel);
+  border: 1px solid var(--wf-line);
+  overflow: hidden;
+}
+
+/* Every setup screen is one centred column: one headline, one group of controls, one
+   action. 560px is what a headline needs on one line; the controls inside hold 420px, so
+   a field, a list and a button all share one edge down the middle of the screen. */
+.setup {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 32px;
+  width: 560px;
+  text-align: center;
+}
+
+/* One headline size across the sequence. The account screen overrides it, because it is
+   the only screen where the learner has seen nothing of the app yet. */
+.setup .headline {
+  font-size: 44px;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+
+.setup.opening .headline {
+  font-size: 64px;
+}
+
+/* A headline and the line under it are one unit. Anything wider would read as the same
+   distance as the gap between unrelated sections. */
+.setup .header-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.setup .lede {
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--wf-mid);
+}
+
+/* ---------- header / content split ---------- */
+
+.setup-header {
+  width: 560px;
+  flex: none;
+  margin-bottom: 80px;
+}
+
+.setup-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 32px;
+  width: 560px;
+  flex: 1;
+}
+
+/* ---------- controls: one width, one height ---------- */
+
+.setup .stack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 420px;
+}
+
+.setup .stack .btn,
+.setup .action {
+  width: 420px;
+  height: 48px;
+  font-size: 14px;
+}
+
+/* Leaves rather than commits, so it carries no border: a bordered row beside the real
+   choices reads as another choice. */
+.setup .stack .btn.ghost {
+  height: 40px;
+  color: var(--wf-mid);
+}
+
+/* A labelled control. The label sits outside the box — inside, the box became its own
+   caption — and the caret is hard against the right edge. */
+.setup-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 420px;
+  text-align: left;
+}
+
+.setup-field .label {
+  font-family: var(--wf-mono);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--wf-mid);
+}
+
+.setup-select {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 48px;
+  padding: 0 16px;
+  border: 1px solid var(--wf-line);
+  background: var(--wf-panel);
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.setup-select .caret {
+  color: var(--wf-mid);
+}
+
+/* ---------- rows ----------
+   Every list on these screens is this: files to download, facts about a found database,
+   anything with a name on the left and a value on the right. */
+
+.setup-list {
+  display: flex;
+  flex-direction: column;
+  width: 420px;
+  border: 1px solid var(--wf-line);
+  background: var(--wf-panel);
+  text-align: left;
+}
+
+.setup-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--wf-faint);
+}
+
+.setup-row:last-child {
+  border-bottom: none;
+}
+
+.setup-row .name {
+  flex: 1;
+  font-size: 15px;
+}
+
+.setup-row .size {
+  font-family: var(--wf-mono);
+  font-size: 12px;
+  color: var(--wf-mid);
+}
+
+/* A path is the one value here that will not fit beside its label, so its row stacks and
+   the text breaks rather than pushing the row wider than the column. */
+.setup-row.stacked {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  padding: 12px 16px;
+}
+
+.setup-row .path {
+  font-family: var(--wf-mono);
+  font-size: 12px;
+  color: var(--wf-mid);
+  word-break: break-all;
+}
+
+/* Only a file that can be declined carries a box. */
+.setup-row .box {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  border: 1px solid var(--wf-ink);
+}
+
+.setup-row .box.on {
+  background: var(--wf-ink);
+}
+
+/* Ticked and locked. Drawn filled like a ticked one: paler made the one file the app
+   cannot work without look less certain than the optional ones. */
+.setup-row .box.locked {
+  background: var(--wf-ink);
+  cursor: default;
+}
+
+/* Downloading. The box a screen ago is a bar now — the file stopped being a choice the
+   moment Continue was pressed. */
+.setup-row .track {
+  width: 96px;
+  flex: none;
+  height: 4px;
+  background: var(--wf-faint);
+}
+
+.setup-row .track i {
+  display: block;
+  height: 4px;
+  background: var(--wf-ink);
+}
+
+/* One file downloads at a time. A queued row says so rather than showing a bar at zero,
+   which reads as stalled instead of as next in line. */
+.setup-row.waiting .name,
+.setup-row.waiting .size {
+  color: var(--wf-mid);
+}
+
+.setup-row.waiting .track i {
+  background: var(--wf-soft);
+}
+
+/* What a skipped choice costs later: nothing that cannot be undone. */
+.setup-note {
+  width: 420px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--wf-mid);
+  text-align: left;
+}
+
+/* ---------- profile ---------- */
+
+.profile-head {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.profile-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  flex: none;
+  background: var(--wf-ink);
+  color: var(--wf-paper);
+  font-family: var(--wf-mono);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.profile-avatar.signed-out {
+  background: transparent;
+  border: 1px solid var(--wf-line);
+  color: var(--wf-mid);
+}
+
+.profile-head .name {
+  font-size: 24px;
+}
+
+/* ---------- install notice ----------
+   Packages arrive behind whatever the user is doing, so this says a download
+   finished without taking the screen away. It fades out on its own. */
+
+.notice {
+  position: absolute;
+  right: 32px;
+  bottom: 32px;
+  padding: 8px 16px;
+  background: var(--wf-panel);
+  border: 1px solid var(--wf-ink);
+  font-size: 12px;
+  z-index: 100;
+}
+
+.notice.failure {
+  border-style: dashed;
+}

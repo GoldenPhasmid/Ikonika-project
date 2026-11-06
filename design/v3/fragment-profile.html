@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>V3 · Profile</title>
+  <link rel="stylesheet" href="./wireframe.css">
+</head>
+<body>
+  <div class="app">
+
+    <!-- no rail item is current: the mark in the rail head is what opens this -->
+    <aside class="rail">
+      <div class="rail-head">
+        <div class="rail-mark">AK</div>
+        <div class="rail-lang">FR / EN</div>
+      </div>
+      <nav class="rail-nav">
+        <a class="rail-item"><i class="rail-icon"></i><span class="label">Today</span><span class="count">54</span></a>
+        <a class="rail-item"><i class="rail-icon"></i><span class="label">Decks</span><span class="count">12</span></a>
+        <a class="rail-item"><i class="rail-icon"></i><span class="label">Reader</span></a>
+        <a class="rail-item"><i class="rail-icon"></i><span class="label">YouTube</span></a>
+        <a class="rail-item"><i class="rail-icon"></i><span class="label">Dictionary</span></a>
+        <a class="rail-item"><i class="rail-icon"></i><span class="label">Numbers</span></a>
+        <a class="rail-item"><i class="rail-icon"></i><span class="label">Time</span></a>
+        <a class="rail-item"><i class="rail-icon"></i><span class="label">Settings</span></a>
+      </nav>
+    </aside>
+
+    <div class="main">
+      <header class="topbar">
+        <span class="topbar-context">/ PROFILE</span>
+        <div class="topbar-actions">
+          <input class="search-box" placeholder="search" aria-label="Search">
+        </div>
+      </header>
+
+      <div class="content" style="display:flex;flex-direction:column;gap:28px;overflow:auto">
+
+        <!-- who. Never an empty line where a name goes: the address stands in
+             when Google gave no name, and a plain statement when nobody is in. -->
+        <div class="profile-head">
+          <div class="profile-avatar">AK</div>
+          <div style="display:flex;flex-direction:column;gap:4px">
+            <span class="name">Alex Kushnirenko</span>
+            <span class="meta">alex@example.com</span>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <span class="kicker">Account</span>
+          <div class="card">
+            <div class="settings-row">
+              <div>
+                <div class="settings-row-title">Google account</div>
+                <div class="meta settings-row-desc">Signed in · last synced 4 minutes ago</div>
+              </div>
+              <button class="btn">Sign out</button>
+            </div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-row-title">Cloud sync</div>
+                <div class="meta settings-row-desc">Decks, words and progress, in Google Drive's hidden per-app storage</div>
+              </div>
+              <button class="btn">Sync now</button>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <span class="kicker">Erase</span>
+          <div class="card">
+            <div class="settings-row">
+              <div>
+                <div class="settings-row-title">Erase everything</div>
+                <!-- both sides, since either alone comes back: a cleared database
+                     is refilled by the next pull, a deleted cloud copy by the
+                     next push -->
+                <div class="meta settings-row-desc">Every deck, word and day, here and in the cloud</div>
+              </div>
+              <button class="btn">Erase</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- only while signed in: it says what this machine holds, against the
+             copy the account carries -->
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <span class="kicker">On this device</span>
+          <div class="card">
+            <div class="settings-row">
+              <div>
+                <div class="settings-row-title">Learning</div>
+                <div class="meta settings-row-desc">French from English</div>
+              </div>
+            </div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-row-title">Decks</div>
+                <div class="meta settings-row-desc">12 decks on this device</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</body>
+</html>

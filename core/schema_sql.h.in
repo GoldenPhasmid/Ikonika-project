@@ -1,0 +1,11 @@
+#pragma once
+
+// Generated from core/resources/schema.sql by CMake — do not edit by hand.
+// Edit the .sql file and reconfigure; the build does it automatically.
+
+namespace FTDetail
+{
+    inline constexpr const char* kSchemaSql = R"sql(
+@SCHEMA_SQL@
+)sql";
+}

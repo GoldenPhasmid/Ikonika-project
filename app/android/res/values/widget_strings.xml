@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_title">Ikonika</string>
+    <string name="widget_open">Open Ikonika to start</string>
+    <string name="widget_review">Review</string>
+    <string name="widget_learn">Learn</string>
+    <string name="widget_description">Words reviewed and words learned today</string>
+</resources>

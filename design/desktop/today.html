@@ -1,0 +1,414 @@
+<title>Ikonika Desktop Today</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: ring at the head of a path. The path drops through Review and Learn, then turns into Grammar. Each tile keeps its days on the right. */
+:root {
+  --page: #e4e1d7; --page-ink: #2e2a25; --page-muted: #75716a; --page-line: #d6d2c5; --page-panel: #efede5;
+  --font: "Inter", "Segoe UI", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --page: #1d1d1b; --page-ink: #f2f0e9; --page-muted: #9c9a8f; --page-line: #3a3937; --page-panel: #262624; color-scheme: dark } }
+:root[data-theme="dark"] { --page: #1d1d1b; --page-ink: #f2f0e9; --page-muted: #9c9a8f; --page-line: #3a3937; --page-panel: #262624; color-scheme: dark }
+
+.frame {
+  --text: #f2f0e9; --muted: #9c9a8f; --accent: #5b9cf8; --panel: #262624; --faint: #30302e; --sunken: #2b2b29;
+  --subtle: #c2c0b6; --outline: #8a887e; --border: #3a3937; --correct: #4caf7d; --band: rgba(0,0,0,.13);
+}
+.frame[data-t="light"] {
+  --text: #2e2a25; --muted: #75716a; --accent: #3d63b0; --panel: #efede5; --faint: #e4e1d7; --sunken: #e9e6dd;
+  --subtle: #57534b; --outline: #857f72; --border: #d6d2c5; --correct: #3b7a53; --band: rgba(0,0,0,.08);
+}
+
+* { box-sizing: border-box }
+body {
+  background: var(--page); color: var(--page-ink); font-family: var(--font); margin: 0;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 28px 48px;
+}
+.wrap { max-width: 1320px; margin: 0 auto; display: grid; gap: 18px }
+.controls { display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: center }
+.seg { display: inline-flex; border: 1px solid var(--page-line); border-radius: 8px; overflow: hidden; background: var(--page-panel) }
+.seg button { font: 500 13px var(--font); color: var(--page-muted); background: none; border: 0; padding: 8px 13px; cursor: pointer }
+.seg button + button { border-left: 1px solid var(--page-line) }
+.seg button[aria-pressed="true"] { color: var(--page-ink); background: var(--page-line) }
+.seg button:focus-visible { outline: 2px solid #5b9cf8; outline-offset: -2px }
+.ctl-label { font: 600 11px var(--font); letter-spacing: .08em; text-transform: uppercase; color: var(--page-muted); margin-right: 8px }
+
+.stage { position: relative; width: 100%; overflow: hidden }
+.frame {
+  position: absolute; top: 0; left: 0; transform-origin: 0 0; display: flex; flex-direction: column;
+  background: var(--sunken); color: var(--text); border-radius: 10px; overflow: hidden;
+  box-shadow: 0 0 0 1px var(--border), 0 24px 60px -20px rgba(0,0,0,.45);
+  font-family: var(--font); font-variant-numeric: tabular-nums;
+}
+
+.topbar {
+  height: 64px; flex: none; background: var(--panel); border-bottom: 1px solid var(--border);
+  display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 0 20px;
+}
+.tb-left, .tb-right { display: flex; align-items: center; gap: 18px }
+.tb-right { justify-content: flex-end }
+.badge { width: 38px; height: 38px; border-radius: 8px; background: var(--text); color: var(--panel); display: grid; place-items: center; font-weight: 700; font-size: 13px }
+.crumb { font-size: 22px; font-weight: 700 }
+.dests { display: flex; gap: 10px }
+.dest { width: 44px; height: 44px; display: grid; place-items: center; border-radius: 8px; color: var(--subtle); position: relative }
+.dest.on { background: var(--faint); color: var(--text) }
+.dest.on::after { content: ""; position: absolute; bottom: -3px; width: 18px; height: 3px; border-radius: 2px; background: var(--accent) }
+.tb-search { display: flex; align-items: center; gap: 8px; color: var(--subtle); font-size: 14px; font-weight: 500 }
+svg.i { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; flex: none }
+
+.content { flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 0 32px var(--bias) }
+.board {
+  position: relative; width: 100%; max-width: var(--max); margin: 0 auto;
+  display: grid; grid-template-columns: var(--ring-col) minmax(0,1.12fr) minmax(0,1fr);
+  column-gap: var(--col-gap); row-gap: var(--stack-gap);
+}
+.ring-cell { grid-column: 1; grid-row: 1 / 3; display: grid; align-items: center; justify-items: start }
+.tile-cell { grid-column: 2; min-width: 0 }
+.side-cell { grid-column: 3; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 8px }
+.below { margin-top: var(--below-gap); display: flex; flex-direction: column; gap: 8px; min-width: 0 }
+.below.c2 { grid-column: 2 }
+.below.c3 { grid-column: 3 }
+.flow { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible }
+
+.label-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; height: 14px }
+.label { font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--muted) }
+.label-row.rule::after { content: ""; flex: 1; height: 1px; align-self: center; background: var(--border) }
+
+/* ring */
+.ring { width: var(--ring); height: var(--ring); position: relative; margin-left: var(--ring-shift) }
+.ring svg { width: 100%; height: 100%; transform: rotate(-90deg) }
+.ring svg circle { fill: none; transition: stroke-dashoffset .7s cubic-bezier(.2,.7,.2,1) }
+.ring-center { position: absolute; inset: 0; display: grid; place-content: center; text-align: center }
+.ring-num { font-size: var(--ring-num); font-weight: 700; line-height: 1; letter-spacing: -.02em }
+.ring-of { font-size: 13px; color: var(--muted); margin-top: 4px }
+
+/* week */
+.week { display: grid; grid-template-columns: repeat(7, 1fr); height: 62px; align-items: center }
+.day { display: grid; justify-items: center; gap: 6px }
+.day-letter { font-size: 12px; font-weight: 500; color: var(--muted) }
+.day.today .day-letter { color: var(--text); font-weight: 700 }
+.day-ring { width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center }
+.day.today .day-ring { background: var(--faint) }
+.day-ring svg { width: 28px; height: 28px; transform: rotate(-90deg) }
+.day-ring svg circle { fill: none }
+.day-future { width: 6px; height: 6px; border-radius: 50%; background: var(--border) }
+
+/* session tiles */
+.tile {
+  position: relative; overflow: hidden; display: flex; align-items: center; gap: 16px;
+  height: var(--tile); padding: 0 22px 0 18px; border-radius: 12px;
+  background: var(--panel); border: 1px solid var(--border); color: var(--text);
+  font: inherit; text-align: left; width: 100%; cursor: pointer;
+  transition: border-color .15s, background-color .15s;
+}
+.tile:hover { border-color: var(--outline) }
+.tile:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px }
+.tile.filled { background: var(--text); color: var(--panel); border-color: var(--text) }
+.tile.filled::before {
+  content: ""; position: absolute; inset: 0; background: var(--band);
+  clip-path: polygon(58% 100%, 100% 22%, 100% 100%); pointer-events: none;
+}
+.tile.done { color: var(--muted) }
+.tile.done .tile-icon { opacity: .6 }
+.tile-icon { width: 44px; height: 44px; border-radius: 8px; display: grid; place-items: center; background: var(--faint); flex: none; position: relative }
+.tile.filled .tile-icon { background: rgba(0,0,0,.08) }
+.tile-body { flex: 1; min-width: 0; display: grid; gap: 4px; position: relative }
+.tile-title { font-size: var(--tile-font); font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 10px }
+.tile-caption { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+.tile.filled .tile-caption { color: color-mix(in srgb, var(--panel) 62%, transparent) }
+.tile-trail { font-size: 26px; font-weight: 700; position: relative; display: flex; align-items: center }
+.tile-trail:empty { display: none }
+.tile-trail svg { width: 32px; height: 32px; stroke-width: 2 }
+.tile.small { height: 62px; padding: 0 12px; gap: 10px }
+.tile.small .tile-icon { width: 22px; height: 32px; background: none }
+.tile.small .tile-title { font-size: 15px; font-weight: 600 }
+.tile.locked { border-style: dashed; cursor: default; color: var(--muted); background: transparent }
+.tile.locked:hover { border-color: var(--border) }
+.dot { width: 9px; height: 9px; border-radius: 50%; flex: none }
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px }
+
+/* coming up */
+.coming { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px }
+.dt {
+  height: 62px; border-radius: 8px; border: 1px solid var(--border); background: transparent; min-width: 0;
+  display: grid; place-content: center; text-align: center; gap: 2px; color: var(--muted); font: inherit; padding: 0;
+}
+.dt b { font-size: 18px; font-weight: 700 }
+.dt span { font-size: 12px }
+.dt.due { border-color: color-mix(in srgb, var(--accent) 60%, transparent); background: color-mix(in srgb, var(--accent) 10%, var(--panel)); cursor: pointer }
+.dt.due b { color: var(--text) }
+.dt.due:hover { background: color-mix(in srgb, var(--accent) 18%, var(--panel)) }
+
+.notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px 28px; max-width: 1100px; margin-top: 6px }
+.note { font-size: 14px; line-height: 1.55; color: var(--page-muted) }
+.note strong { display: block; color: var(--page-ink); font-weight: 600; margin-bottom: 2px }
+
+@media (prefers-reduced-motion: reduce) { .ring svg circle, .tile { transition: none } }
+</style>
+
+<div class="wrap">
+  <div class="controls">
+    <div><span class="ctl-label">State</span><span class="seg" id="seg-state">
+      <button id="s-morning" data-v="morning">Morning</button><button id="s-midway" data-v="midway">Halfway</button><button id="s-done" data-v="done">Goal reached</button><button id="s-new" data-v="new">New learner</button>
+    </span></div>
+    <div><span class="ctl-label">Window</span><span class="seg" id="seg-size">
+      <button id="z-min" data-v="min">960 &times; 640</button><button id="z-target" data-v="target">1280 &times; 800</button>
+    </span></div>
+    <div><span class="ctl-label">Theme</span><span class="seg" id="seg-theme">
+      <button id="t-dark" data-v="dark">Dark</button><button id="t-light" data-v="light">Light</button>
+    </span></div>
+  </div>
+
+  <div class="stage" id="stage">
+    <div class="frame" id="frame" data-t="dark">
+      <div class="topbar">
+        <div class="tb-left"><div class="badge">FR</div><div class="crumb">Today</div></div>
+        <div class="dests">
+          <div class="dest on"><svg class="i" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></svg></div>
+          <div class="dest"><svg class="i" viewBox="0 0 24 24"><path d="M4 6h9M8.5 4v2c0 4-2 7-4.5 8.5M6.5 9.5c1 2 3 3.5 5.5 4.5M13 20l4-9 4 9M14.5 17h5"/></svg></div>
+          <div class="dest"><svg class="i" viewBox="0 0 24 24"><path d="M12 6c-2-1.5-5-2-8-1.5v14c3-.5 6 0 8 1.5 2-1.5 5-2 8-1.5v-14c-3-.5-6 0-8 1.5zM12 6v14"/></svg></div>
+          <div class="dest"><svg class="i" viewBox="0 0 24 24"><path d="M12 3l9 5-9 5-9-5 9-5zM3 12.5l9 5 9-5M3 16.5l9 5 9-5"/></svg></div>
+          <div class="dest"><svg class="i" viewBox="0 0 24 24"><path d="M5 4v16M9 4v16M13 4v16M16 4.5l4 15"/></svg></div>
+        </div>
+        <div class="tb-right">
+          <div class="tb-search"><svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>Search</div>
+          <svg class="i" viewBox="0 0 24 24" style="color:var(--subtle)"><circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></svg>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="board" id="board">
+          <svg class="flow" id="flow"></svg>
+
+          <div class="ring-cell"><div class="ring" id="ring"></div></div>
+
+          <div class="tile-cell" id="row-review"></div>
+          <div class="side-cell">
+            <div class="label-row rule"><span class="label">Coming up</span></div>
+            <div class="coming" id="coming"></div>
+          </div>
+
+          <div class="tile-cell" id="row-learn"></div>
+          <div class="side-cell">
+            <div class="label-row rule"><span class="label">This week</span></div>
+            <div class="week" id="week"></div>
+          </div>
+
+          <div class="below c2">
+            <div class="label-row"><span class="label">Grammar</span></div>
+            <div class="pair" id="grammar"></div>
+          </div>
+          <div class="below c3">
+            <div class="label-row"><span class="label">Practice</span></div>
+            <div class="pair" id="practice"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="notes">
+    <div class="note"><strong>Progress flows from the ring</strong>The ring sits beside Review and Learn. A bracket between them carries a dot for each tile and joins the ring at its middle, then runs on, dashed, into Grammar. A finished step fills its dot and the line into it, as the app does now.</div>
+    <div class="note"><strong>Review and Learn stay the focus</strong>They keep the middle column at full session height. The filled tile is the next thing to do; once the goal is reached it moves to Conjugations.</div>
+    <div class="note"><strong>Days beside each tile</strong>Reviews coming up sit right of Review. This week's goal rings sit right of Learn.</div>
+    <div class="note"><strong>After the goal</strong>The line into Grammar is dashed because grammar sits outside the daily goal. An arrow passes from Grammar to Practice, where Sentences sits first.</div>
+  </div>
+</div>
+
+<script>
+const ICON = {
+  review: '<path d="M4 12a8 8 0 0 1 13.7-5.6L20 8.5M20 4v4.5h-4.5M20 12a8 8 0 0 1-13.7 5.6L4 15.5M4 20v-4.5h4.5"/>',
+  learn: '<path d="M12 3c.5 5 4 8.5 9 9-5 .5-8.5 4-9 9-.5-5-4-8.5-9-9 5-.5 8.5-4 9-9z" stroke-width="1.5"/>',
+  conj: '<path d="M15.5 4.5l4 4L9 19l-5 1 1-5z"/>',
+  forms: '<rect x="4" y="8" width="11" height="12" rx="2"/><path d="M9 8V5a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1h-4"/>',
+  sentences: '<path d="M4 6h16M4 10h16M4 14h11M4 18h13"/>',
+  practice: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r=".6"/>',
+  check: '<path d="M5 12.5l4.5 4.5L19 7"/>',
+  lock: '<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>'
+};
+const svg = name => `<svg class="i" viewBox="0 0 24 24">${ICON[name]}</svg>`;
+
+const STATES = {
+  morning: { goal: 15, learned: 0, due: 30, reviewed: 0, learnSession: false, reviewSession: false,
+    upcoming: [30, 30, 15, 16, 15], words: 571, week: [{ r: 1, l: 1 }, { r: 1, l: .6 }],
+    conj: { ready: true, count: 77 }, forms: { ready: true, count: 12 }, sent: { ready: true, count: 1284, saved: false } },
+  midway: { goal: 15, learned: 9, due: 0, reviewed: 30, learnSession: true, reviewSession: false,
+    upcoming: [0, 30, 15, 16, 15], words: 580, week: [{ r: 1, l: 1 }, { r: 1, l: .6 }],
+    conj: { ready: true, count: 77 }, forms: { ready: true, count: 12 }, sent: { ready: true, count: 1284, saved: false } },
+  done: { goal: 15, learned: 15, due: 0, reviewed: 30, learnSession: false, reviewSession: false,
+    upcoming: [0, 30, 15, 16, 15], words: 586, week: [{ r: 1, l: 1 }, { r: 1, l: .6 }],
+    conj: { ready: true, count: 77 }, forms: { ready: true, count: 12 }, sent: { ready: true, count: 1284, saved: true } },
+  new: { goal: 15, learned: 0, due: 0, reviewed: 0, learnSession: false, reviewSession: false,
+    upcoming: [0, 0, 6, 0, 0], words: 30, week: [{ r: 0, l: 0 }, { r: 1, l: .4 }],
+    conj: { ready: false, count: 0 }, forms: { ready: false, count: 0 }, sent: { ready: false, count: 0, saved: false } }
+};
+
+const SIZES = {
+  min: { w: 960, h: 640, max: 896, ringCol: 168, colGap: 28, tile: 100, tileFont: 20, ring: 152, ringStroke: 12, ringNum: 42, ringShift: -12, stackGap: 12, belowGap: 34, bias: 40 },
+  target: { w: 1280, h: 800, max: 1060, ringCol: 200, colGap: 32, tile: 120, tileFont: 22, ring: 176, ringStroke: 12, ringNum: 48, ringShift: -12, stackGap: 14, belowGap: 44, bias: 56 }
+};
+
+let view = { state: 'morning', size: 'min', theme: (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') };
+try { Object.assign(view, JSON.parse(localStorage.getItem('today-mock') || '{}')) } catch (e) {}
+
+const $ = id => document.getElementById(id);
+
+function ringSvg(size, stroke, gap, outer, inner) {
+  const rOuter = (size - stroke) / 2;
+  const rInner = rOuter - stroke - gap;
+  const arc = (r, p, colour) => {
+    const c = 2 * Math.PI * r;
+    return `<circle cx="${size / 2}" cy="${size / 2}" r="${r}" stroke="var(--faint)" stroke-width="${stroke}"/>` +
+      `<circle cx="${size / 2}" cy="${size / 2}" r="${r}" stroke="${colour}" stroke-width="${stroke}" stroke-linecap="round"
+        stroke-dasharray="${c}" stroke-dashoffset="${c * (1 - Math.min(Math.max(p, 0), 1))}" ${p <= 0 ? 'stroke-opacity="0"' : ''}/>`;
+  };
+  return `<svg viewBox="0 0 ${size} ${size}">${arc(rOuter, outer, 'var(--accent)')}${arc(rInner, inner, 'var(--correct)')}</svg>`;
+}
+
+function tile({ id, icon, title, caption, trail, filled, done, dot, locked, small }) {
+  const cls = ['tile', small && 'small', filled && 'filled', done && 'done', locked && 'locked'].filter(Boolean).join(' ');
+  const trailHtml = done ? svg('check') : (trail ?? '');
+  const dotHtml = dot ? `<span class="dot" style="background:${dot}"></span>` : '';
+  return `<button class="${cls}" id="${id}" ${locked ? 'aria-disabled="true"' : ''}>
+    <span class="tile-icon">${svg(locked ? 'lock' : icon)}</span>
+    <span class="tile-body"><span class="tile-title">${dotHtml}${title}</span>${caption ? `<span class="tile-caption">${caption}</span>` : ''}</span>
+    <span class="tile-trail">${locked ? '' : trailHtml}</span></button>`;
+}
+
+function render() {
+  const s = STATES[view.state];
+  const z = SIZES[view.size];
+  const frame = $('frame');
+  frame.dataset.t = view.theme;
+  frame.style.width = z.w + 'px';
+  frame.style.height = z.h + 'px';
+  for (const [name, value] of [['--tile', z.tile], ['--tile-font', z.tileFont], ['--ring', z.ring], ['--ring-num', z.ringNum],
+    ['--ring-col', z.ringCol], ['--col-gap', z.colGap], ['--stack-gap', z.stackGap], ['--below-gap', z.belowGap],
+    ['--ring-shift', z.ringShift], ['--bias', z.bias], ['--max', z.max]])
+    frame.style.setProperty(name, value + 'px');
+
+  const reviewTotal = s.reviewed + s.due;
+  const reviewRatio = reviewTotal > 0 ? s.reviewed / reviewTotal : 1;
+  const goalRatio = Math.min(s.learned / s.goal, 1);
+  const reviewDone = s.due === 0;
+  const learnDone = goalRatio >= 1;
+  const left = s.goal - s.learned;
+  const afterGoal = reviewDone && learnDone;
+  const nextExtra = afterGoal ? (s.conj.ready ? 'conj' : s.sent.ready ? 'sent' : '') : '';
+
+  $('ring').innerHTML = ringSvg(z.ring, z.ringStroke, 3, reviewRatio, goalRatio) +
+    `<div class="ring-center"><div class="ring-num">${s.learned}</div><div class="ring-of">of ${s.goal}</div></div>`;
+
+  $('row-review').innerHTML = tile({
+    id: 'today_review', icon: 'review', dot: 'var(--accent)',
+    title: s.reviewSession ? 'Continue review' : 'Review',
+    caption: reviewDone ? (s.reviewed ? 'All reviewed for today' : 'Nothing due yet') : '',
+    trail: s.due, filled: !reviewDone, done: reviewDone
+  });
+  $('row-learn').innerHTML = tile({
+    id: 'today_learn', icon: 'learn', dot: 'var(--correct)',
+    title: s.learnSession ? 'Continue learning' : 'Learn new words',
+    caption: learnDone ? 'Goal reached' : s.learnSession ? `${s.learned} of ${s.goal} learned` : '',
+    trail: left, filled: reviewDone && !learnDone, done: learnDone
+  });
+
+  const dayNames = ['Today', 'Thu', 'Fri', 'Sat', 'Sun'];
+  $('coming').innerHTML = s.upcoming.map((count, index) =>
+    `<button class="dt ${count > 0 ? 'due' : ''}" id="due_${index}"><b>${count}</b><span>${dayNames[index]}</span></button>`).join('');
+
+  const letters = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+  const todayIndex = 2;
+  $('week').innerHTML = letters.map((letter, index) => {
+    const today = index === todayIndex;
+    let mark = '<span class="day-future"></span>';
+    if (today) mark = ringSvg(28, 3, 2, reviewRatio, goalRatio);
+    else if (index < todayIndex) mark = ringSvg(28, 3, 2, s.week[index].r, s.week[index].l);
+    return `<div class="day ${today ? 'today' : ''}"><span class="day-letter">${letter}</span><span class="day-ring">${mark}</span></div>`;
+  }).join('');
+
+  $('grammar').innerHTML =
+    tile({ id: 'today_conjugation', small: true, icon: 'conj', title: 'Conjugations', locked: !s.conj.ready,
+      caption: s.conj.ready ? `${s.conj.count} verbs` : 'Learn more verbs', filled: nextExtra === 'conj' }) +
+    tile({ id: 'today_forms', small: true, icon: 'forms', title: 'Forms', locked: !s.forms.ready,
+      caption: s.forms.ready ? `${s.forms.count} words` : 'Learn more nouns' });
+  $('practice').innerHTML =
+    tile({ id: 'today_sentences', small: true, icon: 'sentences', title: 'Sentences', locked: !s.sent.ready,
+      caption: s.sent.ready ? (s.sent.saved ? 'Continue' : `${s.sent.count.toLocaleString('en')} ready`) : 'Learn more words',
+      filled: nextExtra === 'sent' }) +
+    tile({ id: 'today_practice', small: true, icon: 'practice', title: 'Practice',
+      caption: `${s.words.toLocaleString('en')} words` });
+
+  for (const [segId, key] of [['seg-state', 'state'], ['seg-size', 'size'], ['seg-theme', 'theme']])
+    for (const button of $(segId).querySelectorAll('button')) button.setAttribute('aria-pressed', button.dataset.v === view[key]);
+
+  try { localStorage.setItem('today-mock', JSON.stringify(view)) } catch (e) {}
+  fit();
+  requestAnimationFrame(() => drawFlow(reviewDone, learnDone));
+}
+
+function drawFlow(reviewDone, learnDone) {
+  const ring = $('ring');
+  const review = $('row-review');
+  const learn = $('row-learn');
+  const grammar = $('grammar');
+  const practice = $('practice');
+  const node = 9;
+  const radius = 14;
+  const ringRight = ring.offsetLeft + ring.offsetWidth;
+  const ringY = ring.offsetTop + ring.offsetHeight / 2;
+  const x = ringRight + 20;
+  const reviewY = review.offsetTop + review.offsetHeight / 2;
+  const learnY = learn.offsetTop + learn.offsetHeight / 2;
+  const grammarY = grammar.offsetTop + grammar.offsetHeight / 2;
+  const tileLeft = review.offsetLeft - 6;
+  const grammarLeft = grammar.offsetLeft - 8;
+  const arrowX = (grammar.offsetLeft + grammar.offsetWidth + practice.offsetLeft) / 2;
+
+  const lit = on => on ? 'var(--text)' : 'var(--outline)';
+  const solid = (d, on) => `<path d="${d}" fill="none" stroke="${lit(on)}" stroke-width="2" stroke-linecap="round"/>`;
+  const dashed = (d, on) => `<path d="${d}" fill="none" stroke="${lit(on)}" stroke-width="2" stroke-dasharray="3 5" stroke-linecap="round" stroke-linejoin="round"/>`;
+  const dot = (y, state) => {
+    if (state === 'reached')
+      return `<circle cx="${x}" cy="${y}" r="${node}" fill="var(--text)"/>` +
+        `<path d="M${x - 4} ${y + .5} l2.8 2.8 L${x + 4.5} ${y - 3.5}" fill="none" stroke="var(--sunken)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>`;
+    if (state === 'current')
+      return `<circle cx="${x}" cy="${y}" r="${node + 5}" fill="var(--text)" fill-opacity=".14"/>` +
+        `<circle cx="${x}" cy="${y}" r="${node - 1}" fill="var(--sunken)" stroke="var(--text)" stroke-width="2"/>`;
+    return `<circle cx="${x}" cy="${y}" r="${node - 1}" fill="var(--sunken)" stroke="var(--outline)" stroke-width="2"/>`;
+  };
+
+  const reviewState = reviewDone ? 'reached' : 'current';
+  const learnState = learnDone ? 'reached' : reviewDone ? 'current' : '';
+
+  $('flow').innerHTML =
+    solid(`M${ringRight + 4} ${ringY} H${x}`, true) +
+    solid(`M${x} ${ringY} V${reviewY + node}`, reviewDone) +
+    solid(`M${x} ${ringY} V${learnY - node}`, learnDone) +
+    solid(`M${x + node} ${reviewY} H${tileLeft}`, true) +
+    solid(`M${x + node} ${learnY} H${tileLeft}`, learnState !== '') +
+    dashed(`M${x} ${learnY + node + 4} V${grammarY - radius} Q${x} ${grammarY} ${x + radius} ${grammarY} H${grammarLeft}`, learnDone) +
+    `<path d="M${grammarLeft - 6} ${grammarY - 5} L${grammarLeft} ${grammarY} L${grammarLeft - 6} ${grammarY + 5}" fill="none" stroke="${lit(learnDone)}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>` +
+    `<path d="M${arrowX - 6} ${grammarY} H${arrowX + 6} M${arrowX + 1} ${grammarY - 5} L${arrowX + 6} ${grammarY} L${arrowX + 1} ${grammarY + 5}" fill="none" stroke="var(--outline)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>` +
+    dot(reviewY, reviewState) + dot(learnY, learnState);
+}
+
+function fit() {
+  const z = SIZES[view.size];
+  const scale = Math.min(1, $('stage').clientWidth / z.w);
+  $('frame').style.transform = `scale(${scale})`;
+  $('stage').style.height = (z.h * scale) + 'px';
+}
+
+for (const [segId, key] of [['seg-state', 'state'], ['seg-size', 'size'], ['seg-theme', 'theme']])
+  $(segId).addEventListener('click', event => {
+    const button = event.target.closest('button');
+    if (!button) return;
+    view[key] = button.dataset.v;
+    render();
+  });
+addEventListener('resize', fit);
+document.fonts && document.fonts.ready.then(render);
+render();
+</script>

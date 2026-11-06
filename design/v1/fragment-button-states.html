@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="./style.css">
+  <style>
+    body {
+      display: flex;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      overflow-y: auto;
+      padding: 40px 0;
+    }
+  </style>
+</head>
+<body>
+
+<!-- insert here -->
+<div class="stack-column">
+
+<!-- button set 1-->
+<div class="button-state-card">
+  <div class="stack-label">
+    <span class="title">SPEC · ANSWER OPTION STATES</span>
+    <span class="subtitle">MULTIPLE-CHOICE ROW · 1A SESSION</span>
+  </div>
+
+  <div class="button-state-panel">
+    <div class="button-state-grid">
+      <div class="state-group">
+        <div class="state-header">
+          <span class="state-name">DEFAULT</span>
+          <span class="state-description">RESTING · UNANSWERED</span>
+        </div>
+        <div class="state-item default">
+          <span class="option-number">2</span>
+          <span class="option-text">spoon</span>
+        </div>
+      </div>
+
+      <div class="state-group">
+        <div class="state-header">
+          <span class="state-name">HOVER</span>
+          <span class="state-description">POINTER OVER · BRACKETS SNAP ON</span>
+        </div>
+        <div class="state-item hover" style="position: relative;">
+          <span class="option-number">2</span>
+          <span class="option-text">spoon</span>
+          <div class="corner-bracket top-left"></div>
+          <div class="corner-bracket top-right"></div>
+          <div class="corner-bracket bottom-left"></div>
+          <div class="corner-bracket bottom-right"></div>
+        </div>
+      </div>
+
+      <div class="state-group">
+        <div class="state-header">
+          <span class="state-name">FOCUS</span>
+          <span class="state-description">KEYBOARD 1–4 · PRE-CONFIRM</span>
+        </div>
+        <div class="state-item focus">
+          <span class="option-number">2</span>
+          <span class="option-text">spoon</span>
+          <span class="state-status" style="margin-left:auto;font-family: var(--font-mono);font-size:9px;letter-spacing:0.14em;color:var(--color-subtle)">↩ CONFIRM</span>
+        </div>
+      </div>
+
+      <div class="state-group">
+        <div class="state-header">
+          <span class="state-name">PRESSED</span>
+          <span class="state-description">MOMENTARY · 90MS</span>
+        </div>
+        <div class="state-item pressed">
+          <span class="option-number">2</span>
+          <span class="option-text">spoon</span>
+        </div>
+      </div>
+
+      <div class="state-group">
+        <div class="state-header">
+          <span class="state-name">CORRECT</span>
+          <span class="state-description">ANSWER ACCEPTED · PROMOTES</span>
+        </div>
+        <div class="state-item correct">
+          <span class="option-number">2</span>
+          <span class="option-text">spoon</span>
+          <span class="state-status correct">✓</span>
+        </div>
+      </div>
+
+      <div class="state-group">
+        <div class="state-header">
+          <span class="state-name">INCORRECT</span>
+          <span class="state-description">ANSWER REJECTED · DEMOTES</span>
+        </div>
+        <div class="state-item incorrect">
+          <span class="option-number">2</span>
+          <span class="option-text">fork</span>
+          <span class="state-status incorrect">✕</span>
+        </div>
+      </div>
+
+      <div class="state-group">
+        <div class="state-header">
+          <span class="state-name">REVEALED</span>
+          <span class="state-description">THE ONE YOU MISSED</span>
+        </div>
+        <div class="state-item revealed">
+          <span class="option-number">2</span>
+          <span class="option-text">spoon</span>
+          <span class="state-status revealed">CORRECT ANSWER</span>
+        </div>
+      </div>
+
+      <div class="state-group">
+        <div class="state-header">
+          <span class="state-name">DISABLED</span>
+          <span class="state-description">OTHER OPTIONS AFTER ANSWERING</span>
+        </div>
+        <div class="state-item disabled">
+          <span class="option-number">2</span>
+          <span class="option-text">knife</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="spec-footer">
+      <span>HIT AREA · 100% × 58PX MIN</span>
+      <span>TRANSITION · BRACKETS 90MS, NO MOVEMENT OR SHADOW</span>
+      <span>STATE HELD 700MS BEFORE ADVANCE</span>
+      <span>COLOUR NEVER THE ONLY SIGNAL · ✓ ✕ GLYPH + INSET EDGE</span>
+    </div>
+  </div>
+</div>
+
+<!-- button set 2 !-->
+<div class="button-state-card">
+  <div class="stack-label">
+    <span class="title">SPEC · ANSWER OPTION STATES · V2</span>
+    <span class="subtitle">FILLED, ROUNDED · ACCENT FOCUS RING</span>
+  </div>
+
+  <div class="button-state-panel">
+    <div class="button-state-grid-v2">
+      <div class="state-group">
+        <div class="state-header">
+          <span class="state-name">DEFAULT</span>
+          <span class="state-description">RESTING · UNANSWERED</span>
+        </div>
+        <div class="state-item-v2 default">
+          <span class="option-number">2</span>
+          <span class="option-text">spoon</span>
+        </div>
+      </div>
+
+      <div class="state-group">
+        <div class="state-header">
+          <span class="state-name">HOVER</span>
+          <span class="state-description">POINTER OVER · BRACKETS SNAP ON</span>
+        </div>
+        <div class="state-item-v2 hover" style="position: relative;">
+          <span class="option-number">2</span>
+          <span class="option-text">spoon</span>
+          <div class="corner-bracket top-left"></div>
+          <div class="corner-bracket top-right"></div>
+          <div class="corner-bracket bottom-left"></div>
+          <div class="corner-bracket bottom-right"></div>
+        </div>
+      </div>
+
+      <div class="state-group">
+        <div class="state-header">
+          <span class="state-name">FOCUS</span>
+          <span class="state-description">KEYBOARD 1–4 · PRE-CONFIRM</span>
+        </div>
+        <div class="state-item-v2 focus">
+          <span class="option-number">2</span>
+          <span class="option-text">spoon</span>
+          <span class="state-status-v2" style="margin-left:auto;font-family: var(--font-mono);font-size:9px;letter-spacing:0.14em;color:var(--color-subtle)">↩ CONFIRM</span>
+        </div>
+      </div>
+
+      <div class="state-group">
+        <div class="state-header">
+          <span class="state-name">PRESSED</span>
+          <span class="state-description">MOMENTARY · 90MS · SOLID FILL</span>
+        </div>
+        <div class="state-item-v2 pressed">
+          <span class="option-number">2</span>
+          <span class="option-text">spoon</span>
+        </div>
+      </div>
+
+      <div class="state-group">
+        <div class="state-header">
+          <span class="state-name">CORRECT</span>
+          <span class="state-description">ANSWER ACCEPTED · PROMOTES</span>
+        </div>
+        <div class="state-item-v2 correct">
+          <span class="option-number">2</span>
+          <span class="option-text">spoon</span>
+          <span class="state-status-v2 correct">✓</span>
+        </div>
+      </div>
+
+      <div class="state-group">
+        <div class="state-header">
+          <span class="state-name">INCORRECT</span>
+          <span class="state-description">ANSWER REJECTED · DEMOTES</span>
+        </div>
+        <div class="state-item-v2 incorrect">
+          <span class="option-number">2</span>
+          <span class="option-text">fork</span>
+          <span class="state-status-v2 incorrect">✕</span>
+        </div>
+      </div>
+
+      <div class="state-group">
+        <div class="state-header">
+          <span class="state-name">REVEALED</span>
+          <span class="state-description">THE ONE YOU MISSED</span>
+        </div>
+        <div class="state-item-v2 revealed">
+          <span class="option-number">2</span>
+          <span class="option-text">spoon</span>
+          <span class="state-status-v2 revealed">CORRECT ANSWER</span>
+        </div>
+      </div>
+
+      <div class="state-group">
+        <div class="state-header">
+          <span class="state-name">DISABLED</span>
+          <span class="state-description">OTHER OPTIONS AFTER ANSWERING</span>
+        </div>
+        <div class="state-item-v2 disabled">
+          <span class="option-number">2</span>
+          <span class="option-text">knife</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="spec-footer">
+      <span>HIT AREA · 100% × 58PX MIN</span>
+      <span>TRANSITION · BACKGROUND/BORDER 90MS, NO MOVEMENT OR SHADOW</span>
+      <span>STATE HELD 700MS BEFORE ADVANCE</span>
+      <span>COLOUR NEVER THE ONLY SIGNAL · ✓ ✕ GLYPH + TINTED FILL</span>
+    </div>
+  </div>
+</div>
+
+</div>
+
+</body>
+</html>
+

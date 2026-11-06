@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>V3 · Session · Correct / Incorrect</title>
+  <link rel="stylesheet" href="./wireframe.css">
+</head>
+<body>
+  <div class="session-mode">
+
+    <aside class="session-rail">
+      <div class="session-slots"><i></i><i></i><i></i><i></i><i></i></div>
+    </aside>
+
+    <div class="session-main">
+
+      <header class="session-topbar">
+        <div class="session-bar-left">
+          <button class="btn">← Back</button>
+          <span class="session-topbar-context">Exercise / Correct / Incorrect</span>
+        </div>
+        <div class="session-bar-centre">
+          <span class="session-ticks">
+            <i class="right"></i><i class="right"></i><i class="wrong"></i><i class="right"></i><i class="right"></i><i class="right"></i><i class="wrong"></i><i class="right"></i><i class="right"></i><i></i>
+          </span>
+          <span class="session-counter">10 / 25</span>
+          <label class="session-toggle"><span class="track"></span>Endless</label>
+        </div>
+        <div class="session-bar-right">
+          <button class="btn disabled">Settings</button>
+          <button class="btn">Mute</button>
+        </div>
+      </header>
+
+      <div class="session-surface">
+        <div class="session-stage">
+
+          <span class="meta">Do you know this word?</span>
+
+          <div class="session-card">
+            <div class="session-word">le chien</div>
+            <!-- a bare spelling can be two things to learn, and judging whether
+                 you know it means knowing which one is being asked -->
+            <span class="meta">noun</span>
+            <div style="width:560px;height:1px;background:var(--wf-line)"></div>
+            <div class="session-translation">the dog</div>
+          </div>
+
+          <!-- yes and no are drawn the same. This is self-assessment, not
+               marking: colouring "no" as wrong discourages the honest answer
+               the schedule depends on. They replace the Reveal button rather
+               than sitting beside it, so there is only ever one thing to press. -->
+          <div class="session-yesno">
+            <button class="btn"><span class="num">←</span>No</button>
+            <button class="btn">Yes<span class="num">→</span></button>
+          </div>
+
+          <span class="meta">arrow keys · no / yes</span>
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+</body>
+</html>

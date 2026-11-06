@@ -1,0 +1,134 @@
+word	part_of_speech	gender	translation	teaching_rank
+tête	noun	1	head	102
+fin	noun	1	end	106
+film	noun	0	movie	117
+chien	noun	0	dog	121
+pays	noun	0	country	123
+verre	noun	0	drink	137
+soleil	noun	0	sun	160
+lumière	noun	1	light	164
+rêve	noun	0	dream	172
+cheveu	noun	0	hair	175
+chemin	noun	0	way	180
+fête	noun	1	party	184
+parler	verb		talk	191
+jambe	noun	1	leg	193
+dernier	adj		last	195
+dos	noun	0	back	210
+jeune	adj		young	222
+erreur	noun	1	mistake	231
+vouloir	verb		want	236
+trouver	verb		find	262
+oreille	noun	1	ear	264
+laisser	verb		let	274
+fou	adj		crazy	277
+donner	verb		give	291
+gauche	noun	1	left	302
+odeur	noun	1	smell	321
+jamais	adv		never	322
+heureux	adj		happy	329
+appeler	verb		call	337
+chaussure	noun	1	shoe	360
+magasin	noun	0	store	409
+blanc	adj		white	412
+venir	verb		come	446
+parole	noun	1	word	466
+vraiment	adv		really	503
+rester	verb		stay	514
+prochain	adj		next	519
+cheval	noun	0	horse	521
+élève	noun	2	student	561
+bizarre	adj		weird	589
+propriétaire	noun	2	owner	600
+oublier	verb		forget	616
+commencer	verb		start	647
+lèvre	noun	1	lip	664
+travailler	verb		work	668
+larme	noun	1	tear	748
+boire	verb		drink	766
+piscine	noun	1	pool	837
+merveilleux	adj		wonderful	845
+gagner	verb		win	894
+mourir	verb		die	960
+seulement	adv		only	1033
+appel	noun	0	call	1048
+intelligent	adj		smart	1078
+cacher	verb		hide	1114
+présent	noun	0	now	1140
+écrivain	noun	0	writer	1271
+perdre	verb		lose	1281
+demi	adj		half	1303
+extérieur	noun	0	outside	1394
+parfois	adv		sometimes	1422
+retrouver	verb		find	1426
+marrant	adj		funny	1486
+moyenne	noun	1	average	1539
+réfléchir	verb		think	1614
+four	noun	0	oven	1690
+attraper	verb		catch	1711
+gratuit	adj		free	1806
+flingue	noun	0	gun	1876
+sentir	verb		feel	1980
+coupable	adj		guilty	1999
+grenier	noun	0	attic	2004
+jambon	noun	0	ham	2146
+construire	verb		build	2198
+exemplaire	noun	0	copy	2378
+sourd	adj		deaf	2397
+brûler	verb		burn	2573
+ténèbres	noun	1	darkness	2616
+dépêcher	verb		hurry	2766
+âgé	adj		old	2769
+singe	noun	0	monkey	2891
+durer	verb		last	2959
+simplement	adv		just	3150
+velours	noun	0	velvet	3220
+vieil	adj		old	3290
+battre	verb		fight	3348
+caution	noun	1	bail	3431
+réparer	verb		fix	3553
+rivage	noun	0	shore	3690
+cacahuète	noun	1	peanut	3986
+moche	adj		ugly	3987
+féliciter	verb		congratulate	4249
+insigne	noun	0	badge	4478
+fonctionner	verb		work	4603
+godasse	noun	1	shoe	4949
+minuscule	adj		tiny	5007
+peser	verb		weigh	5112
+étui	noun	0	case	5317
+également	adv		also	5528
+dépenser	verb		spend	5700
+limpide	adj		clear	5801
+vigile	noun	0	guard	5844
+aboyer	verb		bark	6382
+saindoux	noun	0	lard	6452
+bélier	noun	0	ram	7229
+lisse	adj		smooth	7379
+gratter	verb		scratch	7981
+rugissement	noun	0	roar	8403
+vider	verb		empty	8826
+désormais	adv		now	9465
+pillard	noun	0	looter	9557
+emprunter	verb		borrow	10467
+fauvette	noun	1	warbler	10844
+glissant	adj		slippery	11839
+récompenser	verb		reward	11846
+encaisseur	noun	0	collector	12631
+mesquin	adj		petty	13409
+pourrir	verb		rot	13781
+hauban	noun	0	shroud	14470
+escarbille	noun	1	grit	17070
+marsouin	noun	0	porpoise	20162
+serviable	adj		helpful	21593
+errer	verb		wander	21857
+acouphène	noun	0	tinnitus	23810
+édifier	verb		build	29779
+zozotement	noun	0	lisp	35735
+sablonneux	adj		sandy	38154
+empoigner	verb		grab	39002
+soigneusement	adv		carefully	39061
+déboîtement	noun	0	dislocation	43158
+sangloter	verb		sob	44890
+filandreux	adj		stringy	45422
+aiguiser	verb		sharpen	46269

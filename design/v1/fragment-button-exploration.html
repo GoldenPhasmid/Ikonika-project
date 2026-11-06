@@ -1,0 +1,1423 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="./style.css">
+  <style>
+    body {
+      display: flex;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      overflow-y: auto;
+      padding: 40px 0;
+    }
+  </style>
+</head>
+<body>
+
+<!-- insert here -->
+<div class="stack-column">
+
+<!-- button set 1-->
+<div class="button-state-card">
+  <div class="stack-label">
+    <span class="title">SPEC · ANSWER OPTION STATES</span>
+    <span class="subtitle">MULTIPLE-CHOICE ROW · 1A SESSION</span>
+  </div>
+
+  <div class="button-state-panel">
+    <div class="button-state-grid">
+      <div class="state-group">
+        <div class="state-header">
+          <span class="state-name">DEFAULT</span>
+          <span class="state-description">RESTING · UNANSWERED</span>
+        </div>
+        <div class="state-item default">
+          <span class="option-number">2</span>
+          <span class="option-text">spoon</span>
+        </div>
+      </div>
+
+      <div class="state-group">
+        <div class="state-header">
+          <span class="state-name">HOVER</span>
+          <span class="state-description">POINTER OVER · BRACKETS SNAP ON</span>
+        </div>
+        <div class="state-item hover" style="position: relative;">
+          <span class="option-number">2</span>
+          <span class="option-text">spoon</span>
+          <div class="corner-bracket top-left"></div>
+          <div class="corner-bracket top-right"></div>
+          <div class="corner-bracket bottom-left"></div>
+          <div class="corner-bracket bottom-right"></div>
+        </div>
+      </div>
+
+      <div class="state-group">
+        <div class="state-header">
+          <span class="state-name">FOCUS</span>
+          <span class="state-description">KEYBOARD 1–4 · PRE-CONFIRM</span>
+        </div>
+        <div class="state-item focus">
+          <span class="option-number">2</span>
+          <span class="option-text">spoon</span>
+          <span class="state-status" style="margin-left:auto;font-family: var(--font-mono);font-size:9px;letter-spacing:0.14em;color:var(--color-subtle)">↩ CONFIRM</span>
+        </div>
+      </div>
+
+      <div class="state-group">
+        <div class="state-header">
+          <span class="state-name">PRESSED</span>
+          <span class="state-description">MOMENTARY · 90MS</span>
+        </div>
+        <div class="state-item pressed">
+          <span class="option-number">2</span>
+          <span class="option-text">spoon</span>
+        </div>
+      </div>
+
+      <div class="state-group">
+        <div class="state-header">
+          <span class="state-name">CORRECT</span>
+          <span class="state-description">ANSWER ACCEPTED · PROMOTES</span>
+        </div>
+        <div class="state-item correct">
+          <span class="option-number">2</span>
+          <span class="option-text">spoon</span>
+          <span class="state-status correct">✓</span>
+        </div>
+      </div>
+
+      <div class="state-group">
+        <div class="state-header">
+          <span class="state-name">INCORRECT</span>
+          <span class="state-description">ANSWER REJECTED · DEMOTES</span>
+        </div>
+        <div class="state-item incorrect">
+          <span class="option-number">2</span>
+          <span class="option-text">fork</span>
+          <span class="state-status incorrect">✕</span>
+        </div>
+      </div>
+
+      <div class="state-group">
+        <div class="state-header">
+          <span class="state-name">REVEALED</span>
+          <span class="state-description">THE ONE YOU MISSED</span>
+        </div>
+        <div class="state-item revealed">
+          <span class="option-number">2</span>
+          <span class="option-text">spoon</span>
+          <span class="state-status revealed">CORRECT ANSWER</span>
+        </div>
+      </div>
+
+      <div class="state-group">
+        <div class="state-header">
+          <span class="state-name">DISMISSED</span>
+          <span class="state-description">OTHER OPTIONS AFTER ANSWERING</span>
+        </div>
+        <div class="state-item dismissed">
+          <span class="option-number">2</span>
+          <span class="option-text">knife</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="spec-footer">
+      <span>HIT AREA · 100% × 58PX MIN</span>
+      <span>TRANSITION · BRACKETS 90MS, NO MOVEMENT OR SHADOW</span>
+      <span>STATE HELD 700MS BEFORE ADVANCE</span>
+      <span>COLOUR NEVER THE ONLY SIGNAL · ✓ ✕ GLYPH + INSET EDGE</span>
+    </div>
+  </div>
+</div>
+
+<!-- button set 2 !-->
+<div class="button-state-card">
+  <div class="stack-label">
+    <span class="title">SPEC · ANSWER OPTION STATES · V2</span>
+    <span class="subtitle">FILLED, ROUNDED · ACCENT FOCUS RING</span>
+  </div>
+
+  <div class="button-state-panel">
+    <div class="button-state-grid-v2">
+      <div class="state-group">
+        <div class="state-header">
+          <span class="state-name">DEFAULT</span>
+          <span class="state-description">RESTING · UNANSWERED</span>
+        </div>
+        <div class="state-item-v2 default">
+          <span class="option-number">2</span>
+          <span class="option-text">spoon</span>
+        </div>
+      </div>
+
+      <div class="state-group">
+        <div class="state-header">
+          <span class="state-name">HOVER</span>
+          <span class="state-description">POINTER OVER · SURFACE LIFTS</span>
+        </div>
+        <div class="state-item-v2 hover">
+          <span class="option-number">2</span>
+          <span class="option-text">spoon</span>
+        </div>
+      </div>
+
+      <div class="state-group">
+        <div class="state-header">
+          <span class="state-name">FOCUS</span>
+          <span class="state-description">KEYBOARD 1–4 · PRE-CONFIRM</span>
+        </div>
+        <div class="state-item-v2 focus">
+          <span class="option-number">2</span>
+          <span class="option-text">spoon</span>
+          <span class="state-status-v2" style="margin-left:auto;font-family: var(--font-mono);font-size:9px;letter-spacing:0.14em;color:var(--color-accent)">↩ CONFIRM</span>
+        </div>
+      </div>
+
+      <div class="state-group">
+        <div class="state-header">
+          <span class="state-name">PRESSED</span>
+          <span class="state-description">MOMENTARY · 90MS · SOLID FILL</span>
+        </div>
+        <div class="state-item-v2 pressed">
+          <span class="option-number">2</span>
+          <span class="option-text">spoon</span>
+        </div>
+      </div>
+
+      <div class="state-group">
+        <div class="state-header">
+          <span class="state-name">CORRECT</span>
+          <span class="state-description">ANSWER ACCEPTED · PROMOTES</span>
+        </div>
+        <div class="state-item-v2 correct">
+          <span class="option-number">2</span>
+          <span class="option-text">spoon</span>
+          <span class="state-status-v2 correct">✓</span>
+        </div>
+      </div>
+
+      <div class="state-group">
+        <div class="state-header">
+          <span class="state-name">INCORRECT</span>
+          <span class="state-description">ANSWER REJECTED · DEMOTES</span>
+        </div>
+        <div class="state-item-v2 incorrect">
+          <span class="option-number">2</span>
+          <span class="option-text">fork</span>
+          <span class="state-status-v2 incorrect">✕</span>
+        </div>
+      </div>
+
+      <div class="state-group">
+        <div class="state-header">
+          <span class="state-name">REVEALED</span>
+          <span class="state-description">THE ONE YOU MISSED</span>
+        </div>
+        <div class="state-item-v2 revealed">
+          <span class="option-number">2</span>
+          <span class="option-text">spoon</span>
+          <span class="state-status-v2 revealed">CORRECT ANSWER</span>
+        </div>
+      </div>
+
+      <div class="state-group">
+        <div class="state-header">
+          <span class="state-name">DISMISSED</span>
+          <span class="state-description">OTHER OPTIONS AFTER ANSWERING</span>
+        </div>
+        <div class="state-item-v2 dismissed">
+          <span class="option-number">2</span>
+          <span class="option-text">knife</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="spec-footer">
+      <span>HIT AREA · 100% × 58PX MIN</span>
+      <span>TRANSITION · BACKGROUND/BORDER 90MS, NO MOVEMENT OR SHADOW</span>
+      <span>STATE HELD 700MS BEFORE ADVANCE</span>
+      <span>COLOUR NEVER THE ONLY SIGNAL · ✓ ✕ GLYPH + TINTED FILL</span>
+    </div>
+  </div>
+</div>
+
+<!-- button set 3, independent styling, not part of style.css -->
+<style>
+  .v3-card {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    font-family: Georgia, "Iowan Old Style", "Palatino Linotype", serif;
+  }
+
+  .v3-label {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+  }
+
+  .v3-label .title {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    font-family: Georgia, serif;
+    font-style: italic;
+    color: #2B2A26;
+  }
+
+  .v3-label .subtitle {
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    color: #9C9890;
+  }
+
+  .v3-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+    width: 1440px;
+    padding: 44px 48px;
+    background: #FBFAF6;
+    border: 1px solid #E4E0D6;
+  }
+
+  .v3-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 36px 32px;
+  }
+
+  .v3-group {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .v3-group-header {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .v3-group-header .name {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    color: #2B2A26;
+  }
+
+  .v3-group-header .desc {
+    font-size: 10px;
+    letter-spacing: 0.03em;
+    font-style: italic;
+    color: #9C9890;
+  }
+
+  .v3-option {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    padding: 12px 4px 10px;
+    min-height: 36px;
+    border-bottom: 1px solid #DAD5C8;
+    font-size: 19px;
+    color: #6B675F;
+    transition: border-color 90ms, color 90ms;
+  }
+
+  .v3-badge {
+    font-family: Georgia, serif;
+    font-size: 13px;
+    font-style: italic;
+    color: #B4AFA3;
+    flex: none;
+  }
+
+  .v3-option.default {
+    color: #6B675F;
+  }
+
+  .v3-option.hover {
+    border-color: #B4AFA3;
+    color: #2B2A26;
+  }
+
+  .v3-option.focus {
+    border-bottom: 1px solid #2B2A26;
+    color: #2B2A26;
+  }
+
+  .v3-option.focus .v3-badge {
+    color: #2B2A26;
+  }
+
+  .v3-option.pressed {
+    border-bottom: 2px solid #2B2A26;
+    color: #2B2A26;
+  }
+
+  .v3-option.correct {
+    color: #2B2A26;
+    font-weight: 600;
+  }
+
+  .v3-option.correct .v3-badge {
+    color: #5B6E4E;
+  }
+
+  .v3-option.incorrect {
+    color: #2B2A26;
+    font-weight: 600;
+  }
+
+  .v3-option.incorrect .v3-badge {
+    color: #A34A3F;
+  }
+
+  .v3-option.revealed {
+    border-bottom-style: dashed;
+    color: #5B6E4E;
+  }
+
+  .v3-option.dismissed {
+    border-color: #EBE7DC;
+    color: #C7C3B8;
+  }
+
+  .v3-option.dismissed .v3-badge {
+    color: #DAD5C8;
+  }
+
+  .v3-status {
+    margin-left: auto;
+    font-size: 12px;
+    font-style: italic;
+  }
+
+  .v3-status.correct { color: #5B6E4E; }
+  .v3-status.incorrect { color: #A34A3F; }
+  .v3-status.revealed { font-size: 10px; letter-spacing: 0.04em; color: #5B6E4E; }
+  .v3-status.confirm { font-size: 10px; letter-spacing: 0.04em; color: #6B675F; }
+
+  .v3-footer {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 36px;
+    border-top: 1px solid #E4E0D6;
+    padding-top: 20px;
+  }
+
+  .v3-footer span {
+    font-size: 11px;
+    font-style: italic;
+    letter-spacing: 0.02em;
+    color: #9C9890;
+  }
+</style>
+
+<div class="v3-card">
+  <div class="v3-label">
+    <span class="title">Spec — answer option states — v3</span>
+    <span class="subtitle">QUIET, EDITORIAL · UNDERLINE ONLY · SCOPED CSS</span>
+  </div>
+
+  <div class="v3-panel">
+    <div class="v3-grid">
+      <div class="v3-group">
+        <div class="v3-group-header">
+          <span class="name">Default</span>
+          <span class="desc">resting, unanswered</span>
+        </div>
+        <div class="v3-option default">
+          <span class="v3-badge">2.</span>
+          <span>spoon</span>
+        </div>
+      </div>
+
+      <div class="v3-group">
+        <div class="v3-group-header">
+          <span class="name">Hover</span>
+          <span class="desc">pointer over, line darkens</span>
+        </div>
+        <div class="v3-option hover">
+          <span class="v3-badge">2.</span>
+          <span>spoon</span>
+        </div>
+      </div>
+
+      <div class="v3-group">
+        <div class="v3-group-header">
+          <span class="name">Focus</span>
+          <span class="desc">keyboard 1–4, pre-confirm</span>
+        </div>
+        <div class="v3-option focus">
+          <span class="v3-badge">2.</span>
+          <span>spoon</span>
+          <span class="v3-status confirm">↩ confirm</span>
+        </div>
+      </div>
+
+      <div class="v3-group">
+        <div class="v3-group-header">
+          <span class="name">Pressed</span>
+          <span class="desc">momentary, line thickens</span>
+        </div>
+        <div class="v3-option pressed">
+          <span class="v3-badge">2.</span>
+          <span>spoon</span>
+        </div>
+      </div>
+
+      <div class="v3-group">
+        <div class="v3-group-header">
+          <span class="name">Correct</span>
+          <span class="desc">answer accepted, promotes</span>
+        </div>
+        <div class="v3-option correct">
+          <span class="v3-badge">2.</span>
+          <span>spoon</span>
+          <span class="v3-status correct">correct</span>
+        </div>
+      </div>
+
+      <div class="v3-group">
+        <div class="v3-group-header">
+          <span class="name">Incorrect</span>
+          <span class="desc">answer rejected, demotes</span>
+        </div>
+        <div class="v3-option incorrect">
+          <span class="v3-badge">2.</span>
+          <span>fork</span>
+          <span class="v3-status incorrect">incorrect</span>
+        </div>
+      </div>
+
+      <div class="v3-group">
+        <div class="v3-group-header">
+          <span class="name">Revealed</span>
+          <span class="desc">the one you missed</span>
+        </div>
+        <div class="v3-option revealed">
+          <span class="v3-badge">2.</span>
+          <span>spoon</span>
+          <span class="v3-status revealed">correct answer</span>
+        </div>
+      </div>
+
+      <div class="v3-group">
+        <div class="v3-group-header">
+          <span class="name">Dismissed</span>
+          <span class="desc">other options after answering</span>
+        </div>
+        <div class="v3-option dismissed">
+          <span class="v3-badge">2.</span>
+          <span>knife</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="v3-footer">
+      <span>hit area — 100% × 36px min</span>
+      <span>transition — underline weight, 90ms, no shape or fill change</span>
+      <span>state held 700ms before advance</span>
+      <span>colour used only for correct/incorrect ink, never as the primary signal</span>
+    </div>
+  </div>
+</div>
+
+<!-- button set 4, independent styling, not part of style.css. Awaiting approval before any promotion. -->
+<style>
+  .v4-card {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    font-family: "Segoe UI", system-ui, sans-serif;
+  }
+
+  .v4-label {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+  }
+
+  .v4-label .title {
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #1A1A2E;
+  }
+
+  .v4-label .subtitle {
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    color: #8A8AA0;
+  }
+
+  .v4-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 40px;
+    width: 1440px;
+    padding: 48px;
+    background: #F4F3FA;
+    border-radius: 28px;
+  }
+
+  .v4-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 24px;
+  }
+
+  .v4-group {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .v4-group-header {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .v4-group-header .name {
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    color: #1A1A2E;
+  }
+
+  .v4-group-header .desc {
+    font-size: 10px;
+    letter-spacing: 0.03em;
+    color: #8A8AA0;
+  }
+
+  .v4-tile {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: 168px;
+    padding: 20px;
+    border-radius: 24px;
+    background: #FFFFFF;
+    border: 3px solid transparent;
+    transition: transform 90ms, background 90ms, border-color 90ms;
+  }
+
+  .v4-tile-number {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 999px;
+    background: #EDEDF6;
+    color: #8A8AA0;
+    font-size: 14px;
+    font-weight: 800;
+  }
+
+  .v4-tile-word {
+    font-size: 28px;
+    font-weight: 800;
+    color: #1A1A2E;
+    letter-spacing: -0.01em;
+  }
+
+  .v4-tile-tag {
+    position: absolute;
+    top: 16px;
+    right: 18px;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+  }
+
+  .v4-tile.default {
+    background: #FFFFFF;
+  }
+
+  .v4-tile.hover {
+    background: #FFFFFF;
+    border-color: #C9C6F2;
+    transform: translateY(-3px);
+  }
+
+  .v4-tile.focus {
+    background: #FFFFFF;
+    border-color: #6C5CE7;
+  }
+
+  .v4-tile.focus .v4-tile-number {
+    background: #6C5CE7;
+    color: #FFFFFF;
+  }
+
+  .v4-tile.focus .v4-tile-tag {
+    color: #6C5CE7;
+  }
+
+  .v4-tile.pressed {
+    background: #6C5CE7;
+    transform: scale(0.97);
+  }
+
+  .v4-tile.pressed .v4-tile-word {
+    color: #FFFFFF;
+  }
+
+  .v4-tile.pressed .v4-tile-number {
+    background: rgba(255,255,255,0.25);
+    color: #FFFFFF;
+  }
+
+  .v4-tile.correct {
+    background: #00D68F;
+  }
+
+  .v4-tile.correct .v4-tile-word {
+    color: #FFFFFF;
+  }
+
+  .v4-tile.correct .v4-tile-number {
+    background: rgba(255,255,255,0.3);
+    color: #FFFFFF;
+  }
+
+  .v4-tile.correct .v4-tile-tag {
+    color: #FFFFFF;
+  }
+
+  .v4-tile.incorrect {
+    background: #FF4D6D;
+  }
+
+  .v4-tile.incorrect .v4-tile-word {
+    color: #FFFFFF;
+  }
+
+  .v4-tile.incorrect .v4-tile-number {
+    background: rgba(255,255,255,0.3);
+    color: #FFFFFF;
+  }
+
+  .v4-tile.incorrect .v4-tile-tag {
+    color: #FFFFFF;
+  }
+
+  .v4-tile.revealed {
+    background: #FFFFFF;
+    border-color: #00D68F;
+    border-style: dashed;
+  }
+
+  .v4-tile.revealed .v4-tile-tag {
+    color: #00D68F;
+  }
+
+  .v4-tile.disabled {
+    background: #EDEDF6;
+  }
+
+  .v4-tile.disabled .v4-tile-word {
+    color: #C6C5DA;
+  }
+
+  .v4-tile.disabled .v4-tile-number {
+    background: #E1E0F0;
+    color: #C6C5DA;
+  }
+
+  .v4-footer {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 32px;
+  }
+
+  .v4-footer span {
+    font-size: 11px;
+    letter-spacing: 0.03em;
+    color: #8A8AA0;
+    font-weight: 600;
+  }
+</style>
+
+<div class="v4-card">
+  <div class="v4-label">
+    <span class="title">Spec · answer option states · v4</span>
+    <span class="subtitle">BOLD, TILE GEOMETRY · 2D GRID MATCHES ON-SCREEN LAYOUT · AWAITING APPROVAL</span>
+  </div>
+
+  <div class="v4-panel">
+    <div class="v4-grid">
+      <div class="v4-group">
+        <div class="v4-group-header">
+          <span class="name">DEFAULT</span>
+          <span class="desc">resting, unanswered</span>
+        </div>
+        <div class="v4-tile default">
+          <span class="v4-tile-number">2</span>
+          <span class="v4-tile-word">spoon</span>
+        </div>
+      </div>
+
+      <div class="v4-group">
+        <div class="v4-group-header">
+          <span class="name">HOVER</span>
+          <span class="desc">pointer over, tile lifts</span>
+        </div>
+        <div class="v4-tile hover">
+          <span class="v4-tile-number">2</span>
+          <span class="v4-tile-word">spoon</span>
+        </div>
+      </div>
+
+      <div class="v4-group">
+        <div class="v4-group-header">
+          <span class="name">FOCUS</span>
+          <span class="desc">keyboard 1–4, pre-confirm</span>
+        </div>
+        <div class="v4-tile focus">
+          <span class="v4-tile-tag">↩ CONFIRM</span>
+          <span class="v4-tile-number">2</span>
+          <span class="v4-tile-word">spoon</span>
+        </div>
+      </div>
+
+      <div class="v4-group">
+        <div class="v4-group-header">
+          <span class="name">PRESSED</span>
+          <span class="desc">momentary, tile fills and shrinks</span>
+        </div>
+        <div class="v4-tile pressed">
+          <span class="v4-tile-number">2</span>
+          <span class="v4-tile-word">spoon</span>
+        </div>
+      </div>
+
+      <div class="v4-group">
+        <div class="v4-group-header">
+          <span class="name">CORRECT</span>
+          <span class="desc">answer accepted, promotes</span>
+        </div>
+        <div class="v4-tile correct">
+          <span class="v4-tile-tag">✓</span>
+          <span class="v4-tile-number">2</span>
+          <span class="v4-tile-word">spoon</span>
+        </div>
+      </div>
+
+      <div class="v4-group">
+        <div class="v4-group-header">
+          <span class="name">INCORRECT</span>
+          <span class="desc">answer rejected, demotes</span>
+        </div>
+        <div class="v4-tile incorrect">
+          <span class="v4-tile-tag">✕</span>
+          <span class="v4-tile-number">2</span>
+          <span class="v4-tile-word">fork</span>
+        </div>
+      </div>
+
+      <div class="v4-group">
+        <div class="v4-group-header">
+          <span class="name">REVEALED</span>
+          <span class="desc">the one you missed</span>
+        </div>
+        <div class="v4-tile revealed">
+          <span class="v4-tile-tag">ANSWER</span>
+          <span class="v4-tile-number">2</span>
+          <span class="v4-tile-word">spoon</span>
+        </div>
+      </div>
+
+      <div class="v4-group">
+        <div class="v4-group-header">
+          <span class="name">DISABLED</span>
+          <span class="desc">other options after answering</span>
+        </div>
+        <div class="v4-tile disabled">
+          <span class="v4-tile-number">2</span>
+          <span class="v4-tile-word">knife</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="v4-footer">
+      <span>tile — 1 of a 6-tile grid, 2 columns × 3 rows at actual size</span>
+      <span>transition — 90ms lift / shrink / fill, no border-only signal</span>
+      <span>state held 700ms before advance</span>
+      <span>colour never the only signal · glyph tag top-right + fill</span>
+    </div>
+  </div>
+</div>
+
+<!-- button set 5, independent styling, not part of style.css. Awaiting approval before any promotion. -->
+<style>
+  .v5-card {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    font-family: "Cascadia Code", "Consolas", monospace;
+  }
+
+  .v5-label {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+  }
+
+  .v5-label .title {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #E8E8EC;
+  }
+
+  .v5-label .subtitle {
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    color: #5A5A66;
+  }
+
+  .v5-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 36px;
+    width: 1440px;
+    padding: 48px;
+    background: #0F2A2E;
+    border-radius: 4px;
+  }
+
+  .v5-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    background: #1C3C40;
+  }
+
+  .v5-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    background: #0F2A2E;
+  }
+
+  .v5-group-header {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding: 18px 20px 14px;
+  }
+
+  .v5-group-header .name {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    color: #7A7A88;
+  }
+
+  .v5-group-header .desc {
+    font-size: 10px;
+    letter-spacing: 0.02em;
+    color: #45454E;
+  }
+
+  .v5-row {
+    position: relative;
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    padding: 14px 20px 22px;
+  }
+
+  .v5-index {
+    font-size: 12px;
+    color: #45454E;
+  }
+
+  .v5-word {
+    font-size: 22px;
+    color: #C8C8D0;
+    letter-spacing: -0.01em;
+  }
+
+  .v5-status {
+    margin-left: auto;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+  }
+
+  .v5-rule {
+    position: absolute;
+    left: 20px;
+    right: 20px;
+    bottom: 0;
+    height: 1px;
+    background: #1C3C40;
+  }
+
+  .v5-rule span {
+    display: block;
+    height: 1px;
+    width: 0%;
+    background: #45454E;
+    transition: width 90ms, background 90ms;
+  }
+
+  .v5-row.hover .v5-word { color: #E8E8EC; }
+  .v5-row.hover .v5-rule span { width: 100%; background: #45454E; }
+
+  .v5-row.focus .v5-word { color: #E8E8EC; }
+  .v5-row.focus .v5-index { color: #5B8CFF; }
+  .v5-row.focus .v5-rule span { width: 100%; background: #5B8CFF; }
+  .v5-row.focus .v5-status { color: #5B8CFF; }
+
+  .v5-row.pressed .v5-word { color: #FFFFFF; }
+  .v5-row.pressed .v5-rule span { width: 100%; height: 2px; background: #E8E8EC; }
+
+  .v5-row.correct .v5-word { color: #FFFFFF; }
+  .v5-row.correct .v5-index { color: #3DDC84; }
+  .v5-row.correct .v5-rule span { width: 100%; height: 2px; background: #3DDC84; }
+  .v5-row.correct .v5-status { color: #3DDC84; }
+
+  .v5-row.incorrect .v5-word { color: #FFFFFF; }
+  .v5-row.incorrect .v5-index { color: #FF6B6B; }
+  .v5-row.incorrect .v5-rule span { width: 100%; height: 2px; background: #FF6B6B; }
+  .v5-row.incorrect .v5-status { color: #FF6B6B; }
+
+  .v5-row.revealed .v5-word { color: #7ADFA8; }
+  .v5-row.revealed .v5-index { color: #3DDC84; }
+  .v5-row.revealed .v5-rule span { width: 100%; background: repeating-linear-gradient(90deg, #3DDC84 0 4px, transparent 4px 8px); }
+  .v5-row.revealed .v5-status { color: #3DDC84; }
+
+  .v5-row.disabled .v5-word { color: #454550; }
+  .v5-row.disabled .v5-index { color: #3A3A44; }
+
+  .v5-footer {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 32px;
+    border-top: 1px solid #1C3C40;
+    padding-top: 20px;
+  }
+
+  .v5-footer span {
+    font-size: 11px;
+    letter-spacing: 0.03em;
+    color: #45454E;
+  }
+</style>
+
+<div class="v5-card">
+  <div class="v5-label">
+    <span class="title">Spec · answer option states · v5</span>
+    <span class="subtitle">DARK, TERMINAL-ADJACENT · RULE-LINE FILLS LEFT-TO-RIGHT · AWAITING APPROVAL</span>
+  </div>
+
+  <div class="v5-panel">
+    <div class="v5-grid">
+      <div class="v5-group">
+        <div class="v5-group-header">
+          <span class="name">DEFAULT</span>
+          <span class="desc">resting, unanswered</span>
+        </div>
+        <div class="v5-row default">
+          <span class="v5-index">02</span>
+          <span class="v5-word">spoon</span>
+          <div class="v5-rule"><span></span></div>
+        </div>
+      </div>
+
+      <div class="v5-group">
+        <div class="v5-group-header">
+          <span class="name">HOVER</span>
+          <span class="desc">pointer over, rule appears</span>
+        </div>
+        <div class="v5-row hover">
+          <span class="v5-index">02</span>
+          <span class="v5-word">spoon</span>
+          <div class="v5-rule"><span></span></div>
+        </div>
+      </div>
+
+      <div class="v5-group">
+        <div class="v5-group-header">
+          <span class="name">FOCUS</span>
+          <span class="desc">keyboard 1–4, pre-confirm</span>
+        </div>
+        <div class="v5-row focus">
+          <span class="v5-index">02</span>
+          <span class="v5-word">spoon</span>
+          <span class="v5-status">↩ confirm</span>
+          <div class="v5-rule"><span></span></div>
+        </div>
+      </div>
+
+      <div class="v5-group">
+        <div class="v5-group-header">
+          <span class="name">PRESSED</span>
+          <span class="desc">momentary, rule thickens white</span>
+        </div>
+        <div class="v5-row pressed">
+          <span class="v5-index">02</span>
+          <span class="v5-word">spoon</span>
+          <div class="v5-rule"><span></span></div>
+        </div>
+      </div>
+
+      <div class="v5-group">
+        <div class="v5-group-header">
+          <span class="name">CORRECT</span>
+          <span class="desc">answer accepted, promotes</span>
+        </div>
+        <div class="v5-row correct">
+          <span class="v5-index">02</span>
+          <span class="v5-word">spoon</span>
+          <span class="v5-status">ok</span>
+          <div class="v5-rule"><span></span></div>
+        </div>
+      </div>
+
+      <div class="v5-group">
+        <div class="v5-group-header">
+          <span class="name">INCORRECT</span>
+          <span class="desc">answer rejected, demotes</span>
+        </div>
+        <div class="v5-row incorrect">
+          <span class="v5-index">02</span>
+          <span class="v5-word">fork</span>
+          <span class="v5-status">err</span>
+          <div class="v5-rule"><span></span></div>
+        </div>
+      </div>
+
+      <div class="v5-group">
+        <div class="v5-group-header">
+          <span class="name">REVEALED</span>
+          <span class="desc">the one you missed</span>
+        </div>
+        <div class="v5-row revealed">
+          <span class="v5-index">02</span>
+          <span class="v5-word">spoon</span>
+          <span class="v5-status">answer</span>
+          <div class="v5-rule"><span></span></div>
+        </div>
+      </div>
+
+      <div class="v5-group">
+        <div class="v5-group-header">
+          <span class="name">DISABLED</span>
+          <span class="desc">other options after answering</span>
+        </div>
+        <div class="v5-row disabled">
+          <span class="v5-index">02</span>
+          <span class="v5-word">knife</span>
+          <div class="v5-rule"><span></span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="v5-footer">
+      <span>rule-line — 90ms width/colour transition, fills full width on any active state</span>
+      <span>index — two-digit, mono, colour is the only index signal beyond the rule</span>
+      <span>state held 700ms before advance</span>
+      <span>colour never the only signal · index + rule + trailing status word together</span>
+    </div>
+  </div>
+</div>
+
+<!-- button set 6, independent styling, not part of style.css. Awaiting approval before any promotion. -->
+<style>
+  .v6-card {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    font-family: "Cascadia Code", "Consolas", monospace;
+  }
+
+  .v6-label {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+  }
+
+  .v6-label .title {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #1F1B10;
+  }
+
+  .v6-label .subtitle {
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    color: #C2B392;
+  }
+
+  .v6-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 36px;
+    width: 1440px;
+    padding: 48px;
+    background: #FBF7EC;
+    border-radius: 4px;
+  }
+
+  .v6-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    background: #EDE3CA;
+  }
+
+  .v6-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    background: #FBF7EC;
+  }
+
+  .v6-group-header {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding: 18px 20px 14px;
+  }
+
+  .v6-group-header .name {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    color: #8A7C5C;
+  }
+
+  .v6-group-header .desc {
+    font-size: 10px;
+    letter-spacing: 0.02em;
+    color: #C2B392;
+  }
+
+  .v6-row {
+    position: relative;
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    padding: 14px 20px 22px;
+  }
+
+  .v6-index {
+    font-size: 12px;
+    color: #C2B392;
+  }
+
+  .v6-word {
+    font-size: 22px;
+    color: #6B6142;
+    letter-spacing: -0.01em;
+  }
+
+  .v6-status {
+    margin-left: auto;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+  }
+
+  .v6-rule {
+    position: absolute;
+    left: 20px;
+    right: 20px;
+    bottom: 0;
+    height: 1px;
+    background: #EDE3CA;
+  }
+
+  .v6-rule span {
+    display: block;
+    height: 1px;
+    width: 0%;
+    background: #A6976F;
+    transition: width 90ms, background 90ms;
+  }
+
+  .v6-row.hover .v6-word { color: #1F1B10; }
+  .v6-row.hover .v6-rule span { width: 100%; background: #A6976F; }
+
+  .v6-row.focus .v6-word { color: #1F1B10; }
+  .v6-row.focus .v6-index { color: #A8560F; }
+  .v6-row.focus .v6-rule span { width: 100%; background: #A8560F; }
+  .v6-row.focus .v6-status { color: #A8560F; }
+
+  .v6-row.pressed .v6-word { color: #0E0B06; }
+  .v6-row.pressed .v6-rule span { width: 100%; height: 2px; background: #0E0B06; }
+
+  .v6-row.correct .v6-word { color: #0E0B06; }
+  .v6-row.correct .v6-index { color: #43601F; }
+  .v6-row.correct .v6-rule span { width: 100%; height: 2px; background: #43601F; }
+  .v6-row.correct .v6-status { color: #43601F; }
+
+  .v6-row.incorrect .v6-word { color: #0E0B06; }
+  .v6-row.incorrect .v6-index { color: #932A1C; }
+  .v6-row.incorrect .v6-rule span { width: 100%; height: 2px; background: #932A1C; }
+  .v6-row.incorrect .v6-status { color: #932A1C; }
+
+  .v6-row.revealed .v6-word { color: #3C5722; }
+  .v6-row.revealed .v6-index { color: #43601F; }
+  .v6-row.revealed .v6-rule span { width: 100%; background: repeating-linear-gradient(90deg, #43601F 0 4px, transparent 4px 8px); }
+  .v6-row.revealed .v6-status { color: #43601F; }
+
+  .v6-row.disabled .v6-word { color: #D9CBA8; }
+  .v6-row.disabled .v6-index { color: #E5D9BC; }
+
+  .v6-footer {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 32px;
+    border-top: 1px solid #EDE3CA;
+    padding-top: 20px;
+  }
+
+  .v6-footer span {
+    font-size: 11px;
+    letter-spacing: 0.03em;
+    color: #A6976F;
+  }
+</style>
+
+<div class="v6-card">
+  <div class="v6-label">
+    <span class="title">Spec · answer option states · v6</span>
+    <span class="subtitle">SAND, LIGHT-INVERSE OF V5 · SAME RULE-LINE STRUCTURE · AWAITING APPROVAL</span>
+  </div>
+
+  <div class="v6-panel">
+    <div class="v6-grid">
+      <div class="v6-group">
+        <div class="v6-group-header">
+          <span class="name">DEFAULT</span>
+          <span class="desc">resting, unanswered</span>
+        </div>
+        <div class="v6-row default">
+          <span class="v6-index">02</span>
+          <span class="v6-word">spoon</span>
+          <div class="v6-rule"><span></span></div>
+        </div>
+      </div>
+
+      <div class="v6-group">
+        <div class="v6-group-header">
+          <span class="name">HOVER</span>
+          <span class="desc">pointer over, rule appears</span>
+        </div>
+        <div class="v6-row hover">
+          <span class="v6-index">02</span>
+          <span class="v6-word">spoon</span>
+          <div class="v6-rule"><span></span></div>
+        </div>
+      </div>
+
+      <div class="v6-group">
+        <div class="v6-group-header">
+          <span class="name">FOCUS</span>
+          <span class="desc">keyboard 1–4, pre-confirm</span>
+        </div>
+        <div class="v6-row focus">
+          <span class="v6-index">02</span>
+          <span class="v6-word">spoon</span>
+          <span class="v6-status">↩ confirm</span>
+          <div class="v6-rule"><span></span></div>
+        </div>
+      </div>
+
+      <div class="v6-group">
+        <div class="v6-group-header">
+          <span class="name">PRESSED</span>
+          <span class="desc">momentary, rule thickens dark</span>
+        </div>
+        <div class="v6-row pressed">
+          <span class="v6-index">02</span>
+          <span class="v6-word">spoon</span>
+          <div class="v6-rule"><span></span></div>
+        </div>
+      </div>
+
+      <div class="v6-group">
+        <div class="v6-group-header">
+          <span class="name">CORRECT</span>
+          <span class="desc">answer accepted, promotes</span>
+        </div>
+        <div class="v6-row correct">
+          <span class="v6-index">02</span>
+          <span class="v6-word">spoon</span>
+          <span class="v6-status">ok</span>
+          <div class="v6-rule"><span></span></div>
+        </div>
+      </div>
+
+      <div class="v6-group">
+        <div class="v6-group-header">
+          <span class="name">INCORRECT</span>
+          <span class="desc">answer rejected, demotes</span>
+        </div>
+        <div class="v6-row incorrect">
+          <span class="v6-index">02</span>
+          <span class="v6-word">fork</span>
+          <span class="v6-status">err</span>
+          <div class="v6-rule"><span></span></div>
+        </div>
+      </div>
+
+      <div class="v6-group">
+        <div class="v6-group-header">
+          <span class="name">REVEALED</span>
+          <span class="desc">the one you missed</span>
+        </div>
+        <div class="v6-row revealed">
+          <span class="v6-index">02</span>
+          <span class="v6-word">spoon</span>
+          <span class="v6-status">answer</span>
+          <div class="v6-rule"><span></span></div>
+        </div>
+      </div>
+
+      <div class="v6-group">
+        <div class="v6-group-header">
+          <span class="name">DISABLED</span>
+          <span class="desc">other options after answering</span>
+        </div>
+        <div class="v6-row disabled">
+          <span class="v6-index">02</span>
+          <span class="v6-word">knife</span>
+          <div class="v6-rule"><span></span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="v6-footer">
+      <span>rule-line — 90ms width/colour transition, fills full width on any active state</span>
+      <span>index — two-digit, mono, colour is the only index signal beyond the rule</span>
+      <span>state held 700ms before advance</span>
+      <span>colour never the only signal · index + rule + trailing status word together</span>
+    </div>
+  </div>
+</div>
+
+</div>
+
+</body>
+</html>
+

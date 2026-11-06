@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_actions"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginTop="10dp"
+    android:orientation="horizontal">
+
+    <FrameLayout
+        android:id="@+id/widget_review_button"
+        android:layout_width="0dp"
+        android:layout_height="36dp"
+        android:layout_weight="1">
+
+        <ImageView
+            android:id="@+id/widget_review_button_background"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scaleType="fitXY"
+            android:src="@drawable/widget_button_background"
+            android:importantForAccessibility="no" />
+
+        <TextView
+            android:id="@+id/widget_review_button_label"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:maxLines="1"
+            android:text="@string/widget_review"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+    </FrameLayout>
+
+    <FrameLayout
+        android:id="@+id/widget_learn_button"
+        android:layout_width="0dp"
+        android:layout_height="36dp"
+        android:layout_weight="1"
+        android:layout_marginStart="8dp">
+
+        <ImageView
+            android:id="@+id/widget_learn_button_background"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scaleType="fitXY"
+            android:src="@drawable/widget_button_background"
+            android:importantForAccessibility="no" />
+
+        <TextView
+            android:id="@+id/widget_learn_button_label"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:maxLines="1"
+            android:text="@string/widget_learn"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+    </FrameLayout>
+</LinearLayout>

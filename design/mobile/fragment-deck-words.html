@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mobile · Deck words</title>
+  <link rel="stylesheet" href="../v3/wireframe.css">
+  <link rel="stylesheet" href="./mobile.css">
+</head>
+<body>
+  <div class="phone">
+
+    <header class="phone-topbar">
+      <button class="icon-btn bare">←</button>
+      <span class="title">Mercado y comedy · Words</span>
+      <button class="icon-btn bare">⋮</button>
+    </header>
+
+    <div class="phone-content" style="gap:0;padding-bottom:80px">
+
+      <!-- Word count + filters -->
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0 8px">
+        <span style="font-size:14px;color:var(--wf-mid)">128 words</span>
+      </div>
+
+      <!-- Filter chips -->
+      <div style="display:flex;gap:8px;padding:0 0 12px;overflow-x:auto">
+        <span class="chip in-use" style="height:34px;padding:0 10px;font-size:12px;flex:none">All</span>
+        <span class="chip" style="height:34px;padding:0 10px;font-size:12px;flex:none">Not learned</span>
+        <span class="chip" style="height:34px;padding:0 10px;font-size:12px;flex:none">Learning</span>
+        <span class="chip" style="height:34px;padding:0 10px;font-size:12px;flex:none">Learned</span>
+      </div>
+
+      <!-- Sort + Search -->
+      <div style="display:flex;gap:8px;padding:0 0 12px">
+        <div style="display:flex;align-items:center;gap:6px;flex:none">
+          <span style="font-size:13px;color:var(--wf-mid)">↕</span>
+          <span style="font-size:13px;color:var(--wf-mid)">A-Z</span>
+        </div>
+        <input type="text" placeholder="Find a word" style="flex:1;height:44px;border:1px solid var(--wf-line);border-radius:2px;padding:0 12px;font-size:13px;background:var(--wf-panel);outline:none">
+      </div>
+
+      <!-- Word list -->
+      <div style="display:flex;flex-direction:column">
+        <div style="display:flex;align-items:center;padding:12px 0;border-bottom:1px solid var(--wf-faint)">
+          <div style="flex:1">
+            <div style="font-size:16px;font-weight:500">le marché</div>
+            <div style="font-size:13px;color:var(--wf-mid);margin-top:2px">market</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:11px;background:var(--wf-faint);padding:2px 6px;border-radius:3px">box 3</span>
+            <button class="btn" style="height:44px;width:44px;padding:0;font-size:16px">⋮</button>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;padding:12px 0;border-bottom:1px solid var(--wf-faint)">
+          <div style="flex:1">
+            <div style="font-size:16px;font-weight:500">la cuillère</div>
+            <div style="font-size:13px;color:var(--wf-mid);margin-top:2px">spoon</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:11px;background:var(--wf-faint);padding:2px 6px;border-radius:3px">box 1</span>
+            <button class="btn" style="height:44px;width:44px;padding:0;font-size:16px">⋮</button>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;padding:12px 0;border-bottom:1px solid var(--wf-faint)">
+          <div style="flex:1">
+            <div style="font-size:16px;font-weight:500">le pain</div>
+            <div style="font-size:13px;color:var(--wf-mid);margin-top:2px">bread</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:11px;color:var(--wf-mid)">pool</span>
+            <button class="btn" style="height:44px;width:44px;padding:0;font-size:16px">⋮</button>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;padding:12px 0;border-bottom:1px solid var(--wf-faint)">
+          <div style="flex:1">
+            <div style="font-size:16px;font-weight:500">la fraise</div>
+            <div style="font-size:13px;color:var(--wf-mid);margin-top:2px">strawberry</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:11px;background:var(--wf-faint);padding:2px 6px;border-radius:3px">box 2</span>
+            <button class="btn" style="height:44px;width:44px;padding:0;font-size:16px">⋮</button>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;padding:12px 0;border-bottom:1px solid var(--wf-faint)">
+          <div style="flex:1">
+            <div style="font-size:16px;font-weight:500">vendre</div>
+            <div style="font-size:13px;color:var(--wf-mid);margin-top:2px">to sell</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:11px;color:var(--wf-mid)">pool</span>
+            <button class="btn" style="height:44px;width:44px;padding:0;font-size:16px">⋮</button>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;padding:12px 0;border-bottom:1px solid var(--wf-faint)">
+          <div style="flex:1">
+            <div style="font-size:16px;font-weight:500">le fromage</div>
+            <div style="font-size:13px;color:var(--wf-mid);margin-top:2px">cheese</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:11px;background:var(--wf-faint);padding:2px 6px;border-radius:3px">box 5</span>
+            <button class="btn" style="height:44px;width:44px;padding:0;font-size:16px">⋮</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Floating action button -->
+      <div style="position:absolute;bottom:80px;right:20px;width:56px;height:56px;border-radius:50%;background:var(--wf-learning);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(0,0,0,0.2);z-index:10">
+        <span style="font-size:28px;color:white">+</span>
+      </div>
+
+    </div>
+
+    <nav class="phone-tabbar">
+      <button class="tab"><span class="tab-icon"></span><span class="label">Today</span></button>
+      <button class="tab active"><span class="tab-icon"><span class="badge-dot">12</span></span><span class="label">Decks</span></button>
+      <button class="tab"><span class="tab-icon"></span><span class="label">Words</span></button>
+      <button class="tab"><span class="tab-icon"></span><span class="label">Settings</span></button>
+    </nav>
+
+  </div>
+</body>
+</html>

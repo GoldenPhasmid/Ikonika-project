@@ -1,0 +1,169 @@
+name: iOS
+
+on:
+  workflow_dispatch:
+    inputs:
+      upload:
+        description: Sign the build and upload it to TestFlight
+        type: boolean
+        default: false
+      session:
+        description: Open an SSH session on the runner once the build ends
+        type: boolean
+        default: false
+  push:
+    tags:
+      - "ios-*"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  QT_VERSION: 6.11.1
+  QT_ROOT: ${{ github.workspace }}/../Qt
+
+jobs:
+  build:
+    if: ${{ !github.event.repository.private }}
+    runs-on: macos-15
+    timeout-minutes: 360
+
+    env:
+      SIGNED: ${{ inputs.upload || startsWith(github.ref, 'refs/tags/') }}
+      SOURCE_DIR: ${{ github.workspace }}
+      BUILD_DIR: ${{ github.workspace }}/build/ios
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Restore Qt
+        id: qt-cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.QT_ROOT }}
+          key: qt-${{ env.QT_VERSION }}-ios-${{ runner.os }}-1
+
+      - name: Install Qt
+        if: steps.qt-cache.outputs.cache-hit != 'true'
+        run: |
+          python -m pip install aqtinstall
+          python -m aqt list-qt mac ios --modules "$QT_VERSION" ios
+          MODULES=$(python -m aqt list-qt mac ios --modules "$QT_VERSION" ios | tr ' ' '\n' | grep -x -E 'qtpdf|qtwebengine' | tr '\n' ' ')
+          python -m aqt install-qt mac desktop "$QT_VERSION" clang_64 --outputdir "$QT_ROOT"
+          python -m aqt install-qt mac ios "$QT_VERSION" ios --outputdir "$QT_ROOT" ${MODULES:+-m $MODULES}
+
+      - name: Import the signing certificate and profile
+        if: env.SIGNED == 'true'
+        env:
+          IOS_CERTIFICATE_P12: ${{ secrets.IOS_CERTIFICATE_P12 }}
+          IOS_CERTIFICATE_PASSWORD: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
+          IOS_PROVISIONING_PROFILE: ${{ secrets.IOS_PROVISIONING_PROFILE }}
+        run: |
+          KEYCHAIN="$RUNNER_TEMP/signing.keychain-db"
+          KEYCHAIN_PASSWORD=$(uuidgen)
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          echo "$IOS_CERTIFICATE_P12" | base64 --decode > "$RUNNER_TEMP/certificate.p12"
+          security import "$RUNNER_TEMP/certificate.p12" -P "$IOS_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN"
+          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security list-keychains -d user -s "$KEYCHAIN"
+          PROFILE="$RUNNER_TEMP/profile.mobileprovision"
+          echo "$IOS_PROVISIONING_PROFILE" | base64 --decode > "$PROFILE"
+          mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
+          cp "$PROFILE" "$HOME/Library/MobileDevice/Provisioning Profiles/"
+          echo "PROFILE_NAME=$(security cms -D -i "$PROFILE" | plutil -extract Name raw -)" >> "$GITHUB_ENV"
+
+      - name: Configure
+        env:
+          IOS_TEAM_ID: ${{ secrets.IOS_TEAM_ID }}
+        run: |
+          SIGNING=()
+          if [ "$SIGNED" = "true" ]; then
+            SIGNING=(-DIKONIKA_IOS_TEAM_ID="$IOS_TEAM_ID" -DIKONIKA_IOS_PROFILE="$PROFILE_NAME")
+          fi
+          "$QT_ROOT/$QT_VERSION/ios/bin/qt-cmake" -S "$SOURCE_DIR" -B "$BUILD_DIR" -G Xcode \
+            -DCMAKE_XCODE_GENERATE_SCHEME=ON \
+            -DIKONIKA_IOS_BUILD_NUMBER="${{ github.run_number }}" \
+            "${SIGNING[@]}"
+
+      - name: Build unsigned
+        if: env.SIGNED != 'true'
+        run: |
+          xcodebuild build -project "$BUILD_DIR/Ikonika.xcodeproj" -scheme IkonikaApp -configuration Release \
+            -destination generic/platform=iOS CODE_SIGNING_ALLOWED=NO | tee "$RUNNER_TEMP/xcodebuild.log"
+          test "${PIPESTATUS[0]}" -eq 0
+
+      - name: Archive and upload to TestFlight
+        if: env.SIGNED == 'true'
+        env:
+          IOS_TEAM_ID: ${{ secrets.IOS_TEAM_ID }}
+          APPSTORE_API_KEY_P8: ${{ secrets.APPSTORE_API_KEY_P8 }}
+          APPSTORE_API_KEY_ID: ${{ secrets.APPSTORE_API_KEY_ID }}
+          APPSTORE_API_ISSUER_ID: ${{ secrets.APPSTORE_API_ISSUER_ID }}
+        run: |
+          KEY="$RUNNER_TEMP/AuthKey_$APPSTORE_API_KEY_ID.p8"
+          echo "$APPSTORE_API_KEY_P8" | base64 --decode > "$KEY"
+          ARCHIVE="$RUNNER_TEMP/Ikonika.xcarchive"
+          xcodebuild archive -project "$BUILD_DIR/Ikonika.xcodeproj" -scheme IkonikaApp -configuration Release \
+            -destination generic/platform=iOS -archivePath "$ARCHIVE" | tee "$RUNNER_TEMP/xcodebuild.log"
+          test "${PIPESTATUS[0]}" -eq 0
+          cat > "$RUNNER_TEMP/ExportOptions.plist" <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>method</key>
+              <string>app-store-connect</string>
+              <key>destination</key>
+              <string>upload</string>
+              <key>teamID</key>
+              <string>$IOS_TEAM_ID</string>
+              <key>signingStyle</key>
+              <string>manual</string>
+              <key>provisioningProfiles</key>
+              <dict>
+                  <key>com.goldenphasmid.ikonika</key>
+                  <string>$PROFILE_NAME</string>
+              </dict>
+              <key>uploadSymbols</key>
+              <true/>
+          </dict>
+          </plist>
+          EOF
+          xcodebuild -exportArchive -archivePath "$ARCHIVE" -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" \
+            -exportPath "$RUNNER_TEMP/export" \
+            -authenticationKeyPath "$KEY" -authenticationKeyID "$APPSTORE_API_KEY_ID" \
+            -authenticationKeyIssuerID "$APPSTORE_API_ISSUER_ID"
+
+      - name: Keep the build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xcodebuild-log
+          path: ${{ runner.temp }}/xcodebuild.log
+          if-no-files-found: ignore
+
+      - name: Open an SSH session
+        if: always() && inputs.session
+        uses: mxschmitt/action-tmate@v3
+        with:
+          limit-access-to-actor: true
+
+      - name: Remove the signing material
+        if: always()
+        run: |
+          security delete-keychain "$RUNNER_TEMP/signing.keychain-db" 2>/dev/null || true
+          rm -f "$RUNNER_TEMP/certificate.p12" "$RUNNER_TEMP"/AuthKey_*.p8

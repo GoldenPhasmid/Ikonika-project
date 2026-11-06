@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>V3 · Review · Stage</title>
+  <link rel="stylesheet" href="./wireframe.css">
+</head>
+<body>
+  <!-- Four stages, same frame as training. Stage 1 is the review itself: a
+       yes-or-no on each card, and "no" demotes it a box. The card still goes
+       through the rest of the session; the withheld part is the promotion, not
+       the practice.
+
+       Stage 2 is multiple choice, 3 mixes typed and audio, 4 is speed matching.
+
+       Review runs on the cards due across every deck at once, so it starts from
+       Today rather than from a deck. -->
+  <div class="stage-frame">
+
+    <div class="stage-header">
+      <button class="btn">← Today</button>
+      <span class="meta">Review</span>
+
+      <div class="stage-segments">
+        <span class="segs">
+          <i class="running" style="--at:40%"></i><i></i><i></i><i></i>
+        </span>
+        <span class="meta">10 of 25 words seen</span>
+      </div>
+
+      <div class="right">
+        <button class="btn">Restart</button>
+        <button class="btn">End session</button>
+        <button class="btn">Complete stage</button>
+      </div>
+    </div>
+
+    <div class="stage-panel">
+      <div class="session-stage">
+
+        <span class="meta">Do you know this word?</span>
+
+        <div class="session-card">
+          <div class="session-word">le chien</div>
+          <span class="meta">noun</span>
+          <div style="width:560px;height:1px;background:var(--wf-line)"></div>
+          <div class="session-translation">the dog</div>
+        </div>
+
+        <div class="session-yesno">
+          <button class="btn"><span class="num">←</span>No</button>
+          <button class="btn">Yes<span class="num">→</span></button>
+        </div>
+
+        <span class="meta">arrow keys · no / yes</span>
+
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>

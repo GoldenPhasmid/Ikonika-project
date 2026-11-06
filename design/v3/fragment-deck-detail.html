@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>V3 · Deck detail</title>
+  <link rel="stylesheet" href="./wireframe.css">
+</head>
+<body>
+  <div class="app">
+
+    <aside class="rail">
+      <div class="rail-head">
+        <div class="rail-mark">AK</div>
+        <div class="rail-lang">FR / EN</div>
+      </div>
+      <nav class="rail-nav">
+        <a class="rail-item"><i class="rail-icon"></i><span class="label">Today</span><span class="count">54</span></a>
+        <a class="rail-item active"><i class="rail-icon"></i><span class="label">Decks</span><span class="count">12</span></a>
+        <a class="rail-item"><i class="rail-icon"></i><span class="label">Reader</span></a>
+        <a class="rail-item"><i class="rail-icon"></i><span class="label">YouTube</span></a>
+        <a class="rail-item"><i class="rail-icon"></i><span class="label">Dictionary</span></a>
+        <a class="rail-item"><i class="rail-icon"></i><span class="label">Numbers</span></a>
+        <a class="rail-item"><i class="rail-icon"></i><span class="label">Time</span></a>
+        <a class="rail-item"><i class="rail-icon"></i><span class="label">Settings</span></a>
+      </nav>
+    </aside>
+
+    <div class="main">
+      <header class="topbar">
+        <!-- goes back rather than acting on the screen, so it sits before the breadcrumb -->
+        <button class="btn">← Decks</button>
+        <span class="topbar-context">/ DECKS / MERCADO Y COMIDA</span>
+        <div class="topbar-actions">
+          <input class="search-box" placeholder="search" aria-label="Search">
+        </div>
+      </header>
+
+      <div class="content" style="display:flex;flex-direction:column;gap:28px;overflow:auto">
+
+        <!-- deck header -->
+        <div class="deck-head">
+          <div class="deck-head-swatch"></div>
+          <div class="wf-grow" style="display:flex;flex-direction:column;gap:8px">
+            <div class="name">Mercado y comida</div>
+            <div class="description">Palabras del mercado y la comida, incluyendo frutas, utensilios y compras.</div>
+
+            <!-- the deck's own three states, then its actions on the same line -->
+            <div class="wf-row" style="gap:16px">
+              <span class="meta">128 words</span>
+              <span class="meta">64 not learned</span>
+              <span class="meta" style="color:var(--wf-ink)">48 learning</span>
+              <span class="meta">16 completed</span>
+              <span class="wf-grow"></span>
+              <button class="btn primary">+ Add word</button>
+              <button class="btn">Export</button>
+              <button class="btn">Delete deck</button>
+            </div>
+
+            <!-- only while a training run on this deck is unfinished -->
+            <div class="stage-pips" style="margin-top:8px">
+              <span class="meta">Training: stage 2 of 5, 25 words</span>
+              <i class="done"></i><i class="done"></i><i></i><i></i><i></i>
+            </div>
+          </div>
+        </div>
+
+        <!-- training. Review is not here: it runs across every deck at once, from Today. -->
+        <button class="hero" style="width:100%">
+          <span class="title">Train</span>
+          <span class="meta">64 words from this deck</span>
+        </button>
+
+        <!-- the seven exercises, run standalone over the deck -->
+        <div class="exercise-grid">
+          <button class="btn">Flashcard</button>
+          <button class="btn">Flip</button>
+          <button class="btn">Multiple choice</button>
+          <button class="btn">Typed translation</button>
+          <button class="btn">Audio transcription</button>
+          <button class="btn">Speed matching</button>
+          <button class="btn">Correct / Incorrect</button>
+        </div>
+
+        <!-- word list -->
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div class="word-toolbar">
+            <span class="kicker">Words</span>
+            <span class="meta">128 words</span>
+
+            <!-- only when there is somewhere to page to -->
+            <button class="btn" style="width:36px;padding:0">←</button>
+            <span class="meta">1 / 7</span>
+            <button class="btn" style="width:36px;padding:0">→</button>
+
+            <span class="wf-grow"></span>
+
+            <input class="search-box" style="width:200px" placeholder="Find a word…">
+            <div class="wf-select" style="width:132px"><span>All</span><span>▾</span></div>
+            <div class="wf-select" style="width:132px"><span>Added</span><span>▾</span></div>
+            <button class="btn" style="width:36px;padding:0">↓</button>
+          </div>
+
+          <!-- down the left column, then down the right: an ordered list read across a row
+               puts second place beside first rather than beneath it -->
+          <div class="card word-grid">
+            <div class="word-row">
+              <span class="word">le marché</span>
+              <span class="translation">market</span>
+              <span class="meta due">3 days</span>
+              <span class="mark">2</span>
+              <span class="row-actions"><button class="btn">Edit</button><button class="btn">Delete</button></span>
+            </div>
+            <div class="word-row hovered">
+              <span class="word">la cuillère</span>
+              <span class="translation">spoon</span>
+              <span class="meta due">Today</span>
+              <span class="mark">1</span>
+              <span class="row-actions"><button class="btn">Edit</button><button class="btn">Delete</button></span>
+            </div>
+            <div class="word-row">
+              <span class="word">le pain</span>
+              <span class="translation">bread</span>
+              <span class="meta due">Today</span>
+              <span class="mark">4</span>
+              <span class="row-actions"><button class="btn">Edit</button><button class="btn">Delete</button></span>
+            </div>
+            <div class="word-row">
+              <span class="word">la fraise</span>
+              <span class="translation">strawberry</span>
+              <span class="meta due"></span>
+              <span class="row-actions"><button class="btn">Edit</button><button class="btn">Delete</button></span>
+            </div>
+            <div class="word-row">
+              <span class="word">vendre</span>
+              <span class="translation">to sell</span>
+              <span class="meta due">11 days</span>
+              <span class="mark">5</span>
+              <span class="row-actions"><button class="btn">Edit</button><button class="btn">Delete</button></span>
+            </div>
+            <div class="word-row">
+              <span class="word">le fromage</span>
+              <span class="translation">cheese</span>
+              <span class="meta due"></span>
+              <span class="mark completed">✓</span>
+              <span class="row-actions"><button class="btn">Edit</button><button class="btn">Delete</button></span>
+            </div>
+            <div class="word-row">
+              <span class="word">manger</span>
+              <span class="translation">to eat</span>
+              <span class="meta due">6 days</span>
+              <span class="mark">3</span>
+              <span class="row-actions"><button class="btn">Edit</button><button class="btn">Delete</button></span>
+            </div>
+            <div class="word-row">
+              <span class="word">le vin</span>
+              <span class="translation">wine</span>
+              <span class="meta due"></span>
+              <span class="row-actions"><button class="btn">Edit</button><button class="btn">Delete</button></span>
+            </div>
+            <div class="word-row">
+              <span class="word">acheter</span>
+              <span class="translation">to buy</span>
+              <span class="meta due">1 day</span>
+              <span class="mark">2</span>
+              <span class="row-actions"><button class="btn">Edit</button><button class="btn">Delete</button></span>
+            </div>
+            <div class="word-row">
+              <span class="word">le prix</span>
+              <span class="translation">price</span>
+              <span class="meta due"></span>
+              <span class="row-actions"><button class="btn">Edit</button><button class="btn">Delete</button></span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- add word modal. The same dialog edits an existing card, and the reader and the
+       dictionary both open this one rather than a second of their own. -->
+  <div class="modal-scrim">
+    <div class="dialog" style="width:560px">
+      <div class="dialog-head">
+        <span class="title">Add word</span>
+        <button class="dialog-close">✕</button>
+      </div>
+
+      <div class="field">
+        <div class="wf-row">
+          <span class="meta">Word</span>
+          <span class="wf-grow"></span>
+          <!-- which article the word takes: the only thing being decided here -->
+          <button class="btn primary" style="width:44px;height:26px;padding:0">m</button>
+          <button class="btn" style="width:44px;height:26px;padding:0">f</button>
+        </div>
+        <input placeholder="le mot" aria-label="Target word">
+        <div class="wf-row">
+          <span class="mark small"></span>
+          <span class="meta">Learned, at interval 2</span>
+        </div>
+      </div>
+
+      <div class="field">
+        <span class="meta">Translation</span>
+        <input placeholder="translation" aria-label="Translation">
+      </div>
+
+      <!-- what a model made of the same text, for a word the dictionary never had -->
+      <div class="field">
+        <span class="kicker">Machine translation</span>
+        <div class="wf-row">
+          <span class="wf-grow" style="font-size:12px">the market</span>
+          <button class="btn">Use</button>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <span class="chip in-use">market<span class="bars"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></span></span>
+        <span class="chip">marketplace<span class="bars"><i class="on"></i><i class="on"></i><i></i><i></i></span></span>
+        <span class="chip learned">deal<span class="mark small"></span><span class="bars"><i class="on"></i><i class="on"></i><i></i><i></i></span></span>
+        <span class="chip">agreement<span class="bars"><i class="on"></i><i></i><i></i><i></i></span></span>
+        <span class="chip">bargain<span class="bars"><i class="on"></i><i></i><i></i><i></i></span></span>
+      </div>
+
+      <!-- only when the deck is not already decided; defaults to the Learning Pool -->
+      <div class="field">
+        <span class="meta">Deck</span>
+        <div class="wf-select" style="width:100%;height:40px"><span>Learning Pool</span><span>▾</span></div>
+      </div>
+
+      <div class="dialog-actions">
+        <button class="btn">Cancel</button>
+        <button class="btn primary">Add to deck</button>
+      </div>
+
+      <!-- editing an existing card only. Throws away the learner's progress on it,
+           which is why it sits apart from the two above. -->
+      <button class="btn" style="margin-top:8px">Reset progress</button>
+    </div>
+  </div>
+</body>
+</html>

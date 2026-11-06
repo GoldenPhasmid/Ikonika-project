@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mobile · Setup · Language</title>
+  <link rel="stylesheet" href="../v3/wireframe.css">
+  <link rel="stylesheet" href="./mobile.css">
+</head>
+<body>
+  <div class="phone">
+
+    <header class="phone-topbar">
+      <span class="title">Ikonika</span>
+    </header>
+
+    <div class="phone-content" style="gap:24px;overflow:hidden;padding-top:50px">
+
+      <!-- Step progress -->
+      <div style="display:flex;gap:6px;justify-content:center">
+        <div style="width:32px;height:4px;border-radius:2px;background:var(--wf-ink)"></div>
+        <div style="width:32px;height:4px;border-radius:2px;background:var(--wf-ink)"></div>
+        <div style="width:32px;height:4px;border-radius:2px;background:var(--wf-faint)"></div>
+      </div>
+
+      <div style="font-size:28px;font-weight:500;letter-spacing:-0.02em;line-height:1.2;text-align:center">What are you learning?</div>
+
+      <div style="display:flex;flex-direction:column;gap:16px;width:100%">
+
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <span style="font-size:13px;color:var(--wf-mid);text-transform:uppercase;letter-spacing:0.08em">Learning</span>
+          <div class="wf-select" style="height:48px;padding:0 16px;display:flex;align-items:center;justify-content:space-between">
+            <span style="font-size:15px">French</span>
+            <span style="font-size:13px;color:var(--wf-mid)">▾</span>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <span style="font-size:13px;color:var(--wf-mid);text-transform:uppercase;letter-spacing:0.08em">From</span>
+          <div class="wf-select" style="height:48px;padding:0 16px;display:flex;align-items:center;justify-content:space-between">
+            <span style="font-size:15px">English</span>
+            <span style="font-size:13px;color:var(--wf-mid)">▾</span>
+          </div>
+        </div>
+
+        <!-- Component checklist -->
+        <div class="setup-list" style="width:100%">
+          <div class="setup-row" style="gap:12px">
+            <div style="width:22px;height:22px;border:2px solid var(--wf-ink);border-radius:4px;background:var(--wf-ink);display:flex;align-items:center;justify-content:center;flex:none">
+              <span style="font-size:14px;color:var(--wf-paper)">✓</span>
+            </div>
+            <span class="name">Dictionary</span>
+            <span class="wf-grow"></span>
+            <span class="size">25 MB</span>
+          </div>
+          <div class="setup-row" style="gap:12px">
+            <div style="width:22px;height:22px;border:2px solid var(--wf-mid);border-radius:4px;flex:none"></div>
+            <span class="name">Voice</span>
+            <span class="wf-grow"></span>
+            <span class="size">34 MB</span>
+          </div>
+          <div class="setup-row" style="gap:12px">
+            <div style="width:22px;height:22px;border:2px solid var(--wf-mid);border-radius:4px;flex:none"></div>
+            <span class="name">Sentence translation</span>
+            <span class="wf-grow"></span>
+            <span class="size">68 MB</span>
+          </div>
+        </div>
+
+        <button class="btn primary action" style="width:100%;margin-top:8px">Continue · 25 MB</button>
+      </div>
+
+    </div>
+
+  </div>
+</body>
+</html>

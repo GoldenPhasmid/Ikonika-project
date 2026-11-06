@@ -1,0 +1,404 @@
+/* Ikonika mobile — structural wireframes.
+   Layers on ../v3/wireframe.css: the tokens, the buttons, the cards, the chips
+   and the session pieces all come from there. Only what a phone changes lives
+   here, so a component that drifts drifts in one file.
+
+   Frame is 412 x 915, the Pixel-class Android viewport in logical pixels, which
+   is what Qt lays out in too. 360 x 800 is the floor every screen has to survive;
+   add `.narrow` to the frame to check one. */
+
+.phone {
+  display: flex;
+  flex-direction: column;
+  width: 412px;
+  height: 915px;
+  background: var(--wf-paper);
+  border: 1px solid var(--wf-line);
+  overflow: hidden;
+}
+
+.phone.narrow {
+  width: 360px;
+  height: 800px;
+}
+
+/* ---------- top bar ---------- */
+
+.phone-topbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 56px;
+  flex: none;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--wf-line);
+  background: var(--wf-panel);
+}
+
+.phone-topbar .title {
+  flex: 1;
+  font-size: 17px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Square and 44px, since everything in this bar is a tap target. */
+.icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  flex: none;
+  border: 1px solid var(--wf-line);
+  background: var(--wf-panel);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.icon-btn.bare {
+  border-color: transparent;
+  background: transparent;
+  font-size: 19px;
+}
+
+/* ---------- content ---------- */
+
+.phone-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 16px;
+  overflow: auto;
+}
+
+/* ---------- bottom bar ----------
+   The rail's destinations, minus the ones the first Android release drops:
+   the reader, YouTube and the rule drills. Four fit; five is the ceiling. */
+
+.phone-tabbar {
+  display: flex;
+  height: 64px;
+  flex: none;
+  border-top: 1px solid var(--wf-line);
+  background: var(--wf-panel);
+}
+
+.tab {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.tab .tab-icon {
+  position: relative;
+  display: block;
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--wf-mid);
+  border-radius: 2px;
+}
+
+.tab.active .tab-icon {
+  background: var(--wf-ink);
+  border-color: var(--wf-ink);
+}
+
+.tab .label {
+  font-family: var(--wf-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--wf-mid);
+}
+
+.tab.active .label {
+  color: var(--wf-ink);
+}
+
+/* A count rides the icon rather than taking a line of its own. */
+.tab .badge-dot {
+  position: absolute;
+  top: -6px;
+  left: 14px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: var(--wf-ink);
+  color: var(--wf-paper);
+  font-family: var(--wf-mono);
+  font-size: 9px;
+  line-height: 16px;
+  text-align: center;
+}
+
+/* ---------- touch sizes ----------
+   The desktop control heights are pointer sizes. Everything tappable grows to
+   44px, which is the floor a finger needs. */
+
+.phone .btn {
+  height: 44px;
+  padding: 0 16px;
+  font-size: 13px;
+}
+
+.phone .search-box,
+.phone .wf-select,
+.phone .field input {
+  height: 44px;
+  font-size: 13px;
+}
+
+.phone .search-box {
+  width: 100%;
+}
+
+/* ---------- one column ----------
+   Every two-column list collapses. Speed matching is the exception: its two
+   columns are the exercise, and it gets a shorter round instead. */
+
+.phone .wf-word-grid,
+.phone .lookup-grid,
+.phone .word-grid {
+  grid-template-columns: 1fr;
+}
+
+.phone .lookup-cell:nth-child(odd),
+.phone .word-grid .word-row:nth-child(odd) {
+  border-right: 0;
+}
+
+.phone .deck-grid,
+.phone .hero-row {
+  grid-template-columns: 1fr;
+}
+
+.phone .exercise-grid {
+  grid-template-columns: 1fr 1fr;
+}
+
+/* Hover reveals nothing on a phone. A row's actions live behind a press, so the
+   row shows what it has to say at rest. */
+.phone .word-row .row-actions {
+  display: none;
+}
+
+/* ---------- session ----------
+   The exercise stage is 640 wide on the desktop, which is wider than the phone.
+   It becomes the content width, and the card grows down instead of across. */
+
+.phone .session-stage,
+.phone .session-card,
+.phone .session-options,
+.phone .session-match,
+.phone .session-input,
+.phone .session-countdown,
+.phone .session-yesno,
+.phone .session-actions-row,
+.phone .session-accents {
+  width: 100%;
+}
+
+.phone .session-card {
+  height: 240px;
+}
+
+.phone .session-word {
+  font-size: 40px;
+}
+
+.phone .session-translation {
+  font-size: 20px;
+}
+
+/* Six options down one column: two columns of French at this width elide the
+   answer. */
+.phone .session-options {
+  grid-template-columns: 1fr;
+}
+
+.phone .session-accents .btn {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+}
+
+/* ---------- today ---------- */
+
+/* A horizontally scrolling row, no scrollbar drawn: a phone's own scroll indicator is a
+   flash on touch, not a rail that sits on screen, so the desktop's painted rail has no
+   mobile equivalent. */
+.m-scroll {
+  display: flex;
+  gap: 10px;
+  margin: 0 -16px;
+  padding: 2px 16px 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.m-scroll::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+/* Due next 5 days, one card per day, day and count stacked over a small bar. The desktop
+   row draws the bar as a horizontal track because the count is what is opposite the
+   figure; on a phone the day is a card in a shelf like everything else the reference
+   scrolls sideways, so the shape flips to match. */
+.m-due-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 64px;
+  flex: none;
+  padding: 12px 0;
+  background: var(--wf-panel);
+  border: 1px solid var(--wf-line);
+}
+
+.m-due-card .day {
+  font-family: var(--wf-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--wf-mid);
+}
+
+.m-due-card .bar {
+  display: flex;
+  align-items: flex-end;
+  width: 24px;
+  height: 36px;
+  background: var(--wf-faint);
+}
+
+.m-due-card .bar i {
+  display: block;
+  width: 24px;
+  background: var(--wf-soft);
+}
+
+.m-due-card .count {
+  font-size: 15px;
+}
+
+.m-due-card.none .count {
+  color: var(--wf-mid);
+}
+
+/* A deck riding the shelf keeps the desktop tile exactly, just fixed-width and unable to
+   stretch: the grid it normally lives in does not exist here. */
+.m-scroll .deck-tile {
+  width: 200px;
+  flex: none;
+}
+
+/* Train and Review as two boxes side by side, not a stacked list. Search moved to the
+   topbar, next to settings, so the card only carries the two presses that report a
+   number - which is also why the goal figure above them is gone: these two counts were
+   the goal figure's own numbers, just told twice. */
+.m-action-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.m-action-box {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 128px;
+  padding: 16px;
+  background: var(--wf-panel);
+  border: 1px solid var(--wf-line);
+  cursor: pointer;
+}
+
+.m-action-box .icon {
+  display: block;
+  width: 24px;
+  height: 24px;
+  flex: none;
+  border: 1px solid var(--wf-mid);
+  border-radius: 2px;
+}
+
+.m-action-box .title {
+  font-family: var(--wf-mono);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.m-action-box .count {
+  align-self: flex-end;
+  font-size: 36px;
+  line-height: 1;
+  letter-spacing: -0.01em;
+}
+
+/* Train is the press the app recommends, so its box carries the fill the desktop gives
+   the same card - the one filled element on the screen, not two competing for it. */
+.m-action-box.primary {
+  background: var(--wf-ink);
+  border-color: var(--wf-ink);
+}
+
+.m-action-box.primary .icon {
+  border-color: var(--wf-soft);
+}
+
+.m-action-box.primary .title,
+.m-action-box.primary .count {
+  color: var(--wf-paper);
+}
+
+/* Recently learned and Last looked up condense to one row each: a count and a chevron,
+   the shape the reference uses for "Words of the day/week/month/year" rather than the
+   desktop's full eleven-row lists, which is content a phone reaches by tapping through
+   rather than scans in place. */
+.m-summary {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--wf-line);
+  background: var(--wf-panel);
+}
+
+.m-summary-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 52px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--wf-line);
+  cursor: pointer;
+}
+
+.m-summary-row:last-child {
+  border-bottom: 0;
+}
+
+.m-summary-row .title {
+  font-size: 14px;
+}
+
+.m-summary-row .trail {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--wf-mid);
+}

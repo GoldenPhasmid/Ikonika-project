@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>V3 · Decks</title>
+  <link rel="stylesheet" href="./wireframe.css">
+</head>
+<body>
+  <div class="app">
+
+    <aside class="rail">
+      <div class="rail-head">
+        <div class="rail-mark">AK</div>
+        <div class="rail-lang">FR / EN</div>
+      </div>
+      <nav class="rail-nav">
+        <a class="rail-item"><i class="rail-icon"></i><span class="label">Today</span><span class="count">54</span></a>
+        <a class="rail-item active"><i class="rail-icon"></i><span class="label">Decks</span><span class="count">12</span></a>
+        <a class="rail-item"><i class="rail-icon"></i><span class="label">Reader</span></a>
+        <a class="rail-item"><i class="rail-icon"></i><span class="label">YouTube</span></a>
+        <a class="rail-item"><i class="rail-icon"></i><span class="label">Dictionary</span></a>
+        <a class="rail-item"><i class="rail-icon"></i><span class="label">Numbers</span></a>
+        <a class="rail-item"><i class="rail-icon"></i><span class="label">Time</span></a>
+        <a class="rail-item"><i class="rail-icon"></i><span class="label">Settings</span></a>
+      </nav>
+    </aside>
+
+    <div class="main">
+      <header class="topbar">
+        <span class="topbar-context">/ DECKS · 1,246 WORDS TOTAL</span>
+        <div class="topbar-actions">
+          <button class="btn">Import list</button>
+          <button class="btn primary">+ New deck</button>
+          <input class="search-box" placeholder="search" aria-label="Search">
+        </div>
+      </header>
+
+      <div class="content" style="display:flex;flex-direction:column;gap:20px;overflow:hidden">
+
+        <!-- four states, and they are the deck's own: the active one is filled -->
+        <div class="wf-row">
+          <nav class="wf-filters">
+            <button class="btn primary">All · 12</button>
+            <button class="btn">Learning · 6</button>
+            <button class="btn">Not started · 4</button>
+            <button class="btn">Mastered · 2</button>
+          </nav>
+          <div class="wf-row wf-grow" style="justify-content:flex-end">
+            <span class="meta">Sort</span>
+            <div class="wf-select"><span>Most due</span><span>▾</span></div>
+          </div>
+        </div>
+
+        <div class="deck-grid" style="align-content:start">
+
+          <article class="deck-tile create">
+            <div class="plus">+</div>
+            <div class="label">Create New Deck</div>
+          </article>
+
+          <article class="deck-tile">
+            <div class="deck-swatch"></div>
+            <div class="deck-body">
+              <div class="deck-name-row">
+                <span class="name">Mercado y comida</span>
+                <span class="meta">128 words</span>
+              </div>
+              <div class="deck-counts">
+                <span class="pool">64</span><span class="learning">48</span><span class="done">16</span>
+              </div>
+              <div class="bar3"><i class="learning" style="width:37.5%;margin-left:50%"></i><i class="done" style="width:12.5%"></i></div>
+            </div>
+          </article>
+
+          <article class="deck-tile">
+            <div class="deck-swatch"></div>
+            <div class="deck-body">
+              <div class="deck-name-row">
+                <span class="name">Transporte</span>
+                <span class="meta">96 words</span>
+              </div>
+              <div class="deck-counts">
+                <span class="pool">40</span><span class="learning">50</span><span class="done">6</span>
+              </div>
+              <div class="bar3"><i class="learning" style="width:52%;margin-left:41.6%"></i><i class="done" style="width:6.2%"></i></div>
+            </div>
+          </article>
+
+          <article class="deck-tile">
+            <div class="deck-swatch"></div>
+            <div class="deck-body">
+              <div class="deck-name-row">
+                <span class="name">Verbos irregulares</span>
+                <span class="meta">64 words</span>
+              </div>
+              <div class="deck-counts">
+                <span class="pool">52</span><span class="learning">12</span><span class="done">0</span>
+              </div>
+              <div class="bar3"><i class="learning" style="width:18.7%;margin-left:81.3%"></i></div>
+            </div>
+          </article>
+
+          <article class="deck-tile">
+            <div class="deck-swatch"></div>
+            <div class="deck-body">
+              <div class="deck-name-row">
+                <span class="name">Casa y muebles</span>
+                <span class="meta">112 words</span>
+              </div>
+              <div class="deck-counts">
+                <span class="pool">0</span><span class="learning">0</span><span class="done">112</span>
+              </div>
+              <div class="bar3"><i class="done" style="width:100%"></i></div>
+            </div>
+          </article>
+
+          <article class="deck-tile">
+            <div class="deck-swatch"></div>
+            <div class="deck-body">
+              <div class="deck-name-row">
+                <span class="name">Salud y cuerpo</span>
+                <span class="meta">84 words</span>
+              </div>
+              <div class="deck-counts">
+                <span class="pool">84</span><span class="learning">0</span><span class="done">0</span>
+              </div>
+              <div class="bar3"></div>
+            </div>
+          </article>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- create deck modal -->
+  <div class="modal-scrim">
+    <div class="dialog" style="width:420px">
+      <div class="dialog-head">
+        <span class="title">Create New Deck</span>
+        <button class="dialog-close">✕</button>
+      </div>
+      <div class="field">
+        <span class="meta">Deck name</span>
+        <input placeholder="e.g. Kitchen and cooking">
+      </div>
+      <div class="field">
+        <span class="meta">Description</span>
+        <input placeholder="Optional">
+      </div>
+      <div class="dialog-actions">
+        <button class="btn">Cancel</button>
+        <button class="btn primary">Create deck</button>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

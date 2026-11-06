@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>V3 · Settings</title>
+  <link rel="stylesheet" href="./wireframe.css">
+</head>
+<body>
+  <div class="app">
+
+    <aside class="rail">
+      <div class="rail-head">
+        <div class="rail-mark">AK</div>
+        <div class="rail-lang">FR / EN</div>
+      </div>
+      <nav class="rail-nav">
+        <a class="rail-item"><i class="rail-icon"></i><span class="label">Today</span><span class="count">54</span></a>
+        <a class="rail-item"><i class="rail-icon"></i><span class="label">Decks</span><span class="count">12</span></a>
+        <a class="rail-item"><i class="rail-icon"></i><span class="label">Reader</span></a>
+        <a class="rail-item"><i class="rail-icon"></i><span class="label">YouTube</span></a>
+        <a class="rail-item"><i class="rail-icon"></i><span class="label">Dictionary</span></a>
+        <a class="rail-item"><i class="rail-icon"></i><span class="label">Numbers</span></a>
+        <a class="rail-item"><i class="rail-icon"></i><span class="label">Time</span></a>
+        <a class="rail-item active"><i class="rail-icon"></i><span class="label">Settings</span></a>
+      </nav>
+    </aside>
+
+    <div class="main">
+      <!-- settings are not words to look up, so the bar's search box is off here -->
+      <header class="topbar">
+        <span class="topbar-context">/ SETTINGS</span>
+        <div class="topbar-actions"></div>
+      </header>
+
+      <div class="content" style="display:flex;flex-direction:column;gap:20px;overflow:hidden">
+
+        <!-- All shows every group in order; each other tab shows one -->
+        <div class="wf-row">
+          <nav class="wf-filters">
+            <button class="btn primary" style="width:120px">All</button>
+            <button class="btn" style="width:120px">General</button>
+            <button class="btn" style="width:120px">Routine</button>
+            <button class="btn" style="width:120px">Session</button>
+            <button class="btn" style="width:120px">Sound</button>
+            <button class="btn" style="width:120px">Advanced</button>
+          </nav>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:20px;overflow:auto">
+
+          <!-- general -->
+          <div class="card">
+            <div class="settings-row">
+              <div><div class="settings-row-title">Theme</div></div>
+              <div class="wf-select"><span>Dark</span><span>▾</span></div>
+            </div>
+            <div class="settings-row">
+              <div><div class="settings-row-title">Interface language</div></div>
+              <div class="wf-select"><span>English</span><span>▾</span></div>
+            </div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-row-title">Foreign language</div>
+                <div class="meta settings-row-desc">24,318 words available</div>
+              </div>
+              <div class="wf-select"><span>French</span><span>▾</span></div>
+            </div>
+            <div class="settings-row">
+              <div><div class="settings-row-title">Native language</div></div>
+              <div class="wf-select"><span>English</span><span>▾</span></div>
+            </div>
+          </div>
+
+          <!-- routine -->
+          <div class="card">
+            <div class="settings-row">
+              <div><div class="settings-row-title">Training word count</div></div>
+              <div class="stepper"><button class="btn">−</button><span class="value">25</span><button class="btn">+</button></div>
+            </div>
+            <div class="settings-row">
+              <div><div class="settings-row-title">Review word count</div></div>
+              <div class="stepper"><button class="btn">−</button><span class="value">25</span><button class="btn">+</button></div>
+            </div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-row-title">Sessions per day</div>
+                <div class="meta settings-row-desc">Word daily goal: 50 (2 sessions of 25)</div>
+              </div>
+              <div class="stepper"><button class="btn">−</button><span class="value">2</span><button class="btn">+</button></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="settings-row">
+              <div><div class="settings-row-title">Notifications</div></div>
+              <span class="switch on"></span>
+            </div>
+            <div class="settings-row">
+              <div><div class="settings-row-title">Notify me at</div></div>
+              <div class="wf-row" style="gap:16px">
+                <div class="stepper"><button class="btn">−</button><span class="value">19</span><button class="btn">+</button></div>
+                <div class="stepper"><button class="btn">−</button><span class="value">30</span><button class="btn">+</button></div>
+              </div>
+            </div>
+            <div class="settings-row">
+              <div><div class="settings-row-title">Notification text</div></div>
+              <div class="wf-row" style="gap:8px">
+                <input class="search-box" style="width:260px" value="42 words are waiting">
+                <button class="btn">Try it</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- session -->
+          <div class="card">
+            <div class="settings-row">
+              <div><div class="settings-row-title">Ask with</div></div>
+              <div class="wf-select"><span>Either side</span><span>▾</span></div>
+            </div>
+            <div class="settings-row">
+              <div><div class="settings-row-title">Include target-to-native</div></div>
+              <span class="switch on"></span>
+            </div>
+            <div class="settings-row">
+              <div><div class="settings-row-title">Include typed translation</div></div>
+              <span class="switch on"></span>
+            </div>
+            <div class="settings-row">
+              <div><div class="settings-row-title">Cards per exercise</div></div>
+              <div class="stepper"><button class="btn">−</button><span class="value">10</span><button class="btn">+</button></div>
+            </div>
+            <div class="settings-row">
+              <div><div class="settings-row-title">Required correct answers to master a word</div></div>
+              <div class="stepper"><button class="btn">−</button><span class="value">4</span><button class="btn">+</button></div>
+            </div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-row-title">Require correct articles</div>
+                <div class="meta settings-row-desc">requires "le chien" instead of "chien"</div>
+              </div>
+              <span class="switch on"></span>
+            </div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-row-title">Require exact accents</div>
+                <div class="meta settings-row-desc">Marks "eleve" wrong for "élève"</div>
+              </div>
+              <span class="switch"></span>
+            </div>
+          </div>
+
+          <!-- sound -->
+          <div class="card">
+            <div class="settings-row">
+              <div><div class="settings-row-title">Speech</div></div>
+              <span class="switch on"></span>
+            </div>
+            <div class="settings-row">
+              <div><div class="settings-row-title">Voice</div></div>
+              <div class="wf-row" style="gap:8px">
+                <button class="btn">Sample</button>
+                <div class="wf-select"><span>Supertonic 3</span><span>▾</span></div>
+              </div>
+            </div>
+            <div class="settings-row">
+              <div><div class="settings-row-title">Speaker</div></div>
+              <div class="stepper"><button class="btn">−</button><span class="value">3</span><button class="btn">+</button></div>
+            </div>
+            <div class="settings-row">
+              <div><div class="settings-row-title">Speech speed</div></div>
+              <div class="wf-row" style="gap:12px">
+                <span class="meta" style="font-size:12px;color:var(--wf-ink)">1.00×</span>
+                <span class="slider" style="--at:50%"><i style="width:50%"></i></span>
+              </div>
+            </div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-row-title">Voice cache</div>
+                <div class="meta settings-row-desc">Cache last spoken lines, inscrease for faster response time</div>
+              </div>
+              <div class="stepper"><button class="btn">−</button><span class="value">64</span><button class="btn">+</button></div>
+            </div>
+          </div>
+
+          <!-- advanced -->
+          <div class="card">
+            <div class="settings-row">
+              <div><div class="settings-row-title">Examples per meaning</div></div>
+              <div class="stepper"><button class="btn">−</button><span class="value">2</span><button class="btn">+</button></div>
+            </div>
+            <div class="settings-row">
+              <div><div class="settings-row-title">Review intervals</div></div>
+              <span class="meta">5 boxes</span>
+            </div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-row-title">Interval 1</div>
+                <div class="meta settings-row-desc">1 days later</div>
+              </div>
+              <div class="stepper"><button class="btn">−</button><span class="value">1</span><button class="btn">+</button></div>
+            </div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-row-title">Interval 2</div>
+                <div class="meta settings-row-desc">3 days later</div>
+              </div>
+              <div class="stepper"><button class="btn">−</button><span class="value">3</span><button class="btn">+</button></div>
+            </div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-row-title">Interval 3</div>
+                <div class="meta settings-row-desc">7 days later</div>
+              </div>
+              <div class="stepper"><button class="btn">−</button><span class="value">7</span><button class="btn">+</button></div>
+            </div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-row-title">Interval 4</div>
+                <div class="meta settings-row-desc">14 days later</div>
+              </div>
+              <div class="stepper"><button class="btn">−</button><span class="value">14</span><button class="btn">+</button></div>
+            </div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-row-title">Interval 5</div>
+                <div class="meta settings-row-desc">28 days later</div>
+              </div>
+              <div class="stepper"><button class="btn">−</button><span class="value">28</span><button class="btn">+</button></div>
+            </div>
+            <div class="settings-row">
+              <div><div class="settings-row-title">Drop learning status after</div></div>
+              <div class="stepper"><button class="btn">−</button><span class="value">3 days</span><button class="btn">+</button></div>
+            </div>
+            <div class="settings-row">
+              <div><div class="settings-row-title">Reset review intervals</div></div>
+              <button class="btn">Reset</button>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="settings-row">
+              <div>
+                <div class="settings-row-title">Delete everything</div>
+                <div class="meta settings-row-desc">%APPDATA%\Ikonika\Ikonika\Ikonika.db</div>
+              </div>
+              <button class="btn">Delete</button>
+            </div>
+          </div>
+
+          <!-- debug builds only -->
+          <div class="card">
+            <div class="settings-row">
+              <div><div class="settings-row-title">DEBUG: Pretend days have passed</div></div>
+              <div class="wf-row" style="gap:8px">
+                <div class="stepper"><button class="btn">−</button><span class="value">0</span><button class="btn">+</button></div>
+                <button class="btn">+7</button>
+                <button class="btn">+30</button>
+                <button class="btn">Today</button>
+              </div>
+            </div>
+            <div class="settings-row">
+              <div><div class="settings-row-title">DEBUG: notification</div></div>
+              <div class="wf-row" style="gap:8px">
+                <button class="btn">Run</button>
+                <button class="btn">Mark studied</button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

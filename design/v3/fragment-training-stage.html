@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>V3 · Training · Stage</title>
+  <link rel="stylesheet" href="./wireframe.css">
+</head>
+<body>
+  <!-- Five stages in one screen. Each stage embeds an exercise with its own
+       frame dropped: this screen supplies the header and the panel, so the
+       exercise inside is the question and nothing else.
+
+       Stage 3 shown. Stage 1 is flashcards, 2 is flip, 4 mixes typed and audio,
+       5 is speed matching. -->
+  <div class="stage-frame">
+
+    <div class="stage-header">
+      <button class="btn">← Decks</button>
+      <span class="meta">Mercado y comida · Train</span>
+
+      <div class="stage-segments">
+        <span class="segs">
+          <i class="done"></i><i class="done"></i><i class="running" style="--at:40%"></i><i></i><i></i>
+        </span>
+        <span class="meta">12 of 30 words</span>
+      </div>
+
+      <div class="right">
+        <!-- stages 2 and 3 have no direction of their own, so the learner picks -->
+        <button class="btn">Ask: Either side</button>
+        <button class="btn">Restart</button>
+        <button class="btn">End session</button>
+        <button class="btn">Complete stage</button>
+      </div>
+    </div>
+
+    <div class="stage-panel">
+      <div class="session-stage">
+
+        <span class="meta">What does this mean?</span>
+
+        <div class="session-word">vouloir</div>
+
+        <div class="session-options" style="grid-auto-flow:column;grid-template-rows:repeat(3,54px)">
+          <button class="session-option"><span class="num">1</span><span class="text">to want</span></button>
+          <button class="session-option"><span class="num">2</span><span class="text">to fly</span></button>
+          <button class="session-option"><span class="num">3</span><span class="text">to see</span></button>
+          <button class="session-option"><span class="num">4</span><span class="text">to eat</span></button>
+          <button class="session-option"><span class="num">5</span><span class="text">to run</span></button>
+          <button class="session-option"><span class="num">6</span><span class="text">to sleep</span></button>
+        </div>
+
+        <div class="session-actions-row">
+          <button class="btn">Don't remember</button>
+          <button class="btn primary">Continue →</button>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>

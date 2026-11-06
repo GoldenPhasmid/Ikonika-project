@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mobile · Settings</title>
+  <link rel="stylesheet" href="../v3/wireframe.css">
+  <link rel="stylesheet" href="./mobile.css">
+</head>
+<body>
+  <div class="phone">
+
+    <header class="phone-topbar">
+      <span class="title">Settings</span>
+    </header>
+
+    <div class="phone-content" style="gap:0">
+
+      <!-- General section -->
+      <div style="padding:16px 0 12px;border-bottom:1px solid var(--wf-faint)">
+        <div style="font-size:12px;color:var(--wf-mid);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:12px">General</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--wf-faint)">
+          <span style="font-size:15px">Theme</span>
+          <span style="font-size:14px;color:var(--wf-mid)">Dark ▾</span>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--wf-faint)">
+          <span style="font-size:15px">Interface language</span>
+          <span style="font-size:14px;color:var(--wf-mid)">English ▾</span>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--wf-faint)">
+          <span style="font-size:15px">Foreign language</span>
+          <span style="font-size:14px;color:var(--wf-mid)">French ▾</span>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0">
+          <span style="font-size:15px">Native language</span>
+          <span style="font-size:14px;color:var(--wf-mid)">English ▾</span>
+        </div>
+      </div>
+
+      <!-- Routine section -->
+      <div style="padding:16px 0 12px;border-bottom:1px solid var(--wf-faint)">
+        <div style="font-size:12px;color:var(--wf-mid);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:12px">Routine</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--wf-faint)">
+          <span style="font-size:15px">Training word count</span>
+          <div class="stepper"><button class="btn">−</button><span class="value" style="min-width:40px">25</span><button class="btn">+</button></div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--wf-faint)">
+          <span style="font-size:15px">Review word count</span>
+          <div class="stepper"><button class="btn">−</button><span class="value" style="min-width:40px">25</span><button class="btn">+</button></div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--wf-faint)">
+          <div style="flex:1">
+            <span style="font-size:15px">Sessions per day</span>
+            <div style="font-size:13px;color:var(--wf-mid);margin-top:2px">Daily goal: 50 (2 sessions of 25)</div>
+          </div>
+          <div class="stepper"><button class="btn">−</button><span class="value" style="min-width:40px">2</span><button class="btn">+</button></div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--wf-faint)">
+          <span style="font-size:15px">Notifications</span>
+          <span class="switch on" style="width:44px;height:24px"></span>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0">
+          <span style="font-size:15px">Notify me at</span>
+          <span style="font-size:14px;color:var(--wf-mid)">19:30</span>
+        </div>
+      </div>
+
+      <!-- Session section -->
+      <div style="padding:16px 0 12px;border-bottom:1px solid var(--wf-faint)">
+        <div style="font-size:12px;color:var(--wf-mid);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:12px">Session</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--wf-faint)">
+          <span style="font-size:15px">Ask with</span>
+          <span style="font-size:14px;color:var(--wf-mid)">Either side ▾</span>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--wf-faint)">
+          <span style="font-size:15px">Include target-to-native</span>
+          <span class="switch on" style="width:44px;height:24px"></span>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--wf-faint)">
+          <span style="font-size:15px">Include typed translation</span>
+          <span class="switch on" style="width:44px;height:24px"></span>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--wf-faint)">
+          <span style="font-size:15px">Cards per exercise</span>
+          <div class="stepper"><button class="btn">−</button><span class="value" style="min-width:40px">10</span><button class="btn">+</button></div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--wf-faint)">
+          <span style="font-size:15px">Required correct answers</span>
+          <div class="stepper"><button class="btn">−</button><span class="value" style="min-width:40px">4</span><button class="btn">+</button></div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--wf-faint)">
+          <div style="flex:1">
+            <span style="font-size:15px">Require correct articles</span>
+            <div style="font-size:13px;color:var(--wf-mid);margin-top:2px">requires "le chien" instead of "chien"</div>
+          </div>
+          <span class="switch on" style="width:44px;height:24px"></span>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0">
+          <div style="flex:1">
+            <span style="font-size:15px">Require exact accents</span>
+            <div style="font-size:13px;color:var(--wf-mid);margin-top:2px">Marks "eleve" wrong for "élève"</div>
+          </div>
+          <span class="switch" style="width:44px;height:24px"></span>
+        </div>
+      </div>
+
+      <!-- Sound section -->
+      <div style="padding:16px 0 12px;border-bottom:1px solid var(--wf-faint)">
+        <div style="font-size:12px;color:var(--wf-mid);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:12px">Sound</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--wf-faint)">
+          <span style="font-size:15px">Speech</span>
+          <span class="switch on" style="width:44px;height:24px"></span>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--wf-faint)">
+          <span style="font-size:15px">Voice</span>
+          <span style="font-size:14px;color:var(--wf-mid)">Supertonic 3 ▾</span>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--wf-faint)">
+          <span style="font-size:15px">Speaker</span>
+          <div class="stepper"><button class="btn">−</button><span class="value" style="min-width:40px">3</span><button class="btn">+</button></div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--wf-faint)">
+          <span style="font-size:15px">Speech speed</span>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:14px;color:var(--wf-mid)">1.00×</span>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0">
+          <span style="font-size:15px">Voice cache</span>
+          <span style="font-size:14px;color:var(--wf-mid)">34 MB</span>
+        </div>
+      </div>
+
+      <!-- Advanced section -->
+      <div style="padding:16px 0 12px;border-bottom:1px solid var(--wf-faint)">
+        <div style="font-size:12px;color:var(--wf-mid);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:12px">Advanced</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--wf-faint)">
+          <div style="flex:1">
+            <span style="font-size:15px">Examples per meaning</span>
+            <div style="font-size:13px;color:var(--wf-mid);margin-top:2px">Show up to this many per sense</div>
+          </div>
+          <div class="stepper"><button class="btn">−</button><span class="value" style="min-width:40px">3</span><button class="btn">+</button></div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--wf-faint)">
+          <span style="font-size:15px">Review intervals</span>
+          <span style="font-size:14px;color:var(--wf-mid)">1d · 3d · 7d · 14d · 30d</span>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--wf-faint)">
+          <div style="flex:1">
+            <span style="font-size:15px">Drop learning status</span>
+            <div style="font-size:13px;color:var(--wf-mid);margin-top:2px">Move all learning words back to pool</div>
+          </div>
+          <button class="btn" style="height:32px;padding:0 12px;font-size:12px">Drop</button>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--wf-faint)">
+          <div style="flex:1">
+            <span style="font-size:15px">Reset intervals</span>
+            <div style="font-size:13px;color:var(--wf-mid);margin-top:2px">Send all words back to box 1</div>
+          </div>
+          <button class="btn" style="height:32px;padding:0 12px;font-size:12px">Reset</button>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--wf-faint)">
+          <span style="font-size:15px;color:var(--wf-mid)">Debug controls</span>
+          <span style="font-size:14px;color:var(--wf-mid)">›</span>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0">
+          <div style="flex:1">
+            <span style="font-size:15px">Delete everything</span>
+            <div style="font-size:13px;color:var(--wf-mid);margin-top:2px">Local data only, not the cloud</div>
+          </div>
+          <button class="btn" style="height:32px;padding:0 12px;font-size:12px">Delete</button>
+        </div>
+      </div>
+
+    </div>
+
+    <nav class="phone-tabbar">
+      <button class="tab"><span class="tab-icon"></span><span class="label">Today</span></button>
+      <button class="tab"><span class="tab-icon"><span class="badge-dot">12</span></span><span class="label">Decks</span></button>
+      <button class="tab"><span class="tab-icon"></span><span class="label">Words</span></button>
+      <button class="tab active"><span class="tab-icon"></span><span class="label">Settings</span></button>
+    </nav>
+
+  </div>
+</body>
+</html>

@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>V3 · Session · Multiple choice</title>
+  <link rel="stylesheet" href="./wireframe.css">
+</head>
+<body>
+  <div class="session-mode">
+
+    <aside class="session-rail">
+      <div class="session-slots"><i></i><i></i><i></i><i></i><i></i></div>
+    </aside>
+
+    <div class="session-main">
+
+      <header class="session-topbar">
+        <div class="session-bar-left">
+          <button class="btn">← Back</button>
+          <span class="session-topbar-context">Exercise / Multiple choice</span>
+        </div>
+        <div class="session-bar-centre">
+          <span class="session-ticks">
+            <i class="right"></i><i class="right"></i><i class="wrong"></i><i class="right"></i><i class="skipped"></i><i class="right"></i><i></i><i></i><i></i><i></i>
+          </span>
+          <span class="session-counter">6 / 10</span>
+          <label class="session-toggle"><span class="track"></span>Endless</label>
+        </div>
+        <div class="session-bar-right">
+          <button class="btn">Ask: Either side</button>
+          <button class="btn disabled">Settings</button>
+          <button class="btn">Mute</button>
+        </div>
+      </header>
+
+      <div class="session-surface">
+        <div class="session-stage">
+
+          <span class="meta">What does this mean?</span>
+
+          <!-- the prompt alone, not in a card -->
+          <div class="session-word">vouloir</div>
+
+          <!-- no countdown here: six options have to be read before one can be
+               chosen, and a draining bar buys speed at the cost of the thinking -->
+
+          <!-- numbered down the columns, so the keys read 1-2-3 then 4-5-6 -->
+          <div class="session-options" style="grid-auto-flow:column;grid-template-rows:repeat(3,54px)">
+            <button class="session-option"><span class="num">1</span><span class="text">to want</span></button>
+            <button class="session-option"><span class="num">2</span><span class="text">to fly</span></button>
+            <button class="session-option"><span class="num">3</span><span class="text">to see</span></button>
+            <button class="session-option"><span class="num">4</span><span class="text">to eat</span></button>
+            <button class="session-option"><span class="num">5</span><span class="text">to run</span></button>
+            <button class="session-option"><span class="num">6</span><span class="text">to sleep</span></button>
+          </div>
+
+          <div class="session-actions-row">
+            <button class="btn">Don't remember</button>
+            <button class="btn primary">Continue →</button>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+</body>
+</html>

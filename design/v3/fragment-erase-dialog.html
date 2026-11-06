@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>V3 · Erase everything</title>
+  <link rel="stylesheet" href="./wireframe.css">
+</head>
+<body>
+  <div class="app">
+
+    <aside class="rail">
+      <div class="rail-head">
+        <div class="rail-mark">AK</div>
+        <div class="rail-lang">FR / EN</div>
+      </div>
+      <nav class="rail-nav">
+        <a class="rail-item"><i class="rail-icon"></i><span class="label">Today</span><span class="count">54</span></a>
+        <a class="rail-item"><i class="rail-icon"></i><span class="label">Decks</span><span class="count">12</span></a>
+        <a class="rail-item"><i class="rail-icon"></i><span class="label">Reader</span></a>
+        <a class="rail-item"><i class="rail-icon"></i><span class="label">YouTube</span></a>
+        <a class="rail-item"><i class="rail-icon"></i><span class="label">Dictionary</span></a>
+        <a class="rail-item"><i class="rail-icon"></i><span class="label">Numbers</span></a>
+        <a class="rail-item"><i class="rail-icon"></i><span class="label">Time</span></a>
+        <a class="rail-item"><i class="rail-icon"></i><span class="label">Settings</span></a>
+      </nav>
+    </aside>
+
+    <div class="main">
+      <header class="topbar">
+        <span class="topbar-context">/ PROFILE</span>
+        <div class="topbar-actions"></div>
+      </header>
+      <div class="content"></div>
+    </div>
+  </div>
+
+  <!-- The word has to be typed rather than a button pressed twice. A confirm
+       dialog is dismissed by reflex, and this is the only thing in the app that
+       destroys work on every machine at once. ERASE is not translated: it is a
+       token to copy, and translating it would let the instruction and the field
+       disagree. -->
+  <div class="modal-scrim">
+    <div class="dialog" style="width:460px">
+      <div class="dialog-head">
+        <span class="title">Erase everything</span>
+        <button class="dialog-close">✕</button>
+      </div>
+
+      <div style="font-size:13px;color:var(--wf-mid);line-height:1.5">
+        Deletes every deck, word and day of history on this device and the cloud
+        copy in Google Drive. Other devices lose it on their next sync. This
+        cannot be undone.
+      </div>
+
+      <div class="field">
+        <span class="meta">Type ERASE to confirm</span>
+        <input placeholder="ERASE">
+      </div>
+
+      <!-- the confirm stays dead until the word matches -->
+      <div class="dialog-actions" style="justify-content:flex-end">
+        <button class="btn" style="flex:none">Cancel</button>
+        <button class="btn primary disabled" style="flex:none">Erase everything</button>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

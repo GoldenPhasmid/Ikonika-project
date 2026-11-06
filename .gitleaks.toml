@@ -1,0 +1,16 @@
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "The vendored SQLite amalgamation"
+paths = ['''third_party[/\\]sqlite[/\\]''']
+
+[[allowlists]]
+description = "QSettings key names, such as appearance/colourByGender"
+regexTarget = "match"
+regexes = ['''Key\s*=\s*"[A-Za-z]+(/[A-Za-z]+)+"''']
+
+[[allowlists]]
+description = "The public InnerTube key that YouTube's own clients embed"
+targetRules = ["gcp-api-key", "generic-api-key"]
+paths = ['''app[/\\]src[/\\]AppYoutubeCaptions\.cpp$''']

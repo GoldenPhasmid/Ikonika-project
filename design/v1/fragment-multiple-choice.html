@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="./style.css">
+  <style>
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+    }
+
+    .screen-frame {
+      width: 1920px;
+      height: 1080px;
+    }
+  </style>
+</head>
+<body>
+
+<svg xmlns="http://www.w3.org/2000/svg" id="invincible-icons" aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden">
+  <symbol id="i-arrow-right" viewBox="0 0 24 24"><path d="M4 12h15M14 7l5 5-5 5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="1.5"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 5 5L20 6" fill="none" stroke="currentColor" stroke-width="1.5"/></symbol>
+  <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="1.5"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m20 20-4.3-4.3" stroke="currentColor" stroke-width="1.5"/></symbol>
+  <symbol id="i-flag" viewBox="0 0 24 24"><path d="M5 3v18M5 4h12l-2 4 2 4H5" fill="none" stroke="currentColor" stroke-width="1.5"/></symbol>
+  <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="12" rx="3" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3" fill="none" stroke="currentColor" stroke-width="1.5"/></symbol>
+  <symbol id="i-arrow-up" viewBox="0 0 24 24"><path d="M12 4v16M5 11l7-7 7 7" fill="none" stroke="currentColor" stroke-width="1.5"/></symbol>
+  <symbol id="i-arrow-down" viewBox="0 0 24 24"><path d="M12 4v16M5 13l7 7 7-7" fill="none" stroke="currentColor" stroke-width="1.5"/></symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" fill="none" stroke="currentColor" stroke-width="1.8"/></symbol>
+  <symbol id="i-mute" viewBox="0 0 24 24"><path d="M11 5 6 9H3v6h3l5 4V5z" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M17 9l4 4M21 9l-4 4" fill="none" stroke="currentColor" stroke-width="1.8"/></symbol>
+  <symbol id="i-status-new" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="3 3"/></symbol>
+  <symbol id="i-more" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.6" fill="currentColor"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/><circle cx="12" cy="19" r="1.6" fill="currentColor"/></symbol>
+  <symbol id="i-volume" viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9H4z" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M16.5 8.5a5 5 0 0 1 0 7" fill="none" stroke="currentColor" stroke-width="1.8"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M5 4.5A2.5 2.5 0 0 1 7.5 2H19v18H7.5A2.5 2.5 0 0 0 5 22V4.5z" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M19 17H7.5A2.5 2.5 0 0 0 5 19.5" fill="none" stroke="currentColor" stroke-width="1.8"/></symbol>
+</svg>
+
+<div class="screen-frame" data-screen-label="1a Session">
+  <div class="sidebar">
+    <div class="brand-mark">MK</div>
+    <div class="sidebar-action">
+      <svg width="16" height="16" viewBox="0 0 24 24" style="color:currentColor;flex:none"><use href="#i-arrow-right"/></svg>
+    </div>
+  </div>
+
+  <div class="main-shell">
+    <div class="topbar">
+      <span class="topbar-context">/ DECK · KITCHENWARE</span>
+      <div class="topbar-progress-wrap">
+        <div class="progress">
+          <div class="progress-segment complete"></div>
+          <div class="progress-segment complete"></div>
+          <div class="progress-segment current"></div>
+          <div class="progress-segment complete"></div>
+          <div class="progress-segment complete"></div>
+          <div class="progress-segment complete"></div>
+          <div class="progress-segment skipped"></div>
+          <div class="progress-segment pending"></div>
+          <div class="progress-segment pending"></div>
+          <div class="progress-segment pending"></div>
+        </div>
+        <span class="topbar-counter">6 / 10</span>
+      </div>
+      <div class="topbar-right">
+        <button class="topbar-icon-action" aria-label="Settings">
+          <svg width="16" height="16" viewBox="0 0 24 24"><use href="#i-settings"/></svg>
+        </button>
+        <button class="topbar-icon-action" aria-label="Mute audio">
+          <svg width="16" height="16" viewBox="0 0 24 24"><use href="#i-mute"/></svg>
+        </button>
+        <span class="topbar-close" aria-label="End session">
+          <svg width="16" height="16" viewBox="0 0 24 24"><use href="#i-close"/></svg>
+        </span>
+      </div>
+    </div>
+
+    <div class="quiz-surface">
+      <div class="word-card-fixed">
+        <div class="word-card-fixed-header-row">
+          <span class="word-card-fixed-status">
+            <svg viewBox="0 0 24 24"><use href="#i-status-new"/></svg>
+            New
+          </span>
+          <span class="word-card-fixed-direction">ES → EN</span>
+          <button class="word-card-fixed-action ghost word-card-fixed-more" aria-label="More options">
+            <svg viewBox="0 0 24 24"><use href="#i-more"/></svg>
+          </button>
+        </div>
+        <div class="word-card-fixed-image-slot">
+          <image-slot id="ses-1a-word" shape="square" fit="cover" placeholder="Word image · la cuchara"></image-slot>
+        </div>
+
+        <div class="word-card-fixed-word-row">
+          <div class="word-card-fixed-word">la cuchara<span class="word-card-fixed-pos">f.</span></div>
+          <div class="word-card-fixed-actions">
+            <button class="word-card-fixed-action ghost" aria-label="Play pronunciation">
+              <svg viewBox="0 0 24 24"><use href="#i-volume"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="word-card-fixed-phonetic-slot">
+          <span class="word-card-fixed-phonetic">/la ku.ˈt͡ʃa.ɾa/</span>
+        </div>
+
+        <div class="word-card-fixed-definition-slot">
+          <div class="word-card-fixed-definition">utensilio con un cuenco poco profundo y un mango, usado para comer o servir comida</div>
+          <button class="word-card-fixed-action ghost" aria-label="Play definition">
+            <svg viewBox="0 0 24 24"><use href="#i-volume"/></svg>
+          </button>
+        </div>
+
+        <div class="word-card-fixed-footer-row">
+          <div class="word-card-fixed-translation">spoon</div>
+          <button class="word-card-fixed-action word-card-fixed-dict-action" aria-label="Open in dictionary">
+            <svg viewBox="0 0 24 24"><use href="#i-book"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="option-grid">
+        <div class="state-item-v2 incorrect"><span class="option-number">1</span><span class="option-text">fork</span></div>
+        <div class="state-item-v2 correct"><span class="option-number">2</span><span class="option-text">spoon</span></div>
+        <div class="state-item-v2 default"><span class="option-number">3</span><span class="option-text">knife</span></div>
+        <div class="state-item-v2 focus"><span class="option-number">4</span><span class="option-text">plate</span></div>
+      </div>
+
+      <div class="quiz-actions">
+        <span>1–4 SELECT</span>
+        <span>SPACE REPLAY</span>
+        <span>↩ CONFIRM</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
+

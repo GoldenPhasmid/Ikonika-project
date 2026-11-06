@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mobile · Profile</title>
+  <link rel="stylesheet" href="../v3/wireframe.css">
+  <link rel="stylesheet" href="./mobile.css">
+</head>
+<body>
+  <div class="phone">
+
+    <header class="phone-topbar">
+      <button class="icon-btn bare">←</button>
+      <span class="title">Profile</span>
+    </header>
+
+    <div class="phone-content" style="gap:0">
+
+      <!-- Avatar + Name -->
+      <div style="display:flex;align-items:center;gap:16px;padding:20px 0;border-bottom:1px solid var(--wf-faint)">
+        <div style="width:64px;height:64px;border-radius:50%;background:var(--wf-ink);display:flex;align-items:center;justify-content:center;color:var(--wf-paper);font-family:var(--wf-mono);font-size:18px;font-weight:700">AK</div>
+        <div>
+          <div style="font-size:20px;font-weight:500">Alex Kushnirenko</div>
+          <div style="font-size:14px;color:var(--wf-mid);margin-top:2px">alex@example.com</div>
+        </div>
+      </div>
+
+      <!-- Account section -->
+      <div style="padding:16px 0 12px;border-bottom:1px solid var(--wf-faint)">
+        <div style="font-size:12px;color:var(--wf-mid);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:12px">Account</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--wf-faint)">
+          <div style="flex:1">
+            <div style="font-size:15px">Google account</div>
+            <div style="font-size:13px;color:var(--wf-mid);margin-top:2px">Signed in · last synced 4 min ago</div>
+          </div>
+          <button class="btn" style="height:36px;padding:0 16px">Sign out</button>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0">
+          <div style="flex:1">
+            <div style="font-size:15px">Cloud sync</div>
+            <div style="font-size:13px;color:var(--wf-mid);margin-top:2px">Decks, words and progress</div>
+          </div>
+          <button class="btn" style="height:36px;padding:0 16px">Sync now</button>
+        </div>
+      </div>
+
+      <!-- Erase section -->
+      <div style="padding:16px 0 12px;border-bottom:1px solid var(--wf-faint)">
+        <div style="font-size:12px;color:var(--wf-mid);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:12px">Erase</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0">
+          <div style="flex:1">
+            <div style="font-size:15px">Erase everything</div>
+            <div style="font-size:13px;color:var(--wf-mid);margin-top:2px">Every deck, word and day, here and in the cloud</div>
+          </div>
+          <button class="btn" style="height:36px;padding:0 16px">Erase</button>
+        </div>
+      </div>
+
+      <!-- On this device -->
+      <div style="padding:16px 0 12px">
+        <div style="font-size:12px;color:var(--wf-mid);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:12px">On this device</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--wf-faint)">
+          <span style="font-size:15px">Learning</span>
+          <span style="font-size:14px;color:var(--wf-mid)">French from English</span>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0">
+          <span style="font-size:15px">Decks</span>
+          <span style="font-size:14px;color:var(--wf-mid)">12 decks</span>
+        </div>
+      </div>
+
+    </div>
+
+    <nav class="phone-tabbar">
+      <button class="tab"><span class="tab-icon"></span><span class="label">Today</span></button>
+      <button class="tab"><span class="tab-icon"><span class="badge-dot">12</span></span><span class="label">Decks</span></button>
+      <button class="tab"><span class="tab-icon"></span><span class="label">Words</span></button>
+      <button class="tab active"><span class="tab-icon"></span><span class="label">Settings</span></button>
+    </nav>
+
+  </div>
+</body>
+</html>

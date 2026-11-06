@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>V3 · Triage</title>
+  <link rel="stylesheet" href="./wireframe.css">
+</head>
+<body>
+  <!-- Sorting new words before they are learned. It runs in the session shell,
+       but it is not an exercise: nothing here is right or wrong, so there are no
+       result ticks and no score. The run ends when enough words are collected. -->
+  <div class="session-mode">
+
+    <aside class="session-rail">
+      <div class="session-slots"><i></i><i></i><i></i><i></i><i></i></div>
+    </aside>
+
+    <div class="session-main">
+
+      <header class="session-topbar">
+        <div class="session-bar-left">
+          <button class="btn">← Back</button>
+          <span class="session-topbar-context">Exercise / New words</span>
+        </div>
+        <div class="session-bar-centre">
+          <span class="session-counter">14 / 25 collected</span>
+          <span class="session-counter">6 already known</span>
+          <span class="session-counter">3 skipped</span>
+        </div>
+        <div class="session-bar-right">
+          <button class="btn disabled">Settings</button>
+          <button class="btn">Mute</button>
+        </div>
+      </header>
+
+      <div class="session-surface">
+        <div class="session-stage">
+
+          <span class="meta">Do you want to learn this word?</span>
+
+          <div class="session-card" style="position:relative;justify-content:center;gap:8px">
+            <div style="position:absolute;top:8px;right:8px;display:flex;gap:4px">
+              <button class="btn">Listen</button>
+              <button class="btn">Web</button>
+            </div>
+
+            <div class="session-word">la moule</div>
+            <!-- which reading is being asked about: "moule" is two words, and
+                 without this the question has two answers -->
+            <span class="meta">noun · f</span>
+
+            <!-- what the card would teach, in the form it will be stored in.
+                 Editable, for a translation the grid below does not offer. -->
+            <input class="session-input" style="height:36px;font-size:14px;margin-top:8px" value="mussel">
+          </div>
+
+          <!-- three by two, filling across. A word usually has more than one good
+               translation, and a card carrying only the likeliest teaches half of
+               it. The likeliest one with no card already starts ticked, so pressing
+               straight through still produces a good card. -->
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;width:640px">
+            <span class="chip in-use" style="height:48px;justify-content:center">mussel<span class="bars"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></span></span>
+            <span class="chip" style="height:48px;justify-content:center">shell<span class="bars"><i class="on"></i><i class="on"></i><i></i><i></i></span></span>
+            <span class="chip learned" style="height:48px;justify-content:center">mould<span class="mark small"></span><span class="bars"><i class="on"></i><i class="on"></i><i></i><i></i></span></span>
+            <span class="chip" style="height:48px;justify-content:center">cast<span class="bars"><i class="on"></i><i></i><i></i><i></i></span></span>
+            <span class="chip" style="height:48px;justify-content:center">tin<span class="bars"><i class="on"></i><i></i><i></i><i></i></span></span>
+            <span class="chip" style="height:48px;justify-content:center">form<span class="bars"><i class="on"></i><i></i><i></i><i></i></span></span>
+          </div>
+
+          <!-- drawn the same, since no answer here is a failure. "Learn it" is the
+               one that produces work, and colouring it apart would discourage the
+               honest answer. -->
+          <div class="session-actions-row" style="gap:16px">
+            <button class="btn" style="flex:1;height:48px">← I know it</button>
+            <button class="btn" style="flex:1;height:48px">↓ Skip</button>
+            <button class="btn" style="flex:1;height:48px">Learn it →</button>
+          </div>
+
+          <span class="meta">arrow keys · know / skip / learn</span>
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+</body>
+</html>

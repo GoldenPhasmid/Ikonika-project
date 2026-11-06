@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mobile · Today</title>
+  <link rel="stylesheet" href="../v3/wireframe.css">
+  <link rel="stylesheet" href="./mobile.css">
+</head>
+<body>
+  <div class="phone">
+
+    <header class="phone-topbar">
+      <span class="title">Today</span>
+      <button class="icon-btn bare">⚙</button>
+      <button class="icon-btn bare">⌕</button>
+    </header>
+
+    <div class="phone-content" style="gap:20px">
+
+      <!-- Due next 5 days shelf -->
+      <div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:0 0 8px">
+          <span style="font-size:13px;color:var(--wf-mid)">61 words due next 5 days</span>
+        </div>
+        <div class="m-scroll" style="margin:0 -16px;padding:0 16px">
+          <div class="m-due-card">
+            <span class="day">Thu</span>
+            <div class="bar"><i style="height:72%"></i></div>
+            <span class="count">18</span>
+          </div>
+          <div class="m-due-card">
+            <span class="day">Fri</span>
+            <div class="bar"><i style="height:28%"></i></div>
+            <span class="count">7</span>
+          </div>
+          <div class="m-due-card none">
+            <span class="day">Sat</span>
+            <div class="bar"></div>
+            <span class="count">0</span>
+          </div>
+          <div class="m-due-card">
+            <span class="day">Sun</span>
+            <div class="bar"><i style="height:100%"></i></div>
+            <span class="count">25</span>
+          </div>
+          <div class="m-due-card">
+            <span class="day">Mon</span>
+            <div class="bar"><i style="height:44%"></i></div>
+            <span class="count">11</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Learn / Review -->
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;align-items:center;padding:20px 16px;background:var(--wf-ink);color:var(--wf-paper);border-radius:2px;cursor:pointer">
+          <div style="width:22px;height:22px;border:2px solid var(--wf-paper);border-radius:2px;flex:none"></div>
+          <span style="flex:1;font-size:17px;font-weight:500;margin-left:12px">Learn</span>
+          <span style="font-size:15px;opacity:0.7">48</span>
+        </div>
+        <div style="display:flex;align-items:center;padding:20px 16px;background:var(--wf-ink);color:var(--wf-paper);border-radius:2px;cursor:pointer">
+          <div style="width:22px;height:22px;border:2px solid var(--wf-paper);border-radius:2px;flex:none"></div>
+          <span style="flex:1;font-size:17px;font-weight:500;margin-left:12px">Review</span>
+          <span style="font-size:15px;opacity:0.7">61</span>
+        </div>
+      </div>
+
+      <!-- Recent decks shelf -->
+      <div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:0 0 8px">
+          <span style="font-size:15px;font-weight:500">Recent decks</span>
+          <button class="btn ghost" style="height:32px;padding:0 8px;font-size:12px">See all</button>
+        </div>
+        <div class="m-scroll" style="margin:0 -16px;padding:0 16px">
+          <article class="deck-tile" style="width:200px;flex:none">
+            <div class="deck-swatch" style="height:80px;background:var(--wf-faint)"></div>
+            <div class="deck-body">
+              <div class="deck-name-row">
+                <span class="name" style="font-size:14px;font-weight:500">Mercado y comida</span>
+              </div>
+              <div class="deck-counts" style="margin-top:8px">
+                <span class="pool">64</span><span class="learning">48</span><span class="done">16</span>
+              </div>
+              <div class="bar3" style="margin-top:8px"><i class="learning" style="width:37.5%;margin-left:50%"></i><i class="done" style="width:12.5%"></i></div>
+            </div>
+          </article>
+          <article class="deck-tile" style="width:200px;flex:none">
+            <div class="deck-swatch" style="height:80px;background:var(--wf-faint)"></div>
+            <div class="deck-body">
+              <div class="deck-name-row">
+                <span class="name" style="font-size:14px;font-weight:500">Transporte</span>
+              </div>
+              <div class="deck-counts" style="margin-top:8px">
+                <span class="pool">40</span><span class="learning">50</span><span class="done">6</span>
+              </div>
+              <div class="bar3" style="margin-top:8px"><i class="learning" style="width:52%;margin-left:41.6%"></i><i class="done" style="width:6.2%"></i></div>
+            </div>
+          </article>
+          <article class="deck-tile" style="width:200px;flex:none">
+            <div class="deck-swatch" style="height:80px;background:var(--wf-faint)"></div>
+            <div class="deck-body">
+              <div class="deck-name-row">
+                <span class="name" style="font-size:14px;font-weight:500">Verbos irregulares</span>
+              </div>
+              <div class="deck-counts" style="margin-top:8px">
+                <span class="pool">52</span><span class="learning">12</span><span class="done">0</span>
+              </div>
+              <div class="bar3" style="margin-top:8px"><i class="learning" style="width:18.7%;margin-left:81.3%"></i></div>
+            </div>
+          </article>
+        </div>
+      </div>
+
+      <!-- History bar chart -->
+      <div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:0 0 8px">
+          <span style="font-size:15px;font-weight:500">History</span>
+        </div>
+        <div style="display:flex;align-items:flex-end;gap:6px;height:80px;padding:0 0 4px;border-bottom:1px solid var(--wf-faint)">
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">
+            <div style="width:100%;height:48px;background:var(--wf-faint)"></div>
+            <span style="font-size:10px;color:var(--wf-mid)">Mon</span>
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">
+            <div style="width:100%;height:32px;background:var(--wf-faint)"></div>
+            <span style="font-size:10px;color:var(--wf-mid)">Tue</span>
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">
+            <div style="width:100%;height:64px;background:var(--wf-faint)"></div>
+            <span style="font-size:10px;color:var(--wf-mid)">Wed</span>
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">
+            <div style="width:100%;height:24px;background:var(--wf-faint)"></div>
+            <span style="font-size:10px;color:var(--wf-mid)">Thu</span>
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">
+            <div style="width:100%;height:56px;background:var(--wf-faint)"></div>
+            <span style="font-size:10px;color:var(--wf-mid)">Fri</span>
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">
+            <div style="width:100%;height:16px;background:var(--wf-faint)"></div>
+            <span style="font-size:10px;color:var(--wf-mid)">Sat</span>
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">
+            <div style="width:100%;height:40px;background:var(--wf-faint)"></div>
+            <span style="font-size:10px;color:var(--wf-mid)">Sun</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recently learned -->
+      <div class="m-summary">
+        <div class="m-summary-row">
+          <span class="title">Recently learned</span>
+          <span class="trail">11 this week <span style="font-size:16px">›</span></span>
+        </div>
+        <div class="m-summary-row">
+          <span class="title">Last looked up</span>
+          <span class="trail">9 words <span style="font-size:16px">›</span></span>
+        </div>
+      </div>
+
+    </div>
+
+    <nav class="phone-tabbar">
+      <button class="tab active"><span class="tab-icon"></span><span class="label">Today</span></button>
+      <button class="tab"><span class="tab-icon"><span class="badge-dot">12</span></span><span class="label">Decks</span></button>
+      <button class="tab"><span class="tab-icon"></span><span class="label">Words</span></button>
+      <button class="tab"><span class="tab-icon"></span><span class="label">Settings</span></button>
+    </nav>
+
+  </div>
+</body>
+</html>

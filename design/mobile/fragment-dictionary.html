@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mobile · Dictionary</title>
+  <link rel="stylesheet" href="../v3/wireframe.css">
+  <link rel="stylesheet" href="./mobile.css">
+  <style>
+    .ex-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      font-size: 16px;
+      line-height: 1;
+    }
+  </style>
+</head>
+<body>
+  <div class="phone">
+
+    <header class="phone-topbar">
+      <button class="icon-btn bare">←</button>
+      <span class="title">Dictionary</span>
+    </header>
+
+    <div class="phone-content" style="gap:16px">
+
+      <!-- Search -->
+      <div style="display:flex;gap:8px">
+        <input type="text" value="marché" style="flex:1;height:44px;border:1px solid var(--wf-line);border-radius:2px;padding:0 16px;font-size:15px;background:var(--wf-panel);outline:none">
+        <button class="btn primary" style="height:44px;padding:0 16px">Search</button>
+      </div>
+
+      <!-- Entry -->
+      <div style="display:flex;flex-direction:column;gap:12px">
+
+        <!-- Headword -->
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <span style="font-size:24px;font-weight:500">marché</span>
+          <span style="font-size:13px;color:var(--wf-mid)">noun</span>
+          <span style="font-size:13px;color:var(--wf-mid)">/maʁ.ʃe/</span>
+          <span style="font-size:12px;background:var(--wf-faint);padding:2px 6px;border-radius:3px">3</span>
+        </div>
+
+        <!-- Actions -->
+        <div style="display:flex;gap:8px">
+          <button class="icon-btn bare" title="Listen"><span class="ex-icon">🔊</span></button>
+          <button class="icon-btn bare" title="Add to deck"><span class="ex-icon">+</span></button>
+          <button class="icon-btn bare" title="Web"><span class="ex-icon">🌐</span></button>
+        </div>
+
+        <!-- Translations -->
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <span style="font-size:12px;color:var(--wf-mid);text-transform:uppercase;letter-spacing:0.08em">Translations</span>
+          <div style="display:flex;flex-wrap:wrap;gap:8px">
+            <span class="chip" style="height:36px;padding:0 12px;font-size:13px">market</span>
+            <span class="chip learned" style="height:36px;padding:0 12px;font-size:13px">deal</span>
+            <span class="chip" style="height:36px;padding:0 12px;font-size:13px">marketplace</span>
+            <span class="chip" style="height:36px;padding:0 12px;font-size:13px">agreement</span>
+            <span class="chip" style="height:36px;padding:0 12px;font-size:13px">bargain</span>
+          </div>
+        </div>
+
+        <!-- Sense 1 -->
+        <div style="display:flex;flex-direction:column;gap:6px;padding-top:8px;border-top:1px solid var(--wf-faint)">
+          <div style="display:flex;gap:8px;align-items:flex-start">
+            <span style="font-size:13px;color:var(--wf-mid);min-width:16px">1</span>
+            <div style="display:flex;flex-direction:column;gap:4px;flex:1">
+              <div style="display:flex;gap:6px;align-items:center">
+                <span style="font-size:12px;color:var(--wf-mid)">m</span>
+                <span style="font-size:14px;line-height:1.5">lieu public où l'on vend des marchandises</span>
+              </div>
+              <div style="display:flex;flex-wrap:wrap;gap:4px;padding-left:0">
+                <span class="chip" style="height:32px;padding:0 8px;font-size:12px">market</span>
+                <span class="chip" style="height:32px;padding:0 8px;font-size:12px">marketplace</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sense 2 -->
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <div style="display:flex;gap:8px;align-items:flex-start">
+            <span style="font-size:13px;color:var(--wf-mid);min-width:16px">2</span>
+            <div style="display:flex;flex-direction:column;gap:4px;flex:1">
+              <div style="display:flex;gap:6px;align-items:center">
+                <span style="font-size:12px;color:var(--wf-mid)">m</span>
+                <span style="font-size:14px;line-height:1.5">accord commercial, transaction entre deux parties</span>
+              </div>
+              <div style="display:flex;flex-wrap:wrap;gap:4px;padding-left:0">
+                <span class="chip" style="height:32px;padding:0 8px;font-size:12px">deal</span>
+                <span class="chip" style="height:32px;padding:0 8px;font-size:12px">agreement</span>
+                <span class="chip" style="height:32px;padding:0 8px;font-size:12px">bargain</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Forms -->
+        <div style="display:flex;flex-direction:column;gap:6px;padding-top:8px;border-top:1px solid var(--wf-faint)">
+          <span style="font-size:12px;color:var(--wf-mid);text-transform:uppercase;letter-spacing:0.08em">Forms</span>
+          <div style="display:flex;gap:12px;font-size:14px">
+            <span>marchés <span style="font-size:12px;color:var(--wf-mid)">plural</span></span>
+          </div>
+        </div>
+
+        <!-- Examples -->
+        <div style="display:flex;flex-direction:column;gap:8px;padding-top:8px;border-top:1px solid var(--wf-faint)">
+          <span style="font-size:12px;color:var(--wf-mid);text-transform:uppercase;letter-spacing:0.08em">Examples</span>
+          <div style="display:flex;flex-direction:column;gap:4px">
+            <div style="font-size:14px;line-height:1.5">Je vais au marché le samedi matin.</div>
+            <div style="font-size:13px;color:var(--wf-mid)">I go to the market on Saturday mornings.</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px">
+            <div style="font-size:14px;line-height:1.5">Ils ont conclu un marché avantageux.</div>
+            <div style="font-size:13px;color:var(--wf-mid)">They struck a good deal.</div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+</body>
+</html>

@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>V3 · Session · Speed matching</title>
+  <link rel="stylesheet" href="./wireframe.css">
+</head>
+<body>
+  <div class="session-mode">
+
+    <aside class="session-rail">
+      <div class="session-slots"><i></i><i></i><i></i><i></i><i></i></div>
+    </aside>
+
+    <div class="session-main">
+
+      <header class="session-topbar">
+        <div class="session-bar-left">
+          <button class="btn">← Back</button>
+          <span class="session-topbar-context">Exercise / Speed matching</span>
+        </div>
+        <!-- no endless toggle: this exercise is a fixed pass over the set -->
+        <div class="session-bar-centre">
+          <span class="session-ticks">
+            <i class="right"></i><i class="right"></i><i class="right"></i><i class="wrong"></i><i class="right"></i><i class="right"></i><i class="right"></i><i class="right"></i><i class="right"></i><i></i>
+          </span>
+          <span class="session-counter">9 / 25</span>
+          <span class="session-counter">score 214</span>
+        </div>
+        <div class="session-bar-right">
+          <button class="btn disabled">Settings</button>
+          <button class="btn">Mute</button>
+        </div>
+      </header>
+
+      <div class="session-surface">
+        <div class="session-stage">
+
+          <span class="meta">Match pairs</span>
+
+          <!-- five pairs a screen. 1 to 5 down the left, 6 to 0 down the right,
+               so two presses make a pair without the mouse. -->
+          <div class="session-match">
+            <div class="session-match-col">
+              <button class="session-match-item"><span class="num">1</span><span class="text">le chat</span></button>
+              <button class="session-match-item" style="opacity:0.3"><span class="num">2</span><span class="text">vouloir</span></button>
+              <button class="session-match-item"><span class="num">3</span><span class="text">la lune</span></button>
+              <button class="session-match-item"><span class="num">4</span><span class="text">manger</span></button>
+              <button class="session-match-item"><span class="num">5</span><span class="text">le pain</span></button>
+            </div>
+            <div class="session-match-col">
+              <button class="session-match-item"><span class="num">6</span><span class="text">the cat</span></button>
+              <button class="session-match-item"><span class="num">7</span><span class="text">the moon</span></button>
+              <button class="session-match-item" style="opacity:0.3"><span class="num">8</span><span class="text">to want</span></button>
+              <button class="session-match-item"><span class="num">9</span><span class="text">bread</span></button>
+              <button class="session-match-item"><span class="num">0</span><span class="text">to eat</span></button>
+            </div>
+          </div>
+
+          <!-- what the next pair earns, falling with time. Empty while a wrong
+               pair's forfeit stands. -->
+          <div class="session-countdown"><i style="width:48%"></i></div>
+
+          <!-- no next button: a solved screen holds for a beat, then advances -->
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,12 @@
+{
+    "targetLanguage": "fr",
+    "nativeLanguage": "en",
+    "cards": [
+        { "word": "le chien", "translation": "dog", "partOfSpeech": "noun", "gender": "m" },
+        { "word": "la maison", "translation": "house", "partOfSpeech": "noun", "gender": "f" },
+        { "word": "manger", "translation": "to eat", "partOfSpeech": "verb" },
+        { "word": "parler", "translation": "to talk", "partOfSpeech": "verb" },
+        { "word": "grand", "translation": "big", "partOfSpeech": "adj" },
+        { "word": "vite", "translation": "quickly", "partOfSpeech": "adv" }
+    ]
+}

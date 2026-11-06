@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>V3 · Dictionary</title>
+  <link rel="stylesheet" href="./wireframe.css">
+</head>
+<body>
+  <div class="app">
+
+    <aside class="rail">
+      <div class="rail-head">
+        <div class="rail-mark">AK</div>
+        <div class="rail-lang">FR / EN</div>
+      </div>
+      <nav class="rail-nav">
+        <a class="rail-item"><i class="rail-icon"></i><span class="label">Today</span><span class="count">54</span></a>
+        <a class="rail-item"><i class="rail-icon"></i><span class="label">Decks</span><span class="count">12</span></a>
+        <a class="rail-item"><i class="rail-icon"></i><span class="label">Reader</span></a>
+        <a class="rail-item"><i class="rail-icon"></i><span class="label">YouTube</span></a>
+        <a class="rail-item active"><i class="rail-icon"></i><span class="label">Dictionary</span></a>
+        <a class="rail-item"><i class="rail-icon"></i><span class="label">Numbers</span></a>
+        <a class="rail-item"><i class="rail-icon"></i><span class="label">Time</span></a>
+        <a class="rail-item"><i class="rail-icon"></i><span class="label">Settings</span></a>
+      </nav>
+    </aside>
+
+    <div class="main">
+      <!-- no search box in the bar: this screen has its own, and a second box
+           doing something else would read as the same box -->
+      <header class="topbar">
+        <span class="topbar-context">/ DICTIONARY / LE MARCHÉ</span>
+        <div class="topbar-actions"></div>
+      </header>
+
+      <div class="content" style="display:flex;flex-direction:column;gap:28px;overflow:auto">
+
+        <div class="dict-search">
+          <input value="marché" aria-label="Search">
+          <button class="btn primary">Search</button>
+        </div>
+
+        <!-- one entry per part of speech -->
+        <div class="entry">
+
+          <div class="entry-head">
+            <span class="headword">marché</span>
+            <span class="meta">noun</span>
+            <span class="meta">/maʁ.ʃe/</span>
+            <span class="mark">3</span>
+            <span class="wf-grow"></span>
+            <button class="btn">Listen</button>
+            <button class="btn" style="width:32px;padding:0">+</button>
+            <button class="btn">Web</button>
+          </div>
+
+          <div class="entry-body">
+
+            <!-- every meaning's translations, strongest first, once per entry -->
+            <div class="dict-section" style="margin-top:0">
+              <span class="meta">Translations</span>
+              <div class="chip-flow">
+                <span class="chip">market<span class="bars"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></span></span>
+                <span class="chip learned">deal<span class="mark small"></span><span class="bars"><i class="on"></i><i class="on"></i><i class="on"></i><i></i></span></span>
+                <span class="chip">marketplace<span class="bars"><i class="on"></i><i class="on"></i><i></i><i></i></span></span>
+                <span class="chip">agreement<span class="bars"><i class="on"></i><i></i><i></i><i></i></span></span>
+                <span class="chip">bargain<span class="bars"><i class="on"></i><i></i><i></i><i></i></span></span>
+              </div>
+            </div>
+
+            <!-- meanings: definition and gender left, translations opposite -->
+            <div class="sense">
+              <span class="num">1</span>
+              <div class="target">
+                <span class="meta">m</span>
+                <span>lieu public où l'on vend des marchandises, généralement en plein air ou dans un bâtiment couvert</span>
+              </div>
+              <div class="native">
+                <span class="chip">market<span class="bars"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></span></span>
+                <span class="chip">marketplace<span class="bars"><i class="on"></i><i class="on"></i><i></i><i></i></span></span>
+              </div>
+            </div>
+
+            <div class="sense">
+              <span class="num">2</span>
+              <div class="target">
+                <span class="meta">m</span>
+                <span>accord commercial, transaction entre deux parties</span>
+              </div>
+              <div class="native">
+                <span class="chip">deal<span class="bars"><i class="on"></i><i class="on"></i><i class="on"></i><i></i></span></span>
+                <span class="chip">agreement<span class="bars"><i class="on"></i><i></i><i></i><i></i></span></span>
+                <span class="chip">bargain<span class="bars"><i class="on"></i><i></i><i></i><i></i></span></span>
+              </div>
+            </div>
+
+            <!-- a meaning no translation was bound to keeps the full width -->
+            <div class="sense">
+              <span class="num">3</span>
+              <div class="target">
+                <span class="meta">m</span>
+                <span>ensemble des acheteurs et des vendeurs d'un bien</span>
+              </div>
+            </div>
+
+            <!-- how the word is spelled when inflected, which is what a text shows -->
+            <div class="dict-section">
+              <span class="meta">Forms</span>
+              <div class="form-flow">
+                <span>marchés <span class="meta">plural</span></span>
+              </div>
+            </div>
+
+            <!-- once per entry, not per meaning: the corpus says which word a
+                 sentence uses and nothing about which meaning -->
+            <div class="dict-section">
+              <span class="meta">Examples</span>
+              <div class="example">
+                <div class="sentence">Je vais au marché le samedi matin.</div>
+                <div class="translated">I go to the market on Saturday mornings.</div>
+              </div>
+              <div class="example">
+                <div class="sentence">Ils ont conclu un marché avantageux.</div>
+                <div class="translated">They struck a good deal.</div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</body>
+</html>

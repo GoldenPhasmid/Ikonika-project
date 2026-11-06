@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mobile · Wireframes</title>
+  <link rel="stylesheet" href="./mobile.css">
+  <style>
+    html {
+      overflow: auto;
+    }
+
+    body.scaffold {
+      overflow: visible;
+      padding: 40px;
+    }
+
+    .row {
+      margin-bottom: 40px;
+    }
+
+    .row-label {
+      font-size: 13px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #666;
+      padding-bottom: 12px;
+      border-bottom: 2px solid #ddd;
+      margin-bottom: 16px;
+    }
+
+    .row-scroll {
+      display: flex;
+      flex-wrap: nowrap;
+      gap: 24px;
+      overflow-x: auto;
+    }
+
+    .frame-cell {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      width: 412px;
+      flex: none;
+    }
+
+    .scaffold-label span {
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      height: 2.6em;
+      line-height: 1.3em;
+    }
+
+    iframe {
+      display: block;
+      width: 412px;
+      height: 915px;
+      border: 1px solid #ddd;
+      background: #fff;
+    }
+  </style>
+</head>
+<body class="scaffold">
+
+  <!-- Row 1: Setup -->
+  <div class="row">
+    <div class="row-label">Setup</div>
+    <div class="row-scroll">
+
+      <div class="frame-cell">
+        <div class="scaffold-label">
+          <strong>00a · ACCOUNT</strong>
+          <span>SIGN IN OR CONTINUE SIGNED OUT</span>
+        </div>
+        <iframe src="./fragment-onboarding-account.html"></iframe>
+      </div>
+
+      <div class="frame-cell">
+        <div class="scaffold-label">
+          <strong>00a* · ANOTHER MACHINE</strong>
+          <span>WHAT THE FILE HOLDS · MERGED NOT REPLACED</span>
+        </div>
+        <iframe src="./fragment-onboarding-machine.html"></iframe>
+      </div>
+
+      <div class="frame-cell">
+        <div class="scaffold-label">
+          <strong>00b · LANGUAGE</strong>
+          <span>TWO DROPDOWNS · COMPONENT CHECKLIST · SIZE ON COMMIT</span>
+        </div>
+        <iframe src="./fragment-onboarding-language.html"></iframe>
+      </div>
+
+      <div class="frame-cell">
+        <div class="scaffold-label">
+          <strong>00c · DOWNLOAD</strong>
+          <span>DICTIONARY ONLY · PROGRESS BAR</span>
+        </div>
+        <iframe src="./fragment-onboarding-download.html"></iframe>
+      </div>
+
+      <div class="frame-cell">
+        <div class="scaffold-label">
+          <strong>00c* · DOWNLOAD · ALL THREE</strong>
+          <span>ONE AT A TIME · QUEUED ROWS SAY WAITING</span>
+        </div>
+        <iframe src="./fragment-onboarding-download-full.html"></iframe>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Row 2: Daily, settings, deck, word screens -->
+  <div class="row">
+    <div class="row-label">Daily · Settings · Decks · Words</div>
+    <div class="row-scroll">
+
+      <div class="frame-cell">
+        <div class="scaffold-label">
+          <strong>01 · TODAY</strong>
+          <span>DUE SHELF · TRAIN / REVIEW · RECENT DECKS</span>
+        </div>
+        <iframe src="./fragment-today.html"></iframe>
+      </div>
+
+      <div class="frame-cell">
+        <div class="scaffold-label">
+          <strong>02 · DECKS</strong>
+          <span>FILTER CHIPS · SORT · SECTIONS · CREATE TILE</span>
+        </div>
+        <iframe src="./fragment-decks.html"></iframe>
+      </div>
+
+      <div class="frame-cell">
+        <div class="scaffold-label">
+          <strong>02b · CREATE DECK</strong>
+          <span>FULL SCREEN · NAME + DESCRIPTION · CREATE AT BOTTOM</span>
+        </div>
+        <iframe src="./fragment-create-deck.html"></iframe>
+      </div>
+
+      <div class="frame-cell">
+        <div class="scaffold-label">
+          <strong>03 · DECK DETAIL</strong>
+          <span>EXERCISES · TRAIN / REVIEW · WORD COUNT</span>
+        </div>
+        <iframe src="./fragment-deck-detail.html"></iframe>
+      </div>
+
+      <div class="frame-cell">
+        <div class="scaffold-label">
+          <strong>03* · DECK WORDS</strong>
+          <span>EDIT ICON · FILTERS · SEARCH · WORD LIST · FAB</span>
+        </div>
+        <iframe src="./fragment-deck-words.html"></iframe>
+      </div>
+
+      <div class="frame-cell">
+        <div class="scaffold-label">
+          <strong>03b · ADD WORD</strong>
+          <span>FULL SCREEN · WORD + TRANSLATION + POS + DECK</span>
+        </div>
+        <iframe src="./fragment-add-word.html"></iframe>
+      </div>
+
+      <div class="frame-cell">
+        <div class="scaffold-label">
+          <strong>04 · PROFILE</strong>
+          <span>AVATAR · ACCOUNT · SYNC · ERASE</span>
+        </div>
+        <iframe src="./fragment-profile.html"></iframe>
+      </div>
+
+      <div class="frame-cell">
+        <div class="scaffold-label">
+          <strong>06 · WORDS</strong>
+          <span>SEARCH · SECTIONS WITH COUNTS</span>
+        </div>
+        <iframe src="./fragment-words.html"></iframe>
+      </div>
+
+      <div class="frame-cell">
+        <div class="scaffold-label">
+          <strong>06b · WORD DETAIL</strong>
+          <span>SENSE GROUPS · EXAMPLES · SYNONYMS</span>
+        </div>
+        <iframe src="./fragment-word-detail.html"></iframe>
+      </div>
+
+      <div class="frame-cell">
+        <div class="scaffold-label">
+          <strong>06c · DICTIONARY · SEARCH</strong>
+          <span>SEARCH · ENTRY · TRANSLATIONS · FORMS</span>
+        </div>
+        <iframe src="./fragment-dictionary.html"></iframe>
+      </div>
+
+      <div class="frame-cell">
+        <div class="scaffold-label">
+          <strong>06d · DICTIONARY · ENTRY</strong>
+          <span>NATIVE WORD · TARGET WORDS WITH BADGES</span>
+        </div>
+        <iframe src="./fragment-dictionary-entry.html"></iframe>
+      </div>
+
+      <div class="frame-cell">
+        <div class="scaffold-label">
+          <strong>06e · DICTIONARY · NOT FOUND</strong>
+          <span>NO RESULTS · MACHINE TRANSLATION</span>
+        </div>
+        <iframe src="./fragment-dictionary-notfound.html"></iframe>
+      </div>
+
+      <div class="frame-cell">
+        <div class="scaffold-label">
+          <strong>07 · SETTINGS</strong>
+          <span>GENERAL · ROUTINE · SESSION · SOUND</span>
+        </div>
+        <iframe src="./fragment-settings.html"></iframe>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Row 3: Screens with a CARD as content area (visible WORD) -->
+  <div class="row">
+    <div class="row-label">Screens with visible word card</div>
+    <div class="row-scroll">
+
+      <div class="frame-cell">
+        <div class="scaffold-label">
+          <strong>05 · TRIAGE</strong>
+          <span>KNOW · SKIP · LEARN</span>
+        </div>
+        <iframe src="./fragment-triage.html"></iframe>
+      </div>
+
+      <div class="frame-cell">
+        <div class="scaffold-label">
+          <strong>08a · FLASHCARD</strong>
+          <span>WORD + TRANSLATION + DEFINITION · SWIPE</span>
+        </div>
+        <iframe src="./fragment-exercise-flashcard.html"></iframe>
+      </div>
+
+      <div class="frame-cell">
+        <div class="scaffold-label">
+          <strong>08b · FLIP</strong>
+          <span>COUNTER · TAP TO REVEAL · ? PLACEHOLDER</span>
+        </div>
+        <iframe src="./fragment-exercise-flip.html"></iframe>
+      </div>
+
+      <div class="frame-cell">
+        <div class="scaffold-label">
+          <strong>08g · CORRECT / INCORRECT</strong>
+          <span>REVEAL THEN YES/NO · FEEDBACK PANEL</span>
+        </div>
+        <iframe src="./fragment-exercise-correct-incorrect.html"></iframe>
+      </div>
+
+      <div class="frame-cell">
+        <div class="scaffold-label">
+          <strong>09b · REVIEW STAGE</strong>
+          <span>FOUR SEGMENTS · YES/NO REVIEW</span>
+        </div>
+        <iframe src="./fragment-review-stage.html"></iframe>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Row 4: Other triage, training and exercise screens -->
+  <div class="row">
+    <div class="row-label">Other exercise and training screens</div>
+    <div class="row-scroll">
+
+      <div class="frame-cell">
+        <div class="scaffold-label">
+          <strong>08c · MULTIPLE CHOICE</strong>
+          <span>SIX OPTIONS · CORRECT HIGHLIGHTED</span>
+        </div>
+        <iframe src="./fragment-exercise-multiple-choice.html"></iframe>
+      </div>
+
+      <div class="frame-cell">
+        <div class="scaffold-label">
+          <strong>08d · TYPED TRANSLATION</strong>
+          <span>COUNTDOWN · INPUT · FEEDBACK</span>
+        </div>
+        <iframe src="./fragment-exercise-typed.html"></iframe>
+      </div>
+
+      <div class="frame-cell">
+        <div class="scaffold-label">
+          <strong>08e · AUDIO TRANSCRIPTION</strong>
+          <span>REPLAY · SPELLING + MEANING</span>
+        </div>
+        <iframe src="./fragment-exercise-audio-transcription.html"></iframe>
+      </div>
+
+      <div class="frame-cell">
+        <div class="scaffold-label">
+          <strong>08f · SPEED MATCHING</strong>
+          <span>FIVE PAIRS · MATCHED ITEMS DIMMED</span>
+        </div>
+        <iframe src="./fragment-exercise-speed-matching.html"></iframe>
+      </div>
+
+      <div class="frame-cell">
+        <div class="scaffold-label">
+          <strong>09c · SESSION SUMMARY</strong>
+          <span>ALL SEGMENTS DONE · WORDS + TIME</span>
+        </div>
+        <iframe src="./fragment-session-summary.html"></iframe>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Row 5: Remaining screens -->
+  <div class="row">
+    <div class="row-label">Remaining screens</div>
+    <div class="row-scroll">
+
+      <div class="frame-cell">
+        <div class="scaffold-label">
+          <strong>10 · LANGUAGES</strong>
+          <span>IN USE · DOWNLOADING · WAITING</span>
+        </div>
+        <iframe src="./fragment-languages.html"></iframe>
+      </div>
+
+      <div class="frame-cell">
+        <div class="scaffold-label">
+          <strong>11 · ERASE</strong>
+          <span>FULL SCREEN · TYPE ERASE TO ARM</span>
+        </div>
+        <iframe src="./fragment-erase.html"></iframe>
+      </div>
+
+    </div>
+  </div>
+
+</body>
+</html>

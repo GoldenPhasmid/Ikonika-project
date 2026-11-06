@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>V3 · Session · Typed translation</title>
+  <link rel="stylesheet" href="./wireframe.css">
+</head>
+<body>
+  <div class="session-mode">
+
+    <aside class="session-rail">
+      <div class="session-slots"><i></i><i></i><i></i><i></i><i></i></div>
+    </aside>
+
+    <div class="session-main">
+
+      <header class="session-topbar">
+        <div class="session-bar-left">
+          <button class="btn">← Back</button>
+          <span class="session-topbar-context">Exercise / Typed translation</span>
+        </div>
+        <div class="session-bar-centre">
+          <span class="session-ticks">
+            <i class="right"></i><i class="right"></i><i class="right"></i><i class="wrong"></i><i class="right"></i><i class="right"></i><i class="wrong"></i><i></i><i></i><i></i>
+          </span>
+          <span class="session-counter">7 / 10</span>
+          <span class="session-counter">score 128</span>
+          <label class="session-toggle"><span class="track"></span>Endless</label>
+        </div>
+        <div class="session-bar-right">
+          <button class="btn disabled">Settings</button>
+          <button class="btn">Mute</button>
+        </div>
+      </header>
+
+      <div class="session-surface">
+        <div class="session-stage">
+
+          <span class="meta">Type this in French</span>
+
+          <div class="session-word">the book</div>
+
+          <!-- the expected answer, in the place the prompt's own translation
+               would sit. Space reserved, so submitting moves nothing. -->
+          <div class="session-translation">le livre</div>
+
+          <div class="session-countdown"><i style="width:66%"></i></div>
+
+          <!-- what was typed stays as typed, coloured once it is known -->
+          <input class="session-input wrong" type="text" value="la liure">
+
+          <!-- accents are required, so a US layout without these makes a wrong
+               answer out of something that has nothing to do with the word -->
+          <div class="session-accents">
+            <button class="btn">à</button><button class="btn">â</button><button class="btn">æ</button>
+            <button class="btn">è</button><button class="btn">é</button><button class="btn">ê</button>
+            <button class="btn">ë</button><button class="btn">î</button><button class="btn">ï</button>
+            <button class="btn">ô</button><button class="btn">ù</button><button class="btn">û</button>
+            <button class="btn">ü</button><button class="btn">ç</button><button class="btn">œ</button>
+          </div>
+
+          <div class="session-actions-row">
+            <button class="btn">Don't remember</button>
+            <button class="btn primary">Continue →</button>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+</body>
+</html>

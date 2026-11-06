@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./style.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500;600&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<script src="./image-slot.js"></script>
+</helmet>
+
+<svg xmlns="http://www.w3.org/2000/svg" id="invincible-icons" aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden">
+  <symbol id="i-arrow-right" viewBox="0 0 24 24"><path d="M4 12h15M14 7l5 5-5 5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="1.5"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 5 5L20 6" fill="none" stroke="currentColor" stroke-width="1.5"/></symbol>
+  <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="1.5"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m20 20-4.3-4.3" stroke="currentColor" stroke-width="1.5"/></symbol>
+  <symbol id="i-flag" viewBox="0 0 24 24"><path d="M5 3v18M5 4h12l-2 4 2 4H5" fill="none" stroke="currentColor" stroke-width="1.5"/></symbol>
+  <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="12" rx="3" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3" fill="none" stroke="currentColor" stroke-width="1.5"/></symbol>
+  <symbol id="i-arrow-up" viewBox="0 0 24 24"><path d="M12 4v16M5 11l7-7 7 7" fill="none" stroke="currentColor" stroke-width="1.5"/></symbol>
+  <symbol id="i-arrow-down" viewBox="0 0 24 24"><path d="M12 4v16M5 13l7 7 7-7" fill="none" stroke="currentColor" stroke-width="1.5"/></symbol>
+</svg>
+
+<section class="canvas-shell">
+  <div class="hero">
+    <div class="eyebrow">/ TURN 01 · LAYOUT STRUCTURE · 29 JUL 2026</div>
+    <h1 class="hero-title">Two shells for the same <em>daily habit</em></h1>
+    <p class="hero-subtext">English vocabulary, Leitner-scheduled. Light Obsidian inversion — neutrals flipped, signal hues unchanged.</p>
+  </div>
+
+  <div class="layout-row">
+    <div class="session-stack">
+      <div class="stack-label">
+        <span class="title">DESKTOP · 02 SESSION — MULTIPLE CHOICE</span>
+        <span class="subtitle">LEFT SIDEBAR COLLAPSES</span>
+      </div>
+
+      <iframe src="./fragment-today.html" title="Today block" scrolling="no" style="border:0; display:block; width:1440px; height:860px; overflow:hidden;"></iframe>
+      <iframe src="./fragment-decks.html" title="Decks block" scrolling="no" style="border:0; display:block; width:1440px; height:860px; overflow:hidden;"></iframe>
+      
+      <iframe
+        src="./fragment-multiple-choice.html"
+        title="Multiple choice block"
+        scrolling="no"
+        style="border:0; display:block; width:1440px; height:860px; overflow:hidden;">
+      </iframe>
+
+      <iframe
+        src="./fragment-button-states.html"
+        title="Button states block"
+        scrolling="no"
+        style="border:0; display:block; width:1440px; height:860px; overflow:hidden;">
+      </iframe>
+      
+      <iframe src="./fragment-listening-multiple-choice.html" title="Listening multiple choice block" scrolling="no" style="border:0; display:block; width:1440px; height:860px; overflow:hidden;"></iframe>
+      <iframe src="./fragment-schedule.html" title="Schedule block" scrolling="no" style="border:0; display:block; width:1440px; height:860px; overflow:hidden;"></iframe>
+      <iframe src="./fragment-todayv2.html" title="Today v2 block" scrolling="no" style="border:0; display:block; width:1440px; height:860px; overflow:hidden;"></iframe>
+
+      <iframe src="./fragment-word-detail.html" title="Word detail block" scrolling="no" style="border:0; display:block; width:1440px; height:860px; overflow:hidden;"></iframe>
+      <iframe src="./fragment-dictionary-search.html" title="Dictionary search block" scrolling="no" style="border:0; display:block; width:1440px; height:860px; overflow:hidden;"></iframe>
+      <iframe src="./fragment-app-settings.html" title="App settings block" scrolling="no" style="border:0; display:block; width:1920px; height:1080px; overflow:hidden;"></iframe>
+
+
+      
+    </div>
+  </div>
+</section></x-dc>
+</body>
+</html>

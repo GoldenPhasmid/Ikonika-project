@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>V3 · Training complete</title>
+  <link rel="stylesheet" href="./wireframe.css">
+</head>
+<body>
+  <!-- Training does not use the session shell: it takes the whole window and
+       holds each stage's exercise in the panel below. The run stays on screen
+       when it finishes; Done is what leaves. -->
+  <div class="stage-frame">
+
+    <div class="stage-header">
+      <button class="btn">← Decks</button>
+      <span class="meta">Mercado y comida · Train</span>
+
+      <div class="stage-segments">
+        <span class="segs">
+          <i class="done"></i><i class="done"></i><i class="done"></i><i class="done"></i><i class="done"></i>
+        </span>
+        <span class="meta">stage 5 of 5 · done</span>
+      </div>
+
+      <div class="right">
+        <button class="btn">Restart</button>
+        <button class="btn">End session</button>
+        <button class="btn">Complete stage</button>
+      </div>
+    </div>
+
+    <div class="stage-panel">
+      <!-- What the run reports. Points are never shown, and neither are box
+           moves: training promotes its words to box 1 wholesale, so there is
+           nothing per-card to report. -->
+      <div class="session-finish">
+        <div style="font-size:24px">Training complete</div>
+        <span class="meta">25 words in 3:07</span>
+        <button class="btn primary" style="margin-top:8px">Done</button>
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>

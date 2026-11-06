@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>V3 · Dictionary not found</title>
+  <link rel="stylesheet" href="./wireframe.css">
+</head>
+<body>
+  <div class="app">
+
+    <aside class="rail">
+      <div class="rail-head">
+        <div class="rail-mark">AK</div>
+        <div class="rail-lang">FR / EN</div>
+      </div>
+      <nav class="rail-nav">
+        <a class="rail-item"><i class="rail-icon"></i><span class="label">Today</span><span class="count">54</span></a>
+        <a class="rail-item"><i class="rail-icon"></i><span class="label">Decks</span><span class="count">12</span></a>
+        <a class="rail-item"><i class="rail-icon"></i><span class="label">Reader</span></a>
+        <a class="rail-item"><i class="rail-icon"></i><span class="label">YouTube</span></a>
+        <a class="rail-item active"><i class="rail-icon"></i><span class="label">Dictionary</span></a>
+        <a class="rail-item"><i class="rail-icon"></i><span class="label">Numbers</span></a>
+        <a class="rail-item"><i class="rail-icon"></i><span class="label">Time</span></a>
+        <a class="rail-item"><i class="rail-icon"></i><span class="label">Settings</span></a>
+      </nav>
+    </aside>
+
+    <div class="main">
+      <header class="topbar">
+        <span class="topbar-context">/ DICTIONARY / MARCHÉ FERME</span>
+        <div class="topbar-actions"></div>
+      </header>
+
+      <div class="content" style="display:flex;flex-direction:column;gap:28px;overflow:auto">
+
+        <div class="dict-search">
+          <input value="marché ferme" aria-label="Search">
+          <button class="btn primary">Search</button>
+        </div>
+
+        <!-- Nothing in the dictionary and nothing translating to it either. -->
+        <div class="card" style="display:flex;flex-direction:column;align-items:center;gap:16px;padding:48px 24px;text-align:center">
+          <div style="font-size:22px">No results</div>
+
+          <!-- What a model made of the same text. Kept plainly apart from an entry:
+               it is a guess, and the screen says so rather than letting it read as
+               something the dictionary knows. -->
+          <div style="display:flex;flex-direction:column;gap:4px;align-items:center">
+            <span class="kicker">Machine translation</span>
+            <span style="font-size:16px">closed market</span>
+          </div>
+
+          <div class="wf-row" style="gap:8px;margin-top:8px">
+            <button class="btn">Add manually</button>
+            <button class="btn">Add with translation</button>
+            <button class="btn primary">Search the web</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</body>
+</html>

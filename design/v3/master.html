@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>V3 · Wireframes</title>
+  <link rel="stylesheet" href="./wireframe.css">
+  <style>
+    html {
+      overflow: auto;
+    }
+
+    body.scaffold {
+      overflow: visible;
+    }
+
+    iframe {
+      display: block;
+      width: 1920px;
+      height: 1080px;
+      border: 1px solid #ddd;
+      background: #fff;
+    }
+
+    .scaffold-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1920px);
+      align-content: start;
+      gap: 48px 32px;
+      width: max-content;
+      padding: 500px;
+    }
+
+    .frame-cell {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+  </style>
+</head>
+<body class="scaffold">
+  <main class="scaffold-grid">
+    <div class="frame-cell">
+      <div class="scaffold-label">
+        <strong>00a · SETUP · ACCOUNT</strong>
+        <span>ONE QUESTION · SIGN IN OR CONTINUE SIGNED OUT</span>
+      </div>
+      <iframe src="./fragment-onboarding-account.html"></iframe>
+    </div>
+
+    <div class="frame-cell">
+      <div class="scaffold-label">
+        <strong>00a* · SETUP · ANOTHER MACHINE</strong>
+        <span>WHAT THE FILE HOLDS · MERGED NOT REPLACED</span>
+      </div>
+      <iframe src="./fragment-onboarding-machine.html"></iframe>
+    </div>
+
+    <div class="frame-cell">
+      <div class="scaffold-label">
+        <strong>00b · SETUP · LANGUAGE</strong>
+        <span>TWO DROPDOWNS · WHAT THE PAIR BRINGS DOWN · TOTAL ON THE COMMIT</span>
+      </div>
+      <iframe src="./fragment-onboarding-language.html"></iframe>
+    </div>
+
+    <div class="frame-cell">
+      <div class="scaffold-label">
+        <strong>00c · SETUP · DOWNLOAD</strong>
+        <span>ONLY WHAT WAS TICKED · DICTIONARY ONLY, HERE</span>
+      </div>
+      <iframe src="./fragment-onboarding-download.html"></iframe>
+    </div>
+
+    <div class="frame-cell">
+      <div class="scaffold-label">
+        <strong>00c* · SETUP · DOWNLOAD · ALL THREE</strong>
+        <span>ONE AT A TIME · A QUEUED FILE SAYS SO</span>
+      </div>
+      <iframe src="./fragment-onboarding-download-full.html"></iframe>
+    </div>
+
+    <div class="frame-cell">
+      <div class="scaffold-label">
+        <strong>01 · TODAY</strong>
+        <span>TWO FIGURES · SEVEN-DAY TIMELINE · THREE ACTIONS · RECENT DECKS · LAST LOOKED UP</span>
+      </div>
+      <iframe src="./fragment-today.html"></iframe>
+    </div>
+
+    <div class="frame-cell">
+      <div class="scaffold-label">
+        <strong>02 · DECKS</strong>
+        <span>FOUR FILTERS · SORT · CREATE TILE · DECK TILES · CREATE MODAL</span>
+      </div>
+      <iframe src="./fragment-decks.html"></iframe>
+    </div>
+
+    <div class="frame-cell">
+      <div class="scaffold-label">
+        <strong>03 · DECK DETAIL</strong>
+        <span>HEADER · TRAIN · SEVEN EXERCISES · PAGED WORD LIST · ADD WORD MODAL</span>
+      </div>
+      <iframe src="./fragment-deck-detail.html"></iframe>
+    </div>
+
+    <div class="frame-cell">
+      <div class="scaffold-label">
+        <strong>04 · PROFILE</strong>
+        <span>WHO IS SIGNED IN · SYNC · ERASE · THIS DEVICE</span>
+      </div>
+      <iframe src="./fragment-profile.html"></iframe>
+    </div>
+
+    <div class="frame-cell">
+      <div class="scaffold-label">
+        <strong>05 · TRIAGE</strong>
+        <span>KNOW · SKIP · LEARN · TRANSLATION GRID</span>
+      </div>
+      <iframe src="./fragment-triage.html"></iframe>
+    </div>
+
+    <div class="frame-cell">
+      <div class="scaffold-label">
+        <strong>06 · DICTIONARY</strong>
+        <span>ONE ENTRY · TRANSLATIONS · MEANINGS 70/30 · FORMS · EXAMPLES</span>
+      </div>
+      <iframe src="./fragment-dictionary.html"></iframe>
+    </div>
+
+    <div class="frame-cell">
+      <div class="scaffold-label">
+        <strong>06b · DICTIONARY · TRANSLATES TO</strong>
+        <span>A NATIVE WORD WITH NO HEADWORD OF ITS OWN</span>
+      </div>
+      <iframe src="./fragment-dictionary-alt.html"></iframe>
+    </div>
+
+    <div class="frame-cell">
+      <div class="scaffold-label">
+        <strong>06c · DICTIONARY · NOT FOUND</strong>
+        <span>MACHINE TRANSLATION · ADD · WEB</span>
+      </div>
+      <iframe src="./fragment-dictionary-notfound.html"></iframe>
+    </div>
+
+    <div class="frame-cell">
+      <div class="scaffold-label">
+        <strong>07 · SETTINGS</strong>
+        <span>SIX TABS · GENERAL · ROUTINE · SESSION · SOUND · ADVANCED</span>
+      </div>
+      <iframe src="./fragment-settings.html"></iframe>
+    </div>
+
+    <div class="frame-cell">
+      <div class="scaffold-label">
+        <strong>08 · SESSION · FLASHCARD</strong>
+        <span>WORD + TRANSLATION + DEFINITION · NOTHING GRADED</span>
+      </div>
+      <iframe src="./fragment-exercise-flashcard.html"></iframe>
+    </div>
+
+    <div class="frame-cell">
+      <div class="scaffold-label">
+        <strong>08 · SESSION · FLIP</strong>
+        <span>REVEAL ON DEMAND · ENDLESS · ASK SIDE</span>
+      </div>
+      <iframe src="./fragment-exercise-flip.html"></iframe>
+    </div>
+
+    <div class="frame-cell">
+      <div class="scaffold-label">
+        <strong>08 · SESSION · MULTIPLE CHOICE</strong>
+        <span>SIX OPTIONS NUMBERED DOWN THE COLUMNS · NO COUNTDOWN</span>
+      </div>
+      <iframe src="./fragment-exercise-multiple-choice.html"></iframe>
+    </div>
+
+    <div class="frame-cell">
+      <div class="scaffold-label">
+        <strong>08 · SESSION · TYPED TRANSLATION</strong>
+        <span>COUNTDOWN · INPUT · ACCENT KEYS</span>
+      </div>
+      <iframe src="./fragment-exercise-typed.html"></iframe>
+    </div>
+
+    <div class="frame-cell">
+      <div class="scaffold-label">
+        <strong>08 · SESSION · AUDIO TRANSCRIPTION</strong>
+        <span>REPLAY · SPELLING AND MEANING ON FEEDBACK · ACCENT KEYS</span>
+      </div>
+      <iframe src="./fragment-exercise-audio-transcription.html"></iframe>
+    </div>
+
+    <div class="frame-cell">
+      <div class="scaffold-label">
+        <strong>08 · SESSION · SPEED MATCHING</strong>
+        <span>FIVE PAIRS · KEYS 1-5 AND 6-0 · AWARD COUNTDOWN</span>
+      </div>
+      <iframe src="./fragment-exercise-speed-matching.html"></iframe>
+    </div>
+
+    <div class="frame-cell">
+      <div class="scaffold-label">
+        <strong>08 · SESSION · CORRECT / INCORRECT</strong>
+        <span>REVEAL THEN YES · NO</span>
+      </div>
+      <iframe src="./fragment-exercise-correct-incorrect.html"></iframe>
+    </div>
+
+    <div class="frame-cell">
+      <div class="scaffold-label">
+        <strong>09a · TRAINING · STAGE</strong>
+        <span>FIVE SEGMENTS · EMBEDDED EXERCISE · STAGE 3 SHOWN</span>
+      </div>
+      <iframe src="./fragment-training-stage.html"></iframe>
+    </div>
+
+    <div class="frame-cell">
+      <div class="scaffold-label">
+        <strong>09b · REVIEW · STAGE</strong>
+        <span>FOUR SEGMENTS · STAGE 1 IS THE YES-OR-NO REVIEW</span>
+      </div>
+      <iframe src="./fragment-review-stage.html"></iframe>
+    </div>
+
+    <div class="frame-cell">
+      <div class="scaffold-label">
+        <strong>09 · TRAINING COMPLETE</strong>
+        <span>TRAINING FRAME · FIVE STAGE SEGMENTS · WORDS AND TIME</span>
+      </div>
+      <iframe src="./fragment-session-summary.html"></iframe>
+    </div>
+    <div class="frame-cell">
+      <div class="scaffold-label">
+        <strong>10 · LANGUAGES DIALOG</strong>
+        <span>IN USE · DOWNLOADING · WAITING · INSTALL FROM A FILE</span>
+      </div>
+      <iframe src="./fragment-language-dialog.html"></iframe>
+    </div>
+
+    <div class="frame-cell">
+      <div class="scaffold-label">
+        <strong>11 · ERASE DIALOG</strong>
+        <span>TYPE ERASE TO ARM THE BUTTON</span>
+      </div>
+      <iframe src="./fragment-erase-dialog.html"></iframe>
+    </div>
+
+    <div class="frame-cell">
+      <div class="scaffold-label">
+        <strong>12 · INSTALL NOTICE</strong>
+        <span>OVERLAY · BOTTOM RIGHT · FADES AFTER SIX SECONDS</span>
+      </div>
+      <iframe src="./fragment-install-notice.html"></iframe>
+    </div>
+  </main>
+</body>
+</html>

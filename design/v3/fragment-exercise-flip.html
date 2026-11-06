@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>V3 · Session · Flip</title>
+  <link rel="stylesheet" href="./wireframe.css">
+</head>
+<body>
+  <div class="session-mode">
+
+    <aside class="session-rail">
+      <div class="session-slots"><i></i><i></i><i></i><i></i><i></i></div>
+    </aside>
+
+    <div class="session-main">
+
+      <header class="session-topbar">
+        <div class="session-bar-left">
+          <button class="btn">← Back</button>
+          <span class="session-topbar-context">Exercise / Flip</span>
+        </div>
+        <!-- nothing is judged here, so a counter and no ticks -->
+        <div class="session-bar-centre">
+          <span class="session-counter">12 / 25</span>
+          <label class="session-toggle"><span class="track"></span>Endless</label>
+        </div>
+        <div class="session-bar-right">
+          <!-- this exercise has no direction of its own, so the learner picks -->
+          <button class="btn">Ask: Either side</button>
+          <button class="btn disabled">Settings</button>
+          <button class="btn">Mute</button>
+        </div>
+      </header>
+
+      <div class="session-surface">
+        <div class="session-stage">
+
+          <span class="meta">French</span>
+
+          <!-- no definition here: it is in the target language, so on a card prompted
+               from the native side it would hand over the answer before the reveal -->
+          <div class="session-card">
+            <div class="session-word">la maison</div>
+            <div style="width:560px;height:1px;background:var(--wf-line);opacity:0.35"></div>
+            <!-- space reserved rather than freed, so revealing does not resize the card -->
+            <div class="session-translation" style="opacity:0">the house</div>
+          </div>
+
+          <button class="btn primary">Reveal</button>
+          <span class="meta">space or click the card</span>
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+</body>
+</html>

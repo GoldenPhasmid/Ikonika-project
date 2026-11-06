@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>V3 · Session · Flashcard</title>
+  <link rel="stylesheet" href="./wireframe.css">
+</head>
+<body>
+  <div class="session-mode">
+
+    <!-- inert: five slots where the app's rail has them, none of them current -->
+    <aside class="session-rail">
+      <div class="session-slots"><i></i><i></i><i></i><i></i><i></i></div>
+    </aside>
+
+    <div class="session-main">
+
+      <header class="session-topbar">
+        <div class="session-bar-left">
+          <button class="btn">← Back</button>
+          <span class="session-topbar-context">Exercise / Flashcard</span>
+        </div>
+        <!-- nothing graded here, so the bar carries no ticks and no counter -->
+        <div class="session-bar-right">
+          <button class="btn disabled">Settings</button>
+          <button class="btn">Mute</button>
+        </div>
+      </header>
+
+      <div class="session-surface">
+        <div class="session-stage">
+
+          <!-- both sides on show from the start, so nothing is being withheld -->
+          <div class="session-card">
+            <div class="session-word">le chien</div>
+            <div style="width:560px;height:1px;background:var(--wf-line)"></div>
+            <div class="session-translation">the dog</div>
+            <div style="font-size:14px;color:var(--wf-mid);text-align:center">animal domestique de la famille des canidés</div>
+          </div>
+
+          <div class="session-actions-row">
+            <button class="btn">← previous</button>
+            <span class="session-counter">4 / 25</span>
+            <button class="btn primary">next →</button>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+</body>
+</html>

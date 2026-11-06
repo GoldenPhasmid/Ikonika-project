@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>V3 · Languages</title>
+  <link rel="stylesheet" href="./wireframe.css">
+</head>
+<body>
+  <div class="app">
+
+    <aside class="rail">
+      <div class="rail-head">
+        <div class="rail-mark">AK</div>
+        <div class="rail-lang">FR / EN</div>
+      </div>
+      <nav class="rail-nav">
+        <a class="rail-item"><i class="rail-icon"></i><span class="label">Today</span><span class="count">54</span></a>
+        <a class="rail-item"><i class="rail-icon"></i><span class="label">Decks</span><span class="count">12</span></a>
+        <a class="rail-item"><i class="rail-icon"></i><span class="label">Reader</span></a>
+        <a class="rail-item"><i class="rail-icon"></i><span class="label">YouTube</span></a>
+        <a class="rail-item"><i class="rail-icon"></i><span class="label">Dictionary</span></a>
+        <a class="rail-item"><i class="rail-icon"></i><span class="label">Numbers</span></a>
+        <a class="rail-item"><i class="rail-icon"></i><span class="label">Time</span></a>
+        <a class="rail-item active"><i class="rail-icon"></i><span class="label">Settings</span></a>
+      </nav>
+    </aside>
+
+    <div class="main">
+      <header class="topbar">
+        <span class="topbar-context">/ SETTINGS</span>
+        <div class="topbar-actions"></div>
+      </header>
+      <div class="content"></div>
+    </div>
+  </div>
+
+  <!-- Opened from the foreign-language row in Settings. Every language the app
+       can teach, whether or not its dictionary is here yet: a row on disk
+       switches to it, a row that is only published downloads first. -->
+  <div class="modal-scrim">
+    <div class="dialog" style="width:460px">
+      <div class="dialog-head">
+        <span class="title">Languages</span>
+        <button class="dialog-close">✕</button>
+      </div>
+
+      <div class="wf-row">
+        <span class="wf-grow" style="font-size:13px">French</span>
+        <span class="meta">in use</span>
+      </div>
+
+      <div class="wf-row">
+        <span class="wf-grow" style="font-size:13px">Spanish</span>
+        <button class="btn">Use</button>
+      </div>
+
+      <!-- downloads run one at a time behind this, so a row that is waiting says
+           so rather than pretending to have started -->
+      <div class="wf-row">
+        <span class="wf-grow" style="font-size:13px">English</span>
+        <span class="meta">18 of 34 MB</span>
+      </div>
+
+      <div class="wf-row">
+        <span class="wf-grow" style="font-size:13px">German</span>
+        <span class="meta">waiting</span>
+      </div>
+
+      <div class="wf-row">
+        <span class="wf-grow" style="font-size:13px">Italian</span>
+        <button class="btn">Download 27 MB</button>
+      </div>
+
+      <div class="wf-row">
+        <span class="wf-grow" style="font-size:13px">Ukrainian</span>
+        <span class="meta">needs a newer Ikonika</span>
+      </div>
+
+      <!-- the same archive the app would download, taken off a stick rather than
+           off the network. Matched by its checksum, not its name. -->
+      <div class="wf-row" style="margin-top:8px">
+        <button class="btn">Install from a file</button>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

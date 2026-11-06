@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mobile · Correct / Incorrect</title>
+  <link rel="stylesheet" href="../v3/wireframe.css">
+  <link rel="stylesheet" href="./mobile.css">
+  <style>
+    .ex-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      font-size: 16px;
+      line-height: 1;
+    }
+
+    .gesture-hint {
+      position: absolute;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      gap: 40px;
+      font-size: 12px;
+      color: var(--wf-mid);
+      opacity: 0.6;
+      pointer-events: none;
+    }
+
+    .gesture-hint span {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .gesture-hint .icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: var(--wf-faint);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+    }
+
+    .gesture-hint .icon.incorrect {
+      background: #fff0f0;
+    }
+
+    .gesture-hint .icon.correct {
+      background: #f0fff0;
+    }
+
+    /* Unified card content */
+    .card-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+    }
+
+    .card-question {
+      font-size: 13px;
+      color: var(--wf-mid);
+    }
+
+    .card-headword {
+      font-size: 48px;
+      font-weight: 500;
+      letter-spacing: -0.02em;
+    }
+
+    .card-separator {
+      width: 100%;
+      height: 1px;
+      background: var(--wf-line);
+    }
+
+    .card-translation {
+      font-size: 24px;
+      font-weight: 500;
+    }
+  </style>
+</head>
+<body>
+  <div class="phone">
+
+    <header class="phone-topbar">
+      <button class="icon-btn bare">←</button>
+      <span class="title">Correct / Incorrect</span>
+      <div style="display:flex;gap:4px">
+        <button class="icon-btn bare" title="Mute"><span class="ex-icon">🔇</span></button>
+        <button class="icon-btn bare" title="Ask side"><span class="ex-icon">🔄</span></button>
+      </div>
+    </header>
+
+    <div class="phone-content" style="gap:0;padding:16px;flex:1">
+
+      <!-- Stage segments (from 09a) - OUTSIDE card -->
+      <div style="display:flex;gap:6px;width:100%;margin-bottom:12px">
+        <div style="flex:1;height:4px;border-radius:2px;background:var(--wf-ink)"></div>
+        <div style="flex:1;height:4px;border-radius:2px;background:var(--wf-ink)"></div>
+        <div style="flex:1;height:4px;border-radius:2px;background:var(--wf-ink)"></div>
+        <div style="flex:1;height:4px;border-radius:2px;background:var(--wf-ink)"></div>
+        <div style="flex:1;height:4px;border-radius:2px;background:var(--wf-ink)"></div>
+        <div style="flex:1;height:4px;border-radius:2px;background:var(--wf-ink)"></div>
+        <div style="flex:1;height:4px;border-radius:2px;background:var(--wf-ink)"></div>
+      </div>
+
+      <!-- Card filling remaining space (from 09a) -->
+      <div style="flex:1;display:flex;flex-direction:column;background:var(--wf-panel);border:1px solid var(--wf-line);border-radius:2px;padding:32px 24px;position:relative">
+        <!-- Top-right counter -->
+        <span style="position:absolute;top:16px;right:20px;font-size:13px;color:var(--wf-mid)">6 / 10</span>
+
+        <!-- Top-left ticks (session-ticks) -->
+        <div style="position:absolute;top:16px;left:20px">
+          <span class="session-ticks" style="width:50%;max-width:180px">
+            <i class="right"></i><i class="right"></i><i class="wrong"></i><i class="right"></i><i class="skipped"></i><i class="right"></i><i></i><i></i><i></i><i></i>
+          </span>
+        </div>
+
+        <div class="card-content">
+          <div class="card-question">Was your answer correct?</div>
+          <div class="card-headword">le livre</div>
+          <div class="card-separator"></div>
+          <div class="card-translation">the book</div>
+        </div>
+
+        <!-- Gesture indicators at bottom center -->
+        <div class="gesture-hint">
+          <span>
+            <div class="icon incorrect">←</div>
+            Incorrect
+          </span>
+          <span>
+            <div class="icon correct">→</div>
+            Correct
+          </span>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+</body>
+</html>

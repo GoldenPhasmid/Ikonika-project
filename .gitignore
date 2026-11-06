@@ -1,0 +1,76 @@
+# Build output. Wildcard so build-mingw and build-msvc can coexist.
+build*/
+out/
+install/
+
+# Runtime log, rewritten every launch; the previous run's is kept alongside it, timestamped.
+logs/
+
+# Everything a debug build writes: its database, its settings and its logs. A release build puts
+# these in the per-user directories instead, so a developer's test decks never reach the copy they
+# actually learn from. Deleting this directory resets a debug build to a first run.
+local/
+
+# Visual Studio
+.vs/
+*.sln.docstates
+CMakeSettings.json
+CMakeUserPresets.json
+
+# temp files
+.qtcreator/
+.obsidian/
+.idea/
+.vs/
+*.user
+*.user.*
+CMakeLists.txt.user*
+
+# Vendored dictionary databases and audio, produced by scripts/dictionary/build_dictionary.py
+*.db
+*.db-shm
+*.db-wal
+audio/
+
+# Python bytecode, wherever it appears
+__pycache__/
+
+# Dictionary source dumps, far too large to track
+*.jsonl
+*.jsonl.gz
+*.tar.gz
+*.ttl
+*.ttl.bz2
+*.ttl.gz
+
+# Dataset store: per-language raw dumps and the built .db + side files. Tens of gigabytes of
+# downloads and rebuildable artifacts, never meant to be shipped or tracked.
+data/
+
+# Throwaway voice comparison output
+test-assets/
+
+# Fetched by scripts\fetch-native.ps1 rather than tracked. The speech model alone is 140 MB, and
+# every clone would carry it forever. Only the header is committed.
+third_party/sherpa-onnx/*.dll
+third_party/sherpa-onnx/*.lib
+third_party/sherpa-onnx/android/
+third_party/android-openssl/
+
+# model*/ rather than models/ on purpose. An earlier layout used a singular model/ directory, and
+# narrowing this pattern to the new name silently un-ignored 145 MB of ONNX files.
+third_party/sherpa-onnx/model*/
+
+# The OPUS-MT French-to-English model and its tokenizer files, fetched by scripts\tools\fetch-native.ps1
+# like the speech models above. Over 400 MB of ONNX weights, never tracked.
+third_party/models/
+
+# UI design system
+design/design-system/
+
+# Android release signing key and its credentials. Never tracked.
+app/android/release.keystore
+app/android/release-keystore-credentials.local.txt
+
+# qmlprofiler traces and reports, generated locally for one-off performance investigations.
+profiler/
