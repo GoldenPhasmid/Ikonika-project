@@ -74,16 +74,24 @@ class Simulator:
         if result.returncode != 0:
             sys.exit(f"Launch failed: {result.stderr.strip()}")
 
+    def find_marker(self, log, markers):
+        for line in read_lines(log):
+            if any(marker in line for marker in markers):
+                return line
+
+        return None
+
     def wait_for(self, log, markers, timeout):
         deadline = time.monotonic() + timeout
 
         while time.monotonic() < deadline:
-            for line in read_lines(log):
-                if any(marker in line for marker in markers):
-                    return line
+            found = self.find_marker(log, markers)
+
+            if found is not None:
+                return found
 
             if not self.is_running():
-                return None
+                return self.find_marker(log, markers)
 
             time.sleep(5)
 

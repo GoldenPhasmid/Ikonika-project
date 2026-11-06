@@ -57,6 +57,10 @@ jobs:
           version: ${{ env.QT_VERSION }}
           root: ${{ env.QT_ROOT }}
 
+      - uses: ./.github/actions/setup-ccache
+        with:
+          name: device
+
       - name: Import the signing certificate and profile
         if: env.SIGNED == 'true'
         env:
@@ -91,6 +95,7 @@ jobs:
             -DQT_HOST_PATH="$QT_ROOT/$QT_VERSION/macos" \
             -DCMAKE_XCODE_GENERATE_SCHEME=ON \
             -DIKONIKA_IOS_BUILD_NUMBER="${{ github.run_number }}" \
+            $CCACHE_CMAKE_ARGS \
             "${SIGNING[@]}"
 
       - name: Build unsigned
@@ -143,6 +148,17 @@ jobs:
             -authenticationKeyPath "$KEY" -authenticationKeyID "$APPSTORE_API_KEY_ID" \
             -authenticationKeyIssuerID "$APPSTORE_API_ISSUER_ID"
 
+      - name: Save ccache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}/ccache
+          key: ccache-device-${{ github.run_id }}
+
+      - name: Show ccache statistics
+        if: always()
+        run: ccache --show-stats || true
+
       - name: Keep the build log
         if: always()
         uses: actions/upload-artifact@v4
@@ -163,15 +179,13 @@ jobs:
           security delete-keychain "$RUNNER_TEMP/signing.keychain-db" 2>/dev/null || true
           rm -f "$RUNNER_TEMP/certificate.p12" "$RUNNER_TEMP"/AuthKey_*.p8
 
-  simulator:
+  simulator-build:
     if: ${{ !github.event.repository.private && github.event_name == 'workflow_dispatch' && inputs.simulator }}
-    runs-on: macos-15-intel
-    timeout-minutes: 180
+    runs-on: macos-15
+    timeout-minutes: 120
 
     env:
       BUILD_DIR: ${{ github.workspace }}/build/ios-simulator
-      BUNDLE_ID: com.goldenphasmid.ikonika
-      OUTPUT_DIR: ${{ github.workspace }}/simulator-output
 
     steps:
       - uses: actions/checkout@v4
@@ -189,26 +203,80 @@ jobs:
           version: ${{ env.QT_VERSION }}
           root: ${{ env.QT_ROOT }}
 
+      - uses: ./.github/actions/setup-ccache
+        with:
+          name: simulator
+
       - name: Configure
         run: |
           "$QT_ROOT/$QT_VERSION/ios/bin/qt-cmake" -S "$GITHUB_WORKSPACE" -B "$BUILD_DIR" -G Xcode \
             -DQT_HOST_PATH="$QT_ROOT/$QT_VERSION/macos" \
-            -DCMAKE_XCODE_GENERATE_SCHEME=ON
+            -DCMAKE_XCODE_GENERATE_SCHEME=ON \
+            -DQT_QML_NO_CACHEGEN=ON \
+            $CCACHE_CMAKE_ARGS
 
       - name: Build for the simulator
         run: |
-          mkdir -p "$OUTPUT_DIR"
           defaults write com.apple.dt.Xcode IDEBuildingContinueBuildingAfterErrors -bool YES
           xcodebuild build -project "$BUILD_DIR/Ikonika.xcodeproj" -scheme IkonikaApp -configuration Release \
             -sdk iphonesimulator -destination "generic/platform=iOS Simulator" CODE_SIGNING_ALLOWED=NO \
-            | tee "$OUTPUT_DIR/xcodebuild.log"
+            | tee "$RUNNER_TEMP/xcodebuild.log"
           test "${PIPESTATUS[0]}" -eq 0
+          APP=$(find "$BUILD_DIR" -path "*Release-iphonesimulator/IkonikaApp.app" -type d | head -1)
+          tar -czf "$RUNNER_TEMP/IkonikaApp-simulator.tgz" -C "$(dirname "$APP")" IkonikaApp.app
+
+      - name: Show ccache statistics
+        if: always()
+        run: ccache --show-stats || true
+
+      - name: Save ccache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}/ccache
+          key: ccache-simulator-${{ github.run_id }}
+
+      - name: Keep the simulator app
+        uses: actions/upload-artifact@v4
+        with:
+          name: simulator-app
+          path: ${{ runner.temp }}/IkonikaApp-simulator.tgz
+          retention-days: 3
+
+      - name: Keep the build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: simulator-xcodebuild-log
+          path: ${{ runner.temp }}/xcodebuild.log
+          if-no-files-found: ignore
+
+  simulator:
+    needs: simulator-build
+    runs-on: macos-15-intel
+    timeout-minutes: 90
+
+    env:
+      BUNDLE_ID: com.goldenphasmid.ikonika
+      OUTPUT_DIR: ${{ github.workspace }}/simulator-output
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: simulator-app
+          path: ${{ runner.temp }}
 
       - name: Launch the app and walk its screens
         run: |
-          APP=$(find "$BUILD_DIR" -path "*Release-iphonesimulator/IkonikaApp.app" -type d | head -1)
-          echo "App bundle: $APP"
-          python3 "$GITHUB_WORKSPACE/.github/actions/simulator-walk.py" "$APP" "$OUTPUT_DIR"
+          mkdir -p "$RUNNER_TEMP/app"
+          tar -xzf "$RUNNER_TEMP/IkonikaApp-simulator.tgz" -C "$RUNNER_TEMP/app"
+          python3 "$GITHUB_WORKSPACE/.github/actions/simulator-walk.py" "$RUNNER_TEMP/app/IkonikaApp.app" "$OUTPUT_DIR"
 
       - name: Collect the system log and crash reports
         if: always()

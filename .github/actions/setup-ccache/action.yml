@@ -1,0 +1,36 @@
+name: Set up ccache for Xcode
+description: Installs ccache, restores its cache, and exports CCACHE_CMAKE_ARGS that route Xcode's compiler through it
+
+inputs:
+  name:
+    description: Cache name, one per kind of build
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Install ccache
+      shell: bash
+      run: |
+        brew install ccache
+        WRAPPERS="$RUNNER_TEMP/ccache-wrappers"
+        mkdir -p "$WRAPPERS"
+        CLANG=$(xcrun -f clang)
+        CLANGXX=$(xcrun -f clang++)
+        printf '#!/bin/sh\nexec ccache "%s" "$@"\n' "$CLANG" > "$WRAPPERS/clang"
+        printf '#!/bin/sh\nexec ccache "%s" "$@"\n' "$CLANGXX" > "$WRAPPERS/clang++"
+        chmod +x "$WRAPPERS/clang" "$WRAPPERS/clang++"
+        {
+          echo "CCACHE_DIR=$RUNNER_TEMP/ccache"
+          echo "CCACHE_BASEDIR=$GITHUB_WORKSPACE"
+          echo "CCACHE_MAXSIZE=1500M"
+          echo "CCACHE_SLOPPINESS=clang_index_store,ivfsoverlay,include_file_ctime,include_file_mtime,modules,pch_defines,system_headers,time_macros"
+          echo "CCACHE_CMAKE_ARGS=-DCMAKE_XCODE_ATTRIBUTE_CC=$WRAPPERS/clang -DCMAKE_XCODE_ATTRIBUTE_CXX=$WRAPPERS/clang++ -DCMAKE_XCODE_ATTRIBUTE_LD=$CLANG -DCMAKE_XCODE_ATTRIBUTE_LDPLUSPLUS=$CLANGXX -DCMAKE_XCODE_ATTRIBUTE_COMPILER_INDEX_STORE_ENABLE=NO"
+        } >> "$GITHUB_ENV"
+
+    - name: Restore ccache
+      uses: actions/cache/restore@v4
+      with:
+        path: ${{ runner.temp }}/ccache
+        key: ccache-${{ inputs.name }}-${{ github.run_id }}
+        restore-keys: ccache-${{ inputs.name }}-

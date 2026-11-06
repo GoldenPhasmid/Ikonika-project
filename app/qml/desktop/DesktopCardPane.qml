@@ -243,6 +243,8 @@ Item
             {
                 objectName: "card_pane_revert"
 
+                large: true
+                Layout.preferredWidth: AppMetrics.actionButtonWidth
                 visible: form.editing
                 enabled: form.changed
                 text: qsTr("Revert")
@@ -254,6 +256,8 @@ Item
             {
                 objectName: "card_pane_commit"
 
+                large: true
+                Layout.preferredWidth: AppMetrics.actionButtonWidth
                 tone: "primary"
                 text: form.editing ? qsTr("Save") : qsTr("Add")
                 keyHint: qsTr("Enter")
