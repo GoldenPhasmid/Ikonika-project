@@ -10,6 +10,11 @@
 option(IKONIKA_ENABLE_WEBENGINE "Build the YouTube screen, which needs QtWebEngine" ON)
 option(IKONIKA_ENABLE_MACHINE_TRANSLATION "Translate what dictionary search cannot find" ON)
 
+if (IOS)
+    set(CMAKE_Swift_LANGUAGE_VERSION 5.0)
+    enable_language(Swift)
+endif()
+
 set(IKONIKA_QT_COMPONENTS Qml Quick QuickControls2 Sql Widgets Network LinguistTools Pdf)
 
 if (NOT IOS)
@@ -104,7 +109,9 @@ set(IKONIKA_IOS_SOURCES
     src/AppIosSpeech.mm
     src/AppIosStorage.h
     src/AppIosStorage.mm
-    src/AppTranslatorUnavailable.cpp
+    src/AppIosTranslation.swift
+    src/AppIosTranslationBridge.h
+    src/AppPlatformTranslator.cpp
     ios/PrivacyInfo.xcprivacy
 )
 
@@ -760,7 +767,7 @@ if (IKONIKA_DESKTOP AND IKONIKA_ENABLE_WEBENGINE)
     target_compile_definitions(IkonikaApp PRIVATE IKONIKA_ENABLE_WEBENGINE)
 endif()
 
-if (IKONIKA_ENABLE_MACHINE_TRANSLATION AND NOT IOS)
+if (IKONIKA_ENABLE_MACHINE_TRANSLATION)
     target_compile_definitions(IkonikaApp PRIVATE IKONIKA_ENABLE_MACHINE_TRANSLATION)
 endif()
 

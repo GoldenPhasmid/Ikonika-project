@@ -6,17 +6,21 @@
 #include <QAtomicInteger>
 #include <QCoreApplication>
 #include <QMetaObject>
+
+#if defined(Q_OS_ANDROID)
 #include <QtCore/qjnienvironment.h>
 #include <QtCore/qjniobject.h>
+#elif defined(Q_OS_IOS)
+#include "AppIosTranslationBridge.h"
+#endif
 
 namespace
 {
-    constexpr const char* PlatformTranslationClass = "com/goldenphasmid/ikonika/PlatformTranslation";
-
     struct FPairState
     {
         QString Pair;
         bool bChecked = false;
+        bool bOffered = false;
         bool bDownloaded = false;
         bool bDownloading = false;
     };
@@ -47,17 +51,9 @@ namespace
         return PairKey(SourceLanguage(), TargetLanguage());
     }
 
-    QString ToString(jstring Value)
+    void HandleModelState(const QString& Pair, bool bOffered, bool bDownloaded)
     {
-        return QJniObject(Value).toString();
-    }
-
-    void NativeOnModelState(JNIEnv*, jclass, jstring Source, jstring Target, jboolean Downloaded)
-    {
-        const QString Pair = PairKey(ToString(Source), ToString(Target));
-        const bool bDownloaded = Downloaded == JNI_TRUE;
-
-        QMetaObject::invokeMethod(&AppTranslator::Notifier(), [Pair, bDownloaded]()
+        QMetaObject::invokeMethod(&AppTranslator::Notifier(), [Pair, bOffered, bDownloaded]()
         {
             if (Pair != State.Pair)
             {
@@ -65,22 +61,18 @@ namespace
             }
 
             State.bChecked = true;
+            State.bOffered = bOffered;
             State.bDownloaded = bDownloaded;
 
-            qCInfo(LogTranslate) << "ML Kit model for" << Pair
-                                 << (bDownloaded ? "is downloaded" : "is not downloaded");
+            qCInfo(LogTranslate) << "Translation model for" << Pair
+                                 << (bDownloaded ? "is downloaded" : bOffered ? "is not downloaded" : "is not offered");
 
             emit AppTranslator::Notifier().modelsChanged();
         }, Qt::QueuedConnection);
     }
 
-    void NativeOnDownloadFinished(JNIEnv*, jclass, jstring Source, jstring Target, jboolean Success,
-                                  jstring Error)
+    void HandleDownloadFinished(const QString& Pair, bool bSuccess, const QString& Message)
     {
-        const QString Pair = PairKey(ToString(Source), ToString(Target));
-        const bool bSuccess = Success == JNI_TRUE;
-        const QString Message = ToString(Error);
-
         QMetaObject::invokeMethod(&AppTranslator::Notifier(), [Pair, bSuccess, Message]()
         {
             if (Pair != State.Pair)
@@ -93,12 +85,11 @@ namespace
 
             if (bSuccess)
             {
-                qCInfo(LogTranslate) << "ML Kit model for" << Pair << "downloaded";
+                qCInfo(LogTranslate) << "Translation model for" << Pair << "downloaded";
             }
             else
             {
-                qCWarning(LogTranslate) << "ML Kit model for" << Pair << "failed to download:"
-                                        << Message;
+                qCWarning(LogTranslate) << "Translation model for" << Pair << "failed to download:" << Message;
             }
 
             emit AppTranslator::Notifier().downloadingChanged();
@@ -106,15 +97,11 @@ namespace
         }, Qt::QueuedConnection);
     }
 
-    void NativeOnTranslated(JNIEnv*, jclass, jlong Generation, jstring Text, jstring Result)
+    void HandleTranslated(quint64 Generation, const QString& Source, const QString& Translation)
     {
-        const QString Source = ToString(Text);
-        const QString Translation = ToString(Result);
-        const quint64 Requested = static_cast<quint64>(Generation);
-
         BusyCount.fetchAndAddOrdered(-1);
 
-        if (Requested != PendingGeneration.loadRelaxed())
+        if (Generation != PendingGeneration.loadRelaxed())
         {
             return;
         }
@@ -123,6 +110,32 @@ namespace
         {
             emit AppTranslator::Notifier().translated(Source, Translation);
         }, Qt::QueuedConnection);
+    }
+
+#if defined(Q_OS_ANDROID)
+    constexpr const char* PlatformTranslationClass = "com/goldenphasmid/ikonika/PlatformTranslation";
+
+    QString ToString(jstring Value)
+    {
+        return QJniObject(Value).toString();
+    }
+
+    void NativeOnModelState(JNIEnv*, jclass, jstring Source, jstring Target, jboolean Downloaded)
+    {
+        const bool bDownloaded = Downloaded == JNI_TRUE;
+
+        HandleModelState(PairKey(ToString(Source), ToString(Target)), bDownloaded, bDownloaded);
+    }
+
+    void NativeOnDownloadFinished(JNIEnv*, jclass, jstring Source, jstring Target, jboolean Success,
+                                  jstring Error)
+    {
+        HandleDownloadFinished(PairKey(ToString(Source), ToString(Target)), Success == JNI_TRUE, ToString(Error));
+    }
+
+    void NativeOnTranslated(JNIEnv*, jclass, jlong Generation, jstring Text, jstring Result)
+    {
+        HandleTranslated(static_cast<quint64>(Generation), ToString(Text), ToString(Result));
     }
 
     void EnsureBridge()
@@ -153,6 +166,84 @@ namespace
         }
     }
 
+    void PlatformCheckModel()
+    {
+        QJniObject::callStaticMethod<void>(PlatformTranslationClass, "checkModel",
+            "(Ljava/lang/String;Ljava/lang/String;)V",
+            QJniObject::fromString(SourceLanguage()).object<jstring>(),
+            QJniObject::fromString(TargetLanguage()).object<jstring>());
+    }
+
+    void PlatformDownload()
+    {
+        QJniObject::callStaticMethod<void>(PlatformTranslationClass, "download",
+            "(Ljava/lang/String;Ljava/lang/String;)V",
+            QJniObject::fromString(SourceLanguage()).object<jstring>(),
+            QJniObject::fromString(TargetLanguage()).object<jstring>());
+    }
+
+    void PlatformTranslate(quint64 Generation, const QString& Text)
+    {
+        QJniObject::callStaticMethod<void>(PlatformTranslationClass, "translate",
+            "(JLjava/lang/String;Ljava/lang/String;Ljava/lang/String;)V",
+            static_cast<jlong>(Generation),
+            QJniObject::fromString(Text).object<jstring>(),
+            QJniObject::fromString(SourceLanguage()).object<jstring>(),
+            QJniObject::fromString(TargetLanguage()).object<jstring>());
+    }
+#elif defined(Q_OS_IOS)
+    constexpr int32_t AppleStatusSupported = 1;
+    constexpr int32_t AppleStatusInstalled = 2;
+
+    void OnAppleStatus(const char* Source, const char* Target, int32_t Status)
+    {
+        HandleModelState(PairKey(QString::fromUtf8(Source), QString::fromUtf8(Target)),
+                         Status == AppleStatusSupported || Status == AppleStatusInstalled,
+                         Status == AppleStatusInstalled);
+    }
+
+    void OnAppleDownload(const char* Source, const char* Target, bool bSuccess, const char* Error)
+    {
+        HandleDownloadFinished(PairKey(QString::fromUtf8(Source), QString::fromUtf8(Target)), bSuccess,
+                               QString::fromUtf8(Error));
+    }
+
+    void OnAppleTranslated(uint64_t Generation, const char* Text, const char* Result)
+    {
+        HandleTranslated(Generation, QString::fromUtf8(Text), QString::fromUtf8(Result));
+    }
+
+    void EnsureBridge()
+    {
+        static bool bRegistered = false;
+
+        if (bRegistered)
+        {
+            return;
+        }
+
+        bRegistered = true;
+
+        IkonikaTranslationInstall(&OnAppleStatus, &OnAppleDownload, &OnAppleTranslated);
+    }
+
+    void PlatformCheckModel()
+    {
+        IkonikaTranslationCheck(SourceLanguage().toUtf8().constData(), TargetLanguage().toUtf8().constData());
+    }
+
+    void PlatformDownload()
+    {
+        IkonikaTranslationDownload(SourceLanguage().toUtf8().constData(), TargetLanguage().toUtf8().constData());
+    }
+
+    void PlatformTranslate(quint64 Generation, const QString& Text)
+    {
+        IkonikaTranslationTranslate(Generation, Text.toUtf8().constData(), SourceLanguage().toUtf8().constData(),
+                                    TargetLanguage().toUtf8().constData());
+    }
+#endif
+
     void RequestModelState()
     {
         const QString Pair = CurrentPair();
@@ -165,11 +256,7 @@ namespace
         State = FPairState{Pair};
 
         EnsureBridge();
-
-        QJniObject::callStaticMethod<void>(PlatformTranslationClass, "checkModel",
-            "(Ljava/lang/String;Ljava/lang/String;)V",
-            QJniObject::fromString(SourceLanguage()).object<jstring>(),
-            QJniObject::fromString(TargetLanguage()).object<jstring>());
+        PlatformCheckModel();
     }
 }
 
@@ -212,31 +299,32 @@ namespace AppTranslator
 
         BusyCount.fetchAndAddOrdered(1);
 
-        QJniObject::callStaticMethod<void>(PlatformTranslationClass, "translate",
-            "(JLjava/lang/String;Ljava/lang/String;Ljava/lang/String;)V",
-            static_cast<jlong>(Generation),
-            QJniObject::fromString(Trimmed).object<jstring>(),
-            QJniObject::fromString(SourceLanguage()).object<jstring>(),
-            QJniObject::fromString(TargetLanguage()).object<jstring>());
+        PlatformTranslate(Generation, Trimmed);
     }
 
     void Reset()
     {
         State = FPairState{};
 
-        qCInfo(LogTranslate) << "ML Kit model state forgotten, the next request checks it again";
+        qCInfo(LogTranslate) << "Translation model state forgotten, the next request checks it again";
 
         emit Notifier().modelsChanged();
     }
 
     bool IsPairOffered()
     {
+#if defined(Q_OS_ANDROID)
         EnsureBridge();
 
         return QJniObject::callStaticMethod<jboolean>(PlatformTranslationClass, "isSupported",
             "(Ljava/lang/String;Ljava/lang/String;)Z",
             QJniObject::fromString(SourceLanguage()).object<jstring>(),
             QJniObject::fromString(TargetLanguage()).object<jstring>()) == JNI_TRUE;
+#else
+        RequestModelState();
+
+        return State.bOffered;
+#endif
     }
 
     bool IsDownloading()
@@ -259,10 +347,9 @@ namespace AppTranslator
 
         emit Notifier().downloadingChanged();
 
-        QJniObject::callStaticMethod<void>(PlatformTranslationClass, "download",
-            "(Ljava/lang/String;Ljava/lang/String;)V",
-            QJniObject::fromString(SourceLanguage()).object<jstring>(),
-            QJniObject::fromString(TargetLanguage()).object<jstring>());
+        qCInfo(LogTranslate) << "Downloading the translation model for" << State.Pair;
+
+        PlatformDownload();
     }
 
     qint64 GetDownloadBytes()
@@ -277,6 +364,10 @@ namespace AppTranslator
 
     QString GetAttribution()
     {
+#if defined(Q_OS_ANDROID)
         return QCoreApplication::translate("AppTranslator", "Translated by Google");
+#else
+        return QString();
+#endif
     }
 }

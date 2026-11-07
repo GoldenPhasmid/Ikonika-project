@@ -176,7 +176,7 @@ Activity. Only the home widget needs Swift.
 | Open in another app | `ReaderFilePicker.showDocument` | The share sheet with the book file | First |
 | Keep screen on | `ReaderWindow` | `UIApplication.idleTimerDisabled` | First |
 | Open with | `ReaderIntake`, `ReaderIntakeActivity` | Document types in `Info.plist`, PDF, EPUB, FB2 and plain text. Qt sends the file as a `QFileOpenEvent`, and the reader intake copies the book into `books/` | First |
-| Machine translation | `PlatformTranslation`, ML Kit | Off, see [Machine translation](#machine-translation) | Later |
+| Machine translation | `PlatformTranslation`, ML Kit | Apple's Translation framework, iOS 18 and later, see [Machine translation](#machine-translation) | First |
 | Home widget | `HomeWidget` | A WidgetKit extension in Swift, sharing data through an App Group | Later |
 | Volume keys turn pages | `ReaderKeys` | Dropped. iOS has no public API for the volume buttons | Never |
 | YouTube screen | Excluded | Excluded. Qt WebEngine has no iOS build | Never |
@@ -218,15 +218,19 @@ are needed:
 
 ### Machine translation
 
-The iOS release ships with `IKONIKA_ENABLE_MACHINE_TRANSLATION` off. The two candidates for later:
+iOS translates through Apple's Translation framework. It is free, works on the device, needs no
+attribution, and downloads its languages through iOS itself, with a system sheet that asks the
+learner first. It needs iOS 18; on iOS 17 the feature reports the pair as not offered.
 
-- **ML Kit.** This is the Android engine, with the same model downloads. Its iOS SDK is distributed
-  only through CocoaPods, which does not fit a CMake-generated Xcode project well.
-- **Apple's Translation framework.** It is free, on-device, needs no attribution, and downloads its
-  models through iOS itself. It is Swift-only, and it is not covered by the benchmark in
-  [machine-translation.md](machine-translation.md).
+The framework is Swift-only, and it hands out a translation session only through a SwiftUI view
+modifier, `translationTask`. `AppIosTranslation.swift` therefore attaches a one-point, invisible
+SwiftUI view to the top view controller. The modifier's action keeps the session and works through a
+queue of download and translate requests. C++ calls four plain C functions that Swift exports with
+`@_cdecl`, declared in `AppIosTranslationBridge.h`, and gets its answers through C callbacks.
+`AppPlatformTranslator.cpp` holds the state shared with Android's ML Kit path.
 
-OPUS-MT through ONNX Runtime is ruled out for the same reason as on Android: 229 MB per language.
+The CI simulator run prints the availability answer that the settings screen gets. Downloading and
+translating are tested on a device.
 
 ### Qt on iOS
 

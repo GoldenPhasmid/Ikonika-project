@@ -159,6 +159,11 @@ class Simulator:
         if result.returncode != 0:
             print(f"  simctl openurl failed: {result.stderr.strip()}", flush=True)
 
+    def report(self, label, needle):
+        for line in read_lines(self.output / f"{file_name(label)}.log"):
+            if needle in line:
+                print(f"  {line.strip()}", flush=True)
+
     def check_dictionaries(self, label):
         directory = self.container() / HEADLESS_ROOT / "dictionaries"
 
@@ -198,6 +203,7 @@ def walk(arguments):
     simulator.phase("Screen walk", ["-headless", "-keep-dictionaries"], {"IKONIKA_SCREEN_WALK": MOBILE_SCREENS},
                     HEADLESS_LOG, ["screen walk done"], 900, strict=True)
     simulator.check_dictionaries("after screen walk")
+    simulator.report("Screen walk", "Translation model for")
 
     simulator.phase("Navigation walk", ["-headless", "-keep-dictionaries"], {"IKONIKA_NAV_WALK": "1"},
                     HEADLESS_LOG, ["navigation walk done"], 900, strict=True)
