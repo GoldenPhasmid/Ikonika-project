@@ -12,6 +12,7 @@ option(IKONIKA_ENABLE_MACHINE_TRANSLATION "Translate what dictionary search cann
 
 if (IOS)
     enable_language(Swift)
+    set(CMAKE_Swift_IMPLICIT_LINK_DIRECTORIES "")
 endif()
 
 set(IKONIKA_QT_COMPONENTS Qml Quick QuickControls2 Sql Widgets Network LinguistTools Pdf)
