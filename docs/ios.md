@@ -175,7 +175,7 @@ Activity. Only the home widget needs Swift.
 | Reader file picker | `ReaderFilePicker` | `UIDocumentPickerViewController`, which hands over a copy. The copy moves into the workspace's `books/` folder | First |
 | Open in another app | `ReaderFilePicker.showDocument` | The share sheet with the book file | First |
 | Keep screen on | `ReaderWindow` | `UIApplication.idleTimerDisabled` | First |
-| Open with | `ReaderIntake`, `ReaderIntakeActivity` | Document types in `Info.plist`, PDF, EPUB, FB2 and plain text. Qt hands the file URL to a `file` URL handler, which copies the book into `books/` | First |
+| Open with | `ReaderIntake`, `ReaderIntakeActivity` | Document types in `Info.plist`, PDF, EPUB, FB2 and plain text. Qt sends the file as a `QFileOpenEvent`, and the reader intake copies the book into `books/` | First |
 | Machine translation | `PlatformTranslation`, ML Kit | Off, see [Machine translation](#machine-translation) | Later |
 | Home widget | `HomeWidget` | A WidgetKit extension in Swift, sharing data through an App Group | Later |
 | Volume keys turn pages | `ReaderKeys` | Dropped. iOS has no public API for the volume buttons | Never |
@@ -293,8 +293,10 @@ The steps:
    - the first launch, until the log shows the first frame;
    - a dictionary install, then a database integrity check;
    - the screen walk and the navigation walk, failing on any warning;
-   - a narration check that queues two sentences and waits for both to finish;
+   - platform checks in one launch: two queued narration sentences that must both finish, and a
+     session checkpoint saved, read back and cleared;
    - a shared book: an FB2 file handed to the app through `simctl openurl`, until the reader opens it.
+     Qt delivers a local file as a `QFileOpenEvent` to the application object, not to a URL handler.
 
    Screenshots, every phase's log, the system log and crash reports go into the `simulator` artifact.
 

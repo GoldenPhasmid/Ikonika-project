@@ -20,6 +20,7 @@
 #include "AppSoundEffects.h"
 #include "AppHeartbeat.h"
 #include "AppSwitchCover.h"
+#include "AppSessionCheckpoints.h"
 #include "AppSpeech.h"
 #include "AppStartup.h"
 #include "AppUpdater.h"
@@ -246,6 +247,29 @@ namespace
         return true;
     }
 
+    void RunCheckpointCheck()
+    {
+        const std::string Kind{"Check"};
+        const std::string State{R"({"step":3})"};
+
+        AppSessionCheckpoints::Save(Kind, "walk", State);
+
+        const std::vector<std::pair<std::string, std::string>> Saved{AppSessionCheckpoints::LoadAll(Kind)};
+
+        AppSessionCheckpoints::Clear(Kind, "walk");
+
+        const bool bRoundTrip = Saved.size() == 1 && Saved.front().first == "walk" && Saved.front().second == State;
+
+        if (!bRoundTrip || !AppSessionCheckpoints::LoadAll(Kind).empty())
+        {
+            qCWarning(LogApp) << "checkpoint check failed:" << Saved.size() << "saves read back";
+
+            return;
+        }
+
+        qCInfo(LogApp) << "checkpoint check done";
+    }
+
     void StartNarrationCheck(const QString& Sentences)
     {
         constexpr int CheckTimeoutMilliseconds = 60000;
@@ -395,6 +419,11 @@ int main(int ArgumentCount, char* Arguments[])
     AppIosSpeech RealSpeechService;
     AppSpeech::SetInstance(&RealSpeechService);
 #endif
+
+    if (qEnvironmentVariableIsSet("IKONIKA_CHECKPOINT_CHECK"))
+    {
+        RunCheckpointCheck();
+    }
 
     const QString NarrationCheck{qEnvironmentVariable("IKONIKA_NARRATION_CHECK")};
 

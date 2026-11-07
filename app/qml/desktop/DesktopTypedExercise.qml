@@ -256,6 +256,9 @@ Item
                 visible: root.listening && root.revealed && !root.sentenceMode
                 speakable: true
                 Layout.fillHeight: false
+                Layout.minimumHeight: AppMetrics.waveformButtonHeight
+                Layout.preferredHeight: AppMetrics.waveformButtonHeight
+                Layout.maximumHeight: AppMetrics.waveformButtonHeight
                 gender: root.controller && !root.hasMarkup ? root.controller.targetGender : -1
                 verbGroup: root.controller && !root.hasMarkup ? root.controller.targetVerbGroup : ""
                 text: !root.controller ? "" : (root.hasMarkup ? root.controller.lastWordMarkup
@@ -278,6 +281,7 @@ Item
             DesktopSentenceText
             {
                 maximumSize: sentenceFit.foreignSize
+                Layout.minimumHeight: sentenceMeasure.implicitHeight
                 visible: root.sentenceMode && (!root.listening || root.revealed)
                 sentence:
                 {
@@ -314,8 +318,12 @@ Item
             },
             DesktopLabel
             {
-                visible: root.revealed
+                opacity: root.revealed ? 1 : 0
+                Accessible.ignored: !root.revealed
                 Layout.fillWidth: true
+                Layout.minimumHeight: answerLines.lineSpacing * AppMetrics.answerLineCount
+                Layout.preferredHeight: Layout.minimumHeight
+                Layout.maximumHeight: Layout.minimumHeight
                 text:
                 {
                     if (!root.controller || !root.revealed)
@@ -471,6 +479,28 @@ Item
                 onClicked: root.submitOrAdvance()
             }
         ]
+    }
+
+    FontMetrics
+    {
+        id: answerLines
+
+        font.family: AppMetrics.fontFamily
+        font.pixelSize: root.sentenceMode ? sentenceFit.nativeSize : AppMetrics.fontLead
+    }
+
+    Text
+    {
+        id: sentenceMeasure
+
+        visible: false
+        width: sentenceFit.width
+        text: sentenceFit.foreignText
+        textFormat: Text.PlainText
+        font.family: AppMetrics.fontFamily
+        font.pixelSize: sentenceFit.foreignSize
+        font.weight: Font.Medium
+        wrapMode: Text.WordWrap
     }
 
     MouseArea

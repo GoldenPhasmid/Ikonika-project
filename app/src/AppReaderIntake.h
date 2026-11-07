@@ -15,13 +15,13 @@ public:
     static AppReaderIntake& Get();
 
     explicit AppReaderIntake(QObject* Parent = nullptr);
-    ~AppReaderIntake() override;
 
     Q_INVOKABLE QVariantMap takePending();
     void OpenPath(const QString& Path);
-
-public slots:
     void OpenUrl(const QUrl& Url);
+
+protected:
+    bool eventFilter(QObject* Watched, QEvent* Event) override;
 
 signals:
     void bookArrived();

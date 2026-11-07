@@ -11,6 +11,8 @@ Item
     property int masteryTarget: 0
     property int masteryFilled: 0
     property bool showPrimary: true
+    property bool compactPrompt: false
+    property bool centreSecondary: false
     property bool fillSecondary: false
     property bool primarySpeaks: false
     readonly property real primaryHeight: primaryArea.height
@@ -51,7 +53,7 @@ Item
     readonly property real designTop: Math.max(AppMetrics.gapLarge, (root.height - root.designHeight - root.actionsHeight) / 2)
     readonly property real cardBottom: Math.min(root.designTop + root.designHeight, root.height - root.actionsHeight - AppMetrics.gapLarge)
     readonly property bool compact: root.cardBottom - AppMetrics.gapLarge < root.designHeight
-    readonly property real zoneGap: root.compact ? AppMetrics.gapMedium : AppMetrics.gapLarge
+    readonly property real zoneGap: root.compact || root.compactPrompt ? AppMetrics.gapMedium : AppMetrics.gapLarge
 
     Rectangle
     {
@@ -81,7 +83,6 @@ Item
             anchors.fill: parent
             anchors.topMargin: root.compact ? AppMetrics.gapMedium : AppMetrics.gapLarge
             anchors.bottomMargin: root.compact ? AppMetrics.gapMedium : AppMetrics.contentPadding
-            readonly property real splitHeight: Math.max(0, (height - header.height - AppMetrics.borderWidth) / 2)
 
             Item
             {
@@ -146,11 +147,12 @@ Item
                 anchors.right: parent.right
                 anchors.leftMargin: AppMetrics.contentPadding
                 anchors.rightMargin: AppMetrics.contentPadding
-                height: Math.max(0, body.splitHeight - root.zoneGap)
+                height: Math.max(0, divider.y - header.height - root.zoneGap)
                 contentWidth: width
                 contentHeight: Math.max(height, primaryColumn.implicitHeight)
                 flickableDirection: Flickable.VerticalFlick
                 boundsBehavior: Flickable.StopAtBounds
+                interactive: contentHeight > height
                 clip: true
 
                 onContentHeightChanged: contentY = Math.max(0, contentHeight - height)
@@ -189,11 +191,15 @@ Item
             Rectangle
             {
                 id: divider
+                objectName: "exercise_divider"
 
                 visible: root.showPrimary
                 anchors.left: parent.left
                 anchors.right: parent.right
-                y: header.height + body.splitHeight
+                y: root.compactPrompt ? Math.max(header.height, Math.min(
+                    header.height + AppMetrics.exercisePromptHeightCompact + root.zoneGap,
+                    body.height - secondaryColumn.implicitHeight - root.zoneGap - height))
+                    : card.height / 2 - body.y - height / 2
                 height: AppMetrics.borderWidth
                 color: AppTheme.colourBorder
             }
@@ -212,6 +218,7 @@ Item
                 contentHeight: Math.max(height, secondaryColumn.implicitHeight)
                 flickableDirection: Flickable.VerticalFlick
                 boundsBehavior: Flickable.StopAtBounds
+                interactive: contentHeight > height
                 clip: true
 
                 ScrollBar.vertical: DesktopScrollBar {}
@@ -222,7 +229,8 @@ Item
 
                     width: secondaryArea.width
                     height: root.fillSecondary ? secondaryArea.contentHeight : implicitHeight
-                    y: root.showPrimary ? 0 : Math.max(0, (secondaryArea.height - height) / 2)
+                    y: !root.showPrimary ? Math.max(0, (card.height - height) / 2 - body.y - secondaryArea.y)
+                        : (root.centreSecondary ? Math.max(0, (secondaryArea.height - height) / 2) : 0)
                     spacing: AppMetrics.gapMedium
                 }
             }

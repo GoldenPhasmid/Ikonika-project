@@ -11,9 +11,10 @@
 #include <QtCore/qjniobject.h>
 #elif defined(Q_OS_IOS)
 #include "AppIosReader.h"
-
-#include <QDesktopServices>
 #endif
+
+#include <QCoreApplication>
+#include <QFileOpenEvent>
 
 namespace
 {
@@ -52,15 +53,20 @@ AppReaderIntake::AppReaderIntake(QObject* Parent)
 
     QTimer::singleShot(0, this, &AppReaderIntake::bookArrived);
 #elif defined(Q_OS_IOS)
-    QDesktopServices::setUrlHandler(QStringLiteral("file"), this, "OpenUrl");
+    QCoreApplication::instance()->installEventFilter(this);
 #endif
 }
 
-AppReaderIntake::~AppReaderIntake()
+bool AppReaderIntake::eventFilter(QObject* Watched, QEvent* Event)
 {
-#if defined(Q_OS_IOS)
-    QDesktopServices::unsetUrlHandler(QStringLiteral("file"));
-#endif
+    if (Event->type() != QEvent::FileOpen)
+    {
+        return QObject::eventFilter(Watched, Event);
+    }
+
+    OpenUrl(static_cast<QFileOpenEvent*>(Event)->url());
+
+    return true;
 }
 
 void AppReaderIntake::OpenUrl(const QUrl& Url)

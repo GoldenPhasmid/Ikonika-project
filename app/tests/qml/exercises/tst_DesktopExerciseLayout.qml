@@ -21,6 +21,13 @@ TestCase
             height: test.height
             property real promptContentHeight: 48
             property real answerContentHeight: 52
+            property int cardClicks: 0
+
+            overlay: MouseArea
+            {
+                anchors.fill: parent
+                onClicked: cardClicks++
+            }
 
             primary: Rectangle
             {
@@ -67,13 +74,31 @@ TestCase
         }
     }
 
-    function test_primaryAndSecondaryHaveEqualSpace()
+    function test_dividerIsAtCardMidpoint()
     {
         const card = createTemporaryObject(fixture, test)
         wait(30)
-        const prompt = findChild(card, "prompt")
-        const answer = findChild(card, "answer")
-        compare(prompt.parent.parent.height, answer.parent.parent.height)
+        const divider = findChild(card, "exercise_divider")
+        verify(divider !== null)
+        compare(divider.mapToItem(card.surface, 0, divider.height / 2).y, card.surface.height / 2)
+    }
+
+    function test_cardClickReachesRevealOverlay()
+    {
+        const card = createTemporaryObject(fixture, test)
+        wait(30)
+        mouseClick(findChild(card, "answer"), 30, 20)
+        compare(card.cardClicks, 1)
+        mouseClick(findChild(card, "prompt"), 30, 20)
+        compare(card.cardClicks, 2)
+    }
+
+    function test_compactMatchingKeepsAllSixRowsVisible()
+    {
+        const card = createTemporaryObject(fixture, test,
+            {height: 576, compactPrompt: true, centreSecondary: true, answerContentHeight: 316})
+        wait(30)
+        verify(card.secondaryHeight >= 316)
     }
 
     Component

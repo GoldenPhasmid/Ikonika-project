@@ -107,7 +107,7 @@ class Simulator:
 
         return None
 
-    def phase(self, label, arguments, variables, log_name, markers, timeout, strict, action=None):
+    def phase(self, label, arguments, variables, log_name, markers, timeout, strict, action=None, required=()):
         print(f"== {label}", flush=True)
 
         log = self.container() / log_name
@@ -128,6 +128,10 @@ class Simulator:
 
         if found is None:
             problems.append(f"no line with {markers} within {timeout} seconds, app running: {self.is_running()}")
+
+        for line in required:
+            if not any(line in logged for logged in lines):
+                problems.append(f"no line with '{line}'")
 
         if problems:
             print(f"{label} FAILED")
@@ -154,17 +158,6 @@ class Simulator:
 
         if result.returncode != 0:
             print(f"  simctl openurl failed: {result.stderr.strip()}", flush=True)
-
-    def report_checkpoints(self):
-        store = self.container() / HEADLESS_ROOT / "session-checkpoints.json"
-
-        if not store.exists():
-            print("  session checkpoints: no file", flush=True)
-
-            return
-
-        keys = sorted(json.loads(store.read_text(encoding="utf-8")).keys())
-        print(f"  session checkpoints: {store.stat().st_size} bytes, keys {keys}", flush=True)
 
     def check_dictionaries(self, label):
         directory = self.container() / HEADLESS_ROOT / "dictionaries"
@@ -208,10 +201,11 @@ def walk(arguments):
 
     simulator.phase("Navigation walk", ["-headless", "-keep-dictionaries"], {"IKONIKA_NAV_WALK": "1"},
                     HEADLESS_LOG, ["navigation walk done"], 900, strict=True)
-    simulator.report_checkpoints()
 
-    simulator.phase("Narration", ["-headless", "-keep-dictionaries"], {"IKONIKA_NARRATION_CHECK": NARRATION_SENTENCES},
-                    HEADLESS_LOG, ["narration check done", "narration check failed"], 120, strict=True)
+    simulator.phase("Platform checks", ["-headless", "-keep-dictionaries"],
+                    {"IKONIKA_NARRATION_CHECK": NARRATION_SENTENCES, "IKONIKA_CHECKPOINT_CHECK": "1"},
+                    HEADLESS_LOG, ["narration check done", "narration check failed"], 120, strict=True,
+                    required=["checkpoint check done"])
 
     simulator.phase("Shared book", ["-headless", "-keep-dictionaries"], {}, HEADLESS_LOG,
                     ["Reader: opening a book handed over by another app"], 120, strict=True,

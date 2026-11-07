@@ -210,6 +210,8 @@ Item
         tags: root.controller ? [root.controller.tense] : []
         counterText: root.controller ? qsTr("%1 / %2").arg(root.controller.currentSessionCount).arg(root.controller.maxSessionCount) : ""
         showPrimary: root.heading.length > 0
+        compactPrompt: true
+        centreSecondary: true
 
         primary: DesktopPromptLabel
         {
@@ -231,7 +233,6 @@ Item
             id: matchGrid
 
             Layout.fillWidth: true
-            columns: root.heading.length > 0 && root.rowCount > 3 ? 4 : 2
 
             cardModel: root.cells
             verbGroups:
