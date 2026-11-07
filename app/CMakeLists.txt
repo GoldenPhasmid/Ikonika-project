@@ -573,6 +573,7 @@ set(IKONIKA_QML_FILES
     qml/desktop/DesktopPaneGrip.qml
     qml/desktop/DesktopReaderContentsPane.qml
     qml/desktop/DesktopLookupPane.qml
+    qml/desktop/DesktopQuickLookup.qml
     qml/desktop/DesktopMachineTranslation.qml
     qml/desktop/DesktopReaderPdfSheet.qml
     qml/desktop/DesktopReaderPdfView.qml
@@ -703,7 +704,8 @@ qt_add_resources(IkonikaApp "fonts"
 )
 
 if (WIN32)
-    target_sources(IkonikaApp PRIVATE icons/AppIcon.rc)
+    target_sources(IkonikaApp PRIVATE icons/AppIcon.rc src/AppQuickLookup.cpp src/AppQuickLookup.h)
+    target_link_libraries(IkonikaApp PRIVATE user32)
 endif()
 
 if (NOT ANDROID)

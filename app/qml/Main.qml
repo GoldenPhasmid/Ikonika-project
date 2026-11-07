@@ -47,6 +47,28 @@ ApplicationWindow
 
     readonly property SettingsStore store: SettingsStore {}
 
+    Loader
+    {
+        active: quickLookupService !== null
+
+        sourceComponent: Component
+        {
+            DesktopQuickLookup
+            {
+                service: quickLookupService
+                vocabulary: vocabularyScreen.vocabulary
+
+                onOpenEntryRequested: function(word, partOfSpeech)
+                {
+                    window.show()
+                    window.raise()
+                    window.requestActivate()
+                    window.openDictionary(word, partOfSpeech)
+                }
+            }
+        }
+    }
+
     property string destination: "today"
     property string session: ""
     property string suspendedSession: ""

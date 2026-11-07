@@ -34,7 +34,7 @@ ColumnLayout
         DesktopSettingsRow
         {
             text: qsTr("Launch at startup")
-            lastRow: true
+            lastRow: quickLookupService === null
 
             DesktopToggle
             {
@@ -44,6 +44,22 @@ ColumnLayout
                 on: AppReminder.launchAtStartup
 
                 onClicked: AppReminder.launchAtStartup = !AppReminder.launchAtStartup
+            }
+        }
+
+        DesktopSettingsRow
+        {
+            visible: quickLookupService !== null
+            text: qsTr("Quick Add")
+            description: qsTr("Hold Ctrl and tap C twice on selected text")
+            lastRow: true
+
+            DesktopToggle
+            {
+                accessibleName: qsTr("Quick Add")
+                on: quickLookupService !== null && quickLookupService.enabled
+
+                onClicked: quickLookupService.enabled = !quickLookupService.enabled
             }
         }
     }

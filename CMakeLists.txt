@@ -21,7 +21,7 @@ if (MSVC)
 else()
     # GCC already defaults to UTF-8, but stating it keeps accented string literals byte-identical
     # to the source regardless of the system codepage.
-    add_compile_options(-Wall -Wextra -finput-charset=UTF-8 -fexec-charset=UTF-8)
+    add_compile_options("$<$<COMPILE_LANGUAGE:C,CXX,OBJC,OBJCXX>:-Wall;-Wextra;-finput-charset=UTF-8;-fexec-charset=UTF-8>")
 endif()
 
 option(IKONIKA_BUILD_APP "Build the Qt Quick application" ON)

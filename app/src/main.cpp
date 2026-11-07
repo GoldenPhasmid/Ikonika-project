@@ -42,6 +42,7 @@
 #include <QJsonObject>
 #include <QNetworkInformation>
 #include <QQmlApplicationEngine>
+#include <QQmlContext>
 #include <QQuickStyle>
 #include <QPointer>
 #include <QQuickWindow>
@@ -62,6 +63,7 @@
 #endif
 
 #if defined(Q_OS_WIN)
+#include "AppQuickLookup.h"
 #include "AppStartupTask.h"
 #endif
 
@@ -472,6 +474,19 @@ int main(int ArgumentCount, char* Arguments[])
 
     AppStartup::Mark("dictionary");
 
+    QObject* QuickLookupService = nullptr;
+
+#if defined(Q_OS_WIN)
+    std::unique_ptr<AppQuickLookup> QuickLookup;
+
+    if (!IsMobileLayoutEnabled())
+    {
+        QuickLookup = std::make_unique<AppQuickLookup>();
+        QuickLookupService = QuickLookup.get();
+        QObject::connect(&WorkspaceHost, &AppWorkspaceHost::aboutToSwitch, QuickLookup.get(), &AppQuickLookup::Reset);
+    }
+#endif
+
     std::unique_ptr<QQmlApplicationEngine> Engine;
     AppSwitchCover SwitchCover;
     QPointer<QQuickWindow> CurrentWindow;
@@ -480,6 +495,7 @@ int main(int ArgumentCount, char* Arguments[])
     const auto LoadInterface = [&](bool bStartHidden) -> QQuickWindow*
     {
         Engine = std::make_unique<QQmlApplicationEngine>();
+        Engine->rootContext()->setContextProperty(QStringLiteral("quickLookupService"), QuickLookupService);
         Engine->addImageProvider(QStringLiteral("book"), new AppBookImageProvider);
         AppLocalization::Get().SetEngine(Engine.get());
 
@@ -659,6 +675,17 @@ int main(int ArgumentCount, char* Arguments[])
         {
             AppSpeech::Get().Prewarm();
         }
+
+#if defined(Q_OS_WIN) && defined(QT_DEBUG)
+        const QString QuickLookupText = FindArgumentValue(Application.arguments(), QStringLiteral("-quick-lookup="));
+        if (QuickLookup && AppPaths::IsHeadless() && !QuickLookupText.isEmpty())
+        {
+            QTimer::singleShot(0, QuickLookup.get(), [&QuickLookup, QuickLookupText]()
+            {
+                emit QuickLookup->lookupRequested(QuickLookupText);
+            });
+        }
+#endif
 
         AppSoundEffects::Get().Prewarm();
     }
