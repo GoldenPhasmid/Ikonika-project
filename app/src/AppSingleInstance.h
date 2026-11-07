@@ -19,11 +19,12 @@ public:
     AppSingleInstance& operator=(const AppSingleInstance&) = delete;
 
     /** Claims the single-instance server */
-    bool TryAcquire();
+    bool TryAcquire(const QString& BookPath = {});
 
 signals:
     /** A second launch asked to be shown. */
     void activationRequested();
+    void bookRequested(const QString& Path);
 
 private:
     void OnNewConnection();

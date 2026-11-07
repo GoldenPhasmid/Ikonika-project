@@ -51,15 +51,14 @@ ColumnLayout
         visible: root.showPdf
         leftPadding: root.inset
         rightPadding: root.inset
-        text: qsTr("Crop margins")
-        description: qsTr("Fits the text, not the paper, to the page width")
+        text: qsTr("Fit to text width")
         lastRow: !root.showText
 
         DesktopToggle
         {
             objectName: "reader_crop_margins"
 
-            accessibleName: qsTr("Crop margins")
+            accessibleName: qsTr("Fit to text width")
             on: AppReaderSettings.cropMargins
 
             onClicked: AppReaderSettings.cropMargins = !AppReaderSettings.cropMargins

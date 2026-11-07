@@ -2079,13 +2079,8 @@
     <message>
         <location filename="../qml/desktop/DesktopReaderSettingsRows.qml" line="44"/>
         <location filename="../qml/desktop/DesktopReaderSettingsRows.qml" line="52"/>
-        <source>Crop margins</source>
-        <translation>Обрізати поля</translation>
-    </message>
-    <message>
-        <location filename="../qml/desktop/DesktopReaderSettingsRows.qml" line="45"/>
-        <source>Fits the text, not the paper, to the page width</source>
-        <translation>Підганяє до ширини сторінки текст, а не аркуш</translation>
+        <source>Fit to text width</source>
+        <translation>За шириною тексту</translation>
     </message>
     <message>
         <location filename="../qml/desktop/DesktopReaderSettingsRows.qml" line="63"/>

@@ -161,19 +161,21 @@ Activity. Only the home widget needs Swift.
 | Feature | Android | iOS | Release |
 | --- | --- | --- | --- |
 | Speech | `PlatformSpeech`, the platform TTS | `AVSpeechSynthesizer`. French, Spanish and English voices ship with iOS | First |
+| Read aloud | `PlatformSpeech` and `ReadAloudService` | A second `AVSpeechSynthesizer` that queues the reader's sentences. Narration pauses when the app leaves the screen | First |
 | Sound effects | `PlatformSoundEffects` | The desktop path, miniaudio playing the bundled WAVs | First |
 | Audio session | Not needed | Set an `AVAudioSession` category once at launch. It decides whether speech plays with the silent switch on | First |
 | Status bar theme | `StatusBarController` | Qt's colour scheme override, or `overrideUserInterfaceStyle` | First |
 | Splash | `SplashGate` | A launch storyboard, set through `QT_IOS_LAUNCH_SCREEN` | First |
 | Reduced motion | `animator_duration_scale` | `UIAccessibilityIsReduceMotionEnabled` | First |
-| Session checkpoints | `SessionCheckpoints`, shared preferences | The workspace's `checkpoints/` folder, as on desktop | First |
+| Session checkpoints | `SessionCheckpoints`, shared preferences | One JSON file beside the workspaces, holding every save under its kind and key | First |
 | Reminders | `PlatformNotification`, an alarm, `BootReceiver` | `UNUserNotificationCenter` with a calendar trigger. It survives a reboot by itself, so iOS needs no boot receiver | First |
 | Sign-in | `GoogleAuthorization`, Play services | `ASWebAuthenticationSession` and an iOS OAuth client, see [Sign-in](#sign-in) | First |
 | Credential store | None, Play services holds the grant | The Keychain, as a third `AppCredentialStore` beside the Windows and in-memory ones | First |
 | Export a database | `PlatformShare` | `UIActivityViewController`, the share sheet | First |
-| Reader file picker | `ReaderFilePicker` | Qt Quick Dialogs' file dialog, which opens the system document picker. Copy the file into the workspace's `books/` folder | First |
+| Reader file picker | `ReaderFilePicker` | `UIDocumentPickerViewController`, which hands over a copy. The copy moves into the workspace's `books/` folder | First |
+| Open in another app | `ReaderFilePicker.showDocument` | The share sheet with the book file | First |
 | Keep screen on | `ReaderWindow` | `UIApplication.idleTimerDisabled` | First |
-| Open with | `ReaderIntake`, `ReaderIntakeActivity` | Declared document types and an open-URL handler | Later |
+| Open with | `ReaderIntake`, `ReaderIntakeActivity` | Document types in `Info.plist`, PDF, EPUB, FB2 and plain text. Qt hands the file URL to a `file` URL handler, which copies the book into `books/` | First |
 | Machine translation | `PlatformTranslation`, ML Kit | Off, see [Machine translation](#machine-translation) | Later |
 | Home widget | `HomeWidget` | A WidgetKit extension in Swift, sharing data through an App Group | Later |
 | Volume keys turn pages | `ReaderKeys` | Dropped. iOS has no public API for the volume buttons | Never |
@@ -265,6 +267,10 @@ The workflow reads seven secrets of the public repository:
 | `APPSTORE_API_KEY_ID` | The key id |
 | `APPSTORE_API_ISSUER_ID` | The issuer id |
 
+One repository variable, `IOS_GOOGLE_CLIENT_ID`, holds the iOS OAuth client id. It goes into
+`Info.plist` as `IkonikaGoogleClientId`. A build without it has sync switched off. The id is not a
+secret, since every copy of the app carries it.
+
 `scripts/tools/publish-snapshot.py` makes the snapshot; see [scripts.md](scripts.md).
 
 The steps:
@@ -279,14 +285,21 @@ The steps:
    both from repository secrets.
 5. `xcodebuild archive`, then `xcodebuild -exportArchive` with `destination` set to `upload`. That
    sends the build straight to TestFlight, authenticated with an App Store Connect API key.
-6. A second job, on a manual run only, builds a Debug app for the simulator on the Intel Mac,
-   boots an iPhone simulator and launches the app. It fails when the app is gone a minute after
-   launch, and keeps screenshots at 30 and 60 seconds, the system log, the app log and any crash
-   report as the `simulator` artifact.
+6. On a manual run, `simulator-build` compiles a Release app for the simulator on an Apple Silicon
+   Mac, without QML ahead-of-time compilation, and uploads it as an artifact.
+7. `simulator` starts at the same time on an Intel Mac, where Qt's x86_64 simulator libraries run.
+   It boots an iPhone simulator while the app compiles, then polls the run's artifacts until the
+   app appears. `.github/actions/simulator-walk.py` installs it and runs these phases:
+   - the first launch, until the log shows the first frame;
+   - a dictionary install, then a database integrity check;
+   - the screen walk and the navigation walk, failing on any warning;
+   - a narration check that queues two sentences and waits for both to finish;
+   - a shared book: an FB2 file handed to the app through `simctl openurl`, until the reader opens it.
 
-Both jobs restore Qt from one cache entry, about 3 GB, through `.github/actions/install-qt`. A
-device build takes about 10 minutes on the Apple Silicon Mac. The simulator job takes about 50
-minutes, most of it compiling on the slower Intel Mac.
+   Screenshots, every phase's log, the system log and crash reports go into the `simulator` artifact.
+
+Every job restores Qt from one cache entry, about 3 GB, through `.github/actions/install-qt`, and
+compiles through ccache, set up by `.github/actions/setup-ccache`.
 
 ### Signing without a Mac
 

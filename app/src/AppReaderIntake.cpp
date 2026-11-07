@@ -3,10 +3,16 @@
 #include "core/FTLog.h"
 
 #include <QTimer>
+#include <QFileInfo>
+#include <utility>
 
 #if defined(Q_OS_ANDROID)
 #include <QtCore/qjnienvironment.h>
 #include <QtCore/qjniobject.h>
+#elif defined(Q_OS_IOS)
+#include "AppIosReader.h"
+
+#include <QDesktopServices>
 #endif
 
 namespace
@@ -45,12 +51,47 @@ AppReaderIntake::AppReaderIntake(QObject* Parent)
     }
 
     QTimer::singleShot(0, this, &AppReaderIntake::bookArrived);
+#elif defined(Q_OS_IOS)
+    QDesktopServices::setUrlHandler(QStringLiteral("file"), this, "OpenUrl");
 #endif
+}
+
+AppReaderIntake::~AppReaderIntake()
+{
+#if defined(Q_OS_IOS)
+    QDesktopServices::unsetUrlHandler(QStringLiteral("file"));
+#endif
+}
+
+void AppReaderIntake::OpenUrl(const QUrl& Url)
+{
+    qCInfo(LogApp) << "Reader intake: another app handed over" << Url.toString();
+
+#if defined(Q_OS_IOS)
+    const QString Kept{AppIosReader::ImportOpenedUrl(Url)};
+
+    if (Kept.isEmpty())
+    {
+        return;
+    }
+
+    OpenPath(Kept);
+#else
+    OpenPath(Url.toLocalFile());
+#endif
+}
+
+void AppReaderIntake::OpenPath(const QString& Path)
+{
+    PendingBook = {{QStringLiteral("path"), Path},
+                   {QStringLiteral("name"), QFileInfo(Path).fileName()}};
+    qCInfo(LogApp) << "Reader intake: received" << Path;
+    emit bookArrived();
 }
 
 QVariantMap AppReaderIntake::takePending()
 {
-    QVariantMap Result;
+    QVariantMap Result{std::exchange(PendingBook, {})};
 
 #if defined(Q_OS_ANDROID)
     const QJniObject Pending = QJniObject::callStaticObjectMethod(

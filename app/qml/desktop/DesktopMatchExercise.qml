@@ -210,8 +210,6 @@ Item
         tags: root.controller ? [root.controller.tense] : []
         counterText: root.controller ? qsTr("%1 / %2").arg(root.controller.currentSessionCount).arg(root.controller.maxSessionCount) : ""
         showPrimary: root.heading.length > 0
-        compactPrompt: true
-        centreSecondary: true
 
         primary: DesktopPromptLabel
         {
@@ -233,9 +231,23 @@ Item
             id: matchGrid
 
             Layout.fillWidth: true
+            columns: root.heading.length > 0 && root.rowCount > 3 ? 4 : 2
 
             cardModel: root.cells
-            verbGroups: root.controller ? root.controller.leftVerbGroups.flatMap(group => [group, ""]) : []
+            verbGroups:
+            {
+                const groups = []
+
+                if (root.controller)
+                {
+                    for (const group of root.controller.leftVerbGroups)
+                    {
+                        groups.push(group, "")
+                    }
+                }
+
+                return groups
+            }
             cellHeight: root.heading.length > 0 ? AppMetrics.matchCellHeightCompact : AppMetrics.matchCellHeight
             rowSpacing: root.heading.length > 0 ? AppMetrics.gapSmall : AppMetrics.gapCompact
             keyHints: root.cellHints

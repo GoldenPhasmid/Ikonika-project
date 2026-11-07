@@ -87,6 +87,9 @@ set(IKONIKA_PLATFORM_TRANSLATION_SOURCES
 )
 
 set(IKONIKA_IOS_SOURCES
+    src/AppIosBackgroundTask.h
+    src/AppIosBackgroundTask.mm
+    src/AppIosCredentialStore.mm
     src/AppIosNotifications.h
     src/AppIosNotifications.mm
     src/AppIosPresenter.h
@@ -95,6 +98,8 @@ set(IKONIKA_IOS_SOURCES
     src/AppIosReader.mm
     src/AppIosShare.h
     src/AppIosShare.mm
+    src/AppIosSignIn.h
+    src/AppIosSignIn.mm
     src/AppIosSpeech.h
     src/AppIosSpeech.mm
     src/AppIosStorage.h
@@ -182,6 +187,8 @@ qt_add_executable(IkonikaApp
     src/AppModifierKeys.h
     src/AppReaderIntake.cpp
     src/AppReaderIntake.h
+    src/AppTextIntake.cpp
+    src/AppTextIntake.h
     src/AppPaneWidths.cpp
     src/AppPaneWidths.h
     src/AppViewLayouts.cpp
@@ -271,7 +278,9 @@ if (ANDROID)
 elseif (IOS)
     target_sources(IkonikaApp PRIVATE ${IKONIKA_IOS_SOURCES})
     target_link_libraries(IkonikaApp PRIVATE
+        "-framework AuthenticationServices"
         "-framework AVFoundation"
+        "-framework Security"
         "-framework UniformTypeIdentifiers"
         "-framework UserNotifications"
         "-framework UIKit")
@@ -577,6 +586,8 @@ set(IKONIKA_QML_FILES
     qml/desktop/DesktopSelectionBackground.qml
     qml/desktop/DesktopSentenceDialog.qml
     qml/desktop/DesktopSentenceText.qml
+    qml/desktop/DesktopSentenceFit.qml
+    qml/desktop/DesktopChipArea.qml
     qml/desktop/DesktopSessionBar.qml
     qml/desktop/DesktopSessionComplete.qml
     qml/desktop/DesktopSessionProgress.qml
@@ -772,6 +783,7 @@ endif()
 
 if (IOS)
     set(IKONIKA_IOS_BUILD_NUMBER "1" CACHE STRING "CFBundleVersion of the iOS build, raised on every upload")
+    set(IKONIKA_IOS_GOOGLE_CLIENT_ID "" CACHE STRING "iOS OAuth client id of Google sign-in, empty for a build without sync")
 
     set_target_properties(IkonikaApp PROPERTIES
         MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/ios/Info.plist.in"

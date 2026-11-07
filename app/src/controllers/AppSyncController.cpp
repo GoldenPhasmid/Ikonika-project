@@ -18,6 +18,7 @@
 #include <QtCore/qcoreapplication_platform.h>
 #include <QtCore/qjniobject.h>
 #elif defined(Q_OS_IOS)
+#include "AppIosBackgroundTask.h"
 #include "AppIosShare.h"
 #endif
 
@@ -170,6 +171,16 @@ void AppSyncController::OnApplicationStateChanged(Qt::ApplicationState State)
     if (State == Qt::ApplicationHidden || State == Qt::ApplicationSuspended)
     {
         Sync->OnBackground();
+
+#if defined(Q_OS_IOS)
+        if (Sync->IsRunning())
+        {
+            const unsigned long Task{AppIosBackgroundTask::Begin(QStringLiteral("sync upload"))};
+
+            connect(Sync, &AppWorkspaceSync::cycleFinished, this, [Task]() { AppIosBackgroundTask::End(Task); },
+                    Qt::SingleShotConnection);
+        }
+#endif
     }
 }
 

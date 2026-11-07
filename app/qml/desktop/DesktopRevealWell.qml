@@ -10,7 +10,8 @@ Rectangle
     default property alias content: contentColumn.data
 
     Layout.fillWidth: true
-    implicitHeight: AppMetrics.exerciseAnswerHeight
+    implicitHeight: Math.max(AppMetrics.exerciseAnswerHeight,
+        root.revealed ? contentColumn.implicitHeight + AppMetrics.gapLarge * 2 : 0)
     clip: true
 
     radius: AppMetrics.radiusMedium

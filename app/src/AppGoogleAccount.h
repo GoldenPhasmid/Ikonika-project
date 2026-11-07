@@ -61,6 +61,8 @@ private:
 #if defined(Q_OS_ANDROID)
     void AndroidAuthorize(bool bSilent, const QString& AccountEmail);
     void DeliverToken(const std::optional<AppCloudFailure>& Failure, const QString& Token);
+#elif defined(Q_OS_IOS)
+    void ExchangeCode(const QString& Code);
 #elif defined(IKONIKA_DESKTOP)
     void PrepareFlow();
 #endif
@@ -81,6 +83,12 @@ private:
     QString LastServerError;
     QString LoginHint;
     QTimer SignInTimeout;
+
+#if defined(Q_OS_IOS)
+    QString PkceVerifier;
+    QString PkceState;
+    QString RedirectUri;
+#endif
 
 #if defined(Q_OS_ANDROID)
     QString AndroidToken;

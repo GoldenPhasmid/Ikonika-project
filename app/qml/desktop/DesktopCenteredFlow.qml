@@ -5,10 +5,12 @@ Item
     id: root
 
     property real spacing: 0
+    property bool centred: true
+    property var watchedChildren: []
 
     function arrange()
     {
-        if (!root.visible)
+        if (!root || !root.visible)
         {
             return
         }
@@ -48,7 +50,7 @@ Item
                 ++end
             }
 
-            let left = Math.round(Math.max(0, (root.width - rowWidth) / 2))
+            let left = root.centred ? Math.round(Math.max(0, (root.width - rowWidth) / 2)) : 0
 
             for (let index = start; index < end; ++index)
             {
@@ -67,9 +69,30 @@ Item
     onWidthChanged: root.arrange()
     onVisibleChanged: root.arrange()
     onSpacingChanged: root.arrange()
+    onCentredChanged: root.arrange()
 
     onChildrenChanged:
     {
+        const current = []
+
+        for (const child of root.children)
+        {
+            if (child instanceof Repeater)
+            {
+                continue
+            }
+
+            if (root.watchedChildren.indexOf(child) < 0)
+            {
+                child.widthChanged.connect(root.arrange)
+                child.heightChanged.connect(root.arrange)
+                child.visibleChanged.connect(root.arrange)
+            }
+
+            current.push(child)
+        }
+
+        root.watchedChildren = current
         root.arrange()
         Qt.callLater(root.arrange)
     }

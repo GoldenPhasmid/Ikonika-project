@@ -194,6 +194,18 @@ Item
     onControllerChanged: Qt.callLater(root.focusAnswer)
     onVisibleChanged: if (root.visible) Qt.callLater(root.focusAnswer)
 
+    DesktopSentenceFit
+    {
+        id: sentenceFit
+
+        width: card.surface.width - AppMetrics.contentPadding * 2
+        availableHeight: card.primaryHeight
+        reservedHeight: root.hasHeading ? AppMetrics.sentenceNativeSize * AppMetrics.answerLineCount + AppMetrics.gapSmall : 0
+        foreignText: root.controller && !root.controller.finished && root.sentenceMode ? (root.listening ? root.controller.prompt : root.controller.answer) : ""
+        nativeText: root.controller && !root.controller.finished && root.sentenceMode ? (root.hasHeading ? root.controller.promptHeading
+            : (root.listening ? root.controller.answer : "")) : ""
+    }
+
     DesktopExerciseCard
     {
         id: card
@@ -201,11 +213,9 @@ Item
         anchors.fill: parent
 
         fillSecondary: true
-        promptHeight: root.listening || root.hasHeading ? AppMetrics.exercisePromptHeight
-                                                        : AppMetrics.exercisePromptHeight - AppMetrics.gapLarge - AppMetrics.gapMedium
         primarySpeaks: !root.listening && ((promptLabel.visible && promptLabel.speakable) || revealedLabel.visible)
         onPrimaryClicked: root.playVoice()
-        tags: root.sentenceText ? [] : card.wordTags(root.controller)
+        tags: root.sentenceMode ? [] : card.wordTags(root.controller)
         counterText: root.controller ? qsTr("%1 / %2").arg(root.controller.currentSessionCount).arg(root.controller.maxSessionCount) : ""
         masteryTarget: root.controller ? root.controller.masteryTarget : 0
         masteryFilled: root.controller ? root.controller.cardMasteryCount : 0
@@ -216,8 +226,7 @@ Item
                 visible: root.hasHeading
                 Layout.fillWidth: true
                 text: root.hasHeading ? root.controller.promptHeading : ""
-                font.pixelSize: AppMetrics.sessionTranslationSize
-                font.weight: Font.Medium
+                font.pixelSize: root.sentenceMode ? sentenceFit.nativeSize : AppMetrics.sessionTranslationSize
                 color: AppTheme.colourSubtle
                 horizontalAlignment: Text.AlignHCenter
                 wrapMode: Text.WordWrap
@@ -268,6 +277,7 @@ Item
             },
             DesktopSentenceText
             {
+                maximumSize: sentenceFit.foreignSize
                 visible: root.sentenceMode && (!root.listening || root.revealed)
                 sentence:
                 {
@@ -304,8 +314,7 @@ Item
             },
             DesktopLabel
             {
-                opacity: root.revealed ? 1 : 0
-                Accessible.ignored: !root.revealed
+                visible: root.revealed
                 Layout.fillWidth: true
                 text:
                 {
@@ -328,7 +337,7 @@ Item
                                                : root.controller.lastRevealedAnswer
                 }
                 textFormat: root.answerOnLine && (root.hasMarkup || root.answerIsTarget) ? Text.StyledText : Text.PlainText
-                font.pixelSize: AppMetrics.fontLead
+                font.pixelSize: root.sentenceMode ? sentenceFit.nativeSize : AppMetrics.fontLead
                 color:
                 {
                     if (root.answerIsTarget && AppTheme.verbGroupColours[root.controller.targetVerbGroup])

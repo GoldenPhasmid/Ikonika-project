@@ -10,7 +10,17 @@ from pathlib import Path
 BUNDLE_ID = "com.goldenphasmid.ikonika"
 MOBILE_SCREENS = "today,vocabulary,dictionary,settings,profile,reader"
 REGULAR_LOG = "Documents/logs/Ikonika.log"
-HEADLESS_LOG = "tmp/Ikonika-headless/logs/Ikonika.log"
+HEADLESS_ROOT = "tmp/Ikonika-headless"
+HEADLESS_LOG = f"{HEADLESS_ROOT}/logs/Ikonika.log"
+STARTED = "Startup to first frame"
+NARRATION_SENTENCES = "Bonjour.|Le chat dort sur la table."
+SHARED_BOOK_NAME = "Essai partage.fb2"
+SHARED_BOOK = """<?xml version="1.0" encoding="utf-8"?>
+<FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0">
+<description><title-info><book-title>Essai partage</book-title><lang>fr</lang></title-info></description>
+<body><section><p>Bonjour. Le chat dort sur la table. Il fait beau aujourd'hui.</p></section></body>
+</FictionBook>
+"""
 FAILURE = re.compile(r"NAV FAIL|\| warnings [1-9]|\] critical |Package install failed")
 WARNING = re.compile(r"\] warning ")
 
@@ -97,18 +107,16 @@ class Simulator:
 
         return None
 
-    def phase(self, label, arguments, variables, log_name, markers, timeout, strict):
+    def phase(self, label, arguments, variables, log_name, markers, timeout, strict, action=None):
         print(f"== {label}", flush=True)
 
         log = self.container() / log_name
         self.launch(arguments, variables, log)
 
-        found = None
+        if action is not None:
+            action(log)
 
-        if markers:
-            found = self.wait_for(log, markers, timeout)
-        else:
-            time.sleep(timeout)
+        found = self.wait_for(log, markers, timeout)
 
         simctl("io", self.device, "screenshot", str(self.output / f"{file_name(label)}.png"), check=False)
 
@@ -118,11 +126,8 @@ class Simulator:
         pattern = re.compile(f"{FAILURE.pattern}|{WARNING.pattern}") if strict else FAILURE
         problems = [line.strip() for line in lines if pattern.search(line)]
 
-        if markers and found is None:
+        if found is None:
             problems.append(f"no line with {markers} within {timeout} seconds, app running: {self.is_running()}")
-
-        if not markers and not self.is_running():
-            problems.append(f"the app is not running {timeout} seconds after launch")
 
         if problems:
             print(f"{label} FAILED")
@@ -134,10 +139,35 @@ class Simulator:
 
             return
 
-        print(f"{label} passed{': ' + found.strip() if found else ''}")
+        print(f"{label} passed: {found.strip()}")
+
+    def share_book(self, log):
+        if self.wait_for(log, [STARTED], 300) is None:
+            return
+
+        book = self.container() / "tmp" / SHARED_BOOK_NAME
+        book.write_text(SHARED_BOOK, encoding="utf-8")
+        time.sleep(3)
+
+        print(f"  handing over {book.as_uri()}", flush=True)
+        result = subprocess.run(["xcrun", "simctl", "openurl", self.device, book.as_uri()], capture_output=True, text=True)
+
+        if result.returncode != 0:
+            print(f"  simctl openurl failed: {result.stderr.strip()}", flush=True)
+
+    def report_checkpoints(self):
+        store = self.container() / HEADLESS_ROOT / "session-checkpoints.json"
+
+        if not store.exists():
+            print("  session checkpoints: no file", flush=True)
+
+            return
+
+        keys = sorted(json.loads(store.read_text(encoding="utf-8")).keys())
+        print(f"  session checkpoints: {store.stat().st_size} bytes, keys {keys}", flush=True)
 
     def check_dictionaries(self, label):
-        directory = self.container() / "tmp/Ikonika-headless/dictionaries"
+        directory = self.container() / HEADLESS_ROOT / "dictionaries"
 
         for database in sorted(directory.rglob("*.db")):
             result = subprocess.run(["sqlite3", "-readonly", str(database), "PRAGMA quick_check;"],
@@ -146,14 +176,7 @@ class Simulator:
             print(f"  {label}: {database.name} {database.stat().st_size} bytes, quick_check {verdict}", flush=True)
 
 
-def main():
-    parser = argparse.ArgumentParser(description="Installs the app in an iPhone simulator, checks the first "
-                                                 "launch, installs a dictionary and runs the screen walks.")
-    parser.add_argument("app", type=Path, help="Built IkonikaApp.app for the simulator")
-    parser.add_argument("output", type=Path, help="Directory for screenshots and logs")
-    parser.add_argument("--dictionary", default="dictionary-fr", help="Catalog package the walks learn with")
-    arguments = parser.parse_args()
-
+def boot(arguments):
     arguments.output.mkdir(parents=True, exist_ok=True)
 
     device = pick_iphone()
@@ -161,12 +184,18 @@ def main():
     (arguments.output / "simulator-udid.txt").write_text(device, encoding="utf-8")
 
     simctl("boot", device, check=False)
+
+
+def walk(arguments):
+    device = (arguments.output / "simulator-udid.txt").read_text(encoding="utf-8").strip()
+
     simctl("bootstatus", device, "-b")
+    print("Simulator booted", flush=True)
     simctl("install", device, str(arguments.app))
 
     simulator = Simulator(device, arguments.output)
 
-    simulator.phase("First launch", [], {}, REGULAR_LOG, [], 120, strict=False)
+    simulator.phase("First launch", [], {}, REGULAR_LOG, [STARTED], 300, strict=False)
 
     simulator.phase("Dictionary install", ["-headless"], {"IKONIKA_INSTALL_PACKAGE": arguments.dictionary},
                     HEADLESS_LOG, ["Package install finished", "Package install failed"], 900, strict=False)
@@ -179,10 +208,39 @@ def main():
 
     simulator.phase("Navigation walk", ["-headless", "-keep-dictionaries"], {"IKONIKA_NAV_WALK": "1"},
                     HEADLESS_LOG, ["navigation walk done"], 900, strict=True)
+    simulator.report_checkpoints()
+
+    simulator.phase("Narration", ["-headless", "-keep-dictionaries"], {"IKONIKA_NARRATION_CHECK": NARRATION_SENTENCES},
+                    HEADLESS_LOG, ["narration check done", "narration check failed"], 120, strict=True)
+
+    simulator.phase("Shared book", ["-headless", "-keep-dictionaries"], {}, HEADLESS_LOG,
+                    ["Reader: opening a book handed over by another app"], 120, strict=True,
+                    action=simulator.share_book)
 
     simctl("terminate", device, BUNDLE_ID, check=False)
 
     sys.exit(1 if simulator.failures else 0)
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Boots an iPhone simulator, then installs the app in it, checks "
+                                                 "the first launch, installs a dictionary and runs the screen walks.")
+    commands = parser.add_subparsers(dest="command", required=True)
+
+    boot_command = commands.add_parser("boot", help="Pick an iPhone simulator and start booting it")
+    boot_command.add_argument("output", type=Path, help="Directory for screenshots and logs")
+
+    walk_command = commands.add_parser("walk", help="Install the app in the booted simulator and walk it")
+    walk_command.add_argument("app", type=Path, help="Built IkonikaApp.app for the simulator")
+    walk_command.add_argument("output", type=Path, help="Directory for screenshots and logs")
+    walk_command.add_argument("--dictionary", default="dictionary-fr", help="Catalog package the walks learn with")
+
+    arguments = parser.parse_args()
+
+    if arguments.command == "boot":
+        boot(arguments)
+    else:
+        walk(arguments)
 
 
 if __name__ == "__main__":

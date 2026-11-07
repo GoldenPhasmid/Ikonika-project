@@ -16,6 +16,7 @@
 #include "AppPackageDownloader.h"
 #include "AppPaths.h"
 #include "AppReminder.h"
+#include "AppReaderIntake.h"
 #include "AppSoundEffects.h"
 #include "AppHeartbeat.h"
 #include "AppSwitchCover.h"
@@ -45,6 +46,7 @@
 #include <QQuickWindow>
 #include <QScopeGuard>
 #include <QStringList>
+#include <QTimer>
 #include <memory>
 
 #ifdef IKONIKA_ENABLE_WEBENGINE
@@ -243,6 +245,55 @@ namespace
 
         return true;
     }
+
+    void StartNarrationCheck(const QString& Sentences)
+    {
+        constexpr int CheckTimeoutMilliseconds = 60000;
+        const QStringList Queue{Sentences.split(QLatin1Char('|'), Qt::SkipEmptyParts)};
+        AppSpeech& Speech{AppSpeech::Get()};
+
+        if (!Speech.CanNarrate())
+        {
+            qCWarning(LogSpeech) << "narration check failed: the speech service cannot narrate";
+
+            return;
+        }
+
+        auto Finished{std::make_shared<int>(0)};
+
+        QObject::connect(&Speech, &AppSpeech::narrationStarted, &Speech, [](int Id)
+        {
+            qCInfo(LogSpeech) << "narration check: sentence" << Id << "started";
+        });
+
+        QObject::connect(&Speech, &AppSpeech::narrationFinished, &Speech, [Finished, Count = Queue.size()](int Id)
+        {
+            qCInfo(LogSpeech) << "narration check: sentence" << Id << "finished";
+
+            if (++*Finished == Count)
+            {
+                qCInfo(LogSpeech) << "narration check done";
+            }
+        });
+
+        QObject::connect(&Speech, &AppSpeech::narrationFailed, &Speech, []()
+        {
+            qCWarning(LogSpeech) << "narration check failed: the speech service reported a failure";
+        });
+
+        QTimer::singleShot(CheckTimeoutMilliseconds, &Speech, [Finished, Count = Queue.size()]()
+        {
+            if (*Finished < Count)
+            {
+                qCWarning(LogSpeech) << "narration check failed:" << *Finished << "of" << Count << "sentences finished";
+            }
+        });
+
+        for (int Index = 0; Index < Queue.size(); ++Index)
+        {
+            Speech.QueueNarration(Index, Queue.at(Index), QStringLiteral("fr"));
+        }
+    }
 }
 
 int main(int ArgumentCount, char* Arguments[])
@@ -294,6 +345,8 @@ int main(int ArgumentCount, char* Arguments[])
     {
         AppIosStorage::ExcludeFromBackup(Directory);
     }
+
+    AppReaderIntake::Get();
 #endif
 
     AppMemoryCredentialStore MemoryCredentials;
@@ -301,6 +354,10 @@ int main(int ArgumentCount, char* Arguments[])
     AppWindowsCredentialStore WindowsCredentials(GetCredentialPrefix());
     AppCredentialStore& Credentials{AppPaths::IsHeadless() ? static_cast<AppCredentialStore&>(MemoryCredentials)
                                                            : WindowsCredentials};
+#elif defined(Q_OS_IOS)
+    AppIosCredentialStore KeychainCredentials(GetCredentialPrefix());
+    AppCredentialStore& Credentials{AppPaths::IsHeadless() ? static_cast<AppCredentialStore&>(MemoryCredentials)
+                                                           : KeychainCredentials};
 #else
     AppCredentialStore& Credentials{MemoryCredentials};
 #endif
@@ -339,6 +396,13 @@ int main(int ArgumentCount, char* Arguments[])
     AppSpeech::SetInstance(&RealSpeechService);
 #endif
 
+    const QString NarrationCheck{qEnvironmentVariable("IKONIKA_NARRATION_CHECK")};
+
+    if (!NarrationCheck.isEmpty())
+    {
+        QTimer::singleShot(0, [NarrationCheck]() { StartNarrationCheck(NarrationCheck); });
+    }
+
     AppStartup::Mark("application object");
 
     qCInfo(LogApp) << "Ikonika starting";
@@ -350,13 +414,25 @@ int main(int ArgumentCount, char* Arguments[])
 
 #if defined(IKONIKA_DESKTOP)
     AppSingleInstance SingleInstance;
+    QString BookPath;
+    for (const QString& Argument : Application.arguments().mid(1))
+    {
+        const QFileInfo File{Argument};
+        if (File.isFile() && QStringList{QStringLiteral("pdf"), QStringLiteral("epub"), QStringLiteral("fb2")}.contains(File.suffix().toLower()))
+        {
+            BookPath = File.absoluteFilePath();
+            break;
+        }
+    }
 
-    if (!SingleInstance.TryAcquire())
+    if (!SingleInstance.TryAcquire(BookPath))
     {
         return 0;
     }
 
     AppStartup::Mark("single instance");
+    QObject::connect(&SingleInstance, &AppSingleInstance::bookRequested,
+                     &AppReaderIntake::Get(), &AppReaderIntake::OpenPath);
 #endif
 
     QQuickStyle::setStyle(QStringLiteral("Basic"));
@@ -440,6 +516,13 @@ int main(int ArgumentCount, char* Arguments[])
     AppStartup::Mark("localisation");
 
     QQuickWindow* Window = LoadInterface(false);
+
+#if defined(IKONIKA_DESKTOP)
+    if (!BookPath.isEmpty())
+    {
+        AppReaderIntake::Get().OpenPath(BookPath);
+    }
+#endif
 
     if (Engine->rootObjects().isEmpty())
     {

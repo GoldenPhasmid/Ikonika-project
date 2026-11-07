@@ -73,6 +73,15 @@ Item
         return false
     }
 
+    DesktopSentenceFit
+    {
+        id: sentenceFit
+
+        width: card.surface.width - AppMetrics.contentPadding * 2
+        availableHeight: card.primaryHeight
+        foreignText: root.sentenceText && root.controller ? root.controller.prompt : ""
+    }
+
     DesktopExerciseCard
     {
         id: card
@@ -85,6 +94,7 @@ Item
         primary: [
             DesktopSentenceText
             {
+                maximumSize: sentenceFit.foreignSize
                 visible: root.sentenceText
                 sentence: root.controller && root.sentenceText ? root.controller.prompt : ""
 

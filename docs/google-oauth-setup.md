@@ -45,6 +45,12 @@ What it does need is the Android-type OAuth client (package name + SHA-1 signing
 registered separately in the same Google Cloud project, since that is what Play Services checks
 the request against.
 
+iOS needs a third client in the same project: application type **iOS**, bundle id
+`com.goldenphasmid.ikonika`. It has no secret. Put its client id into the `IOS_GOOGLE_CLIENT_ID`
+variable of the public repository (Settings > Secrets and variables > Actions > Variables). The
+build writes it into `Info.plist`, and the app signs in through the system sign-in sheet with a
+PKCE code exchange. The refresh token goes into the Keychain.
+
 ## Caveats
 
 - A *Web application* client will not work; the desktop flow needs an installed-app client.

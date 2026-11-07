@@ -258,6 +258,10 @@ class AppMetrics : public QObject
     Q_PROPERTY(int tabIndicatorHeight READ GetTabIndicatorHeight CONSTANT)
     Q_PROPERTY(int sessionProgressHeight READ GetSessionProgressHeight CONSTANT)
     Q_PROPERTY(int exerciseAnswerHeight READ GetExerciseAnswerHeight CONSTANT)
+    Q_PROPERTY(int sentenceMinimumSize READ GetSentenceMinimumSize CONSTANT)
+    Q_PROPERTY(int sentenceNativeSize READ GetSentenceNativeSize CONSTANT)
+    Q_PROPERTY(int sentenceNativeMinimumSize READ GetSentenceNativeMinimumSize CONSTANT)
+    Q_PROPERTY(int tileRowLimit READ GetTileRowLimit CONSTANT)
     Q_PROPERTY(int exercisePromptHeight READ GetExercisePromptHeight CONSTANT)
     Q_PROPERTY(int exercisePromptHeightCompact READ GetExercisePromptHeightCompact CONSTANT)
     Q_PROPERTY(int answerLineCount READ GetAnswerLineCount CONSTANT)
@@ -487,6 +491,10 @@ public:
     int GetTabIndicatorHeight() const;
     int GetSessionProgressHeight() const;
     int GetExerciseAnswerHeight() const;
+    int GetSentenceMinimumSize() const;
+    int GetSentenceNativeSize() const;
+    int GetSentenceNativeMinimumSize() const;
+    int GetTileRowLimit() const;
     int GetExercisePromptHeight() const;
     int GetExercisePromptHeightCompact() const;
     int GetAnswerLineCount() const;

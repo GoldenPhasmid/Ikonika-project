@@ -183,6 +183,32 @@ ApplicationWindow
         window.refreshCurrentScreen()
     }
 
+    function openPendingBook()
+    {
+        if (window.onboarding)
+        {
+            return
+        }
+
+        const book = AppReaderIntake.takePending()
+        if (!book.path)
+        {
+            return
+        }
+
+        window.session = ""
+        window.navigate("reader")
+        readerScreen.openPath(book.path)
+    }
+
+    onOnboardingChanged: Qt.callLater(window.openPendingBook)
+
+    Connections
+    {
+        target: AppReaderIntake
+        function onBookArrived() { window.openPendingBook() }
+    }
+
     function pageShown(key)
     {
         return window.screen === key || (window.sliding && key === window.slideFrom)

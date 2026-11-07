@@ -32,6 +32,81 @@
 
 @end
 
+@interface IkonikaNarrationDelegate : NSObject <AVSpeechSynthesizerDelegate>
+{
+    NSMutableDictionary<NSValue*, NSNumber*>* Ids;
+}
+- (void)track:(AVSpeechUtterance*)Utterance as:(int)Id;
+- (void)forgetAll;
+@end
+
+@implementation IkonikaNarrationDelegate
+
+- (instancetype)init
+{
+    self = [super init];
+
+    if (self != nil)
+    {
+        Ids = [[NSMutableDictionary alloc] init];
+    }
+
+    return self;
+}
+
+- (void)dealloc
+{
+    [Ids release];
+    [super dealloc];
+}
+
+- (void)track:(AVSpeechUtterance*)Utterance as:(int)Id
+{
+    Ids[[NSValue valueWithNonretainedObject:Utterance]] = @(Id);
+}
+
+- (void)forgetAll
+{
+    [Ids removeAllObjects];
+}
+
+- (NSNumber*)take:(AVSpeechUtterance*)Utterance
+{
+    NSValue* Key = [NSValue valueWithNonretainedObject:Utterance];
+    NSNumber* Id = [[Ids[Key] retain] autorelease];
+
+    [Ids removeObjectForKey:Key];
+
+    return Id;
+}
+
+- (void)speechSynthesizer:(AVSpeechSynthesizer*)Synthesizer didStartSpeechUtterance:(AVSpeechUtterance*)Utterance
+{
+    NSNumber* Id = Ids[[NSValue valueWithNonretainedObject:Utterance]];
+
+    if (Id != nil)
+    {
+        AppSpeech::Get().ReportNarrationStarted(Id.intValue);
+    }
+}
+
+- (void)speechSynthesizer:(AVSpeechSynthesizer*)Synthesizer didFinishSpeechUtterance:(AVSpeechUtterance*)Utterance
+{
+    NSNumber* Id = [self take:Utterance];
+
+    if (Id != nil)
+    {
+        AppSpeech::Get().ReportNarrationFinished(Id.intValue);
+    }
+}
+
+- (void)speechSynthesizer:(AVSpeechSynthesizer*)Synthesizer didCancelSpeechUtterance:(AVSpeechUtterance*)Utterance
+{
+    [self take:Utterance];
+}
+
+@end
+
 namespace
 {
     const QHash<QString, QString> PreferredRegions{
@@ -110,6 +185,8 @@ struct AppIosSpeech::Impl
 {
     AVSpeechSynthesizer* Synthesizer = nil;
     IkonikaSpeechDelegate* Delegate = nil;
+    AVSpeechSynthesizer* Narrator = nil;
+    IkonikaNarrationDelegate* NarrationDelegate = nil;
     QHash<QString, QString> VoiceIdentifiers;
 
     Impl()
@@ -117,6 +194,10 @@ struct AppIosSpeech::Impl
         Synthesizer = [[AVSpeechSynthesizer alloc] init];
         Delegate = [[IkonikaSpeechDelegate alloc] init];
         Synthesizer.delegate = Delegate;
+
+        Narrator = [[AVSpeechSynthesizer alloc] init];
+        NarrationDelegate = [[IkonikaNarrationDelegate alloc] init];
+        Narrator.delegate = NarrationDelegate;
     }
 
     ~Impl()
@@ -125,6 +206,11 @@ struct AppIosSpeech::Impl
         [Synthesizer stopSpeakingAtBoundary:AVSpeechBoundaryImmediate];
         [Synthesizer release];
         [Delegate release];
+
+        Narrator.delegate = nil;
+        [Narrator stopSpeakingAtBoundary:AVSpeechBoundaryImmediate];
+        [Narrator release];
+        [NarrationDelegate release];
     }
 
     QString VoiceFor(const QString& LanguageCode)
@@ -142,7 +228,7 @@ struct AppIosSpeech::Impl
         return Identifier;
     }
 
-    void Speak(const QString& Text, const QString& LanguageCode, float Rate)
+    AVSpeechUtterance* MakeUtterance(const QString& Text, const QString& LanguageCode, float Rate)
     {
         const QString Identifier = VoiceFor(LanguageCode);
 
@@ -150,7 +236,7 @@ struct AppIosSpeech::Impl
         {
             qCWarning(LogSpeech) << "No installed voice speaks" << LanguageCode;
 
-            return;
+            return nil;
         }
 
         AVSpeechUtterance* Utterance = [AVSpeechUtterance speechUtteranceWithString:Text.toNSString()];
@@ -158,13 +244,46 @@ struct AppIosSpeech::Impl
         Utterance.rate = std::clamp(AVSpeechUtteranceDefaultSpeechRate * Rate, AVSpeechUtteranceMinimumSpeechRate,
                                     AVSpeechUtteranceMaximumSpeechRate);
 
+        return Utterance;
+    }
+
+    void Speak(const QString& Text, const QString& LanguageCode, float Rate)
+    {
+        AVSpeechUtterance* Utterance = MakeUtterance(Text, LanguageCode, Rate);
+
+        if (Utterance == nil)
+        {
+            return;
+        }
+
         [Synthesizer stopSpeakingAtBoundary:AVSpeechBoundaryImmediate];
         [Synthesizer speakUtterance:Utterance];
+    }
+
+    bool Narrate(int Id, const QString& Text, const QString& LanguageCode, float Rate)
+    {
+        AVSpeechUtterance* Utterance = MakeUtterance(Text, LanguageCode, Rate);
+
+        if (Utterance == nil)
+        {
+            return false;
+        }
+
+        [NarrationDelegate track:Utterance as:Id];
+        [Narrator speakUtterance:Utterance];
+
+        return true;
     }
 
     void Stop()
     {
         [Synthesizer stopSpeakingAtBoundary:AVSpeechBoundaryImmediate];
+    }
+
+    void StopNarration()
+    {
+        [Narrator stopSpeakingAtBoundary:AVSpeechBoundaryImmediate];
+        [NarrationDelegate forgetAll];
     }
 };
 
@@ -220,6 +339,7 @@ void AppIosSpeech::SetEnabled(bool bValue)
     if (!bEnabled)
     {
         Native->Stop();
+        Native->StopNarration();
     }
 
     emit enabledChanged(bValue);
@@ -238,4 +358,22 @@ bool AppIosSpeech::IsEnabled() const
 float AppIosSpeech::GetSpeed() const
 {
     return Speed;
+}
+
+bool AppIosSpeech::CanNarrate() const
+{
+    return bEnabled;
+}
+
+void AppIosSpeech::QueueNarration(int Id, const QString& Text, const QString& LanguageCode)
+{
+    if (!Native->Narrate(Id, Text, LanguageCode, Speed))
+    {
+        ReportNarrationFailed();
+    }
+}
+
+void AppIosSpeech::StopNarration()
+{
+    Native->StopNarration();
 }

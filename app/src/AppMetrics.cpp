@@ -306,12 +306,12 @@ qreal AppMetrics::GetTrackingWide() const
 
 int AppMetrics::GetSessionCardWidth() const
 {
-    return IsMobileLayout() ? 0 : 720;
+    return IsMobileLayout() ? 0 : 792;
 }
 
 int AppMetrics::GetSessionCardHeight() const
 {
-    return IsMobileLayout() ? 0 : 500;
+    return IsMobileLayout() ? 0 : 550;
 }
 
 int AppMetrics::GetSessionWordSize() const
@@ -1102,6 +1102,26 @@ int AppMetrics::GetExerciseAnswerHeight() const
 int AppMetrics::GetExercisePromptHeight() const
 {
     return IsMobileLayout() ? 0 : 168;
+}
+
+int AppMetrics::GetSentenceMinimumSize() const
+{
+    return 18;
+}
+
+int AppMetrics::GetSentenceNativeSize() const
+{
+    return 20;
+}
+
+int AppMetrics::GetSentenceNativeMinimumSize() const
+{
+    return 16;
+}
+
+int AppMetrics::GetTileRowLimit() const
+{
+    return 3;
 }
 
 int AppMetrics::GetExercisePromptHeightCompact() const

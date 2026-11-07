@@ -62,6 +62,12 @@ ApplicationWindow
 
     function androidBack()
     {
+        if (lookupMobile.shown || lookupMobile.pending)
+        {
+            lookupMobile.close()
+            return true
+        }
+
         if (window.screen === "onboarding")
         {
             return true
@@ -139,6 +145,23 @@ ApplicationWindow
     {
         Qt.inputMethod.hide()
         lookupMobile.openFor(word, false, sentence)
+    }
+
+    function openPendingText()
+    {
+        if (AppOnboarding.required)
+        {
+            return
+        }
+
+        const text = AppTextIntake.takePending()
+        if (text.length === 0)
+        {
+            return
+        }
+
+        welcome.shown = false
+        window.openLookup(text, "")
     }
 
     function popScreen()
@@ -325,6 +348,8 @@ ApplicationWindow
             welcome.shown = true
             welcome.forceActiveFocus()
         }
+
+        Qt.callLater(window.openPendingText)
     }
 
     readonly property SettingsStore store: SettingsStore {}
@@ -501,6 +526,8 @@ ApplicationWindow
                 {
                     window.resetTo("today")
                 }
+
+                Qt.callLater(window.openPendingText)
 
                 return
             }
@@ -828,6 +855,16 @@ ApplicationWindow
         function onSessionRequested()
         {
             window.openWidgetSession()
+        }
+    }
+
+    Connections
+    {
+        target: AppTextIntake
+
+        function onTextArrived()
+        {
+            window.openPendingText()
         }
     }
 

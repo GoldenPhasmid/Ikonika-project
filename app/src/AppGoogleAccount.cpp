@@ -18,7 +18,13 @@
 #include <QNetworkReply>
 #include <QSettings>
 #include <QStringList>
-#if !defined(Q_OS_IOS)
+#if defined(Q_OS_IOS)
+#include "AppIosSignIn.h"
+
+#include <QCryptographicHash>
+#include <QRandomGenerator>
+#include <QUrlQuery>
+#else
 #include <QtNetworkAuth/qoauth2authorizationcodeflow.h>
 #include <QtNetworkAuth/qoauthhttpserverreplyhandler.h>
 #endif
@@ -80,6 +86,35 @@ namespace
 
         return Failure;
     }
+
+#if defined(Q_OS_IOS)
+    QString MakeRandomText(int Length)
+    {
+        const QString Alphabet{QStringLiteral("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~")};
+        QString Text;
+        Text.reserve(Length);
+
+        for (int Index = 0; Index < Length; ++Index)
+        {
+            Text.append(Alphabet.at(QRandomGenerator::system()->bounded(Alphabet.size())));
+        }
+
+        return Text;
+    }
+
+    QString MakeCallbackScheme(const QString& ClientId)
+    {
+        const QStringList Parts{ClientId.split(QLatin1Char('.'))};
+        QStringList Reversed;
+
+        for (auto It = Parts.crbegin(); It != Parts.crend(); ++It)
+        {
+            Reversed << *It;
+        }
+
+        return Reversed.join(QLatin1Char('.'));
+    }
+#endif
 
 #if defined(Q_OS_ANDROID)
     constexpr qint64 AndroidTokenLifetimeMilliseconds = 30 * 60 * 1000;
@@ -172,15 +207,15 @@ AppGoogleAccount::AppGoogleAccount(AppAccountRegistry& Registry, AppCredentialSt
     bConfigured = true;
 
     qCInfo(LogSync) << "Android sign-in bridge registered";
-#elif defined(Q_OS_IOS)
-    qCInfo(LogSync) << "Google sign-in is not part of the iOS build, sync stays off";
 #else
+#if !defined(Q_OS_IOS)
     if (QSettings().childGroups().contains(RetiredSettingsGroup))
     {
         qCInfo(LogSync) << "Removing the sign-in kept in the shared settings file by an earlier version";
 
         QSettings().remove(RetiredSettingsGroup);
     }
+#endif
 
     if (!LoadClient())
     {
@@ -529,36 +564,6 @@ void AppGoogleAccount::SignIn(const QString& AccountEmail)
     Flow->grant();
 }
 
-void AppGoogleAccount::ForgetToken()
-{
-    InvalidateToken();
-}
-
-void AppGoogleAccount::ClearToken(const QString& Token)
-{
-    Q_UNUSED(Token);
-}
-
-void AppGoogleAccount::RequestToken(TokenCallback Done)
-{
-    if (Tokens == nullptr)
-    {
-        Done(MakeFailure(QStringLiteral("sync is not configured")), QString());
-
-        return;
-    }
-
-    Tokens->RequestToken(std::move(Done));
-}
-
-void AppGoogleAccount::InvalidateToken()
-{
-    if (Tokens != nullptr)
-    {
-        Tokens->InvalidateToken();
-    }
-}
-
 void AppGoogleAccount::PrepareFlow()
 {
     if (Flow != nullptr)
@@ -682,17 +687,11 @@ bool AppGoogleAccount::LoadClient()
 
 #endif
 
-#if defined(Q_OS_IOS)
-
-void AppGoogleAccount::SignIn(const QString& AccountEmail)
-{
-    qCWarning(LogSync) << "Sign-in was asked for, but the iOS build has none; account" << AccountEmail;
-
-    SetLastError(tr("Sign-in is not available on this device yet."));
-}
+#if !defined(Q_OS_ANDROID)
 
 void AppGoogleAccount::ForgetToken()
 {
+    InvalidateToken();
 }
 
 void AppGoogleAccount::ClearToken(const QString& Token)
@@ -702,16 +701,178 @@ void AppGoogleAccount::ClearToken(const QString& Token)
 
 void AppGoogleAccount::RequestToken(TokenCallback Done)
 {
-    Done(MakeFailure(QStringLiteral("sync is not configured")), QString());
+    if (Tokens == nullptr)
+    {
+        Done(MakeFailure(QStringLiteral("sync is not configured")), QString());
+
+        return;
+    }
+
+    Tokens->RequestToken(std::move(Done));
 }
 
 void AppGoogleAccount::InvalidateToken()
 {
+    if (Tokens != nullptr)
+    {
+        Tokens->InvalidateToken();
+    }
+}
+
+#endif
+
+#if defined(Q_OS_IOS)
+
+void AppGoogleAccount::SignIn(const QString& AccountEmail)
+{
+    if (!bConfigured)
+    {
+        SetLastError(tr("Sync is not configured in this build."));
+
+        return;
+    }
+
+    const QString Scheme{MakeCallbackScheme(ClientId)};
+
+    LoginHint = AccountEmail;
+    PkceVerifier = MakeRandomText(64);
+    PkceState = MakeRandomText(24);
+    RedirectUri = Scheme + QStringLiteral(":/oauth2redirect");
+
+    const QByteArray Challenge{QCryptographicHash::hash(PkceVerifier.toLatin1(), QCryptographicHash::Sha256)
+                                   .toBase64(QByteArray::Base64UrlEncoding | QByteArray::OmitTrailingEquals)};
+
+    QUrlQuery Query;
+    Query.addQueryItem(QStringLiteral("client_id"), ClientId);
+    Query.addQueryItem(QStringLiteral("redirect_uri"), RedirectUri);
+    Query.addQueryItem(QStringLiteral("response_type"), QStringLiteral("code"));
+    Query.addQueryItem(QStringLiteral("scope"), QStringList{QStringLiteral("openid"), QStringLiteral("email"),
+                                                            QStringLiteral("profile"), DriveScope}.join(QLatin1Char(' ')));
+    Query.addQueryItem(QStringLiteral("code_challenge"), QString::fromLatin1(Challenge));
+    Query.addQueryItem(QStringLiteral("code_challenge_method"), QStringLiteral("S256"));
+    Query.addQueryItem(QStringLiteral("state"), PkceState);
+
+    if (LoginHint.isEmpty())
+    {
+        Query.addQueryItem(QStringLiteral("prompt"), QStringLiteral("select_account"));
+    }
+    else
+    {
+        Query.addQueryItem(QStringLiteral("login_hint"), LoginHint);
+    }
+
+    QUrl Url{AuthorizationEndpoint};
+    Url.setQuery(Query);
+
+    qCInfo(LogSync) << "The user asked to sign in, preselected account" << LoginHint;
+
+    SetBusy(true);
+    SetLastError(QString());
+    SignInTimeout.start();
+
+    const bool bStarted = AppIosSignIn::Start(Url, Scheme, [this](const QUrl& Callback, const QString& Error,
+                                                                 bool bCancelled)
+    {
+        if (!bBusy)
+        {
+            return;
+        }
+
+        if (bCancelled)
+        {
+            qCInfo(LogSync) << "The user closed the sign-in sheet";
+
+            FailSignIn(QString());
+
+            return;
+        }
+
+        const QUrlQuery Answer{Callback};
+
+        if (!Error.isEmpty() || Answer.hasQueryItem(QStringLiteral("error")))
+        {
+            const QString Reason{Error.isEmpty() ? Answer.queryItemValue(QStringLiteral("error")) : Error};
+
+            FailSignIn(tr("Google sign-in failed (%1).").arg(Reason));
+
+            return;
+        }
+
+        if (Answer.queryItemValue(QStringLiteral("state")) != PkceState)
+        {
+            FailSignIn(tr("Google sign-in answered for another request. Try again."));
+
+            return;
+        }
+
+        ExchangeCode(Answer.queryItemValue(QStringLiteral("code"), QUrl::FullyDecoded));
+    });
+
+    if (!bStarted)
+    {
+        FailSignIn(tr("Could not open the Google sign-in page."));
+    }
+}
+
+void AppGoogleAccount::ExchangeCode(const QString& Code)
+{
+    QUrlQuery Form;
+    Form.addQueryItem(QStringLiteral("grant_type"), QStringLiteral("authorization_code"));
+    Form.addQueryItem(QStringLiteral("code"), Code);
+    Form.addQueryItem(QStringLiteral("client_id"), ClientId);
+    Form.addQueryItem(QStringLiteral("redirect_uri"), RedirectUri);
+    Form.addQueryItem(QStringLiteral("code_verifier"), PkceVerifier);
+
+    QNetworkRequest Request(TokenEndpoint);
+    Request.setHeader(QNetworkRequest::ContentTypeHeader, QStringLiteral("application/x-www-form-urlencoded"));
+    Request.setTransferTimeout(TokenTimeoutMilliseconds);
+
+    qCInfo(LogSync) << "Exchanging the sign-in code for tokens";
+
+    QNetworkReply* Reply = Network->post(Request, Form.toString(QUrl::FullyEncoded).toUtf8());
+
+    connect(Reply, &QNetworkReply::finished, this, [this, Reply]
+            {
+                Reply->deleteLater();
+
+                const QJsonObject Answer = QJsonDocument::fromJson(Reply->readAll()).object();
+
+                if (Reply->error() != QNetworkReply::NoError)
+                {
+                    const QString Reason{Answer.value(QStringLiteral("error_description")).toString()};
+
+                    FailSignIn(tr("Google sign-in failed (%1).").arg(Reason.isEmpty() ? Reply->errorString() : Reason));
+
+                    return;
+                }
+
+                const QString RefreshToken{Answer.value(QStringLiteral("refresh_token")).toString()};
+
+                if (RefreshToken.isEmpty())
+                {
+                    FailSignIn(tr("Google did not allow this device to stay signed in. Try again."));
+
+                    return;
+                }
+
+                FinishSignIn(Answer.value(QStringLiteral("access_token")).toString(), RefreshToken);
+            });
 }
 
 bool AppGoogleAccount::LoadClient()
 {
-    return false;
+    ClientId = AppIosSignIn::ReadClientId();
+
+    if (ClientId.isEmpty())
+    {
+        qCInfo(LogSync) << "This build carries no Google client id, sync stays off";
+
+        return false;
+    }
+
+    qCInfo(LogSync) << "Google client id read from the app bundle";
+
+    return true;
 }
 
 #endif

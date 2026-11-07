@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
          xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+         xmlns:uap3="http://schemas.microsoft.com/appx/manifest/uap/windows10/3"
          xmlns:desktop="http://schemas.microsoft.com/appx/manifest/desktop/windows10"
          xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
-         IgnorableNamespaces="uap desktop rescap">
+         IgnorableNamespaces="uap uap3 desktop rescap">
   <Identity Name="GoldenPhasmid.Ikonika"
             Publisher="CN=A6C1C423-2A2F-423F-9427-4486B4456E67"
             Version="{Version}"
@@ -28,6 +29,16 @@
                           Square150x150Logo="Assets\Square150x150Logo.png"
                           Square44x44Logo="Assets\Square44x44Logo.png" />
       <Extensions>
+        <uap:Extension Category="windows.fileTypeAssociation">
+          <uap3:FileTypeAssociation Name="ikonika.book" Parameters="&quot;%1&quot;">
+            <uap:DisplayName>Ikonika book</uap:DisplayName>
+            <uap:SupportedFileTypes>
+              <uap:FileType>.pdf</uap:FileType>
+              <uap:FileType>.epub</uap:FileType>
+              <uap:FileType>.fb2</uap:FileType>
+            </uap:SupportedFileTypes>
+          </uap3:FileTypeAssociation>
+        </uap:Extension>
         <desktop:Extension Category="windows.startupTask" Executable="IkonikaApp.exe" EntryPoint="Windows.FullTrustApplication">
           <desktop:StartupTask TaskId="IkonikaStartup" Enabled="false" DisplayName="Ikonika" />
         </desktop:Extension>

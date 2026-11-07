@@ -156,7 +156,11 @@ void AppGoogleTokenSource::Refresh(const QString& AccountId, const QString& Refr
     Form.addQueryItem(QStringLiteral("grant_type"), QStringLiteral("refresh_token"));
     Form.addQueryItem(QStringLiteral("refresh_token"), RefreshToken);
     Form.addQueryItem(QStringLiteral("client_id"), ClientId);
-    Form.addQueryItem(QStringLiteral("client_secret"), ClientSecret);
+
+    if (!ClientSecret.isEmpty())
+    {
+        Form.addQueryItem(QStringLiteral("client_secret"), ClientSecret);
+    }
 
     QNetworkRequest Request(TokenEndpoint);
     Request.setHeader(QNetworkRequest::ContentTypeHeader, QStringLiteral("application/x-www-form-urlencoded"));

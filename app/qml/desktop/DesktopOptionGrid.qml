@@ -56,7 +56,7 @@ GridLayout
             readonly property bool isSelected: Qt.colorEqual(cell.stateColour, AppTheme.colourAccent)
             readonly property bool isAnswered: cell.isCorrect || cell.isWrong
             readonly property string keyHint: cell.index < root.keyHints.length ? root.keyHints[cell.index] : ""
-            readonly property bool isVoice: root.voiceColumn && cell.index % root.columns === 0 && !cell.isCorrect
+            readonly property bool isVoice: root.voiceColumn && cell.index % 2 === 0 && !cell.isCorrect
 
             property real shakeOffset: 0
 

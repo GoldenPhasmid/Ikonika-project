@@ -1,7 +1,7 @@
 ﻿cmake_minimum_required(VERSION 3.21)
 
 # C is enabled for one reason: the vendored SQLite amalgamation.
-project(Ikonika VERSION 0.8.2 LANGUAGES C CXX)
+project(Ikonika VERSION 0.8.3 LANGUAGES C CXX)
 
 # Play Store requires this to strictly increase on every upload, independent of PROJECT_VERSION.
 # Bump it by hand for each Android release.
@@ -105,11 +105,13 @@ if (IKONIKA_BUILD_APP AND IKONIKA_DESKTOP)
     set(CPACK_INNOSETUP_SETUP_AppId "{{89146247-DDFE-4522-BB79-05596AD96D7C}")
 
     set(CPACK_INNOSETUP_SETUP_CloseApplications yes)
+    set(CPACK_INNOSETUP_SETUP_ChangesAssociations yes)
     set(CPACK_INNOSETUP_SETUP_RestartApplications yes)
     set(CPACK_INNOSETUP_SETUP_UsePreviousAppDir no)
     set(CPACK_INNOSETUP_RUN_EXECUTABLES IkonikaApp)
     set(CPACK_INNOSETUP_EXTRA_SCRIPTS "${CMAKE_SOURCE_DIR}/packaging/relaunch.iss"
-                                      "${CMAKE_SOURCE_DIR}/packaging/uninstall.iss")
+                                      "${CMAKE_SOURCE_DIR}/packaging/uninstall.iss"
+                                      "${CMAKE_SOURCE_DIR}/packaging/associations.iss")
 
     find_program(IKONIKA_ISCC
         NAMES ISCC

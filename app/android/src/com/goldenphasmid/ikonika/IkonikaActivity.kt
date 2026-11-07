@@ -25,6 +25,7 @@ class IkonikaActivity : QtActivity() {
         }
 
         ReaderIntake.accept(this, intent)
+        TextIntake.accept(intent)
         HomeWidget.acceptLaunch(intent)
     }
 
@@ -33,6 +34,7 @@ class IkonikaActivity : QtActivity() {
         setIntent(intent)
 
         ReaderIntake.accept(this, intent)
+        TextIntake.accept(intent)
         HomeWidget.acceptLaunch(intent)
     }
 

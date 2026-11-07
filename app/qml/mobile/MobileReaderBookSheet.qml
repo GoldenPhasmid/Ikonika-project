@@ -71,7 +71,7 @@ MobileBottomSheet
         {
             objectName: "reader_sheet_show"
 
-            visible: root.local && root.exists && Qt.platform.os === "android"
+            visible: root.local && root.exists && (Qt.platform.os === "android" || Qt.platform.os === "ios")
             title: qsTr("Open in another app")
 
             onClicked: root.choose(root.showRequested)

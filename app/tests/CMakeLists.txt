@@ -1,4 +1,9 @@
 add_executable(AppTests
+    ReaderIntakeTests.cpp
+    TextIntakeTests.cpp
+    "${CMAKE_SOURCE_DIR}/app/src/AppTextIntake.cpp"
+    "${CMAKE_SOURCE_DIR}/app/src/AppReaderIntake.cpp"
+    "${CMAKE_SOURCE_DIR}/app/src/AppSingleInstance.cpp"
     ExerciseControllerBaseTests.cpp
     FlashcardControllerTests.cpp
     FlipRecallControllerTests.cpp

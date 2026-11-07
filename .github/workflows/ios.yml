@@ -95,6 +95,7 @@ jobs:
             -DQT_HOST_PATH="$QT_ROOT/$QT_VERSION/macos" \
             -DCMAKE_XCODE_GENERATE_SCHEME=ON \
             -DIKONIKA_IOS_BUILD_NUMBER="${{ github.run_number }}" \
+            -DIKONIKA_IOS_GOOGLE_CLIENT_ID="${{ vars.IOS_GOOGLE_CLIENT_ID }}" \
             $CCACHE_CMAKE_ARGS \
             "${SIGNING[@]}"
 
@@ -213,6 +214,7 @@ jobs:
             -DQT_HOST_PATH="$QT_ROOT/$QT_VERSION/macos" \
             -DCMAKE_XCODE_GENERATE_SCHEME=ON \
             -DQT_QML_NO_CACHEGEN=ON \
+            -DIKONIKA_IOS_GOOGLE_CLIENT_ID="${{ vars.IOS_GOOGLE_CLIENT_ID }}" \
             $CCACHE_CMAKE_ARGS
 
       - name: Build for the simulator
@@ -252,9 +254,13 @@ jobs:
           if-no-files-found: ignore
 
   simulator:
-    needs: simulator-build
+    if: ${{ !github.event.repository.private && github.event_name == 'workflow_dispatch' && inputs.simulator }}
     runs-on: macos-15-intel
-    timeout-minutes: 90
+    timeout-minutes: 120
+
+    permissions:
+      actions: read
+      contents: read
 
     env:
       BUNDLE_ID: com.goldenphasmid.ikonika
@@ -267,6 +273,29 @@ jobs:
         with:
           xcode-version: latest-stable
 
+      - name: Start booting the simulator
+        run: python3 "$GITHUB_WORKSPACE/.github/actions/simulator-walk.py" boot "$OUTPUT_DIR"
+
+      - name: Wait for the simulator build
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          RUN="repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          for ATTEMPT in $(seq 1 240); do
+            if gh api "$RUN/artifacts" --jq '.artifacts[].name' | grep -qx simulator-app; then
+              echo "The simulator app is ready"
+              exit 0
+            fi
+            STATE=$(gh api "$RUN/jobs" --jq '.jobs[] | select(.name == "simulator-build") | .conclusion')
+            if [ "$STATE" = "failure" ] || [ "$STATE" = "cancelled" ] || [ "$STATE" = "skipped" ]; then
+              echo "The simulator build ended with $STATE"
+              exit 1
+            fi
+            sleep 15
+          done
+          echo "The simulator build did not finish in time"
+          exit 1
+
       - uses: actions/download-artifact@v4
         with:
           name: simulator-app
@@ -276,7 +305,7 @@ jobs:
         run: |
           mkdir -p "$RUNNER_TEMP/app"
           tar -xzf "$RUNNER_TEMP/IkonikaApp-simulator.tgz" -C "$RUNNER_TEMP/app"
-          python3 "$GITHUB_WORKSPACE/.github/actions/simulator-walk.py" "$RUNNER_TEMP/app/IkonikaApp.app" "$OUTPUT_DIR"
+          python3 "$GITHUB_WORKSPACE/.github/actions/simulator-walk.py" walk "$RUNNER_TEMP/app/IkonikaApp.app" "$OUTPUT_DIR"
 
       - name: Collect the system log and crash reports
         if: always()

@@ -234,6 +234,16 @@ Item
     onVisibleChanged: if (root.visible) Qt.callLater(root.focusAnswer)
     onTypingChanged: Qt.callLater(root.focusAnswer)
 
+    DesktopSentenceFit
+    {
+        id: sentenceFit
+
+        width: card.surface.width - AppMetrics.contentPadding * 2
+        availableHeight: card.primaryHeight
+        foreignText: root.controller && !root.controller.finished ? root.controller.answer : ""
+        nativeText: root.revealed ? root.controller.lastTranslation : ""
+    }
+
     DesktopExerciseCard
     {
         id: card
@@ -250,6 +260,7 @@ Item
         primary: [
             DesktopSentenceText
             {
+                maximumSize: sentenceFit.foreignSize
                 visible: root.revealed
                 sentence: root.controller ? root.controller.lastRevealedAnswer : ""
 
@@ -260,7 +271,7 @@ Item
                 Layout.fillWidth: true
                 visible: root.revealed && text.length > 0
                 text: root.controller ? root.controller.lastTranslation : ""
-                font.pixelSize: AppMetrics.fontLead
+                font.pixelSize: sentenceFit.nativeSize
                 color: AppTheme.colourSubtle
                 horizontalAlignment: Text.AlignHCenter
                 wrapMode: Text.WordWrap
@@ -274,10 +285,12 @@ Item
 
                 onClicked: root.controller.replay()
             },
-            DesktopCenteredFlow
+            DesktopChipArea
             {
                 visible: !root.typing && !root.revealed
                 Layout.fillWidth: true
+                Layout.maximumHeight: Math.max(AppMetrics.buttonHeight,
+                    card.primaryHeight - AppMetrics.waveformButtonHeight - AppMetrics.gapSmall * 2)
                 Layout.topMargin: AppMetrics.gapSmall
                 spacing: AppMetrics.gapSmall
 
@@ -329,7 +342,7 @@ Item
             {
                 visible: !root.typing
                 Layout.fillWidth: true
-                Layout.preferredHeight: AppMetrics.buttonHeight * 2 + AppMetrics.gapSmall * 3
+                Layout.preferredHeight: Math.min(card.secondaryHeight, answerTiles.implicitHeight + AppMetrics.gapSmall * 2)
 
                 radius: AppMetrics.radiusMedium
                 color: AppTheme.colourWell
@@ -347,11 +360,15 @@ Item
                     onClicked: root.focusAnswer()
                 }
 
-                Flow
+                DesktopChipArea
                 {
+                    id: answerTiles
+
                     anchors.fill: parent
                     anchors.margins: AppMetrics.gapSmall
                     spacing: AppMetrics.gapSmall
+                    centred: false
+                    followEnd: true
 
                     Repeater
                     {

@@ -38,6 +38,7 @@
 #include <QtCore/qjniobject.h>
 #elif defined(Q_OS_IOS)
 #include "AppIosReader.h"
+#include "AppIosShare.h"
 #endif
 
 namespace
@@ -646,43 +647,14 @@ void ReaderController::HandleAndroidPickFailed(const QString& Message)
 #if defined(Q_OS_IOS)
 void ReaderController::HandleIosPicked(const QString& PickedPath)
 {
-    AppFreeBooks* Free = AppFreeBooks::GetInstance();
+    const QString Kept{AppIosReader::KeepBook(PickedPath, true)};
 
-    if (Free == nullptr)
+    if (Kept.isEmpty())
     {
-        qCWarning(LogApp) << "Reader: no workspace to keep the picked book in";
-
         return;
     }
 
-    const QDir Directory(Free->GetBooksDirectory());
-    const QFileInfo Picked(PickedPath);
-
-    if (!Directory.mkpath(QStringLiteral(".")))
-    {
-        qCWarning(LogApp) << "Reader: could not create" << Directory.absolutePath();
-
-        return;
-    }
-
-    QString Destination = Directory.filePath(Picked.fileName());
-
-    for (int Copy = 2; QFileInfo::exists(Destination); ++Copy)
-    {
-        Destination = Directory.filePath(QStringLiteral("%1 (%2).%3")
-            .arg(Picked.completeBaseName()).arg(Copy).arg(Picked.suffix()));
-    }
-
-    if (!QFile::rename(PickedPath, Destination) && !QFile::copy(PickedPath, Destination))
-    {
-        qCWarning(LogApp) << "Reader: could not keep the picked book" << PickedPath << "at" << Destination;
-
-        return;
-    }
-
-    qCInfo(LogApp) << "Reader: kept the picked book at" << Destination;
-
-    OpenFile(Destination);
+    OpenFile(Kept);
 }
 #endif
 
@@ -1133,6 +1105,10 @@ void ReaderController::showOnDevice(const QString& Id)
 
 #if defined(Q_OS_ANDROID)
         AndroidShowOnDevice(FilePath);
+#elif defined(Q_OS_IOS)
+        qCInfo(LogApp) << "Reader: offering the book to other apps:" << FilePath;
+
+        AppIosShare::ShareFile(FilePath);
 #elif defined(Q_OS_WIN)
         qCInfo(LogApp) << "Reader: showing in the file manager:" << FilePath;
 

@@ -26,6 +26,19 @@ public:
 private:
     QString Prefix;
 };
+#elif defined(Q_OS_IOS)
+class AppIosCredentialStore : public AppCredentialStore
+{
+public:
+    explicit AppIosCredentialStore(QString Service);
+
+    bool Write(const QString& AccountId, const QString& Secret) override;
+    QString Read(const QString& AccountId) const override;
+    void Remove(const QString& AccountId) override;
+
+private:
+    QString Service;
+};
 #endif
 
 class AppMemoryCredentialStore : public AppCredentialStore

@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Controls.Basic
 import QtQuick.Layouts
 
 Item
@@ -10,11 +11,10 @@ Item
     property int masteryTarget: 0
     property int masteryFilled: 0
     property bool showPrimary: true
-    property bool compactPrompt: false
-    property bool centreSecondary: false
     property bool fillSecondary: false
     property bool primarySpeaks: false
-    property real promptHeight: AppMetrics.exercisePromptHeight
+    readonly property real primaryHeight: primaryArea.height
+    readonly property real secondaryHeight: secondaryArea.height
 
     property alias primary: primaryColumn.data
     property alias secondary: secondaryColumn.data
@@ -51,7 +51,7 @@ Item
     readonly property real designTop: Math.max(AppMetrics.gapLarge, (root.height - root.designHeight - root.actionsHeight) / 2)
     readonly property real cardBottom: Math.min(root.designTop + root.designHeight, root.height - root.actionsHeight - AppMetrics.gapLarge)
     readonly property bool compact: root.cardBottom - AppMetrics.gapLarge < root.designHeight
-    readonly property real zoneGap: root.compact || root.compactPrompt ? AppMetrics.gapMedium : AppMetrics.gapLarge
+    readonly property real zoneGap: root.compact ? AppMetrics.gapMedium : AppMetrics.gapLarge
 
     Rectangle
     {
@@ -60,8 +60,7 @@ Item
         x: (root.width - width) / 2
         y: Math.max(AppMetrics.gapLarge, root.cardBottom - height)
         width: Math.min(AppMetrics.sessionCardWidth, root.width - AppMetrics.contentPadding * 2)
-        height: Math.min(Math.max(root.designHeight, body.implicitHeight + body.anchors.topMargin + body.anchors.bottomMargin),
-                         root.cardBottom - AppMetrics.gapLarge)
+        height: Math.max(0, Math.min(root.designHeight, root.cardBottom - AppMetrics.gapLarge))
 
         radius: AppMetrics.radiusLarge
         color: AppTheme.colourCard
@@ -75,21 +74,23 @@ Item
             anchors.fill: parent
         }
 
-        ColumnLayout
+        Item
         {
             id: body
 
             anchors.fill: parent
             anchors.topMargin: root.compact ? AppMetrics.gapMedium : AppMetrics.gapLarge
             anchors.bottomMargin: root.compact ? AppMetrics.gapMedium : AppMetrics.contentPadding
-            spacing: 0
+            readonly property real splitHeight: Math.max(0, (height - header.height - AppMetrics.borderWidth) / 2)
 
             Item
             {
-                Layout.fillWidth: true
-                Layout.leftMargin: AppMetrics.contentPadding
-                Layout.rightMargin: AppMetrics.contentPadding
-                Layout.preferredHeight: AppMetrics.buttonHeight
+                id: header
+
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.margins: AppMetrics.contentPadding
+                height: AppMetrics.buttonHeight
 
                 Row
                 {
@@ -135,21 +136,34 @@ Item
                 }
             }
 
-            Item
+            Flickable
             {
+                id: primaryArea
+
                 visible: root.showPrimary
-                Layout.fillWidth: true
-                Layout.leftMargin: AppMetrics.contentPadding
-                Layout.rightMargin: AppMetrics.contentPadding
-                Layout.preferredHeight: root.compactPrompt ? AppMetrics.exercisePromptHeightCompact : root.promptHeight
-                Layout.minimumHeight: primaryColumn.implicitHeight
-                Layout.fillHeight: root.compact
+                anchors.top: header.bottom
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.leftMargin: AppMetrics.contentPadding
+                anchors.rightMargin: AppMetrics.contentPadding
+                height: Math.max(0, body.splitHeight - root.zoneGap)
+                contentWidth: width
+                contentHeight: Math.max(height, primaryColumn.implicitHeight)
+                flickableDirection: Flickable.VerticalFlick
+                boundsBehavior: Flickable.StopAtBounds
+                clip: true
+
+                onContentHeightChanged: contentY = Math.max(0, contentHeight - height)
+                onHeightChanged: contentY = Math.max(0, contentHeight - height)
+
+                ScrollBar.vertical: DesktopScrollBar {}
 
                 MouseArea
                 {
                     objectName: "exercise_prompt_area"
 
-                    anchors.fill: parent
+                    width: primaryArea.width
+                    height: primaryArea.contentHeight
                     visible: root.primarySpeaks
                     cursorShape: Qt.PointingHandCursor
 
@@ -160,7 +174,8 @@ Item
                 {
                     id: primaryColumn
 
-                    anchors.fill: parent
+                    width: primaryArea.width
+                    height: primaryArea.contentHeight
                     spacing: AppMetrics.gapSmall
 
                     Item
@@ -173,43 +188,41 @@ Item
 
             Rectangle
             {
+                id: divider
+
                 visible: root.showPrimary
-                Layout.fillWidth: true
-                Layout.topMargin: root.zoneGap
-                Layout.preferredHeight: AppMetrics.borderWidth
+                anchors.left: parent.left
+                anchors.right: parent.right
+                y: header.height + body.splitHeight
+                height: AppMetrics.borderWidth
                 color: AppTheme.colourBorder
             }
 
-            Item
+            Flickable
             {
                 id: secondaryArea
 
-                Layout.fillWidth: true
-                Layout.fillHeight: root.fillSecondary || !root.compact || !root.showPrimary
-                Layout.minimumHeight: root.fillSecondary ? secondaryColumn.implicitHeight : 0
-                Layout.preferredHeight: secondaryColumn.implicitHeight
-                Layout.leftMargin: AppMetrics.contentPadding
-                Layout.rightMargin: AppMetrics.contentPadding
-                Layout.topMargin: root.showPrimary ? root.zoneGap : 0
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.leftMargin: AppMetrics.contentPadding
+                anchors.rightMargin: AppMetrics.contentPadding
+                y: root.showPrimary ? divider.y + divider.height + root.zoneGap : header.height
+                height: Math.max(0, body.height - y)
+                contentWidth: width
+                contentHeight: Math.max(height, secondaryColumn.implicitHeight)
+                flickableDirection: Flickable.VerticalFlick
+                boundsBehavior: Flickable.StopAtBounds
+                clip: true
+
+                ScrollBar.vertical: DesktopScrollBar {}
 
                 ColumnLayout
                 {
                     id: secondaryColumn
 
-                    readonly property real centredY: (card.height - height) / 2 - body.anchors.topMargin - secondaryArea.y
-
-                    anchors.left: parent.left
-                    anchors.right: parent.right
-                    height: root.fillSecondary ? parent.height : implicitHeight
-                    y:
-                    {
-                        if (!root.showPrimary)
-                        {
-                            return Math.max(0, secondaryColumn.centredY)
-                        }
-
-                        return root.centreSecondary ? Math.max(0, (secondaryArea.height - height) / 2) : 0
-                    }
+                    width: secondaryArea.width
+                    height: root.fillSecondary ? secondaryArea.contentHeight : implicitHeight
+                    y: root.showPrimary ? 0 : Math.max(0, (secondaryArea.height - height) / 2)
                     spacing: AppMetrics.gapMedium
                 }
             }

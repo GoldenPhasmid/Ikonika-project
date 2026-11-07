@@ -73,18 +73,20 @@ Desktop uses the mobile identity: palettes, type scale, radii, CEFR and frequenc
 - Session bar: back, session name, then forms, edit card, sound and options on the right. It shares the page colour and has no divider.
 - The card's buttons sit right under the card, each of one fixed width, centred on it. Their row keeps its place when it is empty, so the card never moves. Sessions have no bottom bar; triage keeps its own. Sessions show no stage progress; the counter on the card tells where you are.
 - The card is lighter than the page, and anything recessed into it, the answer well, an option, a field, is darker than the card.
-- Exercise card: one fixed size, split like the mobile content area. Zones from the top: header, prompt area, a divider across the whole card, answer area. The prompt area has a fixed height and its content sits on its bottom edge. The answer area starts right under the divider, so every answer starts at the same height on every card. A card whose content is taller than the design height grows upward.
+- Exercise card: 792×550, constrained to the available window space. Zones from the top: header, prompt area, a divider across the whole card, answer area. After the header, the two areas share the remaining height equally. Prompt content sits on its bottom edge and answer content starts at the top of its area. The card and divider keep their positions through typing and reveal. Overflow scrolls inside its area.
 - Header: tags on the left (part of speech, gender on nouns only, or tense), mastery dots in the middle, card counter on the right.
 - A click anywhere on a flashcard, flip or review card advances it, as on mobile; a click on the word itself plays it.
 - Prompt zone: the word sits on the bottom edge. Long words and phrases shrink to fit. An article is drawn in the muted colour, apart from its noun. Clicking anywhere in the prompt area plays the word or sentence, and a word gives a short wiggle; Ctrl+Space does the same. Text in the language being learned is medium weight; native text is regular and smaller. A play button sits at the bottom of the zone until the answer; then the revealed word or sentence and its translation take its place. Every play button shows its key.
 - A speaker icon pulses while the speech it started is playing.
 - Flashcards and revealed reviews show the translation, and under it the meaning's example: the sentence in the language being learned on the left, its translation on the right, split by a thin line. Both read left-aligned, and the left one ends at the line. A meaning without an example shows its English definition instead.
 - Sentence exercises show no tags.
-- Answer area: options in fixed cells, the text aligned left after its key, or the typing field as the last element of the card. The translation of a typed card has a reserved line in the prompt area under the word; a wrong answer keeps its red outline and the accepted answers show on that line in green. Revealing an answer fills space that was already there, so nothing moves.
+- Answer area: options in fixed cells, the text aligned left after its key, or the typing field at the top of the area. A revealed typed card shows its translation under the word in the prompt area; a wrong answer keeps its red outline and the accepted answers show in green. Revealed content grows upward within the prompt area, keeping the divider and answer field in place.
 - A sentence gap shows no play button; the sentence is already on the card.
-- A match centres its grid in the card. A forms match shows the verb or adjective as a small prompt above the divider.
+- A match without a prompt centres its grid in the card. A forms match shows the verb or adjective above the divider and places more than three pairs in two groups side by side, keeping every pair visible below it.
 - A sentence gap fills with the letters as they are typed.
+- Sentence text fits the available prompt area at 18–24 px, with native text at 16–20 px. Fitting uses the complete sentence, so typing and reveal keep the same font size. Text that still exceeds the area scrolls.
 - Word tiles sit in the prompt area under the play button; the sentence being built sits in a slot under the divider.
+- Tile banks and answer slots grow to at most three rows, then scroll. Used bank tiles keep their positions. The answer slot follows its newest row.
 - Forms study shows each form in its own cell, singular and plural in two columns, the ending in the accent colour.
 - A card that hides its answer shows a well with a question mark where the answer will appear; Reveal sits in the action bar.
 - Right and wrong show only as the green or red outline of the answer. There is no verdict line.

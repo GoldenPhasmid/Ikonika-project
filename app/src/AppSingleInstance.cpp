@@ -4,6 +4,9 @@
 
 #include <QLocalServer>
 #include <QLocalSocket>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <memory>
 
 namespace
 {
@@ -32,15 +35,16 @@ AppSingleInstance::~AppSingleInstance()
     }
 }
 
-bool AppSingleInstance::TryAcquire()
+bool AppSingleInstance::TryAcquire(const QString& BookPath)
 {
     QLocalSocket Probe;
     Probe.connectToServer(ServerName());
 
     if (Probe.waitForConnected(200))
     {
-        Probe.write("show");
+        Probe.write(QJsonDocument(QJsonObject{{QStringLiteral("path"), BookPath}}).toJson(QJsonDocument::Compact) + '\n');
         Probe.waitForBytesWritten(200);
+        Probe.waitForReadyRead(200);
         Probe.disconnectFromServer();
 
         qCInfo(LogApp) << "another instance is already running, asked it to show its window";
@@ -70,9 +74,28 @@ void AppSingleInstance::OnNewConnection()
 {
     while (QLocalSocket* Socket = Server->nextPendingConnection())
     {
-        Socket->waitForReadyRead(200);
-        Socket->deleteLater();
-    }
+        auto Payload = std::make_shared<QByteArray>();
+        const auto Receive = [this, Socket, Payload]()
+        {
+            Payload->append(Socket->readAll());
+            if (!Payload->contains('\n') && Socket->state() != QLocalSocket::UnconnectedState)
+            {
+                return;
+            }
 
-    emit activationRequested();
+            const QString Path{QJsonDocument::fromJson(*Payload).object().value(QStringLiteral("path")).toString()};
+            if (!Path.isEmpty())
+            {
+                emit bookRequested(Path);
+            }
+            emit activationRequested();
+            Socket->write("ok");
+            Socket->flush();
+            Socket->disconnect(this);
+            Socket->deleteLater();
+        };
+        connect(Socket, &QLocalSocket::readyRead, this, Receive);
+        connect(Socket, &QLocalSocket::disconnected, this, Receive);
+        Receive();
+    }
 }

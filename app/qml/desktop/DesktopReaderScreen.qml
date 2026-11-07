@@ -102,6 +102,12 @@ Item
         reader.pickAndOpen()
     }
 
+    function openPath(path)
+    {
+        root.savePosition()
+        reader.openPath(path)
+    }
+
     function focusSearch()
     {
         librarySearch.forceActiveFocus()
