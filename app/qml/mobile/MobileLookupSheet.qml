@@ -24,6 +24,10 @@ MobileBottomSheet
         root.pending = true
 
         lookupField.text = word
+        if (!focusField)
+        {
+            lookupField.cursorPosition = 0
+        }
         lookup.search(word)
     }
 
@@ -51,6 +55,7 @@ MobileBottomSheet
 
     heading: qsTr("Dictionary")
     maxHeightFraction: 0.85
+    bottomInset: root.SafeArea.margins.bottom
     enabled: !grace.running
 
     onDismissed: root.close()
@@ -79,8 +84,13 @@ MobileBottomSheet
 
     Item
     {
+        readonly property real matchListHeight: 56 * 2 + AppMetrics.gapCompact
+        readonly property real resultsHeight: lookup.results.length > 0
+            ? matchListHeight : Math.max(matchListHeight, emptyResults.implicitHeight)
+
         Layout.fillWidth: true
-        Layout.preferredHeight: 56 * 2 + AppMetrics.gapCompact
+        Layout.preferredHeight: Math.min(resultsHeight,
+            Math.max(0, root.maximumBodyHeight - lookupField.Layout.preferredHeight - AppMetrics.gapWide))
 
         MobileWordCardList
         {

@@ -11,7 +11,6 @@ option(IKONIKA_ENABLE_WEBENGINE "Build the YouTube screen, which needs QtWebEngi
 option(IKONIKA_ENABLE_MACHINE_TRANSLATION "Translate what dictionary search cannot find" ON)
 
 if (IOS)
-    set(CMAKE_Swift_LANGUAGE_VERSION 5.0)
     enable_language(Swift)
 endif()
 
@@ -801,6 +800,8 @@ if (IOS)
         MACOSX_BUNDLE_BUNDLE_VERSION "${IKONIKA_IOS_BUILD_NUMBER}"
         XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER "com.goldenphasmid.ikonika"
         XCODE_ATTRIBUTE_TARGETED_DEVICE_FAMILY "1"
+        Swift_LANGUAGE_VERSION 5.0
+        XCODE_ATTRIBUTE_SWIFT_VERSION 5.0
     )
 
     set_property(TARGET IkonikaApp APPEND PROPERTY RESOURCE "${CMAKE_CURRENT_SOURCE_DIR}/ios/PrivacyInfo.xcprivacy")

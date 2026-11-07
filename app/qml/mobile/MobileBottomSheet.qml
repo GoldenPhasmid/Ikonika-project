@@ -9,6 +9,10 @@ Item
     property alias heading: headingLabel.text
     property bool showClose: true
     property real maxHeightFraction: 0.85
+    property real bottomInset: 0
+
+    readonly property real maximumBodyHeight: Math.max(0, height * maxHeightFraction
+        - headingRow.implicitHeight - sheetColumn.spacing - AppMetrics.contentPadding * 3 - bottomInset)
 
     default property alias content: body.data
     property alias overlays: overlayLayer.data
@@ -163,7 +167,7 @@ Item
         enabled: !root.leaving
 
         height: Math.min(parent.height * root.maxHeightFraction,
-                        sheetColumn.implicitHeight + AppMetrics.contentPadding * 3)
+                        sheetColumn.implicitHeight + AppMetrics.contentPadding * 3 + root.bottomInset)
         topLeftRadius: AppMetrics.radiusLarge
         topRightRadius: AppMetrics.radiusLarge
         bottomLeftRadius: 0
@@ -188,6 +192,8 @@ Item
 
             RowLayout
             {
+                id: headingRow
+
                 Layout.fillWidth: true
                 spacing: AppMetrics.gapSmall
 

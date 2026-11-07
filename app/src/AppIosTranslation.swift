@@ -2,9 +2,9 @@ import SwiftUI
 import Translation
 import UIKit
 
-typealias IkonikaStatusCallback = @convention(c) (UnsafePointer<CChar>?, UnsafePointer<CChar>?, Int32) -> Void
-typealias IkonikaDownloadCallback = @convention(c) (UnsafePointer<CChar>?, UnsafePointer<CChar>?, Bool, UnsafePointer<CChar>?) -> Void
-typealias IkonikaResultCallback = @convention(c) (UInt64, UnsafePointer<CChar>?, UnsafePointer<CChar>?) -> Void
+public typealias IkonikaStatusCallback = @convention(c) (UnsafePointer<CChar>?, UnsafePointer<CChar>?, Int32) -> Void
+public typealias IkonikaDownloadCallback = @convention(c) (UnsafePointer<CChar>?, UnsafePointer<CChar>?, Bool, UnsafePointer<CChar>?) -> Void
+public typealias IkonikaResultCallback = @convention(c) (UInt64, UnsafePointer<CChar>?, UnsafePointer<CChar>?) -> Void
 
 private enum TranslationStatus: Int32 {
     case unsupported = 0
