@@ -134,8 +134,7 @@ target_link_libraries(core
 )
 
 if (IOS)
-    find_package(SQLite3 REQUIRED)
-    target_link_libraries(core PRIVATE SQLite::SQLite3)
+    target_include_directories(core PRIVATE "${CMAKE_SOURCE_DIR}/third_party/sqlite")
 else()
     target_link_libraries(core PRIVATE sqlite3)
 endif()
