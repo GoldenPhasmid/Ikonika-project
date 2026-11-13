@@ -46,6 +46,16 @@ Item
     {
     }
 
+    function restoreGivenAnswer()
+    {
+        if (!root.revealed || root.retyping || answerField.text.length > 0)
+        {
+            return
+        }
+
+        answerField.text = root.controller.lastGivenAnswer
+    }
+
     function focusAnswer()
     {
         if (root.awaiting || root.retyping)
@@ -194,7 +204,11 @@ Item
         }
     }
 
-    onControllerChanged: Qt.callLater(root.focusAnswer)
+    onControllerChanged:
+    {
+        root.restoreGivenAnswer()
+        Qt.callLater(root.focusAnswer)
+    }
     onVisibleChanged: if (root.visible) Qt.callLater(root.focusAnswer)
 
     DesktopSentenceFit

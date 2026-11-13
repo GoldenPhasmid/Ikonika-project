@@ -848,9 +848,13 @@ if (IOS)
         XCODE_ATTRIBUTE_TARGETED_DEVICE_FAMILY "1"
         Swift_LANGUAGE_VERSION 5.0
         XCODE_ATTRIBUTE_SWIFT_VERSION 5.0
+        XCODE_ATTRIBUTE_ASSETCATALOG_COMPILER_APPICON_NAME AppIcon
     )
 
     set_property(TARGET IkonikaApp APPEND PROPERTY RESOURCE "${CMAKE_CURRENT_SOURCE_DIR}/ios/PrivacyInfo.xcprivacy")
+
+    target_sources(IkonikaApp PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/ios/Assets.xcassets")
+    set_source_files_properties("${CMAKE_CURRENT_SOURCE_DIR}/ios/Assets.xcassets" PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
 
     set(IKONIKA_IOS_TEAM_ID "" CACHE STRING "Apple developer team that signs the iOS build, empty for an unsigned build")
     set(IKONIKA_IOS_PROFILE "" CACHE STRING "Name of the App Store provisioning profile that signs the iOS build")

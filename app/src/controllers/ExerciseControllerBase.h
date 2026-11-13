@@ -89,6 +89,7 @@ class ExerciseControllerBase : public QObject
     Q_PROPERTY(QVariantList forms READ GetForms NOTIFY stateChanged)
 
     Q_PROPERTY(QString lastRevealedAnswer READ GetLastRevealedAnswer NOTIFY stateChanged)
+    Q_PROPERTY(QString lastGivenAnswer READ GetLastGivenAnswer NOTIFY stateChanged)
     Q_PROPERTY(QString wordMarkup READ GetWordMarkup NOTIFY stateChanged)
     Q_PROPERTY(QString lastWordMarkup READ GetLastWordMarkup NOTIFY stateChanged)
     Q_PROPERTY(bool lastAnswerCorrect READ WasLastAnswerCorrect NOTIFY stateChanged)
