@@ -7,14 +7,6 @@ ColumnLayout
 
     required property var timeSheet
 
-    function formatReminderTime(minutes)
-    {
-        const when = new Date(2000, 0, 1, Math.floor(minutes / 60), minutes % 60)
-        const pattern = Qt.locale().timeFormat(Locale.ShortFormat).replace(/[:.]?s+/gi, "").trim()
-
-        return Qt.formatTime(when, pattern)
-    }
-
     Layout.fillWidth: true
     spacing: AppMetrics.gapLarge
 
@@ -38,22 +30,10 @@ ColumnLayout
             }
         }
 
-        MobileSettingsRow
+        MobileReminderTimeRow
         {
-            title: qsTr("Remind me at")
-
-            MobileSettingsSelect
-            {
-                label: root.formatReminderTime(AppReminder.timeMinutes)
-                interactive: AppReminder.enabled
-                minimumWidth: 96
-
-                onClicked: root.timeSheet.open(AppReminder.timeMinutes,
-                                               function(picked)
-                                               {
-                                                   AppReminder.timeMinutes = picked
-                                               })
-            }
+            timeSheet: root.timeSheet
+            interactive: AppReminder.enabled
         }
 
         MobileSettingsTextField

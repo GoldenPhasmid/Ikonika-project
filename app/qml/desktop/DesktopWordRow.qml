@@ -16,6 +16,7 @@ ItemDelegate
     property bool completed: false
     property int maxStage: 1
     property bool selected: false
+    property bool italicPartOfSpeech: true
 
     property bool canEdit: false
     property bool canComplete: false
@@ -98,15 +99,16 @@ ItemDelegate
 
         DesktopLabel
         {
-            visible: !root.showTools && root.partOfSpeech.length > 0
+            visible: !(root.showTools && root.hasMenu) && root.partOfSpeech.length > 0
             text: root.partOfSpeech
             font.pixelSize: AppMetrics.fontSmall
-            font.italic: true
+            font.italic: root.italicPartOfSpeech
             color: AppTheme.colourSubtle
         }
 
         Item
         {
+            visible: root.learning
             implicitWidth: AppMetrics.progressRingSize
             implicitHeight: AppMetrics.progressRingSize
 
@@ -122,6 +124,7 @@ ItemDelegate
 
         DesktopLevelBadge
         {
+            visible: root.cefrLevel.length > 0
             label: root.cefrLevel
             fill: AppTheme.cefrColours[label] || AppTheme.colourBorder
         }

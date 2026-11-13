@@ -29,6 +29,9 @@ public:
     static AppSpeech& Get();
     static void SetInstance(AppSpeech* NewInstance);
 
+    static constexpr float SlowRateScale = 0.6f;
+    static constexpr int MinimumSentenceWords = 4;
+
     ~AppSpeech() override = default;
 
     virtual void Prewarm() {}
@@ -36,10 +39,11 @@ public:
     virtual void ReloadFromSettings() {}
     virtual void Unload() {}
 
-    void Speak(const QString& Text, const QString& LanguageCode)
-    {
-        SpeakAtRate(Text, LanguageCode, 1.0f);
-    }
+    /** Text of MinimumSentenceWords or more words is a sentence and plays at the sentence speed,
+        anything shorter at the plain speech rate. */
+    void Speak(const QString& Text, const QString& LanguageCode);
+
+    static bool IsSentence(const QString& Text);
 
     virtual void SpeakAtRate(const QString& Text, const QString& LanguageCode, float RateScale);
 
@@ -56,6 +60,11 @@ public:
     virtual int GetActiveVoice() const { return 0; }
     virtual int GetSpeakerId() const { return 0; }
     virtual float GetSpeed() const { return 1.0f; }
+
+    /** Multiplier on the speech rate for whole sentences: sentence training and read aloud. Stored
+        beside the speech rate, so it follows the open workspace. */
+    virtual float GetSentenceSpeed() const;
+    virtual void SetSentenceSpeed(float Value);
 
     virtual QMutex& Lock() { return DefaultLock; }
 
@@ -107,12 +116,14 @@ signals:
     void narrationPlayRequested();
     void narrationPauseRequested();
     void narrationStopRequested();
+    void sentenceSpeedChanged();
 
 protected:
     AppSpeech();
 
     static constexpr const char* SpeedKey = "audio/speed";
     static constexpr const char* EnabledKey = "audio/enabled";
+    static constexpr const char* SentenceSpeedKey = "audio/sentenceSpeed";
 
     virtual void SpeakNow(const FSpeechRequest& Request) { Q_UNUSED(Request); }
 

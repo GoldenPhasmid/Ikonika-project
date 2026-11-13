@@ -10,6 +10,7 @@ QtObject
     property int wordCount: 0
     property int cardCount: 0
     property int repetitionCount: 0
+    property int cardLimit: 0
 
     readonly property var allFilterKeys: ["notlearned", "learning", "completed"]
     readonly property int minimumCards: 1
@@ -18,7 +19,8 @@ QtObject
     readonly property int maximumRepetitions: 100
     readonly property int repetitionStep: 5
 
-    readonly property int maximumCards: Math.max(root.wordCount, root.minimumCards)
+    readonly property int availableCards: root.cardLimit > 0 ? Math.min(root.wordCount, root.cardLimit) : root.wordCount
+    readonly property int maximumCards: Math.max(root.availableCards, root.minimumCards)
     readonly property bool canChooseCards: root.wordCount > root.minimumCards
 
     readonly property var filters: [
@@ -48,8 +50,8 @@ QtObject
             return
         }
 
-        root.cardCount = root.cardCount === 0 ? Math.min(root.wordCount, root.defaultCards)
-                                              : Math.min(root.cardCount, root.wordCount)
+        root.cardCount = root.cardCount === 0 ? Math.min(root.availableCards, root.defaultCards)
+                                              : Math.min(root.cardCount, root.availableCards)
     }
 
     function reset()

@@ -3,6 +3,7 @@
 #include "AppCards.h"
 #include "AppDatabase.h"
 #include "AppDictionary.h"
+#include "AppReadSources.h"
 
 #include "core/FCardSelectorBase.h"
 #include "core/FTWordForms.h"
@@ -13,6 +14,10 @@
 #include "core/FTSchema.h"
 #include "core/FTSettings.h"
 
+#include <QCoreApplication>
+#include <QPointer>
+#include <QThread>
+#include <QThreadPool>
 #include <QVariantMap>
 #include <QTimer>
 
@@ -22,7 +27,7 @@
 
 namespace
 {
-    constexpr int ReviewTimelineDays = 5;
+    constexpr int ReviewTimelineDays = 6;
 
     constexpr int RecentProgressDays = 7;
 }
@@ -205,27 +210,6 @@ void DailySessionController::refresh()
     emit countsChanged();
 }
 
-namespace
-{
-    std::vector<FTCardHandle> LoadWaitingFormsCards(const std::string& Training)
-    {
-        std::vector<FTCardHandle> Waiting;
-
-        for (const FTCardHandle& Card : AppDatabase::Get().GetCardRepository().LoadFormsCards())
-        {
-            const std::string Tense = GetFormsTense(Card->Id);
-
-            if (!IsCompleted(*Card) && GetFormsTraining(Card->Id) == Training
-                && (Tense.empty() || Tense == FormsTensePresent))
-            {
-                Waiting.push_back(Card);
-            }
-        }
-
-        return Waiting;
-    }
-}
-
 QStringList DailySessionController::collectSessionCards() const
 {
     QStringList Result;
@@ -284,6 +268,35 @@ void DailySessionController::DropStaleFormsCache() const
     FormsCacheRevision = Revision;
     FormsWordCounts.clear();
     FormsTenses.clear();
+    FormsPending.clear();
+    ++FormsSerial;
+}
+
+namespace
+{
+    QVariantList BuildTenseEntries(const std::vector<FTenseOffer>& Offers, int PresentCount, int Wanted)
+    {
+        QVariantList Result;
+
+        for (const FTenseOffer& Offer : Offers)
+        {
+            const bool bFromTriage = Offer.Tense == FormsTensePresent;
+            const int Count = bFromTriage ? PresentCount
+                                          : static_cast<int>(Offer.WaitingCardIds.size() + Offer.ReadyCards.size());
+
+            QVariantMap Entry;
+            Entry[QStringLiteral("key")] = QString::fromStdString(Offer.Tense);
+            Entry[QStringLiteral("label")] = QString::fromStdString(Offer.Label);
+            Entry[QStringLiteral("count")] = Count;
+            Entry[QStringLiteral("wanted")] = Wanted;
+            Entry[QStringLiteral("fromTriage")] = bFromTriage;
+            Entry[QStringLiteral("enabled")] = Count >= Wanted;
+
+            Result.append(Entry);
+        }
+
+        return Result;
+    }
 }
 
 int DailySessionController::formsWordCount(const QString& TrainingId) const
@@ -303,13 +316,104 @@ int DailySessionController::formsWordCount(const QString& TrainingId) const
         return Cached->second;
     }
 
+    if (FormsPending.count(Id) != 0)
+    {
+        return PendingFormsWordCount;
+    }
+
     const std::string Training = GetFormsTraining(Id);
-    const int Count = static_cast<int>(LoadWaitingFormsCards(Training).size()
-                                       + AppCards::ListFormsCandidates(Training).size());
+    const std::optional<FReadSourcesRequest> Request = AppReadSources::Capture();
 
-    FormsWordCounts.emplace(Id, Count);
+    if (!Request.has_value())
+    {
+        const int Count = static_cast<int>(
+            AppCards::LoadWaitingFormsCards(AppDatabase::Get().GetCardRepository(), Training).size()
+            + AppCards::ListFormsCandidates(Training).size());
 
-    return Count;
+        FormsWordCounts.emplace(Id, Count);
+
+        return Count;
+    }
+
+    FormsPending.insert(Id);
+
+    qCInfo(LogSession) << "Forms training" << QString::fromStdString(Id) << "counting its words in the background";
+
+    const quint64 Serial = FormsSerial;
+    const QPointer<DailySessionController> Self{const_cast<DailySessionController*>(this)};
+
+    QThreadPool::globalInstance()->start([Request = *Request, Training, Id, Serial, Self]()
+    {
+        int Count = PendingFormsWordCount;
+        std::optional<QVariantList> Tenses;
+
+        const std::unique_ptr<AppReadSources> Sources = AppReadSources::Open(Request);
+
+        if (Sources != nullptr)
+        {
+            const AppCards::FFormsCountSources Read{&Sources->GetDictionary(), &Sources->GetCards(),
+                                                    Request.TargetLanguage};
+
+            Count = AppCards::CountFormsWords(Training, Read);
+
+            if (Training == FormsTrainingConjugation)
+            {
+                Tenses = BuildTenseEntries(AppCards::ListTenseOffers(Read), Count, GetFormsTrainingSize(Training));
+            }
+        }
+
+        QMetaObject::invokeMethod(QCoreApplication::instance(),
+                                  [Self, Id, Count, Tenses, Serial]()
+                                  {
+                                      if (Self != nullptr)
+                                      {
+                                          Self->FinishFormsCount(Id, Count, Tenses, Serial);
+                                      }
+                                  },
+                                  Qt::QueuedConnection);
+    });
+
+    return PendingFormsWordCount;
+}
+
+void DailySessionController::FinishFormsCount(const std::string& Id, int Count,
+                                              const std::optional<QVariantList>& Tenses, quint64 Serial)
+{
+    if (Serial != FormsSerial)
+    {
+        return;
+    }
+
+    FormsPending.erase(Id);
+
+    if (Count < 0)
+    {
+        qCWarning(LogSession) << "Forms training" << QString::fromStdString(Id)
+                              << "could not count its words in the background";
+    }
+
+    FormsWordCounts[Id] = std::max(Count, 0);
+
+    if (Tenses.has_value())
+    {
+        FormsTenses[Id] = *Tenses;
+    }
+
+    emit formsCountsChanged();
+}
+
+bool DailySessionController::AreFormsCountsPending() const
+{
+    return !FormsPending.empty();
+}
+
+void DailySessionController::WaitForFormsCounts()
+{
+    while (!FormsPending.empty())
+    {
+        QCoreApplication::processEvents(QEventLoop::AllEvents, 20);
+        QThread::msleep(1);
+    }
 }
 
 bool DailySessionController::canStartFormsTraining(const QString& TrainingId) const
@@ -339,7 +443,7 @@ QStringList DailySessionController::collectFormsCards(const QString& TrainingId)
     const std::string Training = GetFormsTraining(TrainingId.toStdString());
     const int Wanted = formsTrainingSize(TrainingId);
 
-    for (const FTCardHandle& Card : TakeFormsSession(Training, LoadWaitingFormsCards(Training)))
+    for (const FTCardHandle& Card : TakeFormsSession(Training, AppCards::LoadWaitingFormsCards(AppDatabase::Get().GetCardRepository(), Training)))
     {
         Result.append(QString::fromStdString(Card->Id));
     }
@@ -394,24 +498,14 @@ QVariantList DailySessionController::formsTenses(const QString& TrainingId) cons
         return Cached->second;
     }
 
-    const int Wanted = formsTrainingSize(TrainingId);
-
-    for (const FTenseOffer& Offer : AppCards::ListTenseOffers())
+    if (AppReadSources::Capture().has_value())
     {
-        const bool bFromTriage = Offer.Tense == FormsTensePresent;
-        const int Count = bFromTriage ? formsWordCount(TrainingId)
-                                      : static_cast<int>(Offer.WaitingCardIds.size() + Offer.ReadyCards.size());
+        formsWordCount(TrainingId);
 
-        QVariantMap Entry;
-        Entry[QStringLiteral("key")] = QString::fromStdString(Offer.Tense);
-        Entry[QStringLiteral("label")] = QString::fromStdString(Offer.Label);
-        Entry[QStringLiteral("count")] = Count;
-        Entry[QStringLiteral("wanted")] = Wanted;
-        Entry[QStringLiteral("fromTriage")] = bFromTriage;
-        Entry[QStringLiteral("enabled")] = Count >= Wanted;
-
-        Result.append(Entry);
+        return Result;
     }
+
+    Result = BuildTenseEntries(AppCards::ListTenseOffers(), formsWordCount(TrainingId), formsTrainingSize(TrainingId));
 
     FormsTenses.emplace(TrainingId.toStdString(), Result);
 

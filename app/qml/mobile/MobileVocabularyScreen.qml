@@ -159,6 +159,7 @@ Item
         anchors.fill: parent
 
         activeTab: root.deckMode ? "decks" : "vocabulary"
+        contentMaximumWidth: root.deckMode ? Number.POSITIVE_INFINITY : 672
         headerTitle: root.deckMode ? controller.deckName : qsTr("My Vocabulary")
         showBack: root.deckMode
         showSearch: true
@@ -343,7 +344,10 @@ Item
 
         MobileSheetLoader
         {
-            anchors.fill: parent
+            anchors.top: parent.top
+            anchors.bottom: parent.bottom
+            anchors.horizontalCenter: parent.horizontalCenter
+            width: shell.width
             z: 10
             open: root.filterSheetOpen
 
@@ -360,7 +364,10 @@ Item
 
         MobileSheetLoader
         {
-            anchors.fill: parent
+            anchors.top: parent.top
+            anchors.bottom: parent.bottom
+            anchors.horizontalCenter: parent.horizontalCenter
+            width: shell.width
             z: 10
             open: root.sortSheetOpen
 

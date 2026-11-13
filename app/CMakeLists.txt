@@ -12,7 +12,6 @@ option(IKONIKA_ENABLE_MACHINE_TRANSLATION "Translate what dictionary search cann
 
 if (IOS)
     enable_language(Swift)
-    set(CMAKE_Swift_IMPLICIT_LINK_DIRECTORIES "")
 endif()
 
 set(IKONIKA_QT_COMPONENTS Qml Quick QuickControls2 Sql Widgets Network LinguistTools Pdf)
@@ -123,6 +122,8 @@ set(IKONIKA_STARTUP_TASK_SOURCES
 qt_add_executable(IkonikaApp
     src/AppCards.cpp
     src/AppCards.h
+    src/AppCoreCards.cpp
+    src/AppCoreCards.h
     src/AppCatalog.cpp
     src/AppCatalog.h
     src/AppWebSearch.cpp
@@ -164,6 +165,8 @@ qt_add_executable(IkonikaApp
     src/AppWorkspaceSync.h
     src/AppDictionary.cpp
     src/AppDictionary.h
+    src/AppReadSources.cpp
+    src/AppReadSources.h
     src/AppLocalization.cpp
     src/AppLocalization.h
     src/AppLog.cpp
@@ -174,8 +177,6 @@ qt_add_executable(IkonikaApp
     src/AppGoogleAccount.h
     src/AppSpeech.cpp
     src/AppSpeech.h
-    src/AppVoiceChoices.cpp
-    src/AppVoiceChoices.h
     src/AppStartup.cpp
     src/controllers/AppSyncController.cpp
     src/controllers/AppSyncController.h
@@ -220,6 +221,8 @@ qt_add_executable(IkonikaApp
     src/controllers/DailySessionController.cpp
     src/controllers/TriageController.h
     src/controllers/TriageController.cpp
+    src/controllers/DiscoveryController.h
+    src/controllers/DiscoveryController.cpp
     src/controllers/PlacementTestController.h
     src/controllers/PlacementTestController.cpp
     src/controllers/DailySessionController.h
@@ -245,6 +248,8 @@ qt_add_executable(IkonikaApp
     src/controllers/FlashcardController.h
     src/controllers/FlipRecallController.cpp
     src/controllers/FlipRecallController.h
+    src/controllers/GapProductionController.cpp
+    src/controllers/GapProductionController.h
     src/controllers/WordListController.cpp
     src/controllers/WordListController.h
     src/controllers/WordRowGrouping.cpp
@@ -320,6 +325,7 @@ set(IKONIKA_MOBILE_QML_FILES
     qml/mobile/MobileBottomTabBar.qml
     qml/mobile/MobileHeader.qml
     qml/mobile/MobileShell.qml
+    qml/mobile/MobileCoverGrid.qml
     qml/mobile/MobileTodayScreen.qml
     qml/mobile/MobileExerciseButton.qml
     qml/mobile/MobileVocabularyScreen.qml
@@ -424,7 +430,12 @@ set(IKONIKA_MOBILE_QML_FILES
     qml/mobile/MobileMachineTranslation.qml
     qml/mobile/MobileWordListScreen.qml
     qml/mobile/MobileOnboardingSignInScreen.qml
-    qml/mobile/MobileOnboardingSetupScreen.qml
+    qml/mobile/MobileOnboardingDailyScreen.qml
+    qml/mobile/MobileOnboardingSpeakScreen.qml
+    qml/mobile/MobileOnboardingLearnScreen.qml
+    qml/mobile/MobileOnboardingPage.qml
+    qml/mobile/MobileLanguageChoice.qml
+    qml/mobile/MobileReminderTimeRow.qml
     qml/mobile/MobileOnboardingDownloadScreen.qml
     qml/mobile/MobileOnboardingPlacementScreen.qml
     qml/mobile/MobileSettingsScreen.qml
@@ -435,6 +446,7 @@ set(IKONIKA_MOBILE_QML_FILES
     qml/mobile/MobileSettingsReader.qml
     qml/mobile/MobileSettingsData.qml
     qml/mobile/MobileSettingsLanguages.qml
+    qml/mobile/MobileRankBar.qml
     qml/mobile/MobileSettingsLanguage.qml
     qml/mobile/MobileDeleteLanguageSheet.qml
     qml/mobile/MobileSettingsAbout.qml
@@ -450,6 +462,8 @@ set(IKONIKA_MOBILE_QML_FILES
     qml/mobile/MobileReaderScreen.qml
     qml/mobile/MobileReaderBook.qml
     qml/mobile/MobileDeck.qml
+    qml/mobile/MobileDiscoverPickScreen.qml
+    qml/mobile/MobileDiscoveryScreen.qml
     qml/mobile/MobileReaderOpen.qml
     qml/mobile/MobileReaderBookSheet.qml
     qml/mobile/MobileConfirmSheet.qml
@@ -457,6 +471,7 @@ set(IKONIKA_MOBILE_QML_FILES
     qml/mobile/MobileReaderPdfSheet.qml
     qml/mobile/MobileReaderFrame.qml
     qml/mobile/MobileReaderPlayBar.qml
+    qml/mobile/MobileReaderVoiceNotice.qml
     qml/mobile/MobileReaderPageNumber.qml
 )
 
@@ -464,15 +479,19 @@ set(IKONIKA_QML_FILES
     qml/DictionaryMatchedForm.qml
     qml/DictionaryBenchmark.qml
     qml/LearnedMark.qml
+    qml/LanguageFlag.qml
+    qml/RankRuler.qml
     qml/CategoryDot.qml
     qml/CoverStripe.qml
     qml/Decks.js
+    qml/DictionaryTenseNames.js
     qml/FormsMarkup.js
     qml/ReadAloudPlace.js
     qml/ReaderShelf.js
     qml/ReaderLevelBadge.qml
     qml/ReaderTones.js
     qml/Greeting.js
+    qml/MeaningPicks.js
     qml/WelcomeScreen.qml
     qml/Main.qml
     qml/SwitchingScreen.qml
@@ -500,7 +519,9 @@ set(IKONIKA_QML_FILES
     qml/desktop/DesktopChoiceTile.qml
     qml/desktop/DesktopConfirmDialog.qml
     qml/desktop/DesktopCountBadge.qml
-    qml/desktop/DesktopDayTile.qml
+    qml/desktop/DesktopDueDay.qml
+    qml/desktop/DesktopDashedRing.qml
+    qml/desktop/DesktopDashedBox.qml
     qml/desktop/DesktopVocabularyScreen.qml
     qml/desktop/DesktopDecksScreen.qml
     qml/desktop/DesktopDeckTile.qml
@@ -536,9 +557,8 @@ set(IKONIKA_QML_FILES
     qml/desktop/DesktopLanguageEntry.qml
     qml/desktop/DesktopLanguageDownloads.qml
     qml/desktop/DesktopLanguageTile.qml
-    qml/desktop/DesktopWordRangePanel.qml
     qml/desktop/DesktopLanguagePopover.qml
-    qml/desktop/DesktopVoicePopover.qml
+    qml/desktop/DesktopNativeLanguagePopover.qml
     qml/desktop/DesktopLearnedMark.qml
     qml/desktop/DesktopLevelBadge.qml
     qml/desktop/DesktopMasteryDots.qml
@@ -551,11 +571,16 @@ set(IKONIKA_QML_FILES
     qml/desktop/DesktopOnboardingRestore.qml
     qml/desktop/DesktopOnboardingPlacement.qml
     qml/desktop/DesktopOnboardingScreen.qml
-    qml/desktop/DesktopOnboardingSetup.qml
+    qml/desktop/DesktopOnboardingDaily.qml
+    qml/desktop/DesktopOnboardingSpeak.qml
+    qml/desktop/DesktopOnboardingLearn.qml
+    qml/desktop/DesktopLanguageChoice.qml
+    qml/desktop/DesktopLanguageChoiceGrid.qml
+    qml/desktop/DesktopFormButton.qml
+    qml/desktop/DesktopReminderTimeRow.qml
     qml/desktop/DesktopOnboardingSignIn.qml
     qml/desktop/DesktopOptionGrid.qml
     qml/desktop/DesktopPage.qml
-    qml/desktop/DesktopPathNode.qml
     qml/desktop/DesktopPlayButton.qml
     qml/desktop/DesktopPopover.qml
     qml/desktop/DesktopPopoverRow.qml
@@ -565,6 +590,7 @@ set(IKONIKA_QML_FILES
     qml/desktop/DesktopPromptLabel.qml
     qml/desktop/DesktopReaderBar.qml
     qml/desktop/DesktopReaderPlayBar.qml
+    qml/desktop/DesktopReaderVoiceNotice.qml
     qml/desktop/DesktopReaderBookTile.qml
     qml/desktop/DesktopReaderOpenTile.qml
     qml/desktop/DesktopCoverBar.qml
@@ -574,6 +600,9 @@ set(IKONIKA_QML_FILES
     qml/desktop/DesktopReaderContentsPane.qml
     qml/desktop/DesktopLookupPane.qml
     qml/desktop/DesktopQuickLookup.qml
+    qml/desktop/DesktopTranslationDownload.qml
+    qml/desktop/DesktopResizeFrame.qml
+    qml/desktop/DesktopQuickAddResult.qml
     qml/desktop/DesktopMachineTranslation.qml
     qml/desktop/DesktopReaderPdfSheet.qml
     qml/desktop/DesktopReaderPdfView.qml
@@ -603,6 +632,7 @@ set(IKONIKA_QML_FILES
     qml/desktop/DesktopSessionTile.qml
     qml/desktop/DesktopSettingsAbout.qml
     qml/desktop/DesktopSettingsGeneral.qml
+    qml/desktop/DesktopRankBar.qml
     qml/desktop/DesktopSettingsGroup.qml
     qml/desktop/DesktopSettingsReader.qml
     qml/desktop/DesktopSettingsReminders.qml
@@ -622,21 +652,22 @@ set(IKONIKA_QML_FILES
     qml/desktop/DesktopTextField.qml
     qml/desktop/DesktopTilesExercise.qml
     qml/desktop/DesktopToast.qml
-    qml/desktop/DesktopTodayPath.qml
     qml/desktop/DesktopTodayScreen.qml
     qml/desktop/DesktopToggle.qml
     qml/desktop/DesktopToggleChip.qml
     qml/desktop/DesktopTopBar.qml
+    qml/desktop/DesktopTour.qml
     qml/desktop/DesktopTranslationChip.qml
     qml/desktop/DesktopTriageMeaning.qml
     qml/desktop/DesktopGistBadge.qml
     qml/desktop/DesktopEntryHeader.qml
-    qml/desktop/DesktopRankSlider.qml
     qml/desktop/DesktopMeaningDetails.qml
     qml/desktop/DesktopMeaningSummary.qml
     qml/desktop/DesktopSpeakButton.qml
     qml/desktop/DesktopDictionaryMeaning.qml
     qml/desktop/DesktopTriageScreen.qml
+    qml/desktop/DesktopDiscoveryExercise.qml
+    qml/desktop/DesktopDiscoverPick.qml
     qml/desktop/DesktopTypedExercise.qml
     qml/desktop/DesktopWaveform.qml
     qml/desktop/DesktopWiggleAnimation.qml
@@ -675,20 +706,34 @@ qt_add_translations(IkonikaApp
 
 target_include_directories(IkonikaApp PRIVATE src src/controllers)
 
+qt_add_resources(IkonikaApp "corecards"
+    PREFIX "/corecards"
+    BASE corecards
+    FILES
+        corecards/de-en.tsv
+        corecards/en-uk.tsv
+        corecards/es-en.tsv
+        corecards/fr-en.tsv
+        corecards/it-en.tsv
+        corecards/pt-en.tsv
+)
+
 qt_add_resources(IkonikaApp "placement"
     PREFIX "/placement"
     BASE placement
     FILES
+        placement/de-en.tsv
         placement/en-uk.tsv
         placement/es-en.tsv
         placement/fr-en.tsv
+        placement/it-en.tsv
         placement/pt-en.tsv
 )
 
 qt_add_resources(IkonikaApp "icons"
     PREFIX "/icons"
     BASE icons
-    FILES icons/AppIcon.png
+    FILES icons/AppIcon.png icons/AppIconHover.png
 )
 
 qt_add_resources(IkonikaApp "fonts"

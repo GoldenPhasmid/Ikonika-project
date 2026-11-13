@@ -1647,7 +1647,8 @@ namespace
 
 bool FTCardRepository::MarkWordTriaged(const std::string& TargetWord,
                                       const std::string& PartOfSpeech,
-                                      const std::optional<int>& Gender)
+                                      const std::optional<int>& Gender,
+                                      const std::string& MeaningGist)
 {
     const FTQueryTimer Timer("FTCardRepository::MarkWordTriaged");
 
@@ -1659,13 +1660,17 @@ bool FTCardRepository::MarkWordTriaged(const std::string& TargetWord,
     }
 
     // Replaced rather than refused on a repeat: being asked twice about one reading is not an error,
-    // and the later date is the more useful one.
+    // and the later date is the more useful one. A mark made now is newer than a card of the word
+    // deleted just before it, so swapping a card for a mark keeps the mark.
     FTStatement Insert = Target.Prepare(
         "INSERT INTO TriagedWords "
-        "(TargetWord, TargetLanguage, PartOfSpeech, Gender, MarkedDate) "
-        "VALUES (?1, ?90, ?2, ?3, ?4) "
-        "ON CONFLICT(TargetWord, TargetLanguage, PartOfSpeech, Gender) "
-        "DO UPDATE SET MarkedDate = ?4");
+        "(TargetWord, TargetLanguage, PartOfSpeech, Gender, MeaningGist, MarkedDate) "
+        "VALUES (?1, ?90, ?2, ?3, ?5, "
+        "        MAX(?4, IFNULL((SELECT MAX(Cards.LastUpdatedDate) + 1 FROM Cards "
+        "                        WHERE Cards.Deleted = 1 AND Cards.TargetWord = ?1 COLLATE NOCASE "
+        "                          AND Cards.PartOfSpeech = ?2 AND " + Pair.Clause("Cards") + "), 0))) "
+        "ON CONFLICT(TargetWord, TargetLanguage, PartOfSpeech, Gender, MeaningGist) "
+        "DO UPDATE SET MarkedDate = excluded.MarkedDate");
 
     if (!Insert.IsValid())
     {
@@ -1676,12 +1681,41 @@ bool FTCardRepository::MarkWordTriaged(const std::string& TargetWord,
     Insert.BindText(2, PartOfSpeech);
     Insert.BindInt(3, GenderKey(Gender));
     Insert.BindInt64(4, Now());
+    Insert.BindText(5, MeaningGist);
+
+    Pair.Bind(Insert);
 
     // Only the language being learned. Whether the user knows a word does not depend on which
     // language they would translate it into, so the native language is not part of this.
     Insert.BindText(TargetLanguageParameter, Pair.GetTargetLanguage());
 
     return Insert.Run();
+}
+
+bool FTCardRepository::UnmarkWordTriaged(const std::string& TargetWord,
+                                        const std::string& PartOfSpeech,
+                                        const std::optional<int>& Gender,
+                                        const std::string& MeaningGist)
+{
+    const FTQueryTimer Timer("FTCardRepository::UnmarkWordTriaged");
+
+    FTStatement Delete = Target.Prepare(
+        "DELETE FROM TriagedWords "
+        "WHERE TargetWord = ?1 AND PartOfSpeech = ?2 AND Gender = ?3 AND MeaningGist = ?4 "
+        "  AND TargetLanguage = ?90");
+
+    if (!Delete.IsValid())
+    {
+        return false;
+    }
+
+    Delete.BindText(1, Trim(TargetWord));
+    Delete.BindText(2, PartOfSpeech);
+    Delete.BindInt(3, GenderKey(Gender));
+    Delete.BindText(4, MeaningGist);
+    Delete.BindText(TargetLanguageParameter, Pair.GetTargetLanguage());
+
+    return Delete.Run();
 }
 
 bool FTCardRepository::IsWordTriaged(const std::string& TargetWord,
@@ -1744,12 +1778,13 @@ std::vector<FTKnownWord> FTCardRepository::ListKnownWords() const
     std::vector<FTKnownWord> Result;
 
     FTStatement Query = Target.Prepare(
-        "SELECT DISTINCT TargetWord, PartOfSpeech FROM TriagedWords "
+        "SELECT DISTINCT TargetWord, PartOfSpeech, MeaningGist FROM TriagedWords "
         "WHERE TargetLanguage = ?90 "
         "  AND NOT EXISTS (SELECT 1 FROM Cards "
         "                  WHERE Cards.Deleted = 1 "
         "                    AND Cards.TargetWord = TriagedWords.TargetWord COLLATE NOCASE "
         "                    AND Cards.PartOfSpeech = TriagedWords.PartOfSpeech "
+        "                    AND (TriagedWords.MeaningGist = '' OR Cards.MeaningGist = TriagedWords.MeaningGist) "
         "                    AND Cards.LastUpdatedDate >= TriagedWords.MarkedDate "
         "                    AND " + Pair.Clause("Cards") + ")");
 
@@ -1763,7 +1798,7 @@ std::vector<FTKnownWord> FTCardRepository::ListKnownWords() const
 
     while (Query.Step())
     {
-        Result.push_back(FTKnownWord{Query.GetText(0), Query.GetText(1)});
+        Result.push_back(FTKnownWord{Query.GetText(0), Query.GetText(1), Query.GetText(2)});
     }
 
     return Result;

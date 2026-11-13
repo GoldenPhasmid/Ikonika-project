@@ -31,8 +31,8 @@ add_executable(AppTests
     SentenceTrainingControllerTests.cpp
     FormsSessionTests.cpp
     DictionaryUpdateTests.cpp
-    VoiceChoicesTests.cpp
     LanguageNameTests.cpp
+    AppSpeechTests.cpp
     AccountRegistryTests.cpp
     WorkspaceTests.cpp
     WorkspaceHostTests.cpp
@@ -47,6 +47,7 @@ add_executable(AppTests
     "${CMAKE_SOURCE_DIR}/app/src/controllers/MultipleChoiceController.cpp"
     "${CMAKE_SOURCE_DIR}/app/src/controllers/CorrectIncorrectController.cpp"
     "${CMAKE_SOURCE_DIR}/app/src/controllers/WrittenProductionController.cpp"
+    "${CMAKE_SOURCE_DIR}/app/src/controllers/GapProductionController.cpp"
     "${CMAKE_SOURCE_DIR}/app/src/controllers/AudioTranscriptionController.cpp"
     "${CMAKE_SOURCE_DIR}/app/src/controllers/SpeedMatchController.cpp"
     "${CMAKE_SOURCE_DIR}/app/src/controllers/SentenceTilesController.cpp"
@@ -66,12 +67,12 @@ add_executable(AppTests
     "${CMAKE_SOURCE_DIR}/app/src/controllers/WordListController.cpp"
     "${CMAKE_SOURCE_DIR}/app/src/controllers/WordRowGrouping.cpp"
     "${CMAKE_SOURCE_DIR}/app/src/controllers/TriageController.cpp"
+    "${CMAKE_SOURCE_DIR}/app/src/controllers/DiscoveryController.cpp"
     "${CMAKE_SOURCE_DIR}/app/src/controllers/DecksController.cpp"
     "${CMAKE_SOURCE_DIR}/app/src/controllers/DictionaryController.cpp"
     "${CMAKE_SOURCE_DIR}/app/src/AppGoogleAccount.cpp"
     "${CMAKE_SOURCE_DIR}/app/src/AppSpeech.cpp"
     "${CMAKE_SOURCE_DIR}/app/src/AppTranslator.cpp"
-    "${CMAKE_SOURCE_DIR}/app/src/AppVoiceChoices.cpp"
     "${CMAKE_SOURCE_DIR}/app/src/AppSoundEffects.cpp"
     "${CMAKE_SOURCE_DIR}/app/src/AppDatabase.cpp"
     "${CMAKE_SOURCE_DIR}/app/src/AppDatabaseService.cpp"
@@ -79,7 +80,9 @@ add_executable(AppTests
     "${CMAKE_SOURCE_DIR}/app/src/AppState.cpp"
     "${CMAKE_SOURCE_DIR}/app/src/AppPaths.cpp"
     "${CMAKE_SOURCE_DIR}/app/src/AppCards.cpp"
+    "${CMAKE_SOURCE_DIR}/app/src/AppCoreCards.cpp"
     "${CMAKE_SOURCE_DIR}/app/src/AppDictionary.cpp"
+    "${CMAKE_SOURCE_DIR}/app/src/AppReadSources.cpp"
     "${CMAKE_SOURCE_DIR}/app/src/AppCatalog.cpp"
     "${CMAKE_SOURCE_DIR}/app/src/AppWebSearch.cpp"
     "${CMAKE_SOURCE_DIR}/app/src/AppPackageDownloader.cpp"

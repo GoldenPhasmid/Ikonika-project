@@ -134,7 +134,8 @@ the schema cannot drift from what actually creates the database.
   imported; text is re-extracted on open and nothing derived is stored. A path is meaningless on
   another device, so the table sits in the workspace's `Device.db`, which sync never uploads.
   Existence is re-checked against the filesystem on every list, so a moved file shows as missing
-  rather than opening nothing. A row that is a copy of a cloud book names it in `CloudId`. See
+  rather than opening nothing. A row that is a copy of a cloud book names it in `CloudId`. `ReadAloudParagraph` and
+  `ReadAloudCharacter` hold the sentence read aloud last, -1 when the book was never read aloud. See
   [book-reader.md](book-reader.md).
 - **`CloudBooks` lists the books uploaded to the cloud, and it syncs.** One row per book: its title,
   format, size, the Drive file that holds it, how many pages or paragraphs it has, and where the

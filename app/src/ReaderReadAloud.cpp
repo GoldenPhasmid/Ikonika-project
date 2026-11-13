@@ -1,17 +1,23 @@
 #include "ReaderReadAloud.h"
 
+#include "AppCatalog.h"
 #include "AppSpeech.h"
 #include "FTParagraphModel.h"
 
 #include "core/FTLog.h"
 #include "core/FTSettings.h"
+#include "core/FTSpeech.h"
 
 #include <QGuiApplication>
 
 #include <algorithm>
+#include <array>
 
 static constexpr double NarrationLookaheadSeconds = 15.0;
 static constexpr size_t MinimumQueuedSentences = 2;
+static constexpr qint64 ReplayWindowMilliseconds = 2000;
+static constexpr int SpeedRestartMilliseconds = 400;
+static constexpr std::array<float, 5> SpeedSteps{0.5f, 0.75f, 1.0f, 1.25f, 1.5f};
 
 ReaderReadAloud::ReaderReadAloud(const FTParagraphModel& InParagraphs, QObject* Parent)
     : QObject(Parent)
@@ -23,6 +29,8 @@ ReaderReadAloud::ReaderReadAloud(const FTParagraphModel& InParagraphs, QObject* 
     connect(&Speech, &AppSpeech::narrationFinished, this, &ReaderReadAloud::OnFinished);
     connect(&Speech, &AppSpeech::narrationFailed, this, &ReaderReadAloud::OnFailed);
     connect(&Speech, &AppSpeech::ready, this, &ReaderReadAloud::availableChanged);
+    connect(&Speech, &AppSpeech::sentenceSpeedChanged, this, &ReaderReadAloud::OnSpeedChanged);
+    connect(&AppCatalog::Get(), &AppCatalog::catalogChanged, this, &ReaderReadAloud::availableChanged);
     connect(&Speech, &AppSpeech::enabledChanged, this, [this]()
     {
         if (!IsAvailable())
@@ -39,6 +47,18 @@ ReaderReadAloud::ReaderReadAloud(const FTParagraphModel& InParagraphs, QObject* 
 
     connect(&Paragraphs, &FTParagraphModel::modelReset, this, &ReaderReadAloud::stop);
     connect(this, &ReaderReadAloud::stateChanged, this, &ReaderReadAloud::PublishSession);
+
+    SpeedRestart.setSingleShot(true);
+    SpeedRestart.setInterval(SpeedRestartMilliseconds);
+    connect(&SpeedRestart, &QTimer::timeout, this, [this]()
+    {
+        if (bPlaying && Current.has_value())
+        {
+            qCInfo(LogSpeech) << "read aloud restarts the sentence at the new speed";
+
+            PlayFrom(*Current);
+        }
+    });
 
 #if defined(Q_OS_IOS)
     connect(qGuiApp, &QGuiApplication::applicationStateChanged, this, [this](Qt::ApplicationState State)
@@ -109,38 +129,98 @@ void ReaderReadAloud::stop()
     emit stateChanged();
 }
 
+void ReaderReadAloud::previous()
+{
+    if (!Current.has_value())
+    {
+        return;
+    }
+
+    if (bPlaying && SentenceClock.isValid() && SentenceClock.elapsed() > ReplayWindowMilliseconds)
+    {
+        qCInfo(LogSpeech) << "read aloud replays the sentence";
+
+        PlayFrom(*Current);
+
+        return;
+    }
+
+    const std::optional<FTNarrationSentence> Before{
+        FindNarrationSentenceBefore(Paragraphs.GetParagraphs(), *Current, GetLanguageCode())};
+
+    qCInfo(LogSpeech) << "read aloud goes back a sentence";
+
+    PlayFrom(Before.has_value() ? *Before : *Current);
+}
+
+void ReaderReadAloud::next()
+{
+    if (!Current.has_value())
+    {
+        return;
+    }
+
+    const std::optional<FTNarrationSentence> After{
+        FindNarrationSentenceAfter(Paragraphs.GetParagraphs(), *Current, GetLanguageCode())};
+
+    if (!After.has_value())
+    {
+        qCInfo(LogSpeech) << "read aloud has no sentence after this one";
+
+        return;
+    }
+
+    qCInfo(LogSpeech) << "read aloud skips a sentence";
+
+    PlayFrom(*After);
+}
+
+void ReaderReadAloud::stepSpeed()
+{
+    const float Speed{AppSpeech::Get().GetSentenceSpeed()};
+    const auto Step{std::find_if(SpeedSteps.begin(), SpeedSteps.end(), [Speed](float Value) { return Value > Speed + 0.01f; })};
+
+    SetSpeed(Step != SpeedSteps.end() ? *Step : SpeedSteps.front());
+}
+
+void ReaderReadAloud::enableSpeech()
+{
+    qCInfo(LogSpeech) << "read aloud turned speech on";
+
+    AppSpeech::Get().SetEnabled(true);
+}
+
 void ReaderReadAloud::SetTitle(const QString& Value)
 {
     Title = Value;
 }
 
-bool ReaderReadAloud::IsEnabled() const
+void ReaderReadAloud::SetSavedPlace(int Paragraph, int Character)
 {
-    return bEnabled;
-}
-
-void ReaderReadAloud::SetEnabled(bool bValue)
-{
-    if (bEnabled == bValue)
+    if (SavedParagraph == Paragraph && SavedCharacter == Character)
     {
         return;
     }
 
-    qCInfo(LogSpeech) << "read aloud mode" << (bValue ? "on" : "off");
+    SavedParagraph = Paragraph;
+    SavedCharacter = Character;
 
-    bEnabled = bValue;
-
-    if (!bEnabled)
-    {
-        stop();
-    }
-
-    emit enabledChanged();
+    emit savedChanged();
 }
 
 bool ReaderReadAloud::IsAvailable() const
 {
     return AppSpeech::Get().CanNarrate();
+}
+
+bool ReaderReadAloud::IsVoiceInstalled() const
+{
+    return AppSpeech::Get().IsAvailable();
+}
+
+QString ReaderReadAloud::GetVoicePackage() const
+{
+    return AppCatalog::Get().FindVoicePackage(GetLanguageCode());
 }
 
 bool ReaderReadAloud::IsPlaying() const
@@ -168,6 +248,43 @@ int ReaderReadAloud::GetSentenceEnd() const
     return Current.has_value() ? static_cast<int>(Current->End) : -1;
 }
 
+int ReaderReadAloud::GetSavedParagraph() const
+{
+    return SavedParagraph;
+}
+
+int ReaderReadAloud::GetSavedCharacter() const
+{
+    return SavedCharacter;
+}
+
+qreal ReaderReadAloud::GetSpeed() const
+{
+    return AppSpeech::Get().GetSentenceSpeed();
+}
+
+void ReaderReadAloud::SetSpeed(qreal Value)
+{
+    if (qFuzzyCompare(AppSpeech::Get().GetSentenceSpeed(), static_cast<float>(Value)))
+    {
+        return;
+    }
+
+    qCInfo(LogSpeech) << "read aloud speed ->" << Value;
+
+    AppSpeech::Get().SetSentenceSpeed(static_cast<float>(Value));
+}
+
+qreal ReaderReadAloud::GetMinimumSpeed() const
+{
+    return MinimumSpeechSpeed;
+}
+
+qreal ReaderReadAloud::GetMaximumSpeed() const
+{
+    return MaximumSpeechSpeed;
+}
+
 void ReaderReadAloud::PlayFrom(const FTNarrationSentence& Sentence)
 {
     qCInfo(LogSpeech) << "read aloud from paragraph" << Sentence.Paragraph << "character" << Sentence.Start;
@@ -176,6 +293,8 @@ void ReaderReadAloud::PlayFrom(const FTNarrationSentence& Sentence)
 
     Current = Sentence;
     bPlaying = true;
+    SentenceClock.invalidate();
+    Remember(Sentence);
 
     QueueAhead();
 
@@ -192,7 +311,7 @@ void ReaderReadAloud::QueueAhead()
     }
 
     const std::string LanguageCode{GetLanguageCode()};
-    const float Speed{AppSpeech::Get().GetSpeed()};
+    const float Speed{AppSpeech::Get().GetSpeed() * AppSpeech::Get().GetSentenceSpeed()};
 
     while (!bReachedEnd && (Queued.size() < MinimumQueuedSentences || Seconds < NarrationLookaheadSeconds))
     {
@@ -242,6 +361,8 @@ void ReaderReadAloud::OnStarted(int Id)
     }
 
     Current = Found->Sentence;
+    SentenceClock.start();
+    Remember(Found->Sentence);
 
     emit stateChanged();
 }
@@ -284,6 +405,21 @@ void ReaderReadAloud::OnFailed()
     qCWarning(LogSpeech) << "read aloud stopped, the voice failed";
 
     stop();
+}
+
+void ReaderReadAloud::OnSpeedChanged()
+{
+    emit speedChanged();
+
+    if (bPlaying)
+    {
+        SpeedRestart.start();
+    }
+}
+
+void ReaderReadAloud::Remember(const FTNarrationSentence& Sentence)
+{
+    SetSavedPlace(Sentence.Paragraph, static_cast<int>(Sentence.Start));
 }
 
 void ReaderReadAloud::PublishSession()

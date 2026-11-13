@@ -8,6 +8,7 @@ Item
     id: root
 
     required property var store
+    property var triageController: null
 
     signal done()
     signal tabSelected(string key)
@@ -434,6 +435,7 @@ Item
                         visible: root.shownCategory === "account"
 
                         store: root.store
+                        triage: root.triageController
 
                         onLanguageOpened: function(code) { root.openLanguage(code) }
                         onPlacementRequested: root.placementRequested()

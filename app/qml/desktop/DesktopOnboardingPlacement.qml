@@ -12,8 +12,10 @@ FocusScope
     property string phase: "intro"
     property bool standalone: false
     property bool retake: false
+    property bool showsBack: false
 
     signal finished()
+    signal backRequested()
 
     readonly property real testProgress: root.phase === "test" ? root.controller.exerciseProgress
                                                               : (root.phase === "result" ? 1 : 0)
@@ -33,9 +35,15 @@ FocusScope
         { value: qsTr("%1 / %2").arg(root.controller.knownAnswerCount).arg(root.controller.answeredCount), label: qsTr("words you knew here") }
     ]
 
-    function begin()
+    readonly property var levels: [
+        { name: "placement_beginner", label: qsTr("I'm a beginner") },
+        { name: "placement_intermediate", label: qsTr("I'm intermediate") },
+        { name: "placement_advanced", label: qsTr("I'm advanced") }
+    ]
+
+    function begin(level)
     {
-        if (root.controller.start(root.targetLanguage, root.nativeLanguage))
+        if (root.controller.start(root.targetLanguage, root.nativeLanguage, level))
         {
             root.phase = "test"
             exercise.forceActiveFocus()
@@ -43,16 +51,12 @@ FocusScope
             return
         }
 
-        root.skip()
+        root.chooseNew()
     }
 
-    function skip()
+    function chooseNew()
     {
-        if (!root.retake)
-        {
-            root.controller.skip(root.targetLanguage)
-        }
-
+        root.controller.markNew(root.targetLanguage)
         root.leave()
     }
 
@@ -115,7 +119,7 @@ FocusScope
         {
             Layout.fillWidth: true
             text: root.showsResult ? qsTr("Your %1 level is %2").arg(root.languageName).arg(root.controller.cefrLevel)
-                                   : qsTr("Let's determine your %1 level").arg(root.languageName)
+                                   : qsTr("How well do you know %1?").arg(root.languageName)
             font.pixelSize: AppMetrics.fontHeadline
             font.weight: Font.DemiBold
             horizontalAlignment: Text.AlignHCenter
@@ -229,38 +233,83 @@ FocusScope
             }
         }
 
-        RowLayout
+        ColumnLayout
         {
             Layout.fillWidth: true
-            spacing: AppMetrics.gapMedium
+            Layout.topMargin: AppMetrics.gapMedium
+            visible: root.phase === "intro"
+            spacing: AppMetrics.gapSmall
 
-            DesktopButton
+            DesktopFormButton
             {
-                objectName: "placement_skip"
+                objectName: "placement_new"
 
-                Layout.fillWidth: true
-                Layout.preferredWidth: 1
-                visible: root.phase === "intro"
-                large: true
-                text: root.retake ? qsTr("Cancel") : qsTr("Skip the test")
+                text: qsTr("I'm new to %1").arg(root.languageName)
+                alignHintRight: true
+                keyHint: "1"
+                shortcutKeys: ["1"]
 
-                onClicked: root.skip()
+                onClicked: root.chooseNew()
             }
 
-            DesktopButton
+            Repeater
             {
-                objectName: "placement_start"
+                model: root.levels
 
-                Layout.fillWidth: true
-                Layout.preferredWidth: 1
-                large: true
-                tone: "primary"
-                text: root.showsResult ? qsTr("Continue") : qsTr("Start the test")
-                trailingIconName: "arrow_right"
+                delegate: DesktopFormButton
+                {
+                    required property var modelData
+                    required property int index
 
-                onClicked: root.showsResult ? root.leave() : root.begin()
+                    objectName: modelData.name
+                    text: modelData.label
+                    alignHintRight: true
+                    keyHint: String(index + 2)
+                    shortcutKeys: [String(index + 2)]
+
+                    onClicked: root.begin(index + 1)
+                }
             }
         }
+
+        DesktopFormButton
+        {
+            objectName: "placement_continue"
+
+            Layout.topMargin: AppMetrics.gapMedium
+            visible: root.showsResult
+            tone: "primary"
+            text: qsTr("Continue")
+            keyHint: qsTr("Enter")
+            shortcutKeys: ["Return", "Enter"]
+
+            onClicked: root.leave()
+        }
+
+        footer: [
+            DesktopFormButton
+            {
+                objectName: "placement_cancel"
+
+                visible: root.phase === "intro" && root.retake
+                text: qsTr("Cancel")
+                keyHint: qsTr("Esc")
+                shortcutKeys: ["Escape"]
+
+                onClicked: root.leave()
+            },
+            DesktopFormButton
+            {
+                objectName: "onboarding_back"
+
+                visible: root.phase === "intro" && root.showsBack
+                text: qsTr("Back")
+                keyHint: qsTr("Backspace")
+                shortcutKeys: ["Backspace"]
+
+                onClicked: root.backRequested()
+            }
+        ]
     }
 
     DesktopReviewExercise

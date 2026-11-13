@@ -233,6 +233,9 @@ psychologie." The word stands on top. The two rounds take two different sentence
 sentence shows it in both rounds. A form with none falls back to the bare question: "vous ___" or
 "il/elle ___" for a verb, the cue for a noun or adjective, "elles ___".
 
+A sentence round is silent while the question is up, because the sentence would say the form. Once
+the answer is in, the whole sentence is spoken at the sentence speed.
+
 The first round takes the words one at a time, in random order. It asks every form of a word in a
 shuffled order, then asks the missed forms again until each is answered right, and only then moves
 to the next word. The second round takes the words again in a new order, with the other sentence of

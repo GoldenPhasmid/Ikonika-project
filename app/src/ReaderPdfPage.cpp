@@ -897,8 +897,8 @@ QVariantMap ReaderPdfPage::ToSelectionMap(const QPdfSelection& Selection) const
     QVariantMap Result;
     Result[QStringLiteral("text")] = Selection.text();
     const QPdfSelection PageText = Document->TextDocument()->getAllText(Page);
-    Result[QStringLiteral("sentence")] = FindSentenceAt(PageText.text(), Selection.startIndex() - PageText.startIndex(),
-                                                        FTSettings::Get().GetLanguageRules().TargetLanguage);
+    Result[QStringLiteral("sentence")] = FindHintAt(PageText.text(), Selection.startIndex() - PageText.startIndex(),
+                                                    FTSettings::Get().GetLanguageRules().TargetLanguage);
     Result[QStringLiteral("rectangles")] = Rectangles;
 
     return Result;

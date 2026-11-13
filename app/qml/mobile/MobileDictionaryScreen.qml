@@ -50,6 +50,7 @@ Item
         anchors.fill: parent
 
         activeTab: "dictionary"
+        contentMaximumWidth: 632
         headerTitle: qsTr("Dictionary")
         showBack: true
         showSearchField: true
@@ -66,6 +67,8 @@ Item
 
             anchors.fill: parent
             anchors.margins: AppMetrics.contentPadding
+            anchors.topMargin: AppMetrics.contentPadding
+                + (formTranslation.visible && controller.results.length > 0 ? formTranslation.height + AppMetrics.gapSmall : 0)
 
             model: controller.results
             maxStage: root.store.stageCount
@@ -96,13 +99,15 @@ Item
 
         MobileMachineTranslation
         {
+            id: formTranslation
+
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.top: parent.top
             anchors.margins: AppMetrics.contentPadding
 
             visible: AppMachineTranslation.enabled
-                && controller.results.length === 0
+                && (controller.results.length === 0 || controller.formTerm.length > 0)
                 && (shell.searchFieldText + shell.searchFieldPreeditText).trim().length > 0
             lookup: controller
             term: (shell.searchFieldText + shell.searchFieldPreeditText).trim()

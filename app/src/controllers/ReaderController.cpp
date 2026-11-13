@@ -230,6 +230,7 @@ ReaderController::ReaderController(QObject* Parent)
     connect(this, &ReaderController::currentDocumentChanged, this, [this]()
     {
         ReadAloud.SetTitle(CurrentTitle);
+        LoadReadAloudPlace();
         ApplyKeepScreenOn(bReading && !bUnreadable);
         UpdateVolumeKeys();
 
@@ -238,6 +239,8 @@ ReaderController::ReaderController(QObject* Parent)
             setFullScreen(false);
         }
     });
+
+    connect(&ReadAloud, &ReaderReadAloud::savedChanged, this, &ReaderController::SaveReadAloudPlace);
 
     connect(&AppReaderSettings::Get(), &AppReaderSettings::changed, this, [this]()
     {
@@ -825,6 +828,30 @@ void ReaderController::savePosition(int Position)
     }
 
     AppDatabase::Get().GetReaderLibrary().SetPosition(CurrentId.toStdString(), Position);
+}
+
+void ReaderController::LoadReadAloudPlace()
+{
+    std::optional<FTReaderDocumentRow> Row;
+
+    if (!CurrentId.isEmpty() && AppDatabase::Get().IsReady())
+    {
+        Row = AppDatabase::Get().GetReaderLibrary().FindDocument(CurrentId.toStdString());
+    }
+
+    ReadAloud.SetSavedPlace(Row.has_value() ? static_cast<int>(Row->ReadAloudParagraph) : -1,
+                            Row.has_value() ? static_cast<int>(Row->ReadAloudCharacter) : 0);
+}
+
+void ReaderController::SaveReadAloudPlace()
+{
+    if (CurrentId.isEmpty() || ReadAloud.GetSavedParagraph() < 0 || !AppDatabase::Get().IsReady())
+    {
+        return;
+    }
+
+    AppDatabase::Get().GetReaderLibrary().SetReadAloudPlace(CurrentId.toStdString(), ReadAloud.GetSavedParagraph(),
+                                                            ReadAloud.GetSavedCharacter());
 }
 
 void ReaderController::savePositionCount(int Count)

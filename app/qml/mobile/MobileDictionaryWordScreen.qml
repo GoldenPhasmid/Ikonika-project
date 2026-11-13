@@ -25,6 +25,7 @@ Item
            ? root.entry.phonetic : qsTr("/%1/").arg(root.entry.phonetic))
 
     property bool cardSheetOpen: false
+    property bool conjugationOpen: false
 
     readonly property string shownPartOfSpeech: root.entry ? root.entry.partOfSpeech : root.partOfSpeech
     readonly property var meanings: root.entry ? (root.entry.meanings || []) : []
@@ -67,6 +68,8 @@ Item
 
     function open(headword, pos, query)
     {
+        root.conjugationOpen = false
+        formsSection.picker = ""
         root.word = headword
         root.partOfSpeech = pos
 
@@ -453,24 +456,16 @@ Item
                     }
                 }
 
-                ColumnLayout
+                MobileOptionListPanel
                 {
                     Layout.fillWidth: true
-                    spacing: 10
+                    visible: root.entry !== null && root.entry.forms.kind === "verb"
 
-                    visible: root.entry !== null && root.entry.forms.language === "en"
-                        && root.entry.forms.kind === "verb"
-
-                    MobileSectionLabel { text: qsTr("FORMS") }
-
-                    MobileDictionaryFormsSection
+                    MobileSettingsRow
                     {
-                        Layout.fillWidth: true
-
-                        forms: root.entry ? root.entry.forms : ({ kind: "none" })
-                        headword: root.entry ? root.entry.headword : ""
-                        headwordIsFeminine: root.entry !== null && root.entry.senses.length > 0
-                            && root.entry.senses[0].gender === "f"
+                        title: qsTr("Conjugation")
+                        lastRow: true
+                        onClicked: root.conjugationOpen = true
                     }
                 }
 
@@ -548,6 +543,146 @@ Item
                 {
                     root.cardSheetOpen = false
                     root.editCard(card)
+                }
+            }
+        }
+    }
+    function closeConjugation()
+    {
+        if (!root.conjugationOpen)
+        {
+            return false
+        }
+
+        if (formsSection.picker === "tense")
+        {
+            formsSection.picker = "category"
+        }
+        else if (formsSection.picker !== "")
+        {
+            formsSection.picker = ""
+        }
+        else
+        {
+            root.conjugationOpen = false
+        }
+
+        return true
+    }
+
+    MobileShell
+    {
+        anchors.fill: parent
+        visible: root.conjugationOpen
+        activeTab: "dictionary"
+        headerTitle: qsTr("Conjugation")
+        showBack: true
+        showTabBar: false
+
+        onBackRequested: root.closeConjugation()
+
+        Flickable
+        {
+            anchors.fill: parent
+            anchors.margins: AppMetrics.contentPadding
+            contentWidth: width
+            contentHeight: conjugationContent.implicitHeight
+            clip: true
+
+            ColumnLayout
+            {
+                id: conjugationContent
+
+                width: parent.width
+                spacing: AppMetrics.gapMedium
+
+                Text
+                {
+                    Layout.fillWidth: true
+                    text: root.entry ? root.entry.displayHeadword : root.word
+                    textFormat: Text.PlainText
+                    wrapMode: Text.Wrap
+                    color: AppTheme.colourText
+                    font.family: AppMetrics.fontFamily
+                    font.pixelSize: AppMetrics.fontBody * 1.5
+                    font.weight: Font.DemiBold
+                }
+
+                MobileDictionaryFormsSection
+                {
+                    id: formsSection
+                    forms: root.entry ? root.entry.forms : ({ kind: "none" })
+                }
+            }
+        }
+    }
+
+    MobileSheetLoader
+    {
+        anchors.fill: parent
+        open: formsSection.picker !== ""
+
+        sourceComponent: MobileBottomSheet
+        {
+            id: conjugationPicker
+
+            readonly property bool choosingTense: formsSection.picker === "tense"
+            readonly property var pending: formsSection.categories[formsSection.pendingCategory]
+            readonly property var options: choosingTense && pending ? pending.options : formsSection.categories
+
+            heading: choosingTense && pending ? pending.label : qsTr("Choose a category")
+            onDismissed: formsSection.picker = ""
+
+            Flickable
+            {
+                Layout.fillWidth: true
+                Layout.preferredHeight: Math.min(pickerContent.implicitHeight, conjugationPicker.maximumBodyHeight)
+                contentWidth: width
+                contentHeight: pickerContent.implicitHeight
+                clip: true
+
+                MobileOptionListPanel
+                {
+                    id: pickerContent
+                    width: parent.width
+
+                    MobileSettingsRow
+                    {
+                        visible: conjugationPicker.choosingTense
+                        title: qsTr("‹ Categories")
+                        onClicked: formsSection.picker = "category"
+                    }
+
+                    Repeater
+                    {
+                        model: conjugationPicker.options
+
+                        delegate: MobileSettingsRow
+                        {
+                            required property var modelData
+                            required property int index
+
+                            title: modelData.label || ""
+                            lastRow: index === conjugationPicker.options.length - 1
+
+                            onClicked:
+                            {
+                                if (conjugationPicker.choosingTense)
+                                {
+                                    formsSection.choose(formsSection.pendingCategory, index)
+                                }
+                                else if (modelData.options.length === 1)
+                                {
+                                    formsSection.choose(index, 0)
+                                }
+                                else
+                                {
+                                    formsSection.pendingCategory = index
+                                    formsSection.picker = "tense"
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }

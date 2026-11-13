@@ -1,12 +1,9 @@
 import QtQuick
 
-Text
+DesktopIcon
 {
-    height: 22
-    verticalAlignment: Text.AlignVCenter
-
-    text: "›"
-    font.pixelSize: AppMetrics.fontSubtitle
-    font.family: AppMetrics.fontFamily
+    name: "chevron_right"
+    width: AppMetrics.iconSizeSmall
+    height: width
     color: AppTheme.colourSubtle
 }

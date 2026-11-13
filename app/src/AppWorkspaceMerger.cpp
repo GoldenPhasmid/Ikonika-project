@@ -36,7 +36,7 @@ namespace
             {"Placements", {"TargetLanguage"}, "LastUpdatedDate"},
             {"SyncedSettings", {"Key"}, "LastUpdatedDate"},
             {"DailyStats", {"Day", "TargetLanguage", "NativeLanguage", "DeviceId"}, "LastUpdatedDate"},
-            {"TriagedWords", {"TargetWord", "TargetLanguage", "PartOfSpeech", "Gender"}, nullptr},
+            {"TriagedWords", {"TargetWord", "TargetLanguage", "PartOfSpeech", "Gender", "MeaningGist"}, nullptr},
             {"SearchHistory", {"Term", "TargetLanguage"}, "SearchedAt"},
             {"CloudBooks", {"Id"}, "LastUpdatedDate"}};
 

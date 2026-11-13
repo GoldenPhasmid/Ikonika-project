@@ -392,6 +392,27 @@ TEST_CASE("Migrating the device schema again keeps the reader library", "[schema
     CHECK(Count.GetInt(0) == 1);
 }
 
+TEST_CASE("An older reader library gains the read aloud place", "[schema][reader]")
+{
+    FTDatabase Target = MakeDatabase();
+
+    REQUIRE(Target.Execute(
+        "CREATE TABLE ReaderDocuments (Id TEXT PRIMARY KEY NOT NULL, FilePath TEXT NOT NULL, "
+        "Title TEXT NOT NULL DEFAULT '', Format TEXT NOT NULL DEFAULT '', AddedDate INTEGER NOT NULL, "
+        "LastOpenedDate INTEGER NOT NULL, LastPosition INTEGER NOT NULL DEFAULT 0, LastZoom REAL NOT NULL DEFAULT 0, "
+        "LastScrollX REAL NOT NULL DEFAULT 0, LastScrollY REAL NOT NULL DEFAULT 0, CloudId TEXT NOT NULL DEFAULT '', "
+        "PositionCount INTEGER NOT NULL DEFAULT 0, Deleted INTEGER NOT NULL DEFAULT 0)"));
+    REQUIRE(Target.Execute(
+        "INSERT INTO ReaderDocuments (Id, FilePath, AddedDate, LastOpenedDate) VALUES ('doc-1', 'C:/books/x.epub', 1, 1)"));
+
+    REQUIRE(MigrateDeviceSchema(Target));
+
+    FTStatement Place = Target.Prepare("SELECT ReadAloudParagraph, ReadAloudCharacter FROM ReaderDocuments");
+    REQUIRE(Place.Step());
+    CHECK(Place.GetInt(0) == -1);
+    CHECK(Place.GetInt(1) == 0);
+}
+
 TEST_CASE("A fresh database has no Skipped column", "[schema]")
 {
     FTDatabase Target = MakeDatabase();
@@ -764,4 +785,31 @@ TEST_CASE("Card hints migrate without changing existing cards", "[schema][hint]"
     REQUIRE(Query.Step());
     CHECK(Query.GetText(0) == "chat");
     CHECK(Query.GetText(1).empty());
+}
+
+TEST_CASE("Known marks migrate to whole-reading marks with an empty meaning", "[schema][triage]")
+{
+    FTDatabase Target = MakeDatabase();
+    REQUIRE(MigrateSchema(Target));
+    REQUIRE(Target.Execute("DROP TABLE TriagedWords"));
+    REQUIRE(Target.Execute("CREATE TABLE TriagedWords (TargetWord TEXT NOT NULL COLLATE NOCASE, "
+                           "TargetLanguage TEXT NOT NULL DEFAULT '', PartOfSpeech TEXT NOT NULL, "
+                           "Gender INTEGER NOT NULL DEFAULT -1, MarkedDate INTEGER NOT NULL, "
+                           "PRIMARY KEY (TargetWord, TargetLanguage, PartOfSpeech, Gender))"));
+    REQUIRE(Target.Execute("INSERT INTO TriagedWords VALUES ('pêche', 'fr', 'noun', 1, 5)"));
+    REQUIRE(Target.Execute("PRAGMA user_version = 36"));
+
+    REQUIRE(MigrateSchema(Target));
+
+    CHECK(ReadSchemaVersion(Target) == CurrentSchemaVersion);
+
+    FTStatement Query = Target.Prepare("SELECT TargetWord, MeaningGist, MarkedDate FROM TriagedWords");
+    REQUIRE(Query.IsValid());
+    REQUIRE(Query.Step());
+    CHECK(Query.GetText(0) == "pêche");
+    CHECK(Query.GetText(1).empty());
+    CHECK(Query.GetInt(2) == 5);
+
+    REQUIRE(Target.Execute("INSERT INTO TriagedWords (TargetWord, TargetLanguage, PartOfSpeech, Gender, MeaningGist, MarkedDate) "
+                           "VALUES ('pêche', 'fr', 'noun', 1, 'fruit', 6)"));
 }

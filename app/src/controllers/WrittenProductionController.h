@@ -16,16 +16,18 @@ struct FWrittenContent
     std::string Heading;
     std::string Prompt;
     std::vector<std::string> AcceptedAnswers;
-    std::string PromptSpeech;
     std::string Translation;
 
     std::string RevealedAnswer;
-    std::string RevealedSpeech;
 
     bool bSentence = false;
 };
 
-using FWrittenContentBuilder = std::function<FWrittenContent(const FTCard& Card)>;
+struct FExerciseSpeech
+{
+    QString Text;
+    bool bSentence = false;
+};
 
 class WrittenProductionController : public ExerciseControllerBase
 {
@@ -34,7 +36,7 @@ class WrittenProductionController : public ExerciseControllerBase
 
     Q_PROPERTY(QString directionLabel READ GetDirectionLabel NOTIFY stateChanged)
     Q_PROPERTY(QString answerHint READ GetAnswerHint NOTIFY stateChanged)
-    Q_PROPERTY(bool hasPromptSpeech READ HasPromptSpeech NOTIFY stateChanged)
+    Q_PROPERTY(bool canReplay READ CanReplay NOTIFY stateChanged)
     Q_PROPERTY(QString promptHeading READ GetPromptHeading NOTIFY stateChanged)
     Q_PROPERTY(QString lastCardTranslation READ GetLastCardTranslation NOTIFY stateChanged)
     Q_PROPERTY(bool sentencePrompt READ IsSentencePrompt NOTIFY stateChanged)
@@ -44,10 +46,8 @@ public:
 
     void SetAskWord(bool bInAskWord);
 
-    void SetContentBuilder(FWrittenContentBuilder InContentBuilder, const QString& InAnswerHint);
-
     QString GetAnswerHint() const;
-    bool HasPromptSpeech() const;
+    bool CanReplay() const;
     QString GetLastCardTranslation() const;
     bool IsSentencePrompt() const;
 
@@ -56,6 +56,7 @@ public:
     Q_INVOKABLE void skip();
     Q_INVOKABLE void advance() override;
     Q_INVOKABLE void replay();
+    void speakSlowly() override;
 
     QString GetPrompt() const override;
     QString GetPromptHeading() const;
@@ -64,6 +65,13 @@ public:
 
     QString GetDirectionLabel() const;
 
+protected:
+    virtual std::optional<FWrittenContent> BuildCardContent(const FTCard& Card) const;
+    virtual FExerciseSpeech GetHiddenSpeech() const;
+    virtual FExerciseSpeech GetRevealSpeech() const;
+
+    QString AnswerHint;
+
 private:
     void InitializeSession() override;
 
@@ -71,16 +79,13 @@ private:
     void RestoreExtraState(const QJsonObject& Json) override;
 
     std::optional<FWrittenContent> BuildContent() const;
-    std::string GetPromptSpeech() const;
     QString GetCardTranslation() const;
-    void SpeakPrompt() const;
-    void SpeakNewPrompt() const;
-    void SpeakAnswerIfTargetWord();
+    FExerciseSpeech GetStateSpeech() const;
+    void SpeakState(float RateScale) const;
+    void SpeakStateAutomatically() const;
     bool IsAcceptedAnswer(const QString& Given) const override;
 
     bool bAskWord = true;
 
-    FWrittenContentBuilder ContentBuilder;
-    QString AnswerHint;
     QString LastCardTranslation;
 };

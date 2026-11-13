@@ -23,52 +23,61 @@ namespace
     std::unordered_map<std::string, bool> StressedSpellings;
     std::unordered_map<std::string, bool> ElidingSpellings;
 
-    std::unordered_map<std::string, std::optional<FTDictionaryEntry>> FormsEntries;
-    std::unordered_map<std::string, std::optional<FTCard>> FormsCardPrototypes;
-    uint64_t FormsCacheGeneration = 0;
-    int FormsLookupCount = 0;
+    struct FFormsCache
+    {
+        std::unordered_map<std::string, std::optional<FTDictionaryEntry>> Entries;
+        std::unordered_map<std::string, std::optional<FTCard>> Prototypes;
+        uint64_t Generation = 0;
+        int LookupCount = 0;
+    };
 
-    void DropStaleFormsCaches()
+    FFormsCache MainFormsCache;
+
+    FFormsCache& GetMainFormsCache()
     {
         const uint64_t Generation = AppDictionary::Get().GetGeneration();
 
-        if (Generation == FormsCacheGeneration)
+        if (Generation != MainFormsCache.Generation)
         {
-            return;
+            MainFormsCache.Entries.clear();
+            MainFormsCache.Prototypes.clear();
+            MainFormsCache.Generation = Generation;
         }
 
-        FormsEntries.clear();
-        FormsCardPrototypes.clear();
-        FormsCacheGeneration = Generation;
+        return MainFormsCache;
     }
 
-    const std::optional<FTDictionaryEntry>& FindFormsEntry(const std::string& Headword, const std::string& PartOfSpeech)
+    const std::optional<FTDictionaryEntry>& FindFormsEntry(const FTDictionaryRepository& Dictionary, FFormsCache& Cache,
+                                                           const std::string& Headword, const std::string& PartOfSpeech)
     {
-        DropStaleFormsCaches();
-
         const std::string Key = Headword + "/" + PartOfSpeech;
-        const auto Known = FormsEntries.find(Key);
+        const auto Known = Cache.Entries.find(Key);
 
-        if (Known != FormsEntries.end())
+        if (Known != Cache.Entries.end())
         {
             return Known->second;
         }
 
-        ++FormsLookupCount;
+        ++Cache.LookupCount;
 
-        return FormsEntries.emplace(Key, AppDictionary::Get().GetRepository().LookUpForForms(Headword, PartOfSpeech))
-            .first->second;
+        return Cache.Entries.emplace(Key, Dictionary.LookUpForForms(Headword, PartOfSpeech)).first->second;
     }
 
-    const std::optional<FTCard>& FindFormsCardPrototype(const std::string& Headword, const std::string& PartOfSpeech,
+    const std::optional<FTDictionaryEntry>& FindFormsEntry(const std::string& Headword, const std::string& PartOfSpeech)
+    {
+        return FindFormsEntry(AppDictionary::Get().GetRepository(), GetMainFormsCache(), Headword, PartOfSpeech);
+    }
+
+    const std::optional<FTCard>& FindFormsCardPrototype(const FTDictionaryRepository& Dictionary, FFormsCache& Cache,
+                                                        const std::string& Headword, const std::string& PartOfSpeech,
                                                         const std::string& TargetLanguage)
     {
-        const std::optional<FTDictionaryEntry>& Entry = FindFormsEntry(Headword, PartOfSpeech);
+        const std::optional<FTDictionaryEntry>& Entry = FindFormsEntry(Dictionary, Cache, Headword, PartOfSpeech);
 
         const std::string Key = Headword + "/" + PartOfSpeech;
-        const auto Known = FormsCardPrototypes.find(Key);
+        const auto Known = Cache.Prototypes.find(Key);
 
-        if (Known != FormsCardPrototypes.end())
+        if (Known != Cache.Prototypes.end())
         {
             return Known->second;
         }
@@ -80,7 +89,101 @@ namespace
             Prototype = MakeFormsCard(PartOfSpeech, *Entry, TargetLanguage, std::string());
         }
 
-        return FormsCardPrototypes.emplace(Key, std::move(Prototype)).first->second;
+        return Cache.Prototypes.emplace(Key, std::move(Prototype)).first->second;
+    }
+
+    std::string FoldAscii(std::string Text)
+    {
+        std::transform(Text.begin(), Text.end(), Text.begin(), [](unsigned char Character)
+        {
+            return static_cast<char>(Character < 0x80 ? std::tolower(Character) : Character);
+        });
+
+        return Text;
+    }
+
+    std::unordered_map<std::string, FTFormsFlag> LoadStoredFlags(const FTDictionaryRepository& Dictionary,
+                                                                 const std::vector<FTStudiedHeadword>& Studied,
+                                                                 const std::vector<std::string>& Kinds)
+    {
+        std::unordered_map<std::string, FTFormsFlag> Flagged;
+
+        if (!Dictionary.HasFormsFlags())
+        {
+            return Flagged;
+        }
+
+        for (const std::string& Kind : Kinds)
+        {
+            std::vector<std::string> Headwords;
+
+            for (const FTStudiedHeadword& Word : Studied)
+            {
+                if (Word.PartOfSpeech == Kind)
+                {
+                    Headwords.push_back(Word.Headword);
+                }
+            }
+
+            for (FTFormsFlag& Flag : Dictionary.LoadFormsFlags(Headwords, Kind))
+            {
+                Flagged.emplace(FoldAscii(Flag.Headword) + "/" + Kind, std::move(Flag));
+            }
+        }
+
+        return Flagged;
+    }
+
+    std::vector<FTCard> ListFormsCandidatesWith(const AppCards::FFormsCountSources& Sources, FFormsCache& Cache,
+                                                const std::string& Training)
+    {
+        std::vector<FTCard> Candidates;
+
+        const std::vector<std::string> Kinds = ListFormsTrainingKinds(Training);
+        const std::vector<FTStudiedHeadword> Studied = Sources.Cards->ListStudiedHeadwords();
+        const std::unordered_map<std::string, FTFormsFlag> Flagged =
+            LoadStoredFlags(*Sources.Dictionary, Studied, Kinds);
+
+        for (const FTStudiedHeadword& Word : Studied)
+        {
+            if (std::find(Kinds.begin(), Kinds.end(), Word.PartOfSpeech) == Kinds.end())
+            {
+                continue;
+            }
+
+            std::optional<FTCard> Stored;
+            const std::optional<FTCard>* Prototype = nullptr;
+
+            const auto Flag = Flagged.find(FoldAscii(Word.Headword) + "/" + Word.PartOfSpeech);
+
+            if (Flag != Flagged.end())
+            {
+                if (!Flag->second.bEligible)
+                {
+                    continue;
+                }
+
+                Stored = MakeEligibleFormsCard(Word.PartOfSpeech, Flag->second.Headword, Sources.TargetLanguage);
+                Prototype = &Stored;
+            }
+            else
+            {
+                Prototype = &FindFormsCardPrototype(*Sources.Dictionary, Cache, Word.Headword, Word.PartOfSpeech,
+                                                    Sources.TargetLanguage);
+            }
+
+            if (!Prototype->has_value() || Sources.Cards->LoadFormsCard((*Prototype)->Id).has_value())
+            {
+                continue;
+            }
+
+            FTCard Card = **Prototype;
+            Card.Translation = Word.Translation;
+
+            Candidates.push_back(std::move(Card));
+        }
+
+        return Candidates;
     }
 
     bool SpellingElidesArticle(const std::string& Headword)
@@ -660,21 +763,16 @@ namespace AppCards
         return Rows;
     }
 
-    std::vector<FTenseOffer> ListTenseOffers()
+    std::vector<FTenseOffer> ListTenseOffersWith(const FFormsCountSources& Sources, FFormsCache& Cache)
     {
         std::vector<FTenseOffer> Offers;
 
-        const std::string TargetLanguage = FTSettings::Get().GetLanguageRules().TargetLanguage;
-
-        if (!AppDatabase::Get().IsReady())
-        {
-            return Offers;
-        }
+        const std::string& TargetLanguage = Sources.TargetLanguage;
 
         std::vector<FTCardHandle> Verbs;
         std::unordered_set<std::string> Stored;
 
-        for (const FTCardHandle& Card : AppDatabase::Get().GetCardRepository().LoadFormsCards())
+        for (const FTCardHandle& Card : Sources.Cards->LoadFormsCards())
         {
             if (GetFormsKind(Card->Id) == FormsKindVerb)
             {
@@ -692,7 +790,7 @@ namespace AppCards
             Offers.push_back(std::move(Offer));
         }
 
-        const bool bDictionaryReady = AppDictionary::Get().IsReady();
+        const bool bDictionaryReady = Sources.Dictionary != nullptr;
 
         for (const FTCardHandle& Card : Verbs)
         {
@@ -727,7 +825,8 @@ namespace AppCards
 
                 if (Verb == nullptr)
                 {
-                    const std::optional<FTDictionaryEntry>& Found = FindFormsEntry(Card->TargetWord, FormsKindVerb);
+                    const std::optional<FTDictionaryEntry>& Found =
+                        FindFormsEntry(*Sources.Dictionary, Cache, Card->TargetWord, FormsKindVerb);
 
                     Verb = Found.has_value() ? &*Found : nullptr;
                 }
@@ -750,42 +849,84 @@ namespace AppCards
         return Offers;
     }
 
+    std::vector<FTenseOffer> ListTenseOffers(const FFormsCountSources& Sources)
+    {
+        if (Sources.Cards == nullptr)
+        {
+            return {};
+        }
+
+        FFormsCache Cache;
+
+        return ListTenseOffersWith(Sources, Cache);
+    }
+
+    std::vector<FTenseOffer> ListTenseOffers()
+    {
+        if (!AppDatabase::Get().IsReady())
+        {
+            return {};
+        }
+
+        const FFormsCountSources Sources{AppDictionary::Get().IsReady() ? &AppDictionary::Get().GetRepository() : nullptr,
+                                         &AppDatabase::Get().GetCardRepository(),
+                                         FTSettings::Get().GetLanguageRules().TargetLanguage};
+
+        return ListTenseOffersWith(Sources, GetMainFormsCache());
+    }
+
+    std::vector<FTCard> ListFormsCandidates(const std::string& Training, const FFormsCountSources& Sources)
+    {
+        if (Sources.Dictionary == nullptr || Sources.Cards == nullptr)
+        {
+            return {};
+        }
+
+        FFormsCache Cache;
+
+        return ListFormsCandidatesWith(Sources, Cache, Training);
+    }
+
     std::vector<FTCard> ListFormsCandidates(const std::string& Training)
     {
-        std::vector<FTCard> Candidates;
-
         if (!AppDatabase::Get().IsReady() || !AppDictionary::Get().IsReady())
         {
-            return Candidates;
+            return {};
         }
 
-        const std::string TargetLanguage = FTSettings::Get().GetLanguageRules().TargetLanguage;
-        const std::vector<std::string> Kinds = ListFormsTrainingKinds(Training);
+        const FFormsCountSources Sources{&AppDictionary::Get().GetRepository(), &AppDatabase::Get().GetCardRepository(),
+                                         FTSettings::Get().GetLanguageRules().TargetLanguage};
 
-        FTCardRepository& CardRepository = AppDatabase::Get().GetCardRepository();
+        return ListFormsCandidatesWith(Sources, GetMainFormsCache(), Training);
+    }
 
-        for (const FTStudiedHeadword& Studied : CardRepository.ListStudiedHeadwords())
+    std::vector<FTCardHandle> LoadWaitingFormsCards(const FTCardRepository& CardRepository, const std::string& Training)
+    {
+        std::vector<FTCardHandle> Waiting;
+
+        for (const FTCardHandle& Card : CardRepository.LoadFormsCards())
         {
-            if (std::find(Kinds.begin(), Kinds.end(), Studied.PartOfSpeech) == Kinds.end())
+            const std::string Tense = GetFormsTense(Card->Id);
+
+            if (!IsCompleted(*Card) && GetFormsTraining(Card->Id) == Training
+                && (Tense.empty() || Tense == FormsTensePresent))
             {
-                continue;
+                Waiting.push_back(Card);
             }
-
-            const std::optional<FTCard>& Prototype =
-                FindFormsCardPrototype(Studied.Headword, Studied.PartOfSpeech, TargetLanguage);
-
-            if (!Prototype.has_value() || CardRepository.LoadFormsCard(Prototype->Id).has_value())
-            {
-                continue;
-            }
-
-            FTCard Card = *Prototype;
-            Card.Translation = Studied.Translation;
-
-            Candidates.push_back(std::move(Card));
         }
 
-        return Candidates;
+        return Waiting;
+    }
+
+    int CountFormsWords(const std::string& Training, const FFormsCountSources& Sources)
+    {
+        if (Sources.Dictionary == nullptr || Sources.Cards == nullptr)
+        {
+            return 0;
+        }
+
+        return static_cast<int>(LoadWaitingFormsCards(*Sources.Cards, Training).size()
+                                + ListFormsCandidates(Training, Sources).size());
     }
 
     QString GetVerbGroup(const std::string& Headword, const std::string& PartOfSpeech)
@@ -895,7 +1036,7 @@ namespace AppCards
 
     int GetFormsLookupCount()
     {
-        return FormsLookupCount;
+        return MainFormsCache.LookupCount;
     }
 
     std::optional<FTCardHandle> LoadSessionCard(FTCardRepository& CardRepository, const std::string& CardId)

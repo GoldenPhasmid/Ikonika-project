@@ -17,6 +17,8 @@
 #include <QTimer>
 #include <QVariantMap>
 
+#include <algorithm>
+
 #include "AppLocalization.h"
 
 namespace
@@ -29,22 +31,6 @@ namespace
     constexpr int CatalogTimeoutMilliseconds = 15000;
 
     constexpr int RefreshCooldownMilliseconds = 4 * 60 * 60 * 1000;
-
-    QVariantList NativeLanguageList(const std::vector<std::string>& Codes)
-    {
-        QVariantList Result;
-
-        for (const std::string& Code : Codes)
-        {
-            QVariantMap Native;
-            Native[QStringLiteral("code")] = QString::fromStdString(Code);
-            Native[QStringLiteral("name")] = LanguageDisplayName(Code);
-
-            Result.append(Native);
-        }
-
-        return Result;
-    }
 
     QString InstalledVersionKey(const QString& Id)
     {
@@ -289,51 +275,88 @@ std::optional<FTCatalogPackage> AppCatalog::FindPackage(const QString& Id) const
 
 namespace
 {
+    struct FTListedPair
+    {
+        std::string TargetLanguage;
+        std::string NativeLanguage;
+        const FTCatalogPackage* Published = nullptr;
+    };
+
     bool IsLanguageInstalled(const std::string& Code)
     {
-        for (const FTDictionaryPackage& Package : AppDictionary::Get().GetPackages())
+        const std::vector<FTDictionaryPackage>& Packages = AppDictionary::Get().GetPackages();
+
+        return std::any_of(Packages.begin(), Packages.end(),
+                           [&Code](const FTDictionaryPackage& Package)
+                           {
+                               return Package.TargetLanguage == Code;
+                           });
+    }
+
+    QVariantMap DescribePair(const FTListedPair& Pair)
+    {
+        const bool bInstalled{AppDictionary::Get().IsInstalled(Pair.TargetLanguage, Pair.NativeLanguage)};
+        const bool bPublishedCompatible{Pair.Published != nullptr && Pair.Published->IsCompatible()};
+
+        QVariantMap Result;
+        Result[QStringLiteral("id")] = Pair.Published != nullptr ? QString::fromStdString(Pair.Published->Id) : QString();
+        Result[QStringLiteral("bytes")] = static_cast<qlonglong>(Pair.Published != nullptr ? Pair.Published->Bytes : 0);
+        Result[QStringLiteral("compatible")] = bInstalled || bPublishedCompatible;
+        Result[QStringLiteral("installed")] = bInstalled;
+        Result[QStringLiteral("outdated")] = AppDictionary::Get().IsOutdated(Pair.TargetLanguage, Pair.NativeLanguage);
+
+        return Result;
+    }
+
+    const FTListedPair& PreferredPair(const std::vector<const FTListedPair*>& Pairs)
+    {
+        const std::string& Native = FTSettings::Get().GetLanguageRules().NativeLanguage;
+
+        for (const FTListedPair* Pair : Pairs)
         {
-            if (Package.TargetLanguage == Code)
+            if (Pair->NativeLanguage == Native)
             {
-                return true;
+                return *Pair;
             }
         }
 
-        return false;
+        for (const FTListedPair* Pair : Pairs)
+        {
+            if (AppDictionary::Get().IsInstalled(Pair->TargetLanguage, Pair->NativeLanguage))
+            {
+                return *Pair;
+            }
+        }
+
+        return *Pairs.front();
     }
 }
 
 QVariantList AppCatalog::GetLanguages() const
 {
-    QVariantList Result;
-    QStringList Seen;
+    std::vector<FTListedPair> Pairs;
+    std::vector<std::string> Targets;
 
-    const auto AddEntry = [&Result, &Seen](const std::string& Id, const std::string& TargetLanguage,
-                                           std::int64_t Bytes, bool bPublishedCompatible,
-                                           const std::vector<std::string>& Natives)
+    const auto AddPair = [&Pairs, &Targets](const std::string& TargetLanguage, const std::string& NativeLanguage,
+                                            const FTCatalogPackage* Published)
     {
-        const QString Code = QString::fromStdString(TargetLanguage);
+        const bool bListed = std::any_of(Pairs.begin(), Pairs.end(),
+            [&TargetLanguage, &NativeLanguage](const FTListedPair& Pair)
+            {
+                return Pair.TargetLanguage == TargetLanguage && Pair.NativeLanguage == NativeLanguage;
+            });
 
-        if (Seen.contains(Code))
+        if (bListed)
         {
             return;
         }
 
-        Seen.append(Code);
+        Pairs.push_back({TargetLanguage, NativeLanguage, Published});
 
-        const bool bInstalled = IsLanguageInstalled(TargetLanguage);
-
-        QVariantMap Entry;
-        Entry[QStringLiteral("id")] = QString::fromStdString(Id);
-        Entry[QStringLiteral("code")] = Code;
-        Entry[QStringLiteral("name")] = LanguageDisplayName(TargetLanguage);
-        Entry[QStringLiteral("bytes")] = static_cast<qlonglong>(Bytes);
-        Entry[QStringLiteral("compatible")] = bInstalled || bPublishedCompatible;
-        Entry[QStringLiteral("installed")] = bInstalled;
-        Entry[QStringLiteral("outdated")] = AppDictionary::Get().IsOutdated(TargetLanguage);
-        Entry[QStringLiteral("natives")] = NativeLanguageList(Natives);
-
-        Result.append(Entry);
+        if (std::find(Targets.begin(), Targets.end(), TargetLanguage) == Targets.end())
+        {
+            Targets.push_back(TargetLanguage);
+        }
     };
 
     if (Catalog.has_value())
@@ -345,22 +368,60 @@ QVariantList AppCatalog::GetLanguages() const
                 continue;
             }
 
-            const FTCatalogPackage* Compatible = Catalog->FindCompatibleDictionary(Package.TargetLanguage);
-            const FTCatalogPackage& Listed = Compatible != nullptr ? *Compatible : Package;
+            for (const std::string& Native : Package.NativeLanguages)
+            {
+                const FTCatalogPackage* Compatible = Catalog->FindCompatibleDictionary(Package.TargetLanguage, Native);
 
-            AddEntry(Listed.Id, Listed.TargetLanguage, Listed.Bytes, Listed.IsCompatible(),
-                     Listed.NativeLanguages);
+                AddPair(Package.TargetLanguage, Native, Compatible != nullptr ? Compatible : &Package);
+            }
         }
     }
 
-    for (const FTDictionaryPackage& Package : AppDictionary::Get().GetPackages())
+    for (const std::vector<FTDictionaryPackage>* Installed :
+         {&AppDictionary::Get().GetPackages(), &AppDictionary::Get().GetOutdatedPackages()})
     {
-        AddEntry({}, Package.TargetLanguage, 0, false, Package.NativeLanguages);
+        for (const FTDictionaryPackage& Package : *Installed)
+        {
+            for (const std::string& Native : Package.NativeLanguages)
+            {
+                AddPair(Package.TargetLanguage, Native, nullptr);
+            }
+        }
     }
 
-    for (const FTDictionaryPackage& Package : AppDictionary::Get().GetOutdatedPackages())
+    QVariantList Result;
+
+    for (const std::string& TargetLanguage : Targets)
     {
-        AddEntry({}, Package.TargetLanguage, 0, false, Package.NativeLanguages);
+        std::vector<const FTListedPair*> TargetPairs;
+        QVariantList Natives;
+
+        for (const FTListedPair& Pair : Pairs)
+        {
+            if (Pair.TargetLanguage != TargetLanguage)
+            {
+                continue;
+            }
+
+            TargetPairs.push_back(&Pair);
+
+            QVariantMap Native = DescribePair(Pair);
+            Native[QStringLiteral("code")] = QString::fromStdString(Pair.NativeLanguage);
+            Native[QStringLiteral("name")] = LanguageDisplayName(Pair.NativeLanguage);
+
+            Natives.append(Native);
+        }
+
+        const bool bInstalled{IsLanguageInstalled(TargetLanguage)};
+
+        QVariantMap Entry = DescribePair(PreferredPair(TargetPairs));
+        Entry[QStringLiteral("code")] = QString::fromStdString(TargetLanguage);
+        Entry[QStringLiteral("name")] = LanguageDisplayName(TargetLanguage);
+        Entry[QStringLiteral("installed")] = bInstalled;
+        Entry[QStringLiteral("compatible")] = bInstalled || Entry.value(QStringLiteral("compatible")).toBool();
+        Entry[QStringLiteral("natives")] = Natives;
+
+        Result.append(Entry);
     }
 
     return Result;
@@ -461,19 +522,18 @@ QVariantMap AppCatalog::GetAvailableDictionaryUpdate() const
     }
 
     const FTDictionaryPackage* Active = AppDictionary::Get().GetActivePackage();
+    const FTLanguageRules& Rules = FTSettings::Get().GetLanguageRules();
 
-    const std::string TargetLanguage = Active != nullptr
-        ? Active->TargetLanguage
-        : FTSettings::Get().GetLanguageRules().TargetLanguage;
+    const std::string TargetLanguage = Active != nullptr ? Active->TargetLanguage : Rules.TargetLanguage;
 
-    const bool bOutdated = Active == nullptr && AppDictionary::Get().IsOutdated(TargetLanguage);
+    const bool bOutdated = Active == nullptr && AppDictionary::Get().IsOutdated(TargetLanguage, Rules.NativeLanguage);
 
     if (Active == nullptr && !bOutdated)
     {
         return {};
     }
 
-    const FTCatalogPackage* Package = Catalog->FindCompatibleDictionary(TargetLanguage);
+    const FTCatalogPackage* Package = Catalog->FindCompatibleDictionary(TargetLanguage, Rules.NativeLanguage);
 
     if (Package == nullptr)
     {
@@ -497,6 +557,28 @@ QVariantMap AppCatalog::GetAvailableDictionaryUpdate() const
     Update[QStringLiteral("bytes")] = static_cast<qlonglong>(Package->Bytes);
 
     return Update;
+}
+
+QString AppCatalog::FindVoicePackage(const std::string& TargetLanguage) const
+{
+#if defined(IKONIKA_DESKTOP)
+    if (!Catalog)
+    {
+        return {};
+    }
+
+    for (const FTCatalogPackage& Package : Catalog->Packages)
+    {
+        if (Package.Kind == CatalogKindVoice && Package.IsCompatible() && Package.ServesTarget(TargetLanguage))
+        {
+            return QString::fromStdString(Package.Id);
+        }
+    }
+#else
+    Q_UNUSED(TargetLanguage);
+#endif
+
+    return {};
 }
 
 std::optional<FTCatalogPackage> AppCatalog::FindTranslationPackage(const std::string& TargetLanguage,
@@ -537,16 +619,17 @@ QVariantList AppCatalog::GetPackageUpdates() const
             continue;
         }
 
+        const std::string PairNative{Package.NativeLanguages.empty() ? std::string() : Package.NativeLanguages.front()};
+
         if (Package.Kind == CatalogKindDictionary
-            && Catalog->FindCompatibleDictionary(Package.TargetLanguage) != &Package)
+            && Catalog->FindCompatibleDictionary(Package.TargetLanguage, PairNative) != &Package)
         {
             continue;
         }
 
         const QString Id{QString::fromStdString(Package.Id)};
         const int Installed{GetInstalledVersion(Id)};
-        const bool bOutdatedDictionary{Package.Kind == CatalogKindDictionary
-            && AppDictionary::Get().IsOutdated(Package.TargetLanguage)};
+        const bool bOutdatedDictionary{AppDictionary::Get().IsReplacedBy(Package)};
 
         if ((!bOutdatedDictionary && Installed <= 0) || Package.Version <= Installed)
         {

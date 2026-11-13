@@ -21,6 +21,7 @@ Popup
 
     width: Math.min(AppMetrics.dialogWidth, parent ? parent.width - AppMetrics.contentPadding * 2 : AppMetrics.dialogWidth)
     padding: AppMetrics.cardPadding
+    height: parent ? Math.min(implicitHeight, parent.height - AppMetrics.contentPadding * 2) : implicitHeight
 
     modal: true
     focus: true
@@ -108,13 +109,81 @@ Popup
             }
         }
 
-        ColumnLayout
+        Flickable
         {
-            id: bodyColumn
+            id: bodyFlick
+
+            readonly property real ringMargin: AppMetrics.focusRingWidth * 2
+            readonly property real scrollGutter: AppMetrics.scrollBarWidth + AppMetrics.gapSmall / 2
+
+            function reveal(item)
+            {
+                if (!item || !bodyFlick.interactive)
+                {
+                    return
+                }
+
+                let owner = item.parent
+
+                while (owner && owner !== bodyColumn)
+                {
+                    owner = owner.parent
+                }
+
+                if (!owner)
+                {
+                    return
+                }
+
+                const top = item.mapToItem(bodyFlick.contentItem, 0, 0).y - bodyFlick.ringMargin
+                const bottom = top + item.height + bodyFlick.ringMargin * 2
+                const limit = bodyFlick.contentHeight - bodyFlick.height
+
+                if (top < bodyFlick.contentY)
+                {
+                    bodyFlick.contentY = Math.max(0, top)
+                }
+                else if (bottom > bodyFlick.contentY + bodyFlick.height)
+                {
+                    bodyFlick.contentY = Math.min(limit, bottom - bodyFlick.height)
+                }
+            }
 
             Layout.fillWidth: true
-            spacing: AppMetrics.gapMedium
-            visible: children.length > 0
+            Layout.fillHeight: true
+            Layout.leftMargin: -bodyFlick.ringMargin
+            Layout.rightMargin: -bodyFlick.ringMargin - bodyFlick.scrollGutter
+            Layout.topMargin: -bodyFlick.ringMargin
+            Layout.bottomMargin: -bodyFlick.ringMargin
+            Layout.preferredHeight: bodyFlick.contentHeight
+            visible: bodyColumn.children.length > 0
+            contentWidth: width
+            contentHeight: bodyColumn.implicitHeight + bodyFlick.ringMargin * 2
+            interactive: bodyFlick.contentHeight > bodyFlick.height
+            boundsBehavior: Flickable.StopAtBounds
+            clip: true
+
+            ScrollBar.vertical: DesktopScrollBar {}
+
+            Connections
+            {
+                target: bodyFlick.Window.window
+
+                function onActiveFocusItemChanged()
+                {
+                    bodyFlick.reveal(bodyFlick.Window.window.activeFocusItem)
+                }
+            }
+
+            ColumnLayout
+            {
+                id: bodyColumn
+
+                x: bodyFlick.ringMargin
+                y: bodyFlick.ringMargin
+                width: bodyFlick.width - bodyFlick.ringMargin * 2 - bodyFlick.scrollGutter
+                spacing: AppMetrics.gapMedium
+            }
         }
 
         RowLayout

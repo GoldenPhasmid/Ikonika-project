@@ -42,6 +42,7 @@ add_executable(CoreTests
     ParagraphModelTests.cpp
     PdfDocumentExtractorTests.cpp
     PlacementTestTests.cpp
+    DiscoveryPlannerTests.cpp
     RepetitionBatchTests.cpp
     ResultMarksTests.cpp
     ReaderRepositoryTests.cpp

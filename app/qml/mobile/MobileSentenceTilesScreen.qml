@@ -209,6 +209,7 @@ Item
 
         exerciseName: root.exerciseName
         store: root.store
+        controller: root.controller
         hasActions: true
 
         showTypingOption: root.sessionStage

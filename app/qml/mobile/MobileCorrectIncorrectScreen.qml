@@ -39,6 +39,7 @@ Item
         showMute: root.showMute
         showOptions: root.showOptions
         store: root.store
+        controller: root.controller
 
         progress: root.controller.exerciseProgress
 
@@ -81,12 +82,27 @@ Item
                 .arg(root.controller.currentSessionCount)
                 .arg(root.controller.maxSessionCount)
 
-            primaryContent: MobilePromptText
-            {
-                text: root.controller.prompt
-                gender: root.controller.headwordGender
-                verbGroup: root.controller.headwordVerbGroup
-            }
+            primaryContent: [
+                MobilePromptText
+                {
+                    text: root.controller.prompt
+                    gender: root.controller.headwordGender
+                    verbGroup: root.controller.headwordVerbGroup
+                },
+                Text
+                {
+                    objectName: "review_phonetic"
+
+                    text: root.controller.showsTargetLanguage && root.controller.phonetic.length > 0
+                        ? root.controller.phonetic : " "
+                    font.pixelSize: AppMetrics.fontTitle
+                    font.family: AppMetrics.fontFamily
+                    color: AppTheme.colourMuted
+                    Layout.fillWidth: true
+                    Layout.topMargin: -13
+                    horizontalAlignment: Text.AlignHCenter
+                }
+            ]
 
             secondaryContent: [
                 Text

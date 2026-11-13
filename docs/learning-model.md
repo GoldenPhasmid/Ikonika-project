@@ -8,7 +8,7 @@ List of terminology/definitions
 | --- | --- |
 | **Card** | One thing being learned: word, translation, definition. |
 | **My Vocabulary** | Every card of the language pair. There are no user decks. |
-| **Deck** | A read-only list of words shipped in the dictionary. Learning a deck runs triage over its words. |
+| **Deck** | A read-only list of words shipped in the dictionary. Learning a deck runs a Discover round over its words. |
 | **Box** | Leitner box, 1 upward. Lives on the card and decides when it is next due. |
 | **Session** | A sequence of exercises over a fixed set of cards. All or nothing. |
 | **Intensive learning** | The session type that takes cards from the pool and puts them on the ladder. |
@@ -68,7 +68,7 @@ has **runtime state**: which stage it's on, and whether it's finished.
 
 ### Intensive learning
 
-Runs on a fixed number of words, set by the training word count (default 25). The session is
+Runs on a fixed number of words, set by the training word count (default 15). The session is
 filled from the Learning Pool, then from the dictionary. The pool is taken in turns from nouns, verbs,
 adjectives, adverbs and every other part of speech, oldest first within each, and a word whose
 spelling is already in the session is left for a later one. Only that last step asks the
@@ -91,8 +91,9 @@ have the lowest count, so a forgotten card comes back in the next batch rather t
 full round. The stage ends when every card was known twice. The number is a setting, "Times known
 per word", from 1 to 5.
 
-The shown side moves with the stage's progress. The first third shows the French word, the middle
-third picks a side at random, and the last third shows the translation.
+The shown side follows each card's own count. A card known zero times shows the French word, a card
+known once shows the translation, and a card known more often picks a side at random. A forgotten card
+drops its count and so starts again from the word.
 
 **Stage 3, choose a translation.** Three exercises of `CardsPerExercise` cards each. Each screen
 has one correct card and five wrong options, drawn from the whole session the same way exercise 3
@@ -100,14 +101,15 @@ already works outside intensive learning.
 
 **Stage 4, mastery.** Draws from a pool of three exercise types: audio transcription, typing the
 French word from its translation, and filling a gap in a sentence. Each batch of `CardsPerExercise`
-cards picks one of the three at random, weighted 35, 30 and 35, runs it, then picks again for the
+cards picks one of the three at random, weighted 40, 20 and 40, runs it, then picks again for the
 next batch, never the one that just ran. Training opens with one audio batch and picks at random
 from then on. Review opens with one of each.
 
 The gap exercise shows a French sentence with the card's word blanked out, and the sentence's
-translation above it. Nothing is spoken until the answer is in, because hearing the sentence would
-give the missing word away. Once the answer is in, only the missing word is spoken, since the whole
-sentence would still be playing when the learner moves on to the next one. The sentence must contain the card's exact spelling, and for a noun the
+translation above it. While the question is up, the sentence is spoken with a short pause where the
+word was, because hearing the word would give it away. Once the answer is in, only the missing word
+is spoken, since the whole sentence would still be playing when the learner moves on to the next
+one. Replay and slow speech say the same thing as the screen it is on. The sentence must contain the card's exact spelling, and for a noun the
 gap leaves the article out. The sentence comes from Tatoeba first, made only of words the learner
 already knows, then from the card's meaning example. A card with neither types its French word
 from the translation instead.
@@ -166,7 +168,7 @@ whole pool: a session teaches a slice of both.
 
 ### Repetition
 
-Every card due today goes into one pool, then gets split at random into sessions of N, default 25.
+Every card due today goes into one pool, then gets split at random into sessions of N, default 20.
 Splitting by box instead would produce a session of three cards whenever box 3 happens to hold
 three cards, so it's random.
 
@@ -193,7 +195,7 @@ settings. Only the review's yes or no moves a card between boxes.
 
 A deck is a fixed list of words, for example the IELTS General list. It lives in the dictionary, so it never syncs and the learner cannot change it. A deck word names a reading by headword and part of speech, and it can name one meaning by its gist.
 
-Opening a deck shows its words in My Vocabulary's layout, each with its learning status. A word takes the furthest card of its reading, so any card of that headword and part of speech counts, even when the deck names another meaning: a learner who knows one meaning of a word is not asked about it again. A word the learner marked known, with no card of its reading, shows as learned. Triage also marks every word it turns into a card, so a mark older than a deleted card of that word does not count: deleting the card makes the word new again. Every other word is new.
+Opening a deck shows its words in My Vocabulary's layout, each with its learning status. A word takes the furthest card of its reading. When the deck names a meaning, only a card of that meaning counts, or a card with no meaning; a learner who knows one meaning of a word is still asked about the others. A word the learner marked known, with no card of its reading, shows as learned. A known mark can name one meaning, and then it covers only deck words of that meaning and deck words that name none. Triage also marks every word it turns into a card, so a mark older than a deleted card of that word does not count: deleting the card makes the word new again. Every other word is new.
 
 Learn runs triage over the deck's new words, most common first by teaching rank, with no word limit. The deck view keeps the deck's own order. Each word becomes a card or is marked known, and triage ends when none is left. The cards go to the pool, so the next intensive learning session teaches them.
 
@@ -202,7 +204,12 @@ Learn runs triage over the deck's new words, most common first by teaching rank,
 These are the building blocks a session template arranges. Every one plays the word's pronunciation.
 Any exercise can be played separately, outside of session, over My Vocabulary.
 Any exercise can be made infinite.
+Every exercise has a turtle button in its top bar. It says again what the exercise last said, or the card's word when nothing was said for this card, at 0.6 times the exercise's own speed.
 Some exercises have "score", that is combined from question results ('yes''no''skipped')
+
+Where an exercise shows an example sentence with its translation, the sentence is the card's meaning
+example. A card with no meaning, or whose meaning is not in the dictionary, shows its hint instead,
+without a translation.
 
 ### Exercise 1 — Combined flashcard
 
@@ -230,7 +237,8 @@ same answer on screen twice and leave the question with no right answer. Has sco
 
 - **Type the word.** Translation shown, target word typed.
 - **Fill the gap.** A target-language sentence with the word blanked out and its translation shown,
-  the missing word typed. Silent until answered, then speaks the missing word.
+  the missing word typed. Speaks the sentence with a pause for the word, then the missing word
+  once answered.
 
 Each can be turned off for Training and Review separately. Has scoring.
 
@@ -361,10 +369,24 @@ conjugation table.
 
 Writes `Placements.CutoffRank`, a dictionary teaching rank, once per language. Triage skips words at or below it and sentence training counts them as known. The triage word-range slider edits the same value.
 
+The learner first picks one of four answers: new to the language, beginner, intermediate or advanced.
+New records cutoff 0 without a test. The other three start the test from rank 400, 2,000 or 6,000.
+
+### Core cards
+
+A learner who picked new, or who picked beginner and ended below cutoff 500, gets the core cards of the language pair in the pool. They are the closed-class words, a few common adverbs and the twelve most useful verbs. French has 64 cards, Spanish 59, Portuguese 57, Italian 58 and German 59 for English speakers, and English 59 for Ukrainian speakers.
+
+Words that only glue other words together are left out: the prepositions de, à, en and par, the relative pronouns, and every inflected form of a word that is already on the list. German and Portuguese dictionaries carry no meaning labels, so their gist column is empty.
+The cards are hand-picked in `app/corecards/<target>-<native>.tsv`, one file per language pair, with the columns word, part_of_speech, translation and meaning_gist. The translation is written by hand and the card keeps it as the user's own. The meaning gist is one of the dictionary's own senses of that reading. A gist the dictionary no longer carries is logged and dropped, and the card then takes the dictionary's most popular meaning. A pair without a file adds nothing.
+
+A headword that already has a card of the same reading is skipped, so a retake adds nothing twice.
+
+The cards need the dictionary, which during setup downloads after this step. Setup keeps the request and adds the cards when it finishes, once the dictionary of the chosen language is the active one. Outside setup they are added at once. `-onboarding` offers the placement step even when the language already has a result.
+
 ### Algorithm
 
 - Words come from `app/placement/<target>-<native>.tsv`, about 130 rows in bands that double in rank width from rank 100. It ships in the app because the test runs before the dictionary downloads. Built by `build_placement_words.py`, see [dictionary-pipeline.md](dictionary-pipeline.md) section 10.
-- Model: P(known) = 1 / (1 + exp((ln rank - L) / 0.6)), with a 3 percent slip each way. L is a belief over 200 log-spaced steps from rank 20 to 60000, prior centred on rank 400 with a spread of 2.0 in ln rank. Each answer is a Bayesian update.
+- Model: P(known) = 1 / (1 + exp((ln rank - L) / 0.6)), with a 3 percent slip each way. L is a belief over 200 log-spaced steps from rank 20 to 60000, prior centred on the chosen level's starting rank with a spread of 2.0 in ln rank. Each answer is a Bayesian update.
 - Next word: random among the 3 unasked words nearest the posterior mean of L.
 - Stop at 30 questions; or at 12 or more once the posterior deviation is under 0.35; or after 5 questions with no known word, which gives cutoff 0.
 

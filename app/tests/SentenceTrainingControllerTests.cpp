@@ -44,6 +44,8 @@ namespace
 
         FSentenceFixture()
         {
+            SpeechGuard.Mock.SentenceSpeed = 0.7f;
+
             FTSettings::Get().SetTargetLanguage("fr");
             FTSettings::Get().SetNativeLanguage("en");
 
@@ -168,7 +170,7 @@ namespace
     }
 }
 
-TEST_CASE("Sentence training needs studied words before it can start", "[sentencetraining]")
+TEST_CASE("Sentence training starts on essential words before any word is studied", "[sentencetraining]")
 {
     FSentenceFixture Fixture;
 
@@ -181,14 +183,12 @@ TEST_CASE("Sentence training needs studied words before it can start", "[sentenc
     Controller.refresh();
 
     CHECK(Controller.IsAvailable());
-    CHECK(Controller.GetReadyCount() == 0);
-    CHECK(Controller.GetSentenceCount() == 10);
-    CHECK_FALSE(Controller.CanStart());
-    CHECK_FALSE(Controller.IsUnlocked());
+    CHECK(Controller.GetReadyCount() > 0);
+    CHECK(Controller.CanStart());
 
-    CHECK_FALSE(Controller.start("training"));
-    CHECK_FALSE(Controller.HasActiveSession());
-    CHECK(Controller.GetActiveController() == nullptr);
+    CHECK(Controller.start("training"));
+    CHECK(Controller.HasActiveSession());
+    CHECK(Controller.GetActiveController() != nullptr);
 }
 
 TEST_CASE("Every difficulty unlocks once it has ten sentences", "[sentencetraining][slow]")
@@ -209,7 +209,7 @@ TEST_CASE("Every difficulty unlocks once it has ten sentences", "[sentencetraini
     CHECK(Controller.GetUnlockedDifficultyMask() == SentenceTrainingController::EveryDifficulty);
 }
 
-TEST_CASE("Sentence training unlocks with one difficulty and leaves the locked ones out", "[sentencetraining][slow]")
+TEST_CASE("Essential words alone unlock every sentence difficulty", "[sentencetraining][slow]")
 {
     FSentenceFixture Fixture;
 
@@ -218,17 +218,13 @@ TEST_CASE("Sentence training unlocks with one difficulty and leaves the locked o
         SKIP("The built dictionary has no sentence index");
     }
 
-    StudyWordsOnly(60);
-
     SentenceTrainingController Controller;
     Controller.SetDifficultyMask(SentenceTrainingController::HardDifficulty);
     Controller.refresh();
 
     REQUIRE(Controller.IsUnlocked());
-    CHECK(Controller.GetUnlockedDifficultyMask()
-          == (SentenceTrainingController::EasyDifficulty | SentenceTrainingController::NormalDifficulty));
-
-    CHECK(Controller.GetDifficultyMask() == SentenceTrainingController::EasyDifficulty);
+    CHECK(Controller.GetUnlockedDifficultyMask() == SentenceTrainingController::EveryDifficulty);
+    CHECK(Controller.GetDifficultyMask() == SentenceTrainingController::HardDifficulty);
     CHECK(Controller.CanStart());
 }
 
@@ -356,7 +352,7 @@ TEST_CASE("Sentence training opens with a flashcard for every sentence", "[sente
         CHECK(Flashcard->GetAnswer() == QString::fromStdString(Current->Translation));
         CHECK(Flashcard->GetCurrentSessionCount() == Card + 1);
         CHECK(Fixture.SpeechGuard.Mock.LastText == Flashcard->GetPrompt());
-        CHECK(Fixture.SpeechGuard.Mock.LastRateScale == SentenceTrainingController::SentenceSpeechRateScale);
+        CHECK(Fixture.SpeechGuard.Mock.LastRateScale == Fixture.SpeechGuard.Mock.SentenceSpeed);
 
         Shown.insert(Flashcard->GetPrompt());
 
@@ -408,9 +404,9 @@ TEST_CASE("A sentence session runs flashcards, tiles, missing word, then dictati
     CHECK(Prompt.contains("___"));
     CHECK_FALSE(Gap->ShowsTargetLanguage());
     CHECK_FALSE(Gap->GetAnswerHint().isEmpty());
-    CHECK(Gap->HasPromptSpeech());
+    CHECK(Gap->CanReplay());
     CHECK(Fixture.SpeechGuard.Mock.LastText == Sentence);
-    CHECK(Fixture.SpeechGuard.Mock.LastRateScale == SentenceTrainingController::SentenceSpeechRateScale);
+    CHECK(Fixture.SpeechGuard.Mock.LastRateScale == Fixture.SpeechGuard.Mock.SentenceSpeed);
 
     const int SpokenBeforeReplay = Fixture.SpeechGuard.Mock.SpeakCount;
 
@@ -444,7 +440,7 @@ TEST_CASE("A sentence session runs flashcards, tiles, missing word, then dictati
 
     const QString Spoken = Dictation->GetPrompt();
     CHECK(Fixture.SpeechGuard.Mock.LastText == Spoken);
-    CHECK(Fixture.SpeechGuard.Mock.LastRateScale == SentenceTrainingController::SentenceSpeechRateScale);
+    CHECK(Fixture.SpeechGuard.Mock.LastRateScale == Fixture.SpeechGuard.Mock.SentenceSpeed);
 
     QStringList Typed;
 

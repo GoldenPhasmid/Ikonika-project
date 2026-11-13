@@ -36,6 +36,8 @@ std::string GetGapWord(const FTTreeSentence& Sentence);
 
 std::string MakeGapPrompt(const FTTreeSentence& Sentence);
 
+std::string MakeGapSpeech(const FTTreeSentence& Sentence);
+
 FTTreeSentence MakeMeaningSentence(const FTDictionarySense& Meaning, const std::vector<std::string>& Spellings,
                                    bool bNoun = false);
 

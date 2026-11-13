@@ -10,6 +10,7 @@ Item
     property var repetition: null
     property var intensive: null
     property var sentences: null
+    property var discovery: null
 
     readonly property bool sentencesReady: root.sentences
         ? root.sentences.savedExercises.length > 0 || root.sentences.unlocked
@@ -17,7 +18,7 @@ Item
 
     readonly property string lockedHint: qsTr("Learn more words to unlock")
 
-    readonly property string sentencesBlockedReason: root.sentences && !root.sentences.available
+    readonly property string sentencesBlockedReason: root.sentences && !root.sentences.available && !root.sentences.refreshing
         ? qsTr("This dictionary has no sentences yet")
         : root.lockedHint
 
@@ -35,7 +36,7 @@ Item
     }
 
     signal intensiveRequested()
-    signal triageRequested(int wantedCount)
+    signal discoverRequested()
     signal repetitionRequested()
     signal sentencesRequested()
     signal practiceRequested()
@@ -52,8 +53,8 @@ Item
     }
 
     readonly property var formsTrainingKinds: [
-        { key: "conjugation", iconSvg: Icons.Icons.exercise_written.path, label: qsTr("Conjugations") },
-        { key: "forms", iconSvg: Icons.Icons.exercise_flashcards.path, label: qsTr("Forms") }
+        { key: "conjugation", iconSvg: Icons.Icons.session_conjugation.path, label: qsTr("Conjugations") },
+        { key: "forms", iconSvg: Icons.Icons.session_forms.path, label: qsTr("Forms") }
     ]
 
     property var formsTrainings: []
@@ -72,7 +73,7 @@ Item
                 label: training.label,
                 caption: training.resumable ? qsTr("Continue") : "",
                 resumable: training.resumable,
-                count: training.wordCount.toString(),
+                count: training.wordCount >= 0 ? training.wordCount.toString() : "",
                 ready: training.ready,
                 blockedReason: root.lockedHint
             })
@@ -80,7 +81,7 @@ Item
 
         items.push({
             key: "sentences",
-            iconSvg: Icons.Icons.contents.path,
+            iconSvg: Icons.Icons.session_sentences.path,
             label: qsTr("Sentences"),
             caption: root.sentences && root.sentences.savedExercises.length > 0 ? qsTr("Continue") : "",
             resumable: root.sentences && root.sentences.savedExercises.length > 0,
@@ -91,7 +92,7 @@ Item
 
         items.push({
             key: "practice",
-            iconSvg: Icons.Icons.exercise_flip.path,
+            iconSvg: Icons.Icons.exercise_flashcards.path,
             label: qsTr("Practice"),
             caption: "",
             resumable: false,
@@ -195,6 +196,7 @@ Item
         id: daily
 
         onCountsChanged: root.publishWidget()
+        onFormsCountsChanged: root.formsTrainings = root.listFormsTrainings()
     }
 
     Connections
@@ -286,6 +288,7 @@ Item
         anchors.fill: parent
 
         activeTab: "today"
+        contentMaximumWidth: 632
         headerTitle: root.store.targetLanguageName
         headerTitleTappable: true
         showSearch: true
@@ -458,6 +461,20 @@ Item
                     }
                 }
 
+                MobileActionButton
+                {
+                    objectName: "today_discover"
+
+                    readonly property bool resumable: !!root.discovery && root.discovery.hasActiveSession
+
+                    filled: resumable
+                    iconSvg: Icons.Icons.nav_decks.path
+                    label: qsTr("Discover")
+                    caption: resumable ? qsTr("Continue") : qsTr("Find new words")
+
+                    onClicked: root.discoverRequested()
+                }
+
                 ColumnLayout
                 {
                     id: dueSection
@@ -473,7 +490,7 @@ Item
 
                         Repeater
                         {
-                            model: daily.reviewTimeline
+                            model: daily.reviewTimeline.slice(0, 5)
 
                             delegate: Rectangle
                             {
@@ -601,5 +618,6 @@ Item
         z: 60
 
         store: root.store
+        installedOnly: true
     }
 }

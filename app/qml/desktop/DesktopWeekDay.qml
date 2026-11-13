@@ -5,37 +5,46 @@ ColumnLayout
 {
     id: root
 
-    property string letter: ""
+    property string name: ""
     property bool today: false
     property bool past: false
     property real review: 0
     property real learn: 0
 
-    spacing: AppMetrics.gapTight
+    spacing: AppMetrics.todayNameGap
 
     DesktopLabel
     {
-        Layout.fillWidth: true
-        horizontalAlignment: Text.AlignHCenter
-        text: root.letter
+        Layout.alignment: Qt.AlignHCenter
+        Layout.preferredHeight: AppMetrics.todayLabelHeight
+        verticalAlignment: Text.AlignVCenter
+        text: root.name
         font.pixelSize: AppMetrics.fontMeta
         font.weight: root.today ? Font.Bold : Font.Medium
         color: root.today ? AppTheme.colourText : AppTheme.colourMuted
     }
 
-    Rectangle
+    Item
     {
         Layout.alignment: Qt.AlignHCenter
-        Layout.preferredWidth: AppMetrics.weekDayCellSize
-        Layout.preferredHeight: AppMetrics.weekDayCellSize
-        radius: width / 2
-        color: root.today ? AppTheme.colourFaint : "transparent"
+        Layout.preferredWidth: AppMetrics.weekRingSize
+        Layout.preferredHeight: AppMetrics.weekRingSize
+
+        Rectangle
+        {
+            anchors.centerIn: parent
+            visible: root.today
+            width: AppMetrics.weekDayCellSize
+            height: width
+            radius: width / 2
+            color: AppTheme.colourFaint
+            border.width: AppMetrics.borderWidth
+            border.color: AppTheme.colourBorder
+        }
 
         DesktopDoubleRing
         {
-            anchors.centerIn: parent
-            width: AppMetrics.weekRingSize
-            height: width
+            anchors.fill: parent
             visible: root.today || root.past
 
             stroke: AppMetrics.weekRingStroke
@@ -44,14 +53,10 @@ ColumnLayout
             innerProgress: root.learn
         }
 
-        Rectangle
+        DesktopDashedRing
         {
-            anchors.centerIn: parent
+            anchors.fill: parent
             visible: !root.today && !root.past
-            width: AppMetrics.weekFutureDotSize
-            height: width
-            radius: width / 2
-            color: AppTheme.colourBorder
         }
     }
 }

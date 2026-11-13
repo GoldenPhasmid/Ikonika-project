@@ -407,26 +407,19 @@ void IntensiveLearningController::BuildStages()
 
         FlipInstance->SetQuestionSideOverride([](const ExerciseControllerBase& Controller) -> bool
         {
-            const int Max = Controller.GetMaxSessionCount();
+            const int KnownCount = Controller.GetCardMasteryCount();
 
-            if (Max <= 0)
-            {
-                return ExerciseControllerBase::RollShowsTargetWord(SHOW_RANDOM);
-            }
-
-            const int Third = (Controller.GetCurrentSessionCount() * 3) / Max;
-
-            if (Third == 0)
+            if (KnownCount == 0)
             {
                 return true;
             }
 
-            if (Third == 1)
+            if (KnownCount == 1)
             {
-                return ExerciseControllerBase::RollShowsTargetWord(SHOW_RANDOM);
+                return false;
             }
 
-            return false;
+            return ExerciseControllerBase::RollShowsTargetWord(SHOW_RANDOM);
         });
 
         std::vector<FMasteryStageSessionController> FlipCandidates{{FlipInstance, 1.0, [] { return true; }}};

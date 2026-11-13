@@ -13,6 +13,7 @@ class AppLocalization : public QObject
 
     Q_PROPERTY(int languageIndex READ GetLanguageIndex WRITE SetLanguageIndex NOTIFY languageChanged)
     Q_PROPERTY(QStringList languageNames READ GetLanguageNames CONSTANT)
+    Q_PROPERTY(QStringList languageCodes READ GetLanguageCodes CONSTANT)
     Q_PROPERTY(QString localeName READ GetLocaleName NOTIFY languageChanged)
 
 public:
@@ -29,6 +30,9 @@ public:
     void SetLanguageIndex(int NewLanguage);
 
     QStringList GetLanguageNames() const;
+    QStringList GetLanguageCodes() const;
+    QString GetLanguageCode() const;
+    int FindLanguageIndex(const QString& Code) const;
     QString GetLocaleName() const;
 
 signals:

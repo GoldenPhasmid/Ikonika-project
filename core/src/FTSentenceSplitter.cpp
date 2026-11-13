@@ -167,7 +167,56 @@ std::vector<FTSentenceRange> SplitSentences(const QString& Text, const std::stri
     return Sentences;
 }
 
-QString FindSentenceAt(const QString& Text, qsizetype Position, const std::string& LanguageCode)
+static bool IsClauseSeparator(const QString& Text, qsizetype Index)
+{
+    const QChar Character{Text.at(Index)};
+
+    if (Character != u',' && Character != u';' && Character != u':')
+    {
+        return false;
+    }
+
+    const bool bBetweenDigits{Index > 0 && Index + 1 < Text.size() && Text.at(Index - 1).isDigit()
+                              && Text.at(Index + 1).isDigit()};
+
+    return !bBetweenDigits;
+}
+
+static QString RemoveAllCaps(const QString& Text)
+{
+    bool bHasUpper{false};
+
+    for (const QChar Character : Text)
+    {
+        if (Character.isLower())
+        {
+            return Text;
+        }
+
+        bHasUpper = bHasUpper || Character.isUpper();
+    }
+
+    if (!bHasUpper)
+    {
+        return Text;
+    }
+
+    QString Result{Text.toLower()};
+
+    for (qsizetype Index{0}; Index < Result.size(); ++Index)
+    {
+        if (Result.at(Index).isLetter())
+        {
+            Result[Index] = Result.at(Index).toUpper();
+
+            break;
+        }
+    }
+
+    return Result;
+}
+
+QString FindHintAt(const QString& Text, qsizetype Position, const std::string& LanguageCode)
 {
     if (Position < 0 || Position >= Text.size())
     {
@@ -176,10 +225,34 @@ QString FindSentenceAt(const QString& Text, qsizetype Position, const std::strin
 
     for (const FTSentenceRange& Sentence : SplitSentences(Text, LanguageCode))
     {
-        if (Position < Sentence.End)
+        if (Position >= Sentence.End)
         {
-            return Text.mid(Sentence.Start, Sentence.End - Sentence.Start).simplified();
+            continue;
         }
+
+        qsizetype Start{Sentence.Start};
+        qsizetype End{Sentence.End};
+
+        for (qsizetype Index{Sentence.Start}; Index < Sentence.End; ++Index)
+        {
+            if (!IsClauseSeparator(Text, Index))
+            {
+                continue;
+            }
+
+            if (Index < Position)
+            {
+                Start = Index + 1;
+
+                continue;
+            }
+
+            End = Index;
+
+            break;
+        }
+
+        return RemoveAllCaps(Text.mid(Start, End - Start).simplified());
     }
 
     return {};

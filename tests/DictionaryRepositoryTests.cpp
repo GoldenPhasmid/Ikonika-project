@@ -3,9 +3,11 @@
 #include "core/FTDatabase.h"
 #include "core/FTDictionaryPackage.h"
 #include "core/FTDictionaryRepository.h"
+#include "core/FTFormsFlags.h"
 #include "core/FTWordForms.h"
 
 #include <QDir>
+#include <QFileInfo>
 #include <QTemporaryDir>
 
 #include <algorithm>
@@ -838,24 +840,16 @@ TEST_CASE("A file that is not a dictionary is not reported as one", "[packages]"
     CHECK_FALSE(ReadDictionaryPackage("does-not-exist-at-all.db").has_value());
 }
 
-TEST_CASE("A stale build does not shut out a current one for the same language", "[packages]")
+namespace
 {
-    // What data/built actually looked like: an old build at schema 3 in one subdirectory and the
-    // current one at 6 in another, both teaching French. The scan claimed the language for
-    // whichever sorted first and only then checked the version, so the stale file took the
-    // language and was thrown away, and the app loaded no French at all.
-    QTemporaryDir Root;
-    REQUIRE(Root.isValid());
-
-    const auto WriteDictionary = [&Root](const char* Subdirectory, int SchemaVersion)
+    std::string WriteMinimalDictionary(const QTemporaryDir& Root, const QString& RelativePath, int SchemaVersion,
+                                       const std::string& NativeLanguage)
     {
-        REQUIRE(QDir(Root.path()).mkpath(QString::fromUtf8(Subdirectory)));
+        const QString Path = QDir(Root.path()).filePath(RelativePath);
 
-        const std::string Path = QDir(Root.path())
-            .filePath(QString::fromUtf8(Subdirectory) + QStringLiteral("/fr-dictionary.db"))
-            .toStdString();
+        REQUIRE(QDir().mkpath(QFileInfo(Path).absolutePath()));
 
-        std::optional<FTDatabase> Target = FTDatabase::Open(Path);
+        std::optional<FTDatabase> Target = FTDatabase::Open(Path.toStdString());
         REQUIRE(Target.has_value());
 
         REQUIRE(Target->Execute("CREATE TABLE metadata (key TEXT PRIMARY KEY, value TEXT)"));
@@ -867,11 +861,48 @@ TEST_CASE("A stale build does not shut out a current one for the same language",
         REQUIRE(Target->Execute("INSERT INTO metadata VALUES ('schema_version', '"
                                 + std::to_string(SchemaVersion) + "')"));
         REQUIRE(Target->Execute("INSERT INTO metadata VALUES ('target_language', 'fr')"));
-        REQUIRE(Target->Execute("INSERT INTO languages VALUES (1, 'en')"));
+        REQUIRE(Target->Execute("INSERT INTO languages VALUES (1, '" + NativeLanguage + "')"));
         REQUIRE(Target->Execute("INSERT INTO words VALUES (1)"));
         REQUIRE(Target->Execute("INSERT INTO translations VALUES (1, 1)"));
 
-        return Path;
+        return Path.toStdString();
+    }
+}
+
+TEST_CASE("Two pairs of one language are both found, and a second copy of a pair is not", "[packages]")
+{
+    QTemporaryDir Root;
+    REQUIRE(Root.isValid());
+
+    const std::string English =
+        WriteMinimalDictionary(Root, QStringLiteral("fr-dictionary.db"), DictionarySchemaVersion, "en");
+    const std::string Ukrainian =
+        WriteMinimalDictionary(Root, QStringLiteral("fr-uk-dictionary.db"), DictionarySchemaVersion, "uk");
+    WriteMinimalDictionary(Root, QStringLiteral("copy/fr-dictionary.db"), DictionarySchemaVersion, "en");
+
+    const std::vector<FTDictionaryPackage> Found = FindDictionaryPackages(Root.path().toStdString());
+
+    REQUIRE(Found.size() == 2);
+    CHECK(Found[0].FilePath == English);
+    CHECK(Found[0].SupportsNative("en"));
+    CHECK(Found[1].FilePath == Ukrainian);
+    CHECK(Found[1].SupportsNative("uk"));
+    CHECK_FALSE(Found[0].SharesPairWith(Found[1]));
+}
+
+TEST_CASE("A stale build does not shut out a current one for the same language", "[packages]")
+{
+    // What data/built actually looked like: an old build at schema 3 in one subdirectory and the
+    // current one at 6 in another, both teaching French. The scan claimed the language for
+    // whichever sorted first and only then checked the version, so the stale file took the
+    // language and was thrown away, and the app loaded no French at all.
+    QTemporaryDir Root;
+    REQUIRE(Root.isValid());
+
+    const auto WriteDictionary = [&Root](const char* Subdirectory, int SchemaVersion)
+    {
+        return WriteMinimalDictionary(Root, QString::fromUtf8(Subdirectory) + QStringLiteral("/fr-dictionary.db"),
+                                      SchemaVersion, "en");
     };
 
     // "fr" sorts before "fr-current", so the stale one is met first.
@@ -1953,6 +1984,28 @@ TEST_CASE("A search orders exact headword matches by teaching rank", "[dictionar
     CHECK(Matches[2].Headword == "portée");
 }
 
+TEST_CASE("A search puts the verb first among the words an inflected form belongs to", "[dictionaryrepository]")
+{
+    std::optional<FTDatabase> Database = OpenWordWithoutMeanings();
+    REQUIRE(Database.has_value());
+
+    Database->Execute(
+        "INSERT INTO parts_of_speech (id, code) VALUES (2, 'verb');"
+        "INSERT INTO words (id, headword, part_of_speech_id, cefr_level) VALUES (2, 'mi', 1, 0);"
+        "INSERT INTO words (id, headword, part_of_speech_id, cefr_level) VALUES (3, 'mettre', 2, 1);"
+        "INSERT INTO word_forms (form, word_id) VALUES ('mis', 2);"
+        "INSERT INTO word_forms (form, word_id) VALUES ('mis', 3);");
+
+    FTDictionaryRepository Repository(*Database, "uk");
+
+    const std::vector<FTDictionarySearchMatch> Matches = Repository.Search("mis", 10);
+
+    REQUIRE(Matches.size() >= 2);
+    CHECK(Matches[0].Headword == "mettre");
+    CHECK(Matches[0].bExactMatch);
+    CHECK(Matches[1].Headword == "mi");
+}
+
 TEST_CASE("A search lists a noun of two genders once, with the meanings of both", "[dictionaryrepository]")
 {
     std::optional<FTDatabase> Database = OpenWordWithoutMeanings();
@@ -2111,6 +2164,109 @@ TEST_CASE("The build script creates the same search indices the app queries with
     CHECK(Script.find("ON word_forms(" + FTDictionaryRepository::MakeFoldedExpression("form") + ")")
           != std::string::npos);
     CHECK(Script.find("ON translations(translation, language_id)") != std::string::npos);
+}
+
+TEST_CASE("A dictionary only offers its forms flags once the build step marked it", "[dictionaryrepository][forms]")
+{
+    std::optional<FTDatabase> Database = FTDatabase::OpenInMemory();
+    REQUIRE(Database.has_value());
+    REQUIRE(Database->Execute(ReadDictionarySchema()));
+    REQUIRE(Database->Execute(
+        "INSERT INTO parts_of_speech (id, code) VALUES (1, 'noun'), (2, 'verb');"
+        "INSERT INTO words (headword, part_of_speech_id, has_forms) VALUES "
+        "  ('Cheval', 1, 1), ('chien', 1, 0), ('table', 1, NULL), ('vouloir', 2, 1);"));
+
+    FTDictionaryRepository Unmarked(*Database);
+
+    CHECK_FALSE(Unmarked.HasFormsFlags());
+    CHECK(Unmarked.LoadFormsFlags({"cheval"}, "noun").empty());
+
+    REQUIRE(Database->Execute("INSERT INTO metadata (key, value) VALUES ('forms_flags', 'fr')"));
+
+    FTDictionaryRepository Marked(*Database);
+
+    REQUIRE(Marked.HasFormsFlags());
+
+    const std::vector<FTFormsFlag> Flags = Marked.LoadFormsFlags({"cheval", "chien", "table", "vouloir", "absent"}, "noun");
+
+    REQUIRE(Flags.size() == 2);
+
+    const auto Horse = std::find_if(Flags.begin(), Flags.end(), [](const FTFormsFlag& Flag)
+    {
+        return Flag.Headword == "Cheval";
+    });
+
+    REQUIRE(Horse != Flags.end());
+    CHECK(Horse->bEligible);
+
+    const auto Dog = std::find_if(Flags.begin(), Flags.end(), [](const FTFormsFlag& Flag)
+    {
+        return Flag.Headword == "chien";
+    });
+
+    REQUIRE(Dog != Flags.end());
+    CHECK_FALSE(Dog->bEligible);
+}
+
+TEST_CASE("The forms flags written at build time agree with the entry lookup the app falls back to",
+          "[dictionaryrepository][forms][slow]")
+{
+    QTemporaryDir Directory;
+    REQUIRE(Directory.isValid());
+
+    const QString Copy = Directory.filePath(QStringLiteral("dictionary.db"));
+    REQUIRE(QFile::copy(QStringLiteral(DICTIONARY_DATABASE_PATH), Copy));
+
+    std::optional<FTDatabase> Writable = FTDatabase::Open(Copy.toStdString());
+    REQUIRE(Writable.has_value());
+
+    FTStatement Column = Writable->Prepare("SELECT COUNT(*) FROM pragma_table_info('words') WHERE name = 'has_forms'");
+    REQUIRE(Column.Step());
+
+    if (Column.GetInt(0) == 0)
+    {
+        REQUIRE(Writable->Execute("ALTER TABLE words ADD COLUMN has_forms INTEGER"));
+    }
+
+    FTFormsFlagStats Stats;
+    REQUIRE(FillFormsFlags(*Writable, "fr", "en", Stats));
+
+    CHECK(Stats.Eligible > 0);
+    CHECK(Stats.NotEligible > 0);
+
+    FTDictionaryRepository Repository(*Writable, "en");
+
+    REQUIRE(Repository.HasFormsFlags());
+
+    int Compared = 0;
+
+    for (const char* Kind : {"verb", "noun", "adj"})
+    {
+        std::vector<std::string> Headwords;
+
+        FTStatement Words = Writable->Prepare(
+            "SELECT headword FROM words WHERE part_of_speech_id = (SELECT id FROM parts_of_speech WHERE code = ?1) "
+            "ORDER BY teaching_rank LIMIT 150");
+        REQUIRE(Words.IsValid());
+        Words.BindText(1, Kind);
+
+        while (Words.Step())
+        {
+            Headwords.push_back(Words.GetText(0));
+        }
+
+        for (const FTFormsFlag& Flag : Repository.LoadFormsFlags(Headwords, Kind))
+        {
+            const std::optional<FTDictionaryEntry> Entry = Repository.LookUpForForms(Flag.Headword, Kind);
+
+            REQUIRE(Entry.has_value());
+            CHECK(IsFormsEligible(*Entry, "fr") == Flag.bEligible);
+
+            ++Compared;
+        }
+    }
+
+    CHECK(Compared > 100);
 }
 
 TEST_CASE("A dictionary reports whether it carries the search indices", "[dictionaryrepository]")
@@ -2465,4 +2621,25 @@ TEST_CASE("A deck carries the group the deck screen filters it by", "[dictionary
     REQUIRE(Decks.size() == 2);
     CHECK(Decks[0].Category == "Personnes");
     CHECK(Decks[1].Category == "Vie quotidienne");
+}
+
+TEST_CASE("Essential words hold every grammar word and the listed verbs", "[dictionaryrepository]")
+{
+    Fixture Test;
+    REQUIRE(Test.Target.has_value());
+
+    FTDictionaryRepository Repository(*Test.Target);
+
+    const auto CountVerbs = [](const std::vector<FTRankedWord>& Words)
+    {
+        return std::count_if(Words.begin(), Words.end(), [](const FTRankedWord& Word) { return Word.bVerb; });
+    };
+
+    const std::vector<FTRankedWord> Listed = Repository.ListGrammarWords({"être", "venir"}, 10);
+    const std::vector<FTRankedWord> Ranked = Repository.ListGrammarWords({}, 10);
+
+    CHECK(CountVerbs(Listed) == 2);
+    CHECK(CountVerbs(Ranked) == 10);
+    CHECK(Listed.size() - CountVerbs(Listed) > 100);
+    CHECK(Listed.size() - CountVerbs(Listed) == Ranked.size() - CountVerbs(Ranked));
 }

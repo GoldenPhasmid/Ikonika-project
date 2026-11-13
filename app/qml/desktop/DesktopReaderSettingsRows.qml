@@ -9,6 +9,7 @@ ColumnLayout
     property bool showPdf: true
     property bool showText: true
     property real inset: AppMetrics.gapLarge
+    property ReaderReadAloud readAloud: null
 
     readonly property var pageTones: root.showPdf ? Tones.list() : Tones.textList()
     readonly property string pageToneKey: root.showPdf ? AppReaderSettings.pageTone : AppReaderSettings.textTone
@@ -141,13 +142,29 @@ ColumnLayout
         onEdited: function(newValue) { AppReaderSettings.textMargin = newValue }
     }
 
+    DesktopSettingsSlider
+    {
+        objectName: "reader_sentence_speed"
+
+        visible: root.showText && root.readAloud !== null
+        inset: root.inset
+        title: qsTr("Sentence speech rate")
+        value: root.readAloud !== null ? Math.round(root.readAloud.speed * 100) : 100
+        from: root.readAloud !== null ? Math.round(root.readAloud.minimumSpeed * 100) : 50
+        to: root.readAloud !== null ? Math.round(root.readAloud.maximumSpeed * 100) : 150
+        step: 5
+        suffix: "%"
+
+        onEdited: function(newValue) { root.readAloud.speed = newValue / 100 }
+    }
+
     DesktopSettingsRow
     {
         visible: root.showText
         leftPadding: root.inset
         rightPadding: root.inset
         text: qsTr("Highlight vocabulary")
-        lastRow: true
+        lastRow: !AppReaderSettings.highlightVocabulary
 
         DesktopToggle
         {
@@ -157,6 +174,23 @@ ColumnLayout
             on: AppReaderSettings.highlightVocabulary
 
             onClicked: AppReaderSettings.highlightVocabulary = !AppReaderSettings.highlightVocabulary
+        }
+    }
+
+    DesktopSettingsRow
+    {
+        visible: root.showText && AppReaderSettings.highlightVocabulary
+        leftPadding: root.inset
+        rightPadding: root.inset
+        text: qsTr("Highlight unknown words")
+        lastRow: true
+
+        DesktopToggle
+        {
+            objectName: "reader_highlight_unknown_words"
+            accessibleName: qsTr("Highlight unknown words")
+            on: AppReaderSettings.highlightUnknownWords
+            onClicked: AppReaderSettings.highlightUnknownWords = !AppReaderSettings.highlightUnknownWords
         }
     }
 }

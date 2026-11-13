@@ -7,6 +7,7 @@ Rectangle
 
     property string exerciseName: ""
     property var store: null
+    property var controller: null
     readonly property bool speechOn: !!root.store && root.store.audioEnabled
     readonly property bool muted: !root.speechOn || !root.store.autoSpeak
 
@@ -20,6 +21,7 @@ Rectangle
     property int questionSideIndex: 0
 
     property bool inSession: false
+    property bool showCompleteStage: true
 
     property bool optionsSheetOpen: false
 
@@ -62,7 +64,24 @@ Rectangle
     property bool swapping: false
 
     property bool swipeEnabled: false
+    property bool swipeHints: false
+    property color swipeLeftColour: AppTheme.colourWrong
+    property color swipeRightColour: AppTheme.colourCorrect
     readonly property real swipeThreshold: 0.25
+    readonly property real swipeTiltDegrees: 16
+    readonly property real swipeLiftRatio: 0.08
+
+    property bool tiltActive: false
+    property real snapshotTilt: 0
+    property real snapshotLift: 0
+
+    readonly property real swipeRatio: root.width > 0 ? root.contentShift / root.width : 0
+    readonly property real swipeTilt: root.tiltActive ? root.swipeRatio * root.swipeTiltDegrees : 0
+    readonly property real swipeLift: root.tiltActive ? -Math.abs(root.contentShift) * root.swipeLiftRatio : 0
+    readonly property color swipeFrameColour: root.swipeRatio < 0 ? root.swipeLeftColour : root.swipeRightColour
+    readonly property real swipeHintStrength: root.swipeHints && root.tiltActive
+        ? Math.min(1, Math.abs(root.swipeRatio) / root.swipeThreshold)
+        : 0
 
     function swap(change)
     {
@@ -76,9 +95,19 @@ Rectangle
 
     function swipeOut(change, direction)
     {
+        const releasedTilt = root.swipeTilt
+        const releasedLift = root.swipeLift
+
         root.capture(change, function(result, startShift)
         {
             root.showSnapshot(result, startShift)
+
+            root.snapshotTilt = releasedTilt
+            root.snapshotLift = releasedLift
+            snapshotTiltFling.to = direction * root.swipeTiltDegrees
+            snapshotLiftFling.to = -root.width * root.swipeLiftRatio
+
+            root.tiltActive = false
 
             snapshotFling.to = direction * root.width
             root.contentShift = 0
@@ -212,6 +241,26 @@ Rectangle
 
         NumberAnimation
         {
+            id: snapshotTiltFling
+
+            target: root
+            property: "snapshotTilt"
+            duration: AppMetrics.motionTransition
+            easing.type: AppMetrics.motionEasing
+        }
+
+        NumberAnimation
+        {
+            id: snapshotLiftFling
+
+            target: root
+            property: "snapshotLift"
+            duration: AppMetrics.motionTransition
+            easing.type: AppMetrics.motionEasing
+        }
+
+        NumberAnimation
+        {
             target: root
             property: "contentOpacity"
             to: 1
@@ -233,6 +282,8 @@ Rectangle
 
     function clearSnapshot()
     {
+        root.snapshotTilt = 0
+        root.snapshotLift = 0
         snapshot.source = ""
         root.snapshotGrab = null
         root.swapping = false
@@ -247,6 +298,8 @@ Rectangle
         to: 0
         duration: AppMetrics.motionBase
         easing.type: AppMetrics.motionEasing
+
+        onFinished: root.tiltActive = false
     }
 
     ColumnLayout
@@ -260,10 +313,12 @@ Rectangle
             showBack: true
             showMute: root.showMute
             muted: root.muted
+            showSlowSpeech: root.showMute && root.speechOn && root.controller !== null
             showOptions: root.showOptions
 
             onBackRequested: root.exitRequested()
             onMuteRequested: if (root.speechOn) root.store.autoSpeak = !root.store.autoSpeak
+            onSlowSpeechRequested: if (root.controller) root.controller.speakSlowly()
             onOptionsRequested: root.optionsSheetOpen = true
         }
 
@@ -295,7 +350,15 @@ Rectangle
 
                 opacity: root.contentOpacity
                 scale: root.contentScale
-                transform: Translate { x: root.contentShift }
+                transform: [
+                    Rotation
+                    {
+                        angle: root.swipeTilt
+                        origin.x: contentBody.width / 2
+                        origin.y: contentBody.height
+                    },
+                    Translate { x: root.contentShift; y: root.swipeLift }
+                ]
 
                 DragHandler
                 {
@@ -310,6 +373,7 @@ Rectangle
                         if (active)
                         {
                             settleMotion.stop()
+                            root.tiltActive = root.swipeHints
 
                             return
                         }
@@ -354,7 +418,15 @@ Rectangle
         id: snapshot
 
         visible: root.swapping && snapshot.status === Image.Ready
-        transform: Translate { x: root.snapshotShift }
+        transform: [
+            Rotation
+            {
+                angle: root.snapshotTilt
+                origin.x: snapshot.width / 2
+                origin.y: snapshot.height
+            },
+            Translate { x: root.snapshotShift; y: root.snapshotLift }
+        ]
     }
 
     MobileSheetLoader
@@ -367,6 +439,7 @@ Rectangle
             questionSideNames: root.questionSideNames
             questionSideIndex: root.questionSideIndex
             showStageActions: root.inSession
+            showCompleteStage: root.showCompleteStage
             showEditCard: root.inSession && root.cardEditable
             showVoiceOption: root.showVoiceOption
             voiceOn: root.voiceOn

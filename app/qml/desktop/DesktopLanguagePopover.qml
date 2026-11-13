@@ -40,7 +40,9 @@ DesktopPopover
                 store: root.store
             }
 
+            objectName: "language_" + languageRow.modelData.code
             text: languageRow.modelData.name
+            flagCode: languageRow.modelData.code
             description: languageRow.language.status
             showsCheck: true
             selected: languageRow.language.active

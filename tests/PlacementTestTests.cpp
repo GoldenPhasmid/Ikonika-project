@@ -1,5 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include "core/FTCoreCards.h"
 #include "core/FTPlacementTest.h"
 
 #include <algorithm>
@@ -54,7 +55,7 @@ namespace
         std::mt19937 Luck(Seed);
         std::uniform_real_distribution<double> Roll(0.0, 1.0);
 
-        FTPlacementTest Test(MakeWords(), Seed + 1);
+        FTPlacementTest Test(MakeWords(), Seed + 1, FTPlacementTest::BeginnerStartingRank);
 
         while (!Test.IsFinished())
         {
@@ -92,7 +93,7 @@ TEST_CASE("Placement words are read from the tab-separated list", "[placement]")
 
 TEST_CASE("A placement test with no words is finished at once", "[placement]")
 {
-    FTPlacementTest Test({}, 1);
+    FTPlacementTest Test({}, 1, FTPlacementTest::BeginnerStartingRank);
 
     CHECK(Test.IsFinished());
     CHECK(Test.GetCurrentWord() == nullptr);
@@ -101,7 +102,7 @@ TEST_CASE("A placement test with no words is finished at once", "[placement]")
 
 TEST_CASE("A learner who knows nothing is let go after a few words with no cutoff", "[placement]")
 {
-    FTPlacementTest Test(MakeWords(), 7);
+    FTPlacementTest Test(MakeWords(), 7, FTPlacementTest::BeginnerStartingRank);
 
     while (!Test.IsFinished())
     {
@@ -114,7 +115,7 @@ TEST_CASE("A learner who knows nothing is let go after a few words with no cutof
 
 TEST_CASE("A placement test never asks more than its limit or the same word twice", "[placement]")
 {
-    FTPlacementTest Test(MakeWords(), 11);
+    FTPlacementTest Test(MakeWords(), 11, FTPlacementTest::BeginnerStartingRank);
 
     std::set<std::string> Asked;
     bool bKnown = true;
@@ -132,7 +133,7 @@ TEST_CASE("A placement test never asks more than its limit or the same word twic
 
 TEST_CASE("A learner who knows every word gets the highest rank of the list", "[placement]")
 {
-    FTPlacementTest Test(MakeWords(), 3);
+    FTPlacementTest Test(MakeWords(), 3, FTPlacementTest::BeginnerStartingRank);
 
     while (!Test.IsFinished())
     {
@@ -218,7 +219,7 @@ TEST_CASE("The first word asked is a common one", "[placement]")
 {
     for (uint32_t Seed = 1; Seed <= 20; ++Seed)
     {
-        const FTPlacementTest Test(MakeWords(), Seed);
+        const FTPlacementTest Test(MakeWords(), Seed, FTPlacementTest::BeginnerStartingRank);
 
         CHECK(Test.GetCurrentWord()->TeachingRank < 1000);
     }
@@ -238,7 +239,7 @@ TEST_CASE("The cutoff maps onto four levels and never reaches C1", "[placement]"
 
 TEST_CASE("Answers are reported from the most common word to the rarest", "[placement]")
 {
-    FTPlacementTest Test(MakeWords(), 5);
+    FTPlacementTest Test(MakeWords(), 5, FTPlacementTest::BeginnerStartingRank);
 
     bool bKnown = true;
 
@@ -255,4 +256,56 @@ TEST_CASE("Answers are reported from the most common word to the rarest", "[plac
     {
         return Left.TeachingRank < Right.TeachingRank;
     }));
+}
+
+TEST_CASE("The placement test asks its first word near the chosen level's starting rank", "[placement]")
+{
+    for (uint32_t Seed = 1; Seed <= 10; ++Seed)
+    {
+        const FTPlacementTest Beginner(MakeWords(), Seed, FTPlacementTest::BeginnerStartingRank);
+        const FTPlacementTest Intermediate(MakeWords(), Seed, FTPlacementTest::IntermediateStartingRank);
+        const FTPlacementTest Advanced(MakeWords(), Seed, FTPlacementTest::AdvancedStartingRank);
+
+        REQUIRE(Beginner.GetCurrentWord() != nullptr);
+        REQUIRE(Intermediate.GetCurrentWord() != nullptr);
+        REQUIRE(Advanced.GetCurrentWord() != nullptr);
+
+        CHECK(Beginner.GetCurrentWord()->TeachingRank < 600);
+        CHECK(Intermediate.GetCurrentWord()->TeachingRank > 1400);
+        CHECK(Intermediate.GetCurrentWord()->TeachingRank < 3000);
+        CHECK(Advanced.GetCurrentWord()->TeachingRank > Intermediate.GetCurrentWord()->TeachingRank);
+    }
+}
+
+TEST_CASE("Core cards are wanted by a beginner who ended below the limit", "[placement]")
+{
+    CHECK(PlacementWantsCoreCards(BeginnerPlacementLevel, 0));
+    CHECK(PlacementWantsCoreCards(BeginnerPlacementLevel, CoreCardsCutoffLimit - 1));
+    CHECK_FALSE(PlacementWantsCoreCards(BeginnerPlacementLevel, CoreCardsCutoffLimit));
+    CHECK_FALSE(PlacementWantsCoreCards(BeginnerPlacementLevel + 1, 0));
+}
+
+TEST_CASE("Core cards are read from the rows that name a word, a reading and a translation", "[placement]")
+{
+    const std::string Text =
+        "word\tpart_of_speech\ttranslation\tmeaning_gist\n"
+        "je\tpron\tI\tsujet\r\n"
+        "\n"
+        "\tpron\tI\tsujet\n"
+        "tu\tpron\t\tfamilier\n"
+        "parce que\tconj\tbecause\tcause\n"
+        "il\tpron\the\n"
+        "elle\tpron\n";
+
+    const std::vector<FTCoreCard> Cards = ParseCoreCards(Text);
+
+    REQUIRE(Cards.size() == 3);
+    CHECK(Cards[0].Word == "je");
+    CHECK(Cards[0].PartOfSpeech == "pron");
+    CHECK(Cards[0].Translation == "I");
+    CHECK(Cards[0].MeaningGist == "sujet");
+    CHECK(Cards[1].Word == "parce que");
+    CHECK(Cards[1].MeaningGist == "cause");
+    CHECK(Cards[2].Word == "il");
+    CHECK(Cards[2].MeaningGist.empty());
 }

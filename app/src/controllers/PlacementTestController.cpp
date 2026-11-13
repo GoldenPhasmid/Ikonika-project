@@ -1,6 +1,8 @@
 #include "PlacementTestController.h"
 
+#include "AppCards.h"
 #include "AppDatabase.h"
+#include "AppOnboarding.h"
 #include "AppSpeech.h"
 #include "CefrFormatting.h"
 
@@ -23,6 +25,16 @@ namespace
     constexpr int FineRoundingLimit = 1000;
     constexpr int FineRoundingStep = 50;
     constexpr int CoarseRoundingStep = 100;
+
+    int GetStartingRank(int Level)
+    {
+        if (Level >= 3)
+        {
+            return FTPlacementTest::AdvancedStartingRank;
+        }
+
+        return Level == 2 ? FTPlacementTest::IntermediateStartingRank : FTPlacementTest::BeginnerStartingRank;
+    }
 
     QString ResolveNativeLanguage(const QString& NativeLanguage)
     {
@@ -53,12 +65,22 @@ PlacementTestController::PlacementTestController(QObject* Parent)
 
 bool PlacementTestController::isOffered(const QString& InTargetLanguage, const QString& InNativeLanguage) const
 {
+    return IsOfferedFor(InTargetLanguage, InNativeLanguage);
+}
+
+bool PlacementTestController::HasWordListFor(const QString& InTargetLanguage, const QString& InNativeLanguage)
+{
     if (InTargetLanguage.isEmpty() || !AppDatabase::Get().IsReady())
     {
         return false;
     }
 
-    if (!QFile::exists(MakeWordListPath(InTargetLanguage, ResolveNativeLanguage(InNativeLanguage))))
+    return QFile::exists(MakeWordListPath(InTargetLanguage, ResolveNativeLanguage(InNativeLanguage)));
+}
+
+bool PlacementTestController::IsOfferedFor(const QString& InTargetLanguage, const QString& InNativeLanguage)
+{
+    if (!HasWordListFor(InTargetLanguage, InNativeLanguage))
     {
         return false;
     }
@@ -66,7 +88,7 @@ bool PlacementTestController::isOffered(const QString& InTargetLanguage, const Q
     return !AppDatabase::Get().GetCardRepository().FindPlacementCutoff(InTargetLanguage.toStdString()).has_value();
 }
 
-bool PlacementTestController::start(const QString& InTargetLanguage, const QString& InNativeLanguage)
+bool PlacementTestController::start(const QString& InTargetLanguage, const QString& InNativeLanguage, int InLevel)
 {
     const QString ResolvedNative = ResolveNativeLanguage(InNativeLanguage);
 
@@ -88,12 +110,15 @@ bool PlacementTestController::start(const QString& InTargetLanguage, const QStri
         return false;
     }
 
+    const int StartingRank = GetStartingRank(InLevel);
+
     qCInfo(LogApp) << "Placement test started for" << InTargetLanguage << "->" << InNativeLanguage
-                   << "with" << Words.size() << "words";
+                   << "with" << Words.size() << "words at level" << InLevel << "from rank" << StartingRank;
 
     TargetLanguage = InTargetLanguage;
     NativeLanguage = ResolvedNative;
-    Test = FTPlacementTest(std::move(Words), MakeRandomSeed());
+    Level = InLevel;
+    Test = FTPlacementTest(std::move(Words), MakeRandomSeed(), StartingRank);
     bRevealed = false;
 
     emit stateChanged();
@@ -103,14 +128,16 @@ bool PlacementTestController::start(const QString& InTargetLanguage, const QStri
     return true;
 }
 
-void PlacementTestController::skip(const QString& InTargetLanguage)
+void PlacementTestController::markNew(const QString& InTargetLanguage)
 {
-    qCInfo(LogApp) << "Placement test skipped for" << InTargetLanguage;
+    qCInfo(LogApp) << "Placement test: the learner is new to" << InTargetLanguage;
 
     if (!AppDatabase::Get().GetCardRepository().SetPlacementCutoff(InTargetLanguage.toStdString(), 0))
     {
-        qCWarning(LogApp) << "Could not record the skipped placement test for" << InTargetLanguage;
+        qCWarning(LogApp) << "Could not record the placement result of a new learner for" << InTargetLanguage;
     }
+
+    AppOnboarding::Get().RequestCoreCards(InTargetLanguage);
 }
 
 void PlacementTestController::reveal()
@@ -137,7 +164,7 @@ void PlacementTestController::answerNo()
 
 void PlacementTestController::restart()
 {
-    start(TargetLanguage, NativeLanguage);
+    start(TargetLanguage, NativeLanguage, Level);
 }
 
 void PlacementTestController::Answer(bool bKnown)
@@ -158,6 +185,11 @@ void PlacementTestController::Answer(bool bKnown)
         if (!AppDatabase::Get().GetCardRepository().SetPlacementCutoff(TargetLanguage.toStdString(), Test.GetCutoffRank()))
         {
             qCWarning(LogApp) << "Could not record the placement test result for" << TargetLanguage;
+        }
+
+        if (PlacementWantsCoreCards(Level, Test.GetCutoffRank()))
+        {
+            AppOnboarding::Get().RequestCoreCards(TargetLanguage);
         }
     }
 
@@ -224,6 +256,11 @@ QString PlacementTestController::GetGender() const
         return {};
     }
 
+    if (*Word->Gender == GenderNeuter)
+    {
+        return tr("neuter");
+    }
+
     return *Word->Gender == GenderMasculine ? tr("masculine") : tr("feminine");
 }
 
@@ -232,6 +269,13 @@ int PlacementTestController::GetHeadwordGender() const
     const FTPlacementWord* Word = Test.GetCurrentWord();
 
     return Word != nullptr ? Word->Gender.value_or(-1) : -1;
+}
+
+QString PlacementTestController::GetHeadwordVerbGroup() const
+{
+    const FTPlacementWord* Word = Test.GetCurrentWord();
+
+    return Word != nullptr ? AppCards::GetVerbGroup(Word->Word, Word->PartOfSpeech) : QString();
 }
 
 QString PlacementTestController::GetCardMeta() const

@@ -106,6 +106,8 @@ namespace
         "    LastScrollY    REAL NOT NULL DEFAULT 0,"
         "    CloudId        TEXT NOT NULL DEFAULT '',"
         "    PositionCount  INTEGER NOT NULL DEFAULT 0,"
+        "    ReadAloudParagraph INTEGER NOT NULL DEFAULT -1,"
+        "    ReadAloudCharacter INTEGER NOT NULL DEFAULT 0,"
         "    Deleted        INTEGER NOT NULL DEFAULT 0"
         ");"
         "CREATE INDEX IF NOT EXISTS IdxReaderDocumentsOpened ON ReaderDocuments (LastOpenedDate);";
@@ -169,6 +171,18 @@ namespace
         "    TargetLanguage  TEXT PRIMARY KEY NOT NULL,"
         "    CutoffRank      INTEGER NOT NULL DEFAULT 0,"
         "    LastUpdatedDate INTEGER NOT NULL"
+        ");";
+
+    constexpr const char* TriagedWordsDefinition =
+        "CREATE TABLE TriagedWords"
+        "("
+        "    TargetWord     TEXT NOT NULL COLLATE NOCASE,"
+        "    TargetLanguage TEXT NOT NULL DEFAULT '',"
+        "    PartOfSpeech   TEXT NOT NULL,"
+        "    Gender         INTEGER NOT NULL DEFAULT -1,"
+        "    MeaningGist    TEXT NOT NULL DEFAULT '',"
+        "    MarkedDate     INTEGER NOT NULL,"
+        "    PRIMARY KEY (TargetWord, TargetLanguage, PartOfSpeech, Gender, MeaningGist)"
         ");";
 
     constexpr const char* LocalStateDefinition =
@@ -332,6 +346,10 @@ bool MigrateDeviceSchema(FTDatabase& Target)
             || Target.Execute("ALTER TABLE ReaderDocuments ADD COLUMN CloudId TEXT NOT NULL DEFAULT ''"))
         && (ColumnExists(Target, "ReaderDocuments", "PositionCount")
             || Target.Execute("ALTER TABLE ReaderDocuments ADD COLUMN PositionCount INTEGER NOT NULL DEFAULT 0"))
+        && (ColumnExists(Target, "ReaderDocuments", "ReadAloudParagraph")
+            || Target.Execute("ALTER TABLE ReaderDocuments ADD COLUMN ReadAloudParagraph INTEGER NOT NULL DEFAULT -1"))
+        && (ColumnExists(Target, "ReaderDocuments", "ReadAloudCharacter")
+            || Target.Execute("ALTER TABLE ReaderDocuments ADD COLUMN ReadAloudCharacter INTEGER NOT NULL DEFAULT 0"))
         && Target.Execute(YoutubeVideosDefinition);
 }
 
@@ -806,6 +824,27 @@ bool MigrateSchema(FTDatabase& Target)
         }
 
         Reached = 36;
+    }
+
+    if (Reached < 37)
+    {
+        // A known mark names one meaning, so knowing a word in one deck no longer hides its other
+        // meanings in other decks. An empty gist is a mark on the whole reading, as every older mark is.
+        if (TableExists(Target, "TriagedWords") && !ColumnExists(Target, "TriagedWords", "MeaningGist")
+            && !(Target.Execute("ALTER TABLE TriagedWords RENAME TO TriagedWordsBeforeMeanings")
+                 && Target.Execute(TriagedWordsDefinition)
+                 && Target.Execute(
+                     "INSERT INTO TriagedWords (TargetWord, TargetLanguage, PartOfSpeech, Gender, MeaningGist, MarkedDate) "
+                     "SELECT TargetWord, TargetLanguage, PartOfSpeech, Gender, '', MarkedDate "
+                     "FROM TriagedWordsBeforeMeanings")
+                 && Target.Execute("DROP TABLE TriagedWordsBeforeMeanings")))
+        {
+            Target.Rollback();
+
+            return false;
+        }
+
+        Reached = 37;
     }
 
     if (Reached != CurrentSchemaVersion)

@@ -3,6 +3,8 @@
 #include "core/FTCard.h"
 #include "core/FTTextNormalization.h"
 
+#include <algorithm>
+
 
 namespace
 {
@@ -14,6 +16,11 @@ namespace
         }
 
         return Candidate.LeitnerStage > Current.LeitnerStage;
+    }
+
+    bool CoversMeaning(const std::string& MeaningGist, const std::string& RowGist)
+    {
+        return RowGist.empty() || MeaningGist.empty() || MeaningGist == RowGist;
     }
 }
 
@@ -30,7 +37,7 @@ FTDeckProgressMatcher::FTDeckProgressMatcher(const std::vector<FTCardHandle>& Ca
 
     for (const FTKnownWord& Word : Known)
     {
-        KnownReadings.emplace(FoldCase(Word.TargetWord), Word.PartOfSpeech);
+        KnownMeanings[{FoldCase(Word.TargetWord), Word.PartOfSpeech}].insert(Word.MeaningGist);
     }
 }
 
@@ -51,7 +58,8 @@ std::vector<FTDeckWordProgress> FTDeckProgressMatcher::Match(const std::vector<F
         {
             for (const FTCardHandle& Card : Found->second)
             {
-                if (!Card->PartOfSpeech.empty() && Card->PartOfSpeech != Word.PartOfSpeech)
+                if ((!Card->PartOfSpeech.empty() && Card->PartOfSpeech != Word.PartOfSpeech)
+                    || !CoversMeaning(Card->MeaningGist, Word.Gist))
                 {
                     continue;
                 }
@@ -63,7 +71,11 @@ std::vector<FTDeckWordProgress> FTDeckProgressMatcher::Match(const std::vector<F
             }
         }
 
-        Progress.bKnown = !Progress.Card && KnownReadings.contains({Headword, Word.PartOfSpeech});
+        const auto Known = KnownMeanings.find({Headword, Word.PartOfSpeech});
+
+        Progress.bKnown = !Progress.Card && Known != KnownMeanings.end()
+            && std::any_of(Known->second.begin(), Known->second.end(),
+                           [&Word](const std::string& MeaningGist) { return CoversMeaning(MeaningGist, Word.Gist); });
 
         Result.push_back(std::move(Progress));
     }

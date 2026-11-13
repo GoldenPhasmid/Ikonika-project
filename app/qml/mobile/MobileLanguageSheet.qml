@@ -7,6 +7,12 @@ MobileBottomSheet
 
     required property var store
 
+    property bool installedOnly: false
+
+    readonly property var shownLanguages: root.installedOnly
+        ? AppCatalog.languages.filter(entry => entry.installed)
+        : AppCatalog.languages
+
     readonly property int rowHeight: 60
 
     heading: qsTr("Languages")
@@ -76,7 +82,7 @@ MobileBottomSheet
                 Layout.fillWidth: true
                 Layout.preferredHeight: root.rowHeight
 
-                visible: AppCatalog.languages.length === 0
+                visible: !root.installedOnly && AppCatalog.languages.length === 0
 
                 text: AppCatalog.busy
                     ? qsTr("Looking for languages...")
@@ -91,7 +97,7 @@ MobileBottomSheet
 
             Repeater
             {
-                model: AppCatalog.languages
+                model: root.shownLanguages
 
                 delegate: MobileSettingsRow
                 {
@@ -129,17 +135,22 @@ MobileBottomSheet
 
                                 return languageRow.modelData.outdated ? qsTr("update") : ""
                             }
-                            lastRow: languageRow.index === AppCatalog.languages.length - 1
+                            lastRow: languageRow.index === root.shownLanguages.length - 1
 
                             onClicked: root.act(languageRow.modelData)
 
-                            Text
+                            leading: LanguageFlag
+                            {
+                                code: languageRow.modelData.code
+                            }
+
+                            DesktopIcon
                             {
                                 visible: languageRow.active
 
-                                text: "✓"
-                                font.pixelSize: AppMetrics.fontLabel
-                                font.family: AppMetrics.fontFamily
+                                name: "check"
+                                width: AppMetrics.iconSizeSmall
+                                height: width
                                 color: AppTheme.colourText
                             }
 

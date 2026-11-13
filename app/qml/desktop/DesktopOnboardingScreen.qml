@@ -6,62 +6,26 @@ FocusScope
     id: root
 
     required property var store
-
-    property bool signInDone: false
-    property bool setupDone: false
-    property bool placementDone: false
-
     required property var placement
 
     signal finished()
 
-    onVisibleChanged:
-    {
-        if (!root.visible)
-        {
-            return
-        }
-
-        root.signInDone = false
-        root.setupDone = false
-        root.placementDone = false
-    }
-
-    readonly property bool offersSignIn: AppSyncController.configured
-    readonly property var steps: AppSyncController.restoring ? ["restore"]
-                                 : AppOnboarding.resumingLanguage ? ["download"]
-                                 : (root.offersSignIn ? ["signin", "setup", "placement", "download"]
-                                                      : ["setup", "placement", "download"])
-
-    readonly property string step:
-    {
-        if (AppSyncController.restoring)
-        {
-            return "restore"
-        }
-
-        if (AppOnboarding.resumingLanguage)
-        {
-            return "download"
-        }
-
-        if (root.offersSignIn && !root.signInDone)
-        {
-            return "signin"
-        }
-
-        if (!root.setupDone)
-        {
-            return "setup"
-        }
-
-        return root.placementDone ? "download" : "placement"
-    }
+    readonly property var steps: AppSyncController.restoring ? ["restore"] : AppOnboarding.steps
+    readonly property string step: AppSyncController.restoring ? "restore" : AppOnboarding.step
 
     Rectangle
     {
         anchors.fill: parent
         color: AppTheme.colourSunken
+    }
+
+    DesktopOnboardingSpeak
+    {
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: progressBar.bottom
+        anchors.bottom: parent.bottom
+        visible: root.step === "speak"
     }
 
     DesktopOnboardingSignIn
@@ -72,27 +36,30 @@ FocusScope
         anchors.bottom: parent.bottom
         visible: root.step === "signin"
 
-        onContinued: root.signInDone = true
+        onContinued: AppOnboarding.next()
     }
 
-    DesktopOnboardingSetup
+    DesktopOnboardingLearn
     {
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.top: progressBar.bottom
         anchors.bottom: parent.bottom
-        visible: root.step === "setup"
-
-        store: root.store
-
-        onContinued:
-        {
-            root.placementDone = !root.placement.isOffered(AppOnboarding.chosenLanguage, AppOnboarding.chosenNative)
-            root.setupDone = true
-        }
+        visible: root.step === "learn"
     }
 
-    DesktopOnboardingPlacement
+    DesktopOnboardingDaily
+    {
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: progressBar.bottom
+        anchors.bottom: parent.bottom
+        visible: root.step === "daily"
+
+        store: root.store
+    }
+
+    Loader
     {
         id: placementStep
 
@@ -100,14 +67,25 @@ FocusScope
         anchors.right: parent.right
         anchors.top: progressBar.bottom
         anchors.bottom: parent.bottom
-        visible: root.step === "placement"
-        focus: visible
+        active: root.step === "placement"
+        visible: active
+        focus: active
 
-        controller: root.placement
-        targetLanguage: AppOnboarding.chosenLanguage
-        nativeLanguage: AppOnboarding.chosenNative
+        sourceComponent: Component
+        {
+            DesktopOnboardingPlacement
+            {
+                focus: true
 
-        onFinished: root.placementDone = true
+                controller: root.placement
+                targetLanguage: AppOnboarding.chosenLanguage
+                nativeLanguage: AppOnboarding.chosenNative
+                showsBack: AppOnboarding.canGoBack
+
+                onFinished: AppOnboarding.next()
+                onBackRequested: AppOnboarding.back()
+            }
+        }
     }
 
     DesktopOnboardingRestore
@@ -150,7 +128,7 @@ FocusScope
             stageProgress: root.step === "download"
                 ? (AppOnboarding.dictionaryReady ? 1 : (AppPackageDownloader.totalBytes > 0
                     ? AppPackageDownloader.receivedBytes / AppPackageDownloader.totalBytes : 0))
-                : (root.step === "placement" ? placementStep.testProgress : 0)
+                : (placementStep.item ? placementStep.item.testProgress : 0)
         }
     }
 }

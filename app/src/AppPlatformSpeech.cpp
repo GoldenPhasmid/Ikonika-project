@@ -45,14 +45,14 @@ namespace
         QJniObject::callStaticMethod<void>(PlatformSpeechClass, "setRate", "(F)V", Rate);
     }
 
-    void PlatformNarrate(int Id, const QString& Text, const QString& Language)
+    void PlatformNarrate(int Id, const QString& Text, const QString& Language, float RateScale)
     {
         QJniObject JniText = QJniObject::fromString(Text);
         QJniObject JniLanguage = QJniObject::fromString(Language);
 
         QJniObject::callStaticMethod<void>(PlatformSpeechClass, "narrate",
-            "(ILjava/lang/String;Ljava/lang/String;)V",
-            static_cast<jint>(Id), JniText.object<jstring>(), JniLanguage.object<jstring>());
+            "(ILjava/lang/String;Ljava/lang/String;F)V",
+            static_cast<jint>(Id), JniText.object<jstring>(), JniLanguage.object<jstring>(), RateScale);
     }
 
     void PlatformStopNarration()
@@ -106,9 +106,16 @@ namespace
         AppSpeech::Get().ReportNarrationFailed();
     }
 
+    void NativeOnDiagnostic(JNIEnv*, jclass, jstring Message)
+    {
+        qCInfo(LogSpeech) << "engine:" << QJniObject(Message).toString();
+    }
+
     void RegisterSpeakingBridge()
     {
         static const JNINativeMethod Methods[] = {
+            { "nativeOnDiagnostic", "(Ljava/lang/String;)V",
+              reinterpret_cast<void*>(&NativeOnDiagnostic) },
             { "nativeOnSpeakingChanged", "(Z)V",
               reinterpret_cast<void*>(&NativeOnSpeakingChanged) },
             { "nativeOnNarrationStarted", "(I)V",
@@ -229,7 +236,9 @@ bool AppPlatformSpeech::CanNarrate() const
 
 void AppPlatformSpeech::QueueNarration(int Id, const QString& Text, const QString& LanguageCode)
 {
-    NarrationPool.start([Id, Text, LanguageCode]() { PlatformNarrate(Id, Text, LanguageCode); });
+    const float RateScale{GetSentenceSpeed()};
+
+    NarrationPool.start([Id, Text, LanguageCode, RateScale]() { PlatformNarrate(Id, Text, LanguageCode, RateScale); });
 }
 
 void AppPlatformSpeech::StopNarration()

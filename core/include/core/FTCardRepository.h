@@ -75,6 +75,8 @@ struct FTKnownWord
     std::string TargetWord;
 
     std::string PartOfSpeech;
+
+    std::string MeaningGist;
 };
 
 struct FTStudiedLanguage
@@ -191,7 +193,10 @@ public:
     bool PromoteCards(const std::vector<std::string>& CardIds);
 
     bool MarkWordTriaged(const std::string& TargetWord, const std::string& PartOfSpeech,
-                         const std::optional<int>& Gender);
+                         const std::optional<int>& Gender, const std::string& MeaningGist = {});
+
+    bool UnmarkWordTriaged(const std::string& TargetWord, const std::string& PartOfSpeech,
+                           const std::optional<int>& Gender, const std::string& MeaningGist);
 
     bool IsWordTriaged(const std::string& TargetWord, const std::string& PartOfSpeech,
                        const std::optional<int>& Gender) const;

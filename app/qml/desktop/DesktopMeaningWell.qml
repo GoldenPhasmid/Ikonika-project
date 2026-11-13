@@ -8,7 +8,7 @@ DesktopRevealWell
     property var controller: null
     property string answer: ""
 
-    signal wordClicked(string word, string sentence)
+    signal wordClicked(string word, string sentence, rect wordRect)
 
     DesktopLabel
     {
@@ -27,6 +27,6 @@ DesktopRevealWell
     {
         controller: root.revealed ? root.controller : null
 
-        onWordClicked: function(word, sentence) { root.wordClicked(word, sentence) }
+        onWordClicked: function(word, sentence, wordRect) { root.wordClicked(word, sentence, wordRect) }
     }
 }

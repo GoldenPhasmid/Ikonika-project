@@ -28,11 +28,23 @@ Rectangle
 
         DesktopIconButton
         {
+            objectName: "reader_read_aloud_previous"
+
+            focusPolicy: Qt.NoFocus
+            iconName: "skip_back"
+            text: qsTr("Previous sentence (Ctrl+Left)")
+
+            onClicked: root.readAloud.previous()
+        }
+
+        DesktopIconButton
+        {
             objectName: "reader_read_aloud_play"
 
+            focusPolicy: Qt.NoFocus
             iconName: root.readAloud.playing ? "pause" : "play"
             iconColour: AppTheme.colourAccent
-            text: root.readAloud.playing ? qsTr("Pause") : qsTr("Read aloud")
+            text: root.readAloud.playing ? qsTr("Pause (Space)") : qsTr("Play (Space)")
 
             onClicked:
             {
@@ -49,11 +61,34 @@ Rectangle
 
         DesktopIconButton
         {
-            objectName: "reader_read_aloud_stop"
+            objectName: "reader_read_aloud_next"
 
-            iconName: "stop"
-            text: qsTr("Stop")
-            enabled: root.readAloud.started
+            focusPolicy: Qt.NoFocus
+            iconName: "skip_forward"
+            text: qsTr("Next sentence (Ctrl+Right)")
+
+            onClicked: root.readAloud.next()
+        }
+
+        DesktopButton
+        {
+            objectName: "reader_read_aloud_speed"
+
+            focusPolicy: Qt.NoFocus
+            tone: "ghost"
+            text: qsTr("%1%").arg(Math.round(root.readAloud.speed * 100))
+            Accessible.description: qsTr("Reading speed")
+
+            onClicked: root.readAloud.stepSpeed()
+        }
+
+        DesktopIconButton
+        {
+            objectName: "reader_read_aloud_close"
+
+            focusPolicy: Qt.NoFocus
+            iconName: "close"
+            text: qsTr("Close")
 
             onClicked: root.readAloud.stop()
         }

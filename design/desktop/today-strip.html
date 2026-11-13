@@ -1,0 +1,265 @@
+<title>Ikonika Desktop Today Strip</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+:root {
+  --page: #e4e1d7; --page-ink: #2e2a25; --page-muted: #75716a; --page-line: #d6d2c5; --page-panel: #efede5;
+  --font: "Inter", "Segoe UI", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --page: #1d1d1b; --page-ink: #f2f0e9; --page-muted: #9c9a8f; --page-line: #3a3937; --page-panel: #262624; color-scheme: dark } }
+
+.frame {
+  --text: #f2f0e9; --muted: #9c9a8f; --accent: #5b9cf8; --panel: #262624; --faint: #30302e; --sunken: #2b2b29;
+  --subtle: #c2c0b6; --outline: #8a887e; --border: #3a3937; --correct: #4caf7d;
+}
+.frame[data-t="light"] {
+  --text: #2e2a25; --muted: #75716a; --accent: #3d63b0; --panel: #efede5; --faint: #e4e1d7; --sunken: #e9e6dd;
+  --subtle: #57534b; --outline: #857f72; --border: #d6d2c5; --correct: #3b7a53;
+}
+
+* { box-sizing: border-box }
+body {
+  background: var(--page); color: var(--page-ink); font-family: var(--font); margin: 0;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 28px 48px;
+}
+.wrap { max-width: 1320px; margin: 0 auto; display: grid; gap: 18px }
+.controls { display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: center }
+.seg { display: inline-flex; border: 1px solid var(--page-line); border-radius: 8px; overflow: hidden; background: var(--page-panel) }
+.seg button { font: 500 13px var(--font); color: var(--page-muted); background: none; border: 0; padding: 8px 13px; cursor: pointer }
+.seg button + button { border-left: 1px solid var(--page-line) }
+.seg button[aria-pressed="true"] { color: var(--page-ink); background: var(--page-line) }
+.seg button:focus-visible { outline: 2px solid #5b9cf8; outline-offset: -2px }
+.ctl-label { font: 600 11px var(--font); letter-spacing: .08em; text-transform: uppercase; color: var(--page-muted); margin-right: 8px }
+
+.stage { position: relative; width: 100%; overflow: hidden }
+.frame {
+  position: absolute; top: 0; left: 0; transform-origin: 0 0; display: flex; flex-direction: column;
+  background: var(--sunken); color: var(--text); border-radius: 10px; overflow: hidden;
+  box-shadow: 0 0 0 1px var(--border), 0 24px 60px -20px rgba(0,0,0,.45);
+  font-family: var(--font); font-variant-numeric: tabular-nums;
+}
+.topbar { height: 64px; flex: none; background: var(--panel); border-bottom: 1px solid var(--border) }
+.content { flex: 1; position: relative }
+
+.strip {
+  --ring: 28px; --gap: 28px; --today: 124px; --label: 20px; --label-gap: 6px;
+  position: relative; display: grid; grid-template-columns: minmax(0,1fr) auto minmax(0,1fr); align-items: start;
+  padding-top: 12px;
+}
+.side { position: relative; display: flex; gap: var(--gap); min-width: 0; overflow: hidden }
+.side::before { content: ""; position: absolute; left: 0; right: 0; top: calc(var(--label) + var(--label-gap) + var(--ring) / 2); height: 1px; background: var(--border) }
+.side.past::before { right: var(--gap) }
+.side.coming::before { left: var(--gap) }
+.side.past { justify-content: flex-end; padding-right: var(--gap); -webkit-mask-image: linear-gradient(90deg, transparent, #000 56px); mask-image: linear-gradient(90deg, transparent, #000 56px) }
+.side.coming { justify-content: flex-start; padding-left: var(--gap); -webkit-mask-image: linear-gradient(270deg, transparent, #000 56px); mask-image: linear-gradient(270deg, transparent, #000 56px) }
+
+.cell { width: var(--ring); flex: none; display: grid; justify-items: center; row-gap: var(--label-gap) }
+.letter, .today-label { height: var(--label); display: flex; align-items: flex-end; white-space: nowrap; line-height: 1 }
+.letter { font-size: 12px; font-weight: 500; color: var(--muted) }
+.today-label { height: var(--ring); align-items: center; font-size: 24px; font-weight: 600; letter-spacing: .14em; margin-right: -.14em; text-transform: uppercase; color: var(--subtle) }
+
+.cell { position: relative }
+.mark { width: var(--ring); height: var(--ring); display: grid; place-items: center; position: relative; border-radius: 50%; background: var(--sunken) }
+.mark svg { width: 100%; height: 100%; transform: rotate(-90deg) }
+.mark svg circle { fill: none }
+.cell.past .mark::before { content: ""; position: absolute; inset: -4px; border-radius: 50%; background: var(--faint); opacity: 0; transition: opacity .12s }
+.cell.past .mark svg { position: relative }
+.cell.past:hover .mark::before { opacity: 1 }
+.cell.past:hover .letter { color: var(--text) }
+
+.due { font-size: 13px; font-weight: 600; color: var(--subtle) }
+.due.zero { color: var(--muted); font-weight: 500; opacity: .6 }
+.variant-circle .cell.coming .mark { border-radius: 50%; border: 1.5px solid var(--border) }
+.variant-circle .cell.coming .mark.some { border-color: color-mix(in srgb, var(--accent) 70%, transparent) }
+.variant-circle .due { font-size: 10px; font-weight: 700 }
+
+.today-col { display: grid; justify-items: center; row-gap: 16px; padding-top: calc(var(--label) + var(--label-gap)) }
+.ring { width: var(--today); height: var(--today); position: relative }
+.ring svg { width: 100%; height: 100%; transform: rotate(-90deg) }
+.ring svg circle { fill: none; transition: stroke-dashoffset .7s cubic-bezier(.2,.7,.2,1) }
+.ring-centre { position: absolute; inset: 0; display: grid; place-content: center; text-align: center }
+.ring-num { font-size: 38px; font-weight: 700; line-height: 38px; letter-spacing: -.02em }
+.ring-of { font-size: 13px; line-height: 16px; font-weight: 500; color: var(--muted); margin-top: 2px }
+
+.tip {
+  position: absolute; z-index: 5; pointer-events: none; opacity: 0; transform: translate(-50%, 4px);
+  transition: opacity .12s, transform .12s; background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
+  padding: 8px 10px; min-width: 132px; box-shadow: 0 10px 28px -8px rgba(0,0,0,.5); display: grid; gap: 5px;
+}
+.tip.on { opacity: 1; transform: translate(-50%, 0) }
+.tip-date { font-size: 11px; color: var(--muted); font-weight: 500 }
+.tip-row { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 500 }
+.tip-row b { margin-left: auto; padding-left: 16px; font-size: 13px; font-weight: 700 }
+.dot { width: 7px; height: 7px; border-radius: 50%; flex: none }
+
+@media (prefers-reduced-motion: reduce) { .ring svg circle, .tip, .cell.past .mark::before { transition: none } }
+</style>
+
+<div class="wrap">
+  <div class="controls">
+    <div><span class="ctl-label">State</span><span class="seg" id="seg-state">
+      <button data-v="morning">Morning</button><button data-v="done">Goal reached</button>
+    </span></div>
+    <div><span class="ctl-label">Coming up</span><span class="seg" id="seg-variant">
+      <button data-v="number">Number</button><button data-v="circle">Circle</button>
+    </span></div>
+    <div><span class="ctl-label">Window</span><span class="seg" id="seg-size">
+      <button data-v="min">960 &times; 640</button><button data-v="target">1280 &times; 800</button><button data-v="full">1920 &times; 1080</button>
+    </span></div>
+    <div><span class="ctl-label">Theme</span><span class="seg" id="seg-theme">
+      <button data-v="dark">Dark</button><button data-v="light">Light</button>
+    </span></div>
+  </div>
+
+  <div class="stage" id="stage">
+    <div class="frame" id="frame" data-t="dark">
+      <div class="topbar"></div>
+      <div class="content">
+        <div class="strip" id="strip">
+          <div class="side past" id="past"></div>
+          <div class="today-col">
+            <div class="today-label">Today</div>
+            <div class="ring" id="ring"></div>
+          </div>
+          <div class="side coming" id="coming"></div>
+        </div>
+        <div class="tip" id="tip"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const GOAL = 30;
+const TODAY = new Date(2026, 10, 11);
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+const PAST = [
+  [0, 0], [0, 0], [41, 22], [58, 30], [47, 30], [63, 30], [29, 30],
+  [52, 30], [33, 12], [0, 0], [61, 30], [44, 30], [38, 30], [55, 30],
+  [49, 30], [20, 24], [66, 30], [31, 30], [57, 30], [40, 30], [36, 30],
+  [50, 30], [27, 18], [62, 30], [45, 30], [34, 30], [59, 30], [65, 30],
+  [42, 30], [37, 30], [53, 30], [48, 30], [56, 30], [39, 30], [61, 30],
+  [44, 30], [30, 30], [58, 30], [47, 30], [51, 30], [35, 30], [43, 30]
+].map(([reviewed, learned]) => ({ reviewed, learned }));
+
+const COMING = [63, 20, 29, 0, 41, 18, 22, 0, 35, 12, 9, 14, 7, 11, 16, 5, 8, 0, 13, 6, 9, 4, 7, 0, 10, 3, 5, 2, 6, 0, 4, 3, 2, 5, 1, 0, 3, 2];
+
+const STATES = {
+  morning: { learned: 0, reviewDue: 63, reviewed: 0 },
+  done: { learned: 30, reviewDue: 0, reviewed: 63 }
+};
+
+const SIZES = {
+  min: { w: 960, h: 640 },
+  target: { w: 1280, h: 800 },
+  full: { w: 1920, h: 1080 }
+};
+
+let view = { state: 'done', variant: 'number', size: 'target', theme: (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') };
+try { Object.assign(view, JSON.parse(localStorage.getItem('today-strip-mock-2') || '{}')) } catch (e) {}
+
+const $ = id => document.getElementById(id);
+
+function ringSvg(size, stroke, gap, outer, inner) {
+  const rOuter = (size - stroke) / 2;
+  const rInner = rOuter - stroke - gap;
+  const arc = (r, p, colour) => {
+    const c = 2 * Math.PI * r;
+    return `<circle cx="${size / 2}" cy="${size / 2}" r="${r}" stroke="var(--faint)" stroke-width="${stroke}"/>` +
+      `<circle cx="${size / 2}" cy="${size / 2}" r="${r}" stroke="${colour}" stroke-width="${stroke}" stroke-linecap="round"
+        stroke-dasharray="${c}" stroke-dashoffset="${c * (1 - Math.min(Math.max(p, 0), 1))}" ${p <= 0 ? 'stroke-opacity="0"' : ''}/>`;
+  };
+  return `<svg viewBox="0 0 ${size} ${size}">${arc(rOuter, outer, 'var(--accent)')}${arc(rInner, inner, 'var(--correct)')}</svg>`;
+}
+
+function dayOffset(offset) {
+  const date = new Date(TODAY);
+  date.setDate(date.getDate() + offset);
+  return date;
+}
+
+function cell(date, kind, attributes, mark) {
+  return `<div class="cell ${kind}" ${attributes}>
+    <div class="letter">${WEEKDAYS[date.getDay()]}</div>${mark}</div>`;
+}
+
+function render() {
+  const s = STATES[view.state];
+  const z = SIZES[view.size];
+  const frame = $('frame');
+  frame.dataset.t = view.theme;
+  frame.style.width = z.w + 'px';
+  frame.style.height = z.h + 'px';
+  $('strip').classList.toggle('variant-circle', view.variant === 'circle');
+
+  const reviewTotal = s.reviewed + s.reviewDue;
+  const reviewRatio = reviewTotal > 0 ? s.reviewed / reviewTotal : 1;
+  const goalRatio = Math.min(s.learned / GOAL, 1);
+
+  $('ring').innerHTML = ringSvg(124, 10, 4, reviewRatio, goalRatio) +
+    `<div class="ring-centre"><div class="ring-num">${s.learned}</div><div class="ring-of">of ${GOAL}</div></div>`;
+
+  $('past').innerHTML = PAST.map((day, index) => {
+    const offset = index - PAST.length;
+    const date = dayOffset(offset);
+    const reviewRatio = day.reviewed > 0 ? 1 : 0;
+    return cell(date, 'past', `data-offset="${offset}" data-reviewed="${day.reviewed}" data-learned="${day.learned}"`,
+      `<div class="mark">${ringSvg(28, 3, 2, reviewRatio, day.learned / GOAL)}</div>`);
+  }).join('');
+
+  $('coming').innerHTML = COMING.map((count, index) => {
+    const date = dayOffset(index + 1);
+    return cell(date, 'coming', '',
+      `<div class="mark ${count > 0 ? 'some' : ''}"><span class="due ${count > 0 ? '' : 'zero'}">${count}</span></div>`);
+  }).join('');
+
+  for (const [segId, key] of [['seg-state', 'state'], ['seg-variant', 'variant'], ['seg-size', 'size'], ['seg-theme', 'theme']])
+    for (const button of $(segId).querySelectorAll('button')) button.setAttribute('aria-pressed', button.dataset.v === view[key]);
+
+  try { localStorage.setItem('today-strip-mock-2', JSON.stringify(view)) } catch (e) {}
+  fit();
+}
+
+function fit() {
+  const z = SIZES[view.size];
+  const scale = Math.min(1, $('stage').clientWidth / z.w);
+  $('frame').style.transform = `scale(${scale})`;
+  $('stage').style.height = (z.h * scale) + 'px';
+}
+
+function showTip(target) {
+  const date = dayOffset(Number(target.dataset.offset));
+  const tip = $('tip');
+  tip.innerHTML = `<div class="tip-date">${WEEKDAYS[date.getDay()]} ${date.getDate()} ${MONTHS[date.getMonth()]}</div>
+    <div class="tip-row"><span class="dot" style="background:var(--accent)"></span>Reviewed<b>${target.dataset.reviewed}</b></div>
+    <div class="tip-row"><span class="dot" style="background:var(--correct)"></span>Learned<b>${target.dataset.learned}</b></div>`;
+  const frame = $('frame');
+  const scale = frame.getBoundingClientRect().width / frame.offsetWidth;
+  const content = tip.parentElement.getBoundingClientRect();
+  const mark = target.querySelector('.mark').getBoundingClientRect();
+  tip.style.left = ((mark.left + mark.width / 2 - content.left) / scale) + 'px';
+  tip.style.top = ((mark.bottom - content.top) / scale + 10) + 'px';
+  tip.classList.add('on');
+}
+
+$('past').addEventListener('pointerover', event => {
+  const target = event.target.closest('.cell');
+  if (target) showTip(target);
+});
+$('past').addEventListener('pointerleave', () => $('tip').classList.remove('on'));
+
+for (const [segId, key] of [['seg-state', 'state'], ['seg-variant', 'variant'], ['seg-size', 'size'], ['seg-theme', 'theme']])
+  $(segId).addEventListener('click', event => {
+    const button = event.target.closest('button');
+    if (!button) return;
+    view[key] = button.dataset.v;
+    render();
+  });
+addEventListener('resize', fit);
+document.fonts && document.fonts.ready.then(render);
+render();
+</script>

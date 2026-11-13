@@ -336,10 +336,10 @@ QVariantList AppTheme::GetGenderColours() const
 
     if (!bColourByGender)
     {
-        return {Palette.Text, Palette.Text, Palette.Text};
+        return {Palette.Text, Palette.Text, Palette.Text, Palette.Text};
     }
 
-    return {Palette.Masculine, Palette.Feminine, Palette.Text};
+    return {Palette.Masculine, Palette.Feminine, Palette.Text, Palette.Text};
 }
 
 QVariantList AppTheme::GetCoverColours() const
@@ -370,6 +370,11 @@ QVariantMap AppTheme::GetFrequencyColours() const
 QVariantMap AppTheme::GetCefrColours() const
 {
     return CefrColours;
+}
+
+QColor AppTheme::GetColourReaderMarkDark() const
+{
+    return QColor{0xF2, 0xBC, 0x48};
 }
 
 qreal AppTheme::GetAlphaFaint() const

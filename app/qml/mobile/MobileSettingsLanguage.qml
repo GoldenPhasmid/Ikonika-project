@@ -152,7 +152,7 @@ ColumnLayout
 
                 if (AppMachineTranslation.downloading)
                 {
-                    return qsTr("Downloading...")
+                    return qsTr("Downloading, %1%").arg(Math.round(AppMachineTranslation.progress * 100))
                 }
 
                 return AppMachineTranslation.bytes > 0

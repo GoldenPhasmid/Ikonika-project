@@ -714,11 +714,6 @@
 <context>
     <name>DesktopChoiceExercise</name>
     <message>
-        <location filename="../qml/desktop/DesktopChoiceExercise.qml" line="16"/>
-        <source>Choose a translation</source>
-        <translation>Оберіть переклад</translation>
-    </message>
-    <message>
         <location filename="../qml/desktop/DesktopChoiceExercise.qml" line="165"/>
         <source>%1 / %2</source>
         <translation>%1 / %2</translation>
@@ -742,6 +737,21 @@
         <location filename="../qml/desktop/DesktopChoiceExercise.qml" line="236"/>
         <source>Enter</source>
         <translation>Enter</translation>
+    </message>
+    <message>
+        <location filename="../qml/desktop/DesktopChoiceExercise.qml" line="1"/>
+        <source>Listen and pick the translation</source>
+        <translation>Прослухайте й виберіть переклад</translation>
+    </message>
+    <message>
+        <location filename="../qml/desktop/DesktopChoiceExercise.qml" line="1"/>
+        <source>Pick the translation</source>
+        <translation>Виберіть переклад</translation>
+    </message>
+    <message>
+        <location filename="../qml/desktop/DesktopChoiceExercise.qml" line="1"/>
+        <source>Pick the matching word</source>
+        <translation>Виберіть відповідне слово</translation>
     </message>
 </context>
 <context>
@@ -973,11 +983,6 @@
 <context>
     <name>DesktopFlashcardExercise</name>
     <message>
-        <location filename="../qml/desktop/DesktopFlashcardExercise.qml" line="18"/>
-        <source>Flashcards</source>
-        <translation>Картки</translation>
-    </message>
-    <message>
         <location filename="../qml/desktop/DesktopFlashcardExercise.qml" line="82"/>
         <source>%1 / %2</source>
         <translation>%1 / %2</translation>
@@ -1007,14 +1012,14 @@
         <source>Enter</source>
         <translation>Enter</translation>
     </message>
+    <message>
+        <location filename="../qml/desktop/DesktopFlashcardExercise.qml" line="1"/>
+        <source>Read the word and its meaning</source>
+        <translation>Прочитайте слово та його значення</translation>
+    </message>
 </context>
 <context>
     <name>DesktopFlipExercise</name>
-    <message>
-        <location filename="../qml/desktop/DesktopFlipExercise.qml" line="15"/>
-        <source>Flip</source>
-        <translation>Перегортання</translation>
-    </message>
     <message>
         <location filename="../qml/desktop/DesktopFlipExercise.qml" line="68"/>
         <source>%1 / %2</source>
@@ -1036,6 +1041,11 @@
         <source>Continue</source>
         <translation>Далі</translation>
     </message>
+    <message>
+        <location filename="../qml/desktop/DesktopFlipExercise.qml" line="1"/>
+        <source>Recall the answer, then reveal it</source>
+        <translation>Пригадайте відповідь, потім відкрийте її</translation>
+    </message>
 </context>
 <context>
     <name>DesktopFormsGrid</name>
@@ -1052,11 +1062,6 @@
 </context>
 <context>
     <name>DesktopFormsStudyExercise</name>
-    <message>
-        <location filename="../qml/desktop/DesktopFormsStudyExercise.qml" line="15"/>
-        <source>Forms</source>
-        <translation>Форми</translation>
-    </message>
     <message>
         <location filename="../qml/desktop/DesktopFormsStudyExercise.qml" line="74"/>
         <source>%1 / %2</source>
@@ -1086,6 +1091,11 @@
         <location filename="../qml/desktop/DesktopFormsStudyExercise.qml" line="128"/>
         <source>Enter</source>
         <translation>Enter</translation>
+    </message>
+    <message>
+        <location filename="../qml/desktop/DesktopFormsStudyExercise.qml" line="1"/>
+        <source>Read the forms</source>
+        <translation>Прочитайте форми</translation>
     </message>
 </context>
 <context>
@@ -1155,6 +1165,43 @@
         <location filename="../qml/desktop/DesktopLanguageEntry.qml" line="57"/>
         <source>Download</source>
         <translation>Завантажити</translation>
+    </message>
+</context>
+<context>
+    <name>DesktopLanguageDownloads</name>
+    <message>
+        <location filename="../qml/desktop/DesktopLanguageDownloads.qml" line="19"/>
+        <source>I am learning</source>
+        <translation>Я вивчаю</translation>
+    </message>
+    <message numerus="yes">
+        <location filename="../qml/desktop/DesktopLanguageDownloads.qml" line="56"/>
+        <source>%n words in My Vocabulary</source>
+        <translation>
+            <numerusform>%n слово в моїй лексиці</numerusform>
+            <numerusform>%n слова в моїй лексиці</numerusform>
+            <numerusform>%n слів у моїй лексиці</numerusform>
+        </translation>
+    </message>
+    <message>
+        <location filename="../qml/desktop/DesktopLanguageDownloads.qml" line="77"/>
+        <source>%1 words in the dictionary</source>
+        <translation>Слів у словнику: %1</translation>
+    </message>
+    <message>
+        <location filename="../qml/desktop/DesktopLanguageDownloads.qml" line="161"/>
+        <source>Delete %1 words</source>
+        <translation>Видалити слова: %1</translation>
+    </message>
+    <message>
+        <location filename="../qml/desktop/DesktopLanguageDownloads.qml" line="162"/>
+        <source>Words and learning progress</source>
+        <translation>Слова й прогрес навчання</translation>
+    </message>
+    <message>
+        <location filename="../qml/desktop/DesktopLanguageDownloads.qml" line="170"/>
+        <source>Delete</source>
+        <translation>Видалити</translation>
     </message>
 </context>
 <context>
@@ -1334,6 +1381,10 @@
         <source>Start learning</source>
         <translation>Почати навчання</translation>
     </message>
+    <message>
+        <source>Enter</source>
+        <translation>Enter</translation>
+    </message>
 </context>
 <context>
     <name>DesktopOnboardingPlacement</name>
@@ -1412,6 +1463,18 @@
         <source>I knew it</source>
         <translation>Знаю</translation>
     </message>
+    <message>
+        <source>Back</source>
+        <translation>Назад</translation>
+    </message>
+    <message>
+        <source>Backspace</source>
+        <translation>Backspace</translation>
+    </message>
+    <message>
+        <source>Enter</source>
+        <translation>Enter</translation>
+    </message>
 </context>
 <context>
     <name>DesktopOnboardingRestore</name>
@@ -1427,91 +1490,103 @@
     </message>
 </context>
 <context>
-    <name>DesktopOnboardingSetup</name>
+    <name>DesktopOnboardingDaily</name>
     <message>
-        <location filename="../qml/desktop/DesktopOnboardingSetup.qml" line="69"/>
+        <location filename="../qml/desktop/DesktopOnboardingDaily.qml" line="69"/>
         <source>Let&apos;s set things up</source>
         <translation>Налаштуймо застосунок</translation>
     </message>
     <message>
-        <location filename="../qml/desktop/DesktopOnboardingSetup.qml" line="81"/>
+        <location filename="../qml/desktop/DesktopOnboardingDaily.qml" line="81"/>
         <source>Languages</source>
         <translation>Мови</translation>
     </message>
     <message>
-        <location filename="../qml/desktop/DesktopOnboardingSetup.qml" line="85"/>
-        <location filename="../qml/desktop/DesktopOnboardingSetup.qml" line="97"/>
+        <location filename="../qml/desktop/DesktopOnboardingDaily.qml" line="85"/>
+        <location filename="../qml/desktop/DesktopOnboardingDaily.qml" line="97"/>
         <source>I am learning</source>
         <translation>Я вивчаю</translation>
     </message>
     <message>
-        <location filename="../qml/desktop/DesktopOnboardingSetup.qml" line="87"/>
+        <location filename="../qml/desktop/DesktopOnboardingDaily.qml" line="87"/>
         <source>Looking for languages</source>
         <translation>Шукаємо мови</translation>
     </message>
     <message>
-        <location filename="../qml/desktop/DesktopOnboardingSetup.qml" line="88"/>
+        <location filename="../qml/desktop/DesktopOnboardingDaily.qml" line="88"/>
         <source>Cannot reach the language list</source>
         <translation>Не вдалося отримати список мов</translation>
     </message>
     <message>
-        <location filename="../qml/desktop/DesktopOnboardingSetup.qml" line="89"/>
+        <location filename="../qml/desktop/DesktopOnboardingDaily.qml" line="89"/>
         <source>Nothing published yet</source>
         <translation>Поки нічого не опубліковано</translation>
     </message>
     <message>
-        <location filename="../qml/desktop/DesktopOnboardingSetup.qml" line="101"/>
+        <location filename="../qml/desktop/DesktopOnboardingDaily.qml" line="101"/>
         <source>Choose</source>
         <translation>Обрати</translation>
     </message>
     <message>
-        <location filename="../qml/desktop/DesktopOnboardingSetup.qml" line="113"/>
-        <location filename="../qml/desktop/DesktopOnboardingSetup.qml" line="119"/>
+        <location filename="../qml/desktop/DesktopOnboardingDaily.qml" line="113"/>
+        <location filename="../qml/desktop/DesktopOnboardingDaily.qml" line="119"/>
         <source>My language</source>
         <translation>Моя мова</translation>
     </message>
     <message>
-        <location filename="../qml/desktop/DesktopOnboardingSetup.qml" line="130"/>
-        <location filename="../qml/desktop/DesktopOnboardingSetup.qml" line="137"/>
+        <location filename="../qml/desktop/DesktopOnboardingDaily.qml" line="130"/>
+        <location filename="../qml/desktop/DesktopOnboardingDaily.qml" line="137"/>
         <source>App language</source>
         <translation>Мова застосунку</translation>
     </message>
     <message>
-        <location filename="../qml/desktop/DesktopOnboardingSetup.qml" line="148"/>
+        <location filename="../qml/desktop/DesktopOnboardingDaily.qml" line="148"/>
         <source>Every day</source>
         <translation>Щодня</translation>
     </message>
     <message>
-        <location filename="../qml/desktop/DesktopOnboardingSetup.qml" line="152"/>
+        <location filename="../qml/desktop/DesktopOnboardingDaily.qml" line="152"/>
         <source>Words per day</source>
         <translation>Слів на день</translation>
     </message>
     <message>
-        <location filename="../qml/desktop/DesktopOnboardingSetup.qml" line="153"/>
+        <location filename="../qml/desktop/DesktopOnboardingDaily.qml" line="153"/>
         <source>%1 minutes a day, up to %2 with reviews</source>
         <translation>%1 хв на день, до %2 з повторенням</translation>
     </message>
     <message>
-        <location filename="../qml/desktop/DesktopOnboardingSetup.qml" line="170"/>
-        <location filename="../qml/desktop/DesktopOnboardingSetup.qml" line="174"/>
+        <location filename="../qml/desktop/DesktopOnboardingDaily.qml" line="170"/>
+        <location filename="../qml/desktop/DesktopOnboardingDaily.qml" line="174"/>
         <source>Daily reminder</source>
         <translation>Щоденне нагадування</translation>
     </message>
     <message>
-        <location filename="../qml/desktop/DesktopOnboardingSetup.qml" line="183"/>
-        <location filename="../qml/desktop/DesktopOnboardingSetup.qml" line="188"/>
+        <location filename="../qml/desktop/DesktopOnboardingDaily.qml" line="183"/>
+        <location filename="../qml/desktop/DesktopOnboardingDaily.qml" line="188"/>
         <source>Launch at startup</source>
         <translation>Запускати разом із системою</translation>
     </message>
     <message>
-        <location filename="../qml/desktop/DesktopOnboardingSetup.qml" line="203"/>
+        <location filename="../qml/desktop/DesktopOnboardingDaily.qml" line="203"/>
         <source>Continue · %1 MB</source>
         <translation>Далі · %1 МБ</translation>
     </message>
     <message>
-        <location filename="../qml/desktop/DesktopOnboardingSetup.qml" line="203"/>
+        <location filename="../qml/desktop/DesktopOnboardingDaily.qml" line="203"/>
         <source>Continue</source>
-        <translation>Далі</translation>
+        <translation>Продовжити</translation>
+    </message>
+    <message>
+        <source>Back</source>
+        <translation>Назад</translation>
+    </message>
+    <message>
+        <source>Backspace</source>
+        <translation>Backspace</translation>
+    </message>
+    <message>
+        <source>Enter</source>
+        <translation>Enter</translation>
     </message>
 </context>
 <context>
@@ -1535,6 +1610,14 @@
         <location filename="../qml/desktop/DesktopOnboardingSignIn.qml" line="57"/>
         <source>Continue signed out</source>
         <translation>Продовжити без входу</translation>
+    </message>
+    <message>
+        <source>Back</source>
+        <translation>Назад</translation>
+    </message>
+    <message>
+        <source>Backspace</source>
+        <translation>Backspace</translation>
     </message>
 </context>
 <context>
@@ -2152,11 +2235,6 @@
 <context>
     <name>DesktopReviewExercise</name>
     <message>
-        <location filename="../qml/desktop/DesktopReviewExercise.qml" line="18"/>
-        <source>Do you remember?</source>
-        <translation>Чи пам’ятаєте?</translation>
-    </message>
-    <message>
         <location filename="../qml/desktop/DesktopReviewExercise.qml" line="93"/>
         <source>%1 / %2</source>
         <translation>%1 / %2</translation>
@@ -2190,6 +2268,11 @@
         <location filename="../qml/desktop/DesktopReviewExercise.qml" line="14"/>
         <source>I knew it</source>
         <translation>Пам’ятаю</translation>
+    </message>
+    <message>
+        <location filename="../qml/desktop/DesktopReviewExercise.qml" line="1"/>
+        <source>Recall the answer, then reveal it</source>
+        <translation>Пригадайте відповідь, потім відкрийте її</translation>
     </message>
 </context>
 <context>
@@ -3272,11 +3355,6 @@
 <context>
     <name>DesktopTilesExercise</name>
     <message>
-        <location filename="../qml/desktop/DesktopTilesExercise.qml" line="22"/>
-        <source>Word tiles</source>
-        <translation>Плитки зі словами</translation>
-    </message>
-    <message>
         <location filename="../qml/desktop/DesktopTilesExercise.qml" line="226"/>
         <source>%1 / %2</source>
         <translation>%1 / %2</translation>
@@ -3295,16 +3373,6 @@
         <location filename="../qml/desktop/DesktopTilesExercise.qml" line="265"/>
         <source>Words</source>
         <translation>Слова</translation>
-    </message>
-    <message>
-        <location filename="../qml/desktop/DesktopTilesExercise.qml" line="21"/>
-        <source>Write the sentence</source>
-        <translation>Напишіть речення</translation>
-    </message>
-    <message>
-        <location filename="../qml/desktop/DesktopTilesExercise.qml" line="22"/>
-        <source>Listen and translate</source>
-        <translation>Послухайте й перекладіть</translation>
     </message>
     <message>
         <location filename="../qml/desktop/DesktopTilesExercise.qml" line="400"/>
@@ -3335,6 +3403,26 @@
         <location filename="../qml/desktop/DesktopTilesExercise.qml" line="450"/>
         <source>Enter</source>
         <translation>Enter</translation>
+    </message>
+    <message>
+        <location filename="../qml/desktop/DesktopTilesExercise.qml" line="1"/>
+        <source>Listen and type the translation</source>
+        <translation>Прослухайте й напишіть переклад</translation>
+    </message>
+    <message>
+        <location filename="../qml/desktop/DesktopTilesExercise.qml" line="1"/>
+        <source>Listen and type the sentence</source>
+        <translation>Прослухайте й напишіть речення</translation>
+    </message>
+    <message>
+        <location filename="../qml/desktop/DesktopTilesExercise.qml" line="1"/>
+        <source>Listen and build the translation</source>
+        <translation>Прослухайте й складіть переклад</translation>
+    </message>
+    <message>
+        <location filename="../qml/desktop/DesktopTilesExercise.qml" line="1"/>
+        <source>Listen and build the sentence</source>
+        <translation>Прослухайте й складіть речення</translation>
     </message>
 </context>
 <context>
@@ -3624,16 +3712,6 @@
 <context>
     <name>DesktopTypedExercise</name>
     <message>
-        <location filename="../qml/desktop/DesktopTypedExercise.qml" line="21"/>
-        <source>Write what you hear</source>
-        <translation>Напишіть, що чуєте</translation>
-    </message>
-    <message>
-        <location filename="../qml/desktop/DesktopTypedExercise.qml" line="21"/>
-        <source>Write the translation</source>
-        <translation>Напишіть переклад</translation>
-    </message>
-    <message>
         <location filename="../qml/desktop/DesktopTypedExercise.qml" line="202"/>
         <source>%1 / %2</source>
         <translation>%1 / %2</translation>
@@ -3667,6 +3745,26 @@
         <location filename="../qml/desktop/DesktopTypedExercise.qml" line="374"/>
         <source>Enter</source>
         <translation>Enter</translation>
+    </message>
+    <message>
+        <location filename="../qml/desktop/DesktopTypedExercise.qml" line="1"/>
+        <source>Type what you hear</source>
+        <translation>Напишіть, що чуєте</translation>
+    </message>
+    <message>
+        <location filename="../qml/desktop/DesktopTypedExercise.qml" line="1"/>
+        <source>Type the missing word</source>
+        <translation>Впишіть пропущене слово</translation>
+    </message>
+    <message>
+        <location filename="../qml/desktop/DesktopTypedExercise.qml" line="1"/>
+        <source>Type the right form</source>
+        <translation>Напишіть правильну форму</translation>
+    </message>
+    <message>
+        <location filename="../qml/desktop/DesktopTypedExercise.qml" line="1"/>
+        <source>Type the translation</source>
+        <translation>Напишіть переклад</translation>
     </message>
 </context>
 <context>
@@ -5599,91 +5697,95 @@
     </message>
 </context>
 <context>
-    <name>MobileOnboardingSetupScreen</name>
+    <name>MobileOnboardingDailyScreen</name>
     <message>
-        <location filename="../qml/mobile/MobileOnboardingSetupScreen.qml" line="127"/>
+        <location filename="../qml/mobile/MobileOnboardingDailyScreen.qml" line="127"/>
         <source>Let&apos;s set things up</source>
         <translation>Налаштуймо застосунок</translation>
     </message>
     <message>
-        <location filename="../qml/mobile/MobileOnboardingSetupScreen.qml" line="138"/>
+        <location filename="../qml/mobile/MobileOnboardingDailyScreen.qml" line="138"/>
         <source>I AM LEARNING</source>
         <translation>Я ВИВЧАЮ</translation>
     </message>
     <message>
-        <location filename="../qml/mobile/MobileOnboardingSetupScreen.qml" line="139"/>
+        <location filename="../qml/mobile/MobileOnboardingDailyScreen.qml" line="139"/>
         <source>I am learning</source>
         <translation>Я вивчаю</translation>
     </message>
     <message>
-        <location filename="../qml/mobile/MobileOnboardingSetupScreen.qml" line="159"/>
+        <location filename="../qml/mobile/MobileOnboardingDailyScreen.qml" line="159"/>
         <source>Looking for languages...</source>
         <translation>Шукаємо мови…</translation>
     </message>
     <message>
-        <location filename="../qml/mobile/MobileOnboardingSetupScreen.qml" line="161"/>
+        <location filename="../qml/mobile/MobileOnboardingDailyScreen.qml" line="161"/>
         <source>Cannot reach the language list</source>
         <translation>Не вдалося отримати список мов</translation>
     </message>
     <message>
-        <location filename="../qml/mobile/MobileOnboardingSetupScreen.qml" line="162"/>
+        <location filename="../qml/mobile/MobileOnboardingDailyScreen.qml" line="162"/>
         <source>Nothing published yet</source>
         <translation>Поки нічого не опубліковано</translation>
     </message>
     <message>
-        <location filename="../qml/mobile/MobileOnboardingSetupScreen.qml" line="171"/>
+        <location filename="../qml/mobile/MobileOnboardingDailyScreen.qml" line="171"/>
         <source>MY LANGUAGE</source>
         <translation>МОЯ МОВА</translation>
     </message>
     <message>
-        <location filename="../qml/mobile/MobileOnboardingSetupScreen.qml" line="172"/>
+        <location filename="../qml/mobile/MobileOnboardingDailyScreen.qml" line="172"/>
         <source>My language</source>
         <translation>Моя мова</translation>
     </message>
     <message>
-        <location filename="../qml/mobile/MobileOnboardingSetupScreen.qml" line="188"/>
+        <location filename="../qml/mobile/MobileOnboardingDailyScreen.qml" line="188"/>
         <source>APP LANGUAGE</source>
         <translation>МОВА ЗАСТОСУНКУ</translation>
     </message>
     <message>
-        <location filename="../qml/mobile/MobileOnboardingSetupScreen.qml" line="189"/>
+        <location filename="../qml/mobile/MobileOnboardingDailyScreen.qml" line="189"/>
         <source>App language</source>
         <translation>Мова застосунку</translation>
     </message>
     <message>
-        <location filename="../qml/mobile/MobileOnboardingSetupScreen.qml" line="200"/>
+        <location filename="../qml/mobile/MobileOnboardingDailyScreen.qml" line="200"/>
         <source>EVERY DAY</source>
         <translation>ЩОДНЯ</translation>
     </message>
     <message>
-        <location filename="../qml/mobile/MobileOnboardingSetupScreen.qml" line="204"/>
+        <location filename="../qml/mobile/MobileOnboardingDailyScreen.qml" line="204"/>
         <source>Words per day</source>
         <translation>Слів на день</translation>
     </message>
     <message>
-        <location filename="../qml/mobile/MobileOnboardingSetupScreen.qml" line="205"/>
+        <location filename="../qml/mobile/MobileOnboardingDailyScreen.qml" line="205"/>
         <source>%1 minutes per day, up to %2 with reviews</source>
         <translation>%1 хв на день, до %2 з повторенням</translation>
     </message>
     <message>
-        <location filename="../qml/mobile/MobileOnboardingSetupScreen.qml" line="226"/>
+        <location filename="../qml/mobile/MobileOnboardingDailyScreen.qml" line="226"/>
         <source>Daily reminder</source>
         <translation>Щоденне нагадування</translation>
     </message>
     <message>
-        <location filename="../qml/mobile/MobileOnboardingSetupScreen.qml" line="227"/>
+        <location filename="../qml/mobile/MobileOnboardingDailyScreen.qml" line="227"/>
         <source>A nudge on days you have not studied yet</source>
         <translation>Нагадування у дні, коли ви ще не займалися</translation>
     </message>
     <message>
-        <location filename="../qml/mobile/MobileOnboardingSetupScreen.qml" line="247"/>
+        <location filename="../qml/mobile/MobileOnboardingDailyScreen.qml" line="247"/>
         <source>Continue · %1 MB</source>
         <translation>Далі · %1 МБ</translation>
     </message>
     <message>
-        <location filename="../qml/mobile/MobileOnboardingSetupScreen.qml" line="248"/>
+        <location filename="../qml/mobile/MobileOnboardingDailyScreen.qml" line="248"/>
         <source>Continue</source>
         <translation>Далі</translation>
+    </message>
+    <message>
+        <source>Every day</source>
+        <translation>Щодня</translation>
     </message>
 </context>
 <context>
@@ -7641,6 +7743,150 @@
         <location filename="../qml/WelcomeScreen.qml" line="94"/>
         <source>new words</source>
         <translation>нових слів</translation>
+    </message>
+</context>
+<context>
+    <name>DesktopOnboardingSpeak</name>
+    <message>
+        <source>I speak</source>
+        <translation>Я розмовляю</translation>
+    </message>
+    <message>
+        <source>Continue</source>
+        <translation>Продовжити</translation>
+    </message>
+    <message>
+        <source>Enter</source>
+        <translation>Enter</translation>
+    </message>
+</context>
+<context>
+    <name>DesktopOnboardingLearn</name>
+    <message>
+        <source>I want to learn</source>
+        <translation>Я хочу вивчати</translation>
+    </message>
+    <message>
+        <source>Needs a newer app version</source>
+        <translation>Потрібна новіша версія застосунку</translation>
+    </message>
+    <message>
+        <source>Downloaded</source>
+        <translation>Завантажено</translation>
+    </message>
+    <message>
+        <source>%1 MB</source>
+        <translation>%1 МБ</translation>
+    </message>
+    <message>
+        <source>Looking for languages</source>
+        <translation>Шукаємо мови</translation>
+    </message>
+    <message>
+        <source>Cannot reach the language list</source>
+        <translation>Не вдалося отримати список мов</translation>
+    </message>
+    <message>
+        <source>Nothing published yet</source>
+        <translation>Поки нічого не опубліковано</translation>
+    </message>
+    <message>
+        <source>Try again</source>
+        <translation>Спробувати ще раз</translation>
+    </message>
+    <message>
+        <source>Back</source>
+        <translation>Назад</translation>
+    </message>
+    <message>
+        <source>Backspace</source>
+        <translation>Backspace</translation>
+    </message>
+    <message>
+        <source>Continue</source>
+        <translation>Продовжити</translation>
+    </message>
+    <message>
+        <source>Enter</source>
+        <translation>Enter</translation>
+    </message>
+</context>
+<context>
+    <name>DesktopReminderTimeRow</name>
+    <message>
+        <source>Remind me at</source>
+        <translation>Нагадувати о</translation>
+    </message>
+    <message>
+        <source>Hour</source>
+        <translation>Година</translation>
+    </message>
+    <message>
+        <source>Minute</source>
+        <translation>Хвилина</translation>
+    </message>
+</context>
+<context>
+    <name>MobileOnboardingPage</name>
+    <message>
+        <source>Continue</source>
+        <translation>Продовжити</translation>
+    </message>
+</context>
+<context>
+    <name>MobileOnboardingSpeakScreen</name>
+    <message>
+        <source>I speak</source>
+        <translation>Я розмовляю</translation>
+    </message>
+</context>
+<context>
+    <name>MobileOnboardingLearnScreen</name>
+    <message>
+        <source>I want to learn</source>
+        <translation>Я хочу вивчати</translation>
+    </message>
+    <message>
+        <source>Try again</source>
+        <translation>Спробувати ще раз</translation>
+    </message>
+    <message>
+        <source>Continue</source>
+        <translation>Продовжити</translation>
+    </message>
+    <message>
+        <source>Looking for languages</source>
+        <translation>Шукаємо мови</translation>
+    </message>
+    <message>
+        <source>Cannot reach the language list</source>
+        <translation>Не вдалося отримати список мов</translation>
+    </message>
+    <message>
+        <source>Nothing published yet</source>
+        <translation>Поки нічого не опубліковано</translation>
+    </message>
+</context>
+<context>
+    <name>MobileReminderTimeRow</name>
+    <message>
+        <source>Remind me at</source>
+        <translation>Нагадувати о</translation>
+    </message>
+</context>
+<context>
+    <name>AppOnboarding</name>
+    <message>
+        <source>Needs a newer app version</source>
+        <translation>Потрібна новіша версія застосунку</translation>
+    </message>
+    <message>
+        <source>Downloaded</source>
+        <translation>Завантажено</translation>
+    </message>
+    <message>
+        <source>%1 MB</source>
+        <translation>%1 МБ</translation>
     </message>
 </context>
 </TS>

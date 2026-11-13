@@ -11,7 +11,7 @@ ApplicationWindow
     height: AppMetrics.windowHeight
     minimumWidth: AppMetrics.windowMinimumWidth
     minimumHeight: AppMetrics.windowMinimumHeight
-    visible: true
+    visible: false
     title: qsTr("Ikonika")
 
     color: AppTheme.colourPanel
@@ -57,13 +57,22 @@ ApplicationWindow
             {
                 service: quickLookupService
                 vocabulary: vocabularyScreen.vocabulary
+                store: window.store
 
                 onOpenEntryRequested: function(word, partOfSpeech)
                 {
-                    window.show()
+                    window.showMaximized()
                     window.raise()
                     window.requestActivate()
                     window.openDictionary(word, partOfSpeech)
+                }
+
+                onLookUpRequested: function(text)
+                {
+                    window.showMaximized()
+                    window.raise()
+                    window.requestActivate()
+                    window.lookUpWord(text)
                 }
             }
         }
@@ -72,18 +81,11 @@ ApplicationWindow
     property string destination: "today"
     property string session: ""
     property string suspendedSession: ""
-    property bool initialized: false
-    property bool opened: false
-
+    property bool placementRetake: false
+    property bool discoverPicking: false
+    property real discoverShift: 0
     function openWelcome()
     {
-        if (!window.initialized || !window.visible || !window.active || window.opened)
-        {
-            return
-        }
-
-        window.opened = true
-
         if (window.onboarding || window.walksRequested !== 0 || dictionaryBenchmark.requested || window.screen !== "today")
         {
             return
@@ -93,8 +95,6 @@ ApplicationWindow
         welcome.shown = true
         welcome.forceActiveFocus()
     }
-
-    onActiveChanged: Qt.callLater(window.openWelcome)
 
     property string sessionOrigin: ""
     property Item morphSource: null
@@ -114,7 +114,8 @@ ApplicationWindow
         "training": training,
         "review": review,
         "sentences": sentenceTraining,
-        "practice": practice
+        "practice": practice,
+        "discovery": discovery
     })
 
     readonly property var activeSession: window.sessions[window.session] || null
@@ -160,6 +161,12 @@ ApplicationWindow
             return [qsTr("Settings")]
         }
 
+        if ((window.discoverPicking || window.activeMorph.morphing && window.discoverShift > 0) && discoverPick.item)
+        {
+            return discoverPick.item.category.length > 0 ? [qsTr("Today"), qsTr("Discover"), discoverPick.item.category]
+                                                         : [qsTr("Today"), qsTr("Discover")]
+        }
+
         return [qsTr("Today")]
     }
 
@@ -190,6 +197,7 @@ ApplicationWindow
         }
 
         window.suspendedSession = ""
+        window.showDiscoverPick(false, key === window.destination)
         window.destination = key
 
         if (key === "vocabulary")
@@ -436,7 +444,7 @@ ApplicationWindow
         wordDialog.openForEdit(cardId, word, translation, gender, partOfSpeech, box)
     }
 
-    function refreshCurrentScreen()
+    function refreshCurrentScreen(keepWordsScreen)
     {
         window.store.clearLastError()
         daily.refresh()
@@ -453,7 +461,7 @@ ApplicationWindow
         {
             decksScreen.refresh()
         }
-        else if (window.screen === "words")
+        else if (window.screen === "words" && !keepWordsScreen)
         {
             wordsScreen.refresh()
         }
@@ -500,7 +508,7 @@ ApplicationWindow
 
     function startFromDeck(deckId, face)
     {
-        window.startFrom(window.deckOrigin + deckId, face, face, function() { window.startDeckTriage(deckId) })
+        window.startFrom(window.deckOrigin + deckId, face, face, function() { window.startDeckDiscovery(deckId) })
     }
 
     function returnTarget()
@@ -612,38 +620,78 @@ ApplicationWindow
             return
         }
 
-        if (window.startTriage())
+        if (daily.shortfall() > 0)
         {
+            console.info("Train: not enough words in My Vocabulary, opening Discover")
+            window.startDiscoveryPick()
+
             return
         }
 
         window.startCollectedTraining()
     }
 
-    function startTriage()
+    function startDiscoveryPick()
     {
-        const missing = daily.shortfall()
-
-        if (missing === 0 || !triage.start(missing))
+        if (discovery.hasActiveSession)
         {
-            return false
+            console.info("Discover: continuing the unfinished round")
+            window.enterSession("discovery")
+
+            return
         }
 
-        window.enterSession("triage")
-
-        return true
+        window.showDiscoverPick(true, true)
     }
 
-    function startDeckTriage(deckId)
+    function showDiscoverPick(shown, animated)
     {
-        if (!triage.startDeck(deckId))
+        const target = shown ? 1 : 0
+
+        window.discoverPicking = shown
+        discoverSlide.stop()
+
+        if (!animated || AppMetrics.motionPage <= 0 || window.discoverShift === target)
+        {
+            window.discoverShift = target
+
+            return
+        }
+
+        discoverSlide.to = target
+        discoverSlide.start()
+    }
+
+    function startDiscoveryDecks(deckIds)
+    {
+        discovery.saveDecks(deckIds)
+
+        if (!discovery.startDecks(deckIds))
+        {
+            toast.show(qsTr("Every word of these decks is already in My Vocabulary or known."))
+
+            return
+        }
+
+        window.discoverPicking = false
+        window.enterSession("discovery")
+
+        if (!window.activeMorph.morphing)
+        {
+            window.showDiscoverPick(false, false)
+        }
+    }
+
+    function startDeckDiscovery(deckId)
+    {
+        if (!discovery.startDeck(deckId))
         {
             toast.show(qsTr("Every word of this deck is already in My Vocabulary or known."))
 
             return
         }
 
-        window.enterSession("triage")
+        window.enterSession("discovery")
     }
 
     function startCollectedTraining()
@@ -769,6 +817,29 @@ ApplicationWindow
         easing.type: AppMetrics.motionEasing
     }
 
+    Connections
+    {
+        target: window.activeMorph
+
+        function onMorphingChanged()
+        {
+            if (!window.activeMorph.morphing && !window.discoverPicking && !discoverSlide.running)
+            {
+                window.discoverShift = 0
+            }
+        }
+    }
+
+    NumberAnimation
+    {
+        id: discoverSlide
+
+        target: window
+        property: "discoverShift"
+        duration: AppMetrics.motionPage
+        easing.type: AppMetrics.motionEasing
+    }
+
     Component.onCompleted:
     {
         window.shownPage = window.screen
@@ -790,8 +861,8 @@ ApplicationWindow
         screenWalk.start()
         navigationWalk.start()
 
-        window.initialized = true
-        Qt.callLater(window.openWelcome)
+        window.openWelcome()
+        window.show()
 
         const snapshotDirectory = snapshotProbe.environmentVariable("IKONIKA_SNAPSHOT_DIR")
 
@@ -837,6 +908,11 @@ ApplicationWindow
     SentenceTrainingController
     {
         id: sentenceTraining
+    }
+
+    DiscoveryController
+    {
+        id: discovery
     }
 
     PlacementTestController
@@ -903,6 +979,13 @@ ApplicationWindow
 
                 onCrumbActivated: function(index)
                 {
+                    if (index === 1 && window.discoverPicking && discoverPick.item)
+                    {
+                        discoverPick.item.showCategories()
+
+                        return
+                    }
+
                     if (index !== 0)
                     {
                         return
@@ -958,7 +1041,7 @@ ApplicationWindow
                     enabled: decksScreen.deckNewCount > 0
 
                     onClicked: window.startFrom(window.deckLearnOrigin, deckLearnButton, deckLearnButton.background,
-                                                function() { window.startDeckTriage(decksScreen.deckId) })
+                                                function() { window.startDeckDiscovery(decksScreen.deckId) })
                 }
 
                 DesktopIconButton
@@ -982,10 +1065,10 @@ ApplicationWindow
                     visible: window.readingBook && readerScreen.readAloudOffered
                     opacity: readerScreen.chromeShown
                     iconName: "headphones"
-                    active: readerScreen.readAloud.enabled
+                    active: readerScreen.readAloud.started || readerScreen.voiceNoticeShown
                     text: qsTr("Read aloud")
 
-                    onClicked: readerScreen.readAloud.enabled = !readerScreen.readAloud.enabled
+                    onClicked: readerScreen.toggleReadAloud()
                 }
 
                 DesktopReaderAppearanceButton
@@ -995,6 +1078,7 @@ ApplicationWindow
                     visible: window.readingBook
                     opacity: readerScreen.chromeShown
                     pdf: readerScreen.isPdf
+                    readAloud: readerScreen.readAloud
                 }
 
                 DesktopIconButton
@@ -1018,7 +1102,7 @@ ApplicationWindow
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 opacity: window.activeMorph.morphing ? 1 - window.activeMorph.shellContentHidden : 1
-                clip: window.sliding
+                clip: window.sliding || discoverSlide.running
 
                 Rectangle
                 {
@@ -1031,21 +1115,47 @@ ApplicationWindow
                     id: todayScreen
 
                     anchors.fill: parent
-                    visible: window.pageShown("today")
-                    transform: Translate { x: window.pageOffset("today") }
+                    visible: window.pageShown("today") && window.discoverShift < 1
+                    transform: Translate { x: window.pageOffset("today") - window.discoverShift * pages.width }
 
                     store: window.store
                     training: training
                     review: review
                     sentences: sentenceTraining
+                    discovery: discovery
 
                     onLearnRequested: window.startFromTile("learn", window.startTraining)
                     onReviewRequested: window.startFromTile("review", window.startReview)
                     onFormsTrainingRequested: function(kind) { window.startFromTile(kind, function() { window.startFormsTraining(kind) }) }
                     onSentencesRequested: sentenceDialog.openFor()
                     onPracticeRequested: practiceDialog.openFor()
+                    onDiscoverRequested: window.startFromTile("discover", window.startDiscoveryPick)
                     onWordListRequested: function(source) { window.openWordList(source) }
                     onMessageRequested: function(message) { toast.show(message) }
+                }
+
+                Loader
+                {
+                    id: discoverPick
+
+                    anchors.fill: parent
+                    active: window.discoverPicking || window.discoverShift > 0
+                    visible: active && window.pageShown("today")
+                    focus: visible && window.discoverPicking
+                    transform: Translate { x: window.pageOffset("today") + (1 - window.discoverShift) * pages.width }
+
+                    onLoaded: discoverPick.item.forceActiveFocus()
+
+                    sourceComponent: Component
+                    {
+                        DesktopDiscoverPick
+                        {
+                            controller: discovery
+
+                            onStartRequested: function(deckIds, face) { window.startFrom("discover", face, face, function() { window.startDiscoveryDecks(deckIds) }) }
+                            onLeaveRequested: window.showDiscoverPick(false, true)
+                        }
+                    }
                 }
 
                 AppHeartbeat {}
@@ -1108,7 +1218,7 @@ ApplicationWindow
 
                     onPlacementRequested:
                     {
-                        placementScreen.retake = true
+                        window.placementRetake = true
                         window.enterSession("placement")
                     }
                 }
@@ -1173,6 +1283,7 @@ ApplicationWindow
             case "review": return qsTr("Review")
             case "sentences": return qsTr("Sentences")
             case "practice": return qsTr("Practice")
+            case "discovery": return qsTr("Discover")
             }
 
             if (training.formsSession)
@@ -1219,7 +1330,15 @@ ApplicationWindow
 
         suspended: wordDialog.visible
 
-        onLeaveRequested: window.leaveSession()
+        onLeaveRequested:
+        {
+            if (window.session === "discovery")
+            {
+                discovery.leave()
+            }
+
+            window.leaveSession()
+        }
         onEndRequested: window.endSession()
         onFinishedClicked:
         {
@@ -1242,6 +1361,11 @@ ApplicationWindow
 
             window.editWord(controller, card.id, card.targetWord, card.translation, card.gender, card.partOfSpeech, card.box)
         }
+
+        onResultEditRequested: function(controller, card)
+        {
+            window.editWord(controller, card.id, card.targetWord, card.translation, card.gender, card.partOfSpeech, card.box)
+        }
     }
 
     AppHeartbeat {}
@@ -1262,38 +1386,55 @@ ApplicationWindow
         onLeaveRequested: window.leaveSession()
     }
 
-    DesktopOnboardingPlacement
+    Loader
     {
-        id: placementScreen
-
         anchors.fill: parent
-        visible: !window.onboarding && window.session === "placement"
-        focus: visible
+        active: !window.onboarding && window.session === "placement"
+        visible: active
+        focus: active
 
-        controller: placementTest
-        targetLanguage: window.store.targetLanguageCode
-        standalone: true
-
-        onFinished:
+        sourceComponent: Component
         {
-            placementScreen.retake = false
-            window.leaveSession()
+            DesktopOnboardingPlacement
+            {
+                focus: true
+
+                controller: placementTest
+                targetLanguage: window.store.targetLanguageCode
+                standalone: true
+                retake: window.placementRetake
+
+                onFinished:
+                {
+                    window.placementRetake = false
+                    window.leaveSession()
+                }
+            }
         }
     }
 
-    DesktopOnboardingScreen
+    Loader
     {
         anchors.fill: parent
-        visible: window.onboarding
-        focus: visible
+        active: window.onboarding
+        visible: active
+        focus: active
 
-        store: window.store
-        placement: placementTest
-
-        onFinished:
+        sourceComponent: Component
         {
-            AppOnboarding.finish()
-            window.navigate("today")
+            DesktopOnboardingScreen
+            {
+                focus: true
+
+                store: window.store
+                placement: placementTest
+
+                onFinished:
+                {
+                    AppOnboarding.finish()
+                    window.navigate("today")
+                }
+            }
         }
     }
 
@@ -1373,6 +1514,52 @@ ApplicationWindow
         id: toast
 
         z: 100
+    }
+
+    DesktopTour
+    {
+        id: todayTour
+
+        objectName: "today_tour"
+
+        readonly property bool due: AppOnboarding.todayTourPending && window.visible && !window.onboarding
+                                    && !welcome.shown && window.screen === "today" && window.session.length === 0
+
+        anchors.fill: parent
+        z: 95
+
+        stops: [
+            { target: "today_learn", icon: "session_learn", title: qsTr("Learn new words"), text: todayScreen.dailyGoal > 0
+                ? qsTr("Learn %n new words a day here.", "", todayScreen.dailyGoal)
+                : qsTr("Learn new words here.") },
+            { target: "today_review", icon: "session_review", title: qsTr("Review"), text: qsTr("Words you learned come back here, a little further apart each time.") },
+            { target: "today_coming_up", icon: "nav_today", title: qsTr("Coming up"), text: window.store.missedReviewDemotes
+                ? qsTr("Reviews due in the next days. Skip a day and those words drop back a step.")
+                : qsTr("Reviews due in the next days.") },
+            { target: "nav_words", icon: "nav_words", title: qsTr("Words"), text: qsTr("Look up any word and add it.") },
+            { target: "nav_reader", icon: "nav_reader", title: qsTr("Reader"), text: qsTr("Read books and tap a word to add it.") },
+            { target: "nav_decks", icon: "nav_decks", title: qsTr("Decks"), text: qsTr("Topic word lists for finding new words.") },
+            { target: "nav_vocabulary", icon: "nav_vocabulary", title: qsTr("Vocabulary"), text: qsTr("Every word you have added.") }
+        ]
+
+        function follow()
+        {
+            if (todayTour.due && !todayTour.running)
+            {
+                todayTour.start()
+
+                return
+            }
+
+            if (!todayTour.due && todayTour.running)
+            {
+                todayTour.stopRunning()
+            }
+        }
+
+        onDueChanged: Qt.callLater(todayTour.follow)
+
+        onFinished: AppOnboarding.finishTodayTour()
     }
 
     DesktopWelcomeScreen
@@ -1558,7 +1745,7 @@ ApplicationWindow
 
         function onDataMerged()
         {
-            window.refreshCurrentScreen()
+            window.refreshCurrentScreen(true)
 
             AppOnboarding.refresh()
         }

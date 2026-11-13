@@ -24,6 +24,8 @@ Text
 
     function parse(sentence, gapStart, gapLength, textColour, gapColour)
     {
+        sentence = sentence.replace(/ (?=[!?:;»])/g, " ").replace(/« /g, "« ")
+
         const wordPattern = /[A-Za-zÀ-ÿŒœŸ0-9'’\-]+/g
         const letterPattern = /[A-Za-zÀ-ÿŒœŸ]/
         const words = []

@@ -48,7 +48,7 @@ MobileCard
             {
                 Layout.fillWidth: true
 
-                text: qsTr("Google asked you to sign in again. Your progress stays on this device until you reconnect.")
+                text: AppSyncController.reconnectDetail
                 font.pixelSize: AppMetrics.fontMeta
                 font.family: AppMetrics.fontFamily
                 color: AppTheme.colourSubtle

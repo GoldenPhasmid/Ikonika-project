@@ -7,10 +7,6 @@ ColumnLayout
 
     required property var store
     required property var session
-    property var triage: null
-    property bool wordRangeInline: false
-
-    signal placementRequested()
 
     readonly property var exerciseTypes: [
         { key: "audio", label: qsTr("Write what you hear"), icon: "speaker_on", on: root.session.audioExercise },
@@ -115,55 +111,6 @@ ColumnLayout
             lastRow: true
 
             onEdited: function(newValue) { root.store.daysInFirstStage = newValue }
-        }
-    }
-
-    DesktopSettingsGroup
-    {
-        visible: !root.session.review && root.wordRangeInline && root.triage !== null
-        title: qsTr("New words")
-
-        DesktopSettingsRow
-        {
-            text: qsTr("Words from")
-            description: qsTr("Training offers new words after this rank")
-            lastRow: true
-
-            DesktopDropdownButton
-            {
-                id: rangeButton
-
-                objectName: "settings_word_range_button"
-
-                Layout.fillWidth: false
-                Layout.preferredWidth: AppMetrics.settingsControlWidth
-                popover: rangePopover
-                text: root.triage && root.triage.startRank > 0
-                    ? qsTr("#%1").arg(Qt.locale().toString(root.triage.startRank, "f", 0)) : qsTr("The top")
-
-                DesktopPopover
-                {
-                    id: rangePopover
-
-                    y: rangeButton.height + AppMetrics.gapTight
-                    width: Math.max(rangeButton.width, AppMetrics.popoverWidth)
-                    padding: AppMetrics.gapMedium
-                    topPadding: AppMetrics.gapMedium
-
-                    DesktopWordRangePanel
-                    {
-                        Layout.preferredWidth: rangePopover.availableWidth
-                        Layout.preferredHeight: AppMetrics.popoverListHeight
-                        triage: root.triage
-
-                        onPlacementRequested:
-                        {
-                            rangePopover.close()
-                            root.placementRequested()
-                        }
-                    }
-                }
-            }
         }
     }
 

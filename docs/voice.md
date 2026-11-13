@@ -2,7 +2,7 @@
 
 Speech synthesis has one job in this app: play a word or sentence back fast enough that the delay after tapping speak does not register as a wait. This doc records what each candidate engine actually costs, on desktop and on Android, and which one plays audio on each platform today.
 
-## At a glance
+## Historical INT8 measurements
 
 | Engine | Platform | word_short (4 ch) | word_medium (8 ch) | sentence_short (13 ch) | sentence_long (51 ch) |
 |---|---|---|---|---|---|
@@ -15,15 +15,26 @@ Speech synthesis has one job in this app: play a word or sentence back fast enou
 
 PC numbers come from a fresh run of the desktop scratch benchmark. Android numbers are ranges from the on-device investigation described below, not a per-length rerun.
 
-Supertonic pays nearly the same cost per call regardless of length on both platforms — flow-matching runs a fixed number of denoising steps, so length only matters once the text needs an extra pass. Android's own engine beats bundled Supertonic by roughly 10x once warm. **Decision, desktop: Supertonic is the default voice and is downloaded automatically during first-launch setup.** It covers every language the app teaches in one 124 MB package, including Portuguese, where Piper has no voice in the catalog. The cost is about 230 ms per spoken line against 20 to 130 ms for Piper, which is the trade accepted for one voice that works everywhere. Piper stays in the catalog as a per-language alternative. **Decision, Android: unchanged.** The platform TTS is the only voice, with no bundled fallback. `FTSpeechService` picks the voice that covers the most languages when the user has not chosen one, which is Supertonic whenever it is installed.
+Desktop uses Supertonic 3 with the original ONNX weights. Listening comparisons found background noise in the INT8 output that disappeared with the original weights. The larger model is accepted for desktop speech quality. Piper is no longer offered or published, and the app loads only Supertonic voices. Android uses platform TTS and downloads no voice model.
+
+Memory cost of the original weights against INT8, from standalone CPU processes generating the same French sentence with Robert and Sarah at speed 1.0, 8 steps and seed 42. The figures include Python and ONNX Runtime and depend on text length.
+
+| | INT8 | Original |
+|---|---|---|
+| Four model files | 137.8 MiB | 379.6 MiB |
+| Peak resident RAM | 339.1 MiB | 542.1 MiB |
+| Resident RAM after synthesis | 323.2 MiB | 526.2 MiB |
+| Private committed memory | 396.0 MiB | 552.4 MiB |
+
+The historical INT8 table records the earlier investigation. A later Debug run with original weights and two synthesis threads measured approximately 321, 323, 333 and 662 ms for the four desktop text lengths.
 
 ## Engines investigated
 
 | Engine | Type | Where it runs | Offered to users | Status |
 |---|---|---|---|---|
-| Piper (`vits-piper-fr_FR-siwis-medium`) | VITS, ONNX | Desktop, via sherpa-onnx | Yes, as a per-language alternative | Shipping, desktop alternative |
+| Piper (`vits-piper-fr_FR-siwis-medium`) | VITS, ONNX | Desktop, via sherpa-onnx | No, removed from the catalog and the settings | Retired; the loader stays in `core` for tests |
 | Android platform TTS | `android.speech.tts.TextToSpeech`, `com.google.android.tts` engine | Android only | No — uses whatever the device has installed | Shipping, Android's only voice |
-| Supertonic | Flow-matching, ~99M params, int8 ONNX | Desktop, via sherpa-onnx; measured on Android during this investigation | Desktop only, downloaded at setup | Desktop default; not offered on Android |
+| Supertonic | Flow-matching, ~99M params, original ONNX | Desktop, via sherpa-onnx; measured on Android during this investigation | Desktop only, downloaded at setup | Desktop default; not offered on Android |
 
 Windows ships SAPI5 (`System.Speech.Synthesis`) and WinRT (`Windows.Media.SpeechSynthesis`) system voices. Neither is wired into the app.
 
@@ -46,53 +57,52 @@ The first real call used to pay a ~670 ms tax that never showed up again after. 
 
 Fix: select the French voice before warming, warm with a real silent `speak()` call (`KEY_PARAM_VOLUME = 0`) instead of `synthesizeToFile()`, and have `speak()` wait for warmup to finish before issuing its own call. That wait runs off the UI thread via `QThreadPool`, so it never stalls the interface. Measured result: 670 ms → 33 ms, matching the warm steady state.
 
-## Leading silence
+### Android engine recovery
 
-Supertonic pads every clip with 200 to 650 ms of silence before the voice starts, and the padding grows with the length of the text. Before the fix, the listener heard that padding on top of the 220 ms synthesis time. Piper pads less, from 0 to 180 ms.
+On 2026-11-11 a phone stayed silent across several app restarts. A speech request waits for the warmup to finish, and the warmup finished only when the engine called back, so an engine that never answered held every request forever. A request the engine rejected outright was dropped without a trace, and the engine's own errors went to logcat only.
 
-Every clip now has its leading silence cut at synthesis, for both engines. Silence means samples quieter than 0.5% of the clip's peak, which is 46 dB down. The cut keeps 20 ms before the first louder sample, so a soft consonant keeps its onset. Trailing silence is left in place, because a new line stops the one still playing and the tail never delays anything. The loudness gain is measured after the cut, so the removed silence does not pull the clip's level down and push the gain up.
+`PlatformSpeech.kt` now recovers from three cases: the engine never reports init (10 s), a warmup that produces no result (10 s, held speech is released), and a `speak()` the engine rejects (the request is held and the engine is shut down and bound again). It gives up after 3 rebinds in a row, and any utterance that actually starts resets the count. Every engine event is written to `Ikonika.log` under `ikonika.speech` with the prefix `engine:`, so a silent session now leaves a trail.
 
-## Sentence rate
+Reproduced on the emulator by force-stopping `com.google.android.tts` and then opening a Discover quiz: the first word was rejected with result -1, the engine rebound, and the word played 2.5 s later.
 
-A sentence exercise speaks at three quarters of the user's speech speed. At the plain setting a whole
-sentence comes out at conversational pace, which a learner hears as rushed, while a single word at
-the same setting sounds fine.
+## Synthesis and playback
 
-The scale travels with the call. `ExerciseControllerBase::SetSpeechRateScale` stores it,
-`ExerciseControllerBase::Speak` passes it to `AppSpeech::SpeakAtRate(Text, LanguageCode, RateScale)`,
-and `AppSpeech::Speak` is that call with 1.0. `SentenceTrainingController` sets 0.75
-(`SentenceSpeechRateScale`) on its three stage controllers; every other caller keeps 1.0.
+Supertonic receives the requested speed directly, clamped to 0.5–1.5, with 8 denoising steps and seed 42. Its generated waveform retains its leading and trailing silence. The app applies no time stretching or volume normalization to Supertonic. It converts samples to the playback PCM format, with range clamping for conversion safety. Device-rate conversion remains part of playback when required by the audio device.
 
-| Platform | Where the scale is applied |
+Piper keeps its leading-silence trimming and loudness adjustment in the loader, which only the tests exercise.
+
+Two settings control speech speed. Speech rate applies to words. Sentence speech rate is a multiplier on the speech rate for whole sentences: sentence training, read aloud, and any other spoken text of four or more words, such as Quick Add, dictionary examples and Discover. Text of one to three words plays at the speech rate. Both default to 100% and run from 50% to 150%, so a sentence plays at speech rate times sentence speech rate, clamped to the same range. At the defaults a sentence plays at the word speed. Both sliders are on the desktop and mobile sound settings, and the sentence slider plays a sample sentence at the sentence speed. The explicit slow-speech action multiplies its own factor on top of the sentence speed, so a sentence replayed slowly can reach the 0.5 floor. On Android the platform voice receives the same sentence multiplier for sentence training and for read aloud.
+
+The official browser demo adds 0.05 to its displayed speed before synthesis. Its displayed 1.00 therefore corresponds to native speed 1.05. The app passes its selected speed directly.
+
+## Voice picker
+
+Desktop Settings → Sound offers all ten Supertonic voices. The speaker IDs match the packaged voice data.
+
+| ID | Name |
 | --- | --- |
-| Desktop | `FTSpeechService::Speak(Text, LanguageCode, RateScale)` synthesises at `clamp(Speed × RateScale, 0.5, 1.5)`. The render speed is part of the cache key, so the slowed line is a separate cache entry from the same text at full speed. |
-| Android | `PlatformSpeech.speak(text, languageCode, rateScale)`, JNI signature `(Ljava/lang/String;Ljava/lang/String;F)V`, calls `setSpeechRate(rate × rateScale)` before `speak`, so the next plain call sets the rate back. |
+| 0 | Sarah |
+| 1 | Lily |
+| 2 | Jessica |
+| 3 | Olivia |
+| 4 | Emily |
+| 5 | Alex |
+| 6 | James |
+| 7 | Robert |
+| 8 | Sam |
+| 9 | Daniel |
 
-The clamp means a user speed of 0.5 cannot be slowed further.
+Sarah is the default when no speaker selection has been saved. Existing saved selections are preserved. Selecting a voice plays a sample.
 
-The slider's 100% is each voice's natural pace. `[speech]` covers the desktop cache behaviour and the
-app tests cover the scale reaching `SpeakAtRate`.
+There is no model picker. A Piper model already on disk is skipped at load with a log line, so a learner who downloaded one earlier is never left on a voice they cannot change.
 
-## Supertonic pace
+## Model files and diagnostics
 
-Supertonic predicts one length for the whole utterance, not a length per sound. Its speed setting
-only stretches that total. Below its natural pace the model gets extra time, and it fills that time
-with repeated words and long pauses. A long French sentence at speed 0.85 repeated two of its words.
-At 0.68 it held a long pause after the first comma. Supertone confirms that repeats, skipped words and
-long silences depend on the text, voice, seed and speed, and that more steps do not reliably fix them.
+The fetch script downloads the four original ONNX models and tts.json from Supertone. It obtains the binary voice styles and character index from the Sherpa conversion package. Supertonic loading requires the original model filenames. A directory containing only INT8 weights is skipped so it cannot shadow a valid bundled model.
 
-Supertonic therefore always renders at its own default pace of 1.05, with 8 steps, Supertone's own
-default. The seed is fixed, so a line sounds the same on every render and a bad one can be
-reproduced. `StretchSpeech` then changes the tempo of the render to `clamp(Speed × RateScale, 0.5, 1.5)`
-without changing the pitch. It is WSOLA: 40 ms Hann frames overlapping by half, each taken from
-within 12 ms of its nominal position, at the offset whose overlap best matches the previous frame's
-continuation. At a tempo of 1.0 the render plays unchanged.
+For a reproducible capture, set IKONIKA_SPEECH_CAPTURE to an existing output directory. Raw and final PCM WAV files are written per speed. IKONIKA_SPEECH_CAPTURE_SEED and IKONIKA_SPEECH_CAPTURE_STEPS override the seed and denoising count only while capture is enabled. Repeated captures at the same speed overwrite those diagnostic files.
 
-Piper predicts a length for each sound, so it slows cleanly and still takes the speed directly.
-
-The gain is a voice that no longer repeats or stalls at slow speeds. The cost is that slow speech is
-now signal processing on fast speech, so a heavy stretch sounds less natural than a slow render
-from a model that handles it.
+The hidden test "Capture Supertonic sentence audio" generates a fixed French sentence at 1.0 and 0.75. Signalsmith and WSOLA helpers remain in the source tree but are no longer used for Supertonic playback.
 
 ## Resampling
 

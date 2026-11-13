@@ -53,6 +53,8 @@ struct FTRankedWord
     uint32_t WordId = 0;
 
     bool bVerb = false;
+    std::string Headword;
+    std::string PartOfSpeech;
 };
 
 struct FTFormSentence
@@ -141,6 +143,12 @@ struct FTDictionarySearchMatch
     std::optional<double> TranslationProbability;
 };
 
+struct FTFormsFlag
+{
+    std::string Headword;
+    bool bEligible = false;
+};
+
 class FTDictionaryRepository
 {
 public:
@@ -171,6 +179,14 @@ public:
 
     std::unordered_set<std::string> FindHeadwordsWithReading(
         const std::vector<std::string>& Headwords, const std::string& PartOfSpeech) const;
+
+    /** True when the dictionary carries the has_forms flags written by the forms flags build step. */
+    bool HasFormsFlags() const;
+
+    /** The stored flag of each headword that has one, with the headword in the dictionary's own spelling. A headword
+        missing from the result has no flag and needs a full lookup. */
+    std::vector<FTFormsFlag> LoadFormsFlags(const std::vector<std::string>& Headwords,
+                                            const std::string& PartOfSpeech) const;
 
     std::unordered_set<std::string> FindHeadwordsWithTag(
         const std::vector<std::string>& Headwords, const std::string& Tag) const;
@@ -216,6 +232,8 @@ public:
     std::vector<FTHeadwordForm> ListHeadwordForms(const std::vector<std::string>& Headwords) const;
 
     std::vector<FTRankedWord> ListWordsUpToTeachingRank(int TeachingRank) const;
+
+    std::vector<FTRankedWord> ListGrammarWords(const std::vector<std::string>& EssentialVerbs, int FallbackVerbCount) const;
 
     int GetTeachingRankCeiling(int LearnableWordsAbove) const;
 
@@ -264,6 +282,8 @@ private:
     mutable std::optional<bool> ResolvedDeckCategories;
 
     mutable std::optional<bool> ResolvedLearnableReadings;
+
+    mutable std::optional<bool> ResolvedFormsFlags;
 
     mutable std::map<std::string, std::vector<FTLearnableWord>> CategoryOfferCache;
 

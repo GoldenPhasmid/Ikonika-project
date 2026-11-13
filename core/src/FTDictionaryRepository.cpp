@@ -505,6 +505,7 @@ std::optional<FTDictionaryEntry> FTDictionaryRepository::LookUpForForms(
     {
         int64_t Id = 0;
         std::string Headword;
+        std::vector<std::string> Tags;
         std::optional<int> TeachingRank;
         std::optional<int> FrequencyRank;
         bool bExact = false;
@@ -514,12 +515,12 @@ std::optional<FTDictionaryEntry> FTDictionaryRepository::LookUpForForms(
     const std::optional<int64_t> LanguageId = GetNativeLanguageFilter();
 
     const std::string Queries[] = {
-        "SELECT words.id, words.headword, parts_of_speech.code, words.teaching_rank, words.frequency_rank "
+        "SELECT words.id, words.headword, parts_of_speech.code, words.teaching_rank, words.frequency_rank, words.tags "
         "FROM words "
         "JOIN parts_of_speech ON parts_of_speech.id = words.part_of_speech_id "
         "WHERE words.headword = ?1",
 
-        "SELECT words.id, words.headword, parts_of_speech.code, words.teaching_rank, words.frequency_rank "
+        "SELECT words.id, words.headword, parts_of_speech.code, words.teaching_rank, words.frequency_rank, words.tags "
         "FROM word_forms "
         "JOIN words ON words.id = word_forms.word_id "
         "JOIN parts_of_speech ON parts_of_speech.id = words.part_of_speech_id "
@@ -555,6 +556,7 @@ std::optional<FTDictionaryEntry> FTDictionaryRepository::LookUpForForms(
             Match.Headword = Found;
             Match.TeachingRank = Query.IsNull(3) ? std::nullopt : std::optional(Query.GetInt(3));
             Match.FrequencyRank = Query.IsNull(4) ? std::nullopt : std::optional(Query.GetInt(4));
+            Match.Tags = SplitTags(Query.IsNull(5) ? std::string() : Query.GetText(5));
             Match.bExact = Index == 0;
 
             Matches.push_back(std::move(Match));
@@ -631,6 +633,7 @@ std::optional<FTDictionaryEntry> FTDictionaryRepository::LookUpForForms(
     Entry.PartOfSpeech = PartOfSpeech;
     Entry.TeachingRank = Best->TeachingRank;
     Entry.FrequencyRank = Best->FrequencyRank;
+    Entry.Tags = Best->Tags;
     Entry.Forms = LoadForms(Target, Best->Id);
 
     FTStatement Senses = Target.Prepare(
@@ -1221,6 +1224,84 @@ std::unordered_set<std::string> FTDictionaryRepository::FindHeadwordsWithReading
     return Result;
 }
 
+bool FTDictionaryRepository::HasFormsFlags() const
+{
+    if (!ResolvedFormsFlags.has_value())
+    {
+        FTStatement Column = Target.Prepare(
+            "SELECT COUNT(*) FROM pragma_table_info('words') WHERE name = 'has_forms'");
+
+        bool bFlagged = false;
+
+        if (Column.IsValid() && Column.Step() && Column.GetInt(0) > 0)
+        {
+            FTStatement Marker = Target.Prepare("SELECT 1 FROM metadata WHERE key = 'forms_flags'");
+
+            bFlagged = Marker.IsValid() && Marker.Step();
+        }
+
+        ResolvedFormsFlags = bFlagged;
+
+        qCInfo(LogDatabase) << (bFlagged ? "Forms eligibility comes from the dictionary's has_forms flags"
+                                         : "The dictionary has no forms flags, eligibility is looked up per word");
+    }
+
+    return *ResolvedFormsFlags;
+}
+
+std::vector<FTFormsFlag> FTDictionaryRepository::LoadFormsFlags(const std::vector<std::string>& Headwords,
+                                                                const std::string& PartOfSpeech) const
+{
+    const FTQueryTimer Timer("FTDictionaryRepository::LoadFormsFlags");
+
+    std::vector<FTFormsFlag> Result;
+
+    if (Headwords.empty() || PartOfSpeech.empty() || !HasFormsFlags())
+    {
+        return Result;
+    }
+
+    constexpr size_t MaxHeadwordsPerStatement = 500;
+
+    for (size_t Start = 0; Start < Headwords.size(); Start += MaxHeadwordsPerStatement)
+    {
+        const size_t End = std::min(Start + MaxHeadwordsPerStatement, Headwords.size());
+
+        std::string Sql =
+            "SELECT headword, has_forms FROM words "
+            "WHERE part_of_speech_id = (SELECT id FROM parts_of_speech WHERE code = ?1) "
+            "AND has_forms IS NOT NULL AND headword IN (?2";
+
+        for (size_t Index = Start + 1; Index < End; ++Index)
+        {
+            Sql += ", ?" + std::to_string(Index - Start + 2);
+        }
+
+        Sql += ")";
+
+        FTStatement Query = Target.Prepare(Sql);
+
+        if (!Query.IsValid())
+        {
+            continue;
+        }
+
+        Query.BindText(1, PartOfSpeech);
+
+        for (size_t Index = Start; Index < End; ++Index)
+        {
+            Query.BindText(static_cast<int>(Index - Start + 2), Headwords[Index]);
+        }
+
+        while (Query.Step())
+        {
+            Result.push_back({Query.GetText(0), Query.GetInt(1) != 0});
+        }
+    }
+
+    return Result;
+}
+
 std::unordered_set<std::string> FTDictionaryRepository::FindHeadwordsWithTag(
     const std::vector<std::string>& Headwords, const std::string& Tag) const
 {
@@ -1719,6 +1800,7 @@ std::vector<FTDictionarySearchMatch> FTDictionaryRepository::Search(const std::s
         "ORDER BY MatchTier ASC, "
         "         CASE WHEN MatchTier <= " + std::to_string(LastExactTier) + " THEN TeachingRank IS NULL ELSE 0 END ASC, "
         "         CASE WHEN MatchTier <= " + std::to_string(LastExactTier) + " THEN TeachingRank END ASC, "
+        "         CASE WHEN MatchTier = " + std::to_string(FormTier) + " THEN parts_of_speech.code <> 'verb' ELSE 0 END ASC, "
         "         MIN(words.cefr_level) IS NULL, MIN(words.cefr_level) ASC, "
         "         words.headword ASC, parts_of_speech.code ASC "
         "LIMIT ?4");
@@ -1867,6 +1949,17 @@ std::vector<FTDictionarySearchMatch> FTDictionaryRepository::Search(const std::s
                 if (LeftHasRank && *Left.second.TeachingRank != *Right.second.TeachingRank)
                 {
                     return *Left.second.TeachingRank < *Right.second.TeachingRank;
+                }
+            }
+
+            if (Left.first == FormTier)
+            {
+                const bool bLeftVerb = Left.second.PartOfSpeech == "verb";
+                const bool bRightVerb = Right.second.PartOfSpeech == "verb";
+
+                if (bLeftVerb != bRightVerb)
+                {
+                    return bLeftVerb;
                 }
             }
 
@@ -2091,6 +2184,64 @@ std::vector<FTHeadwordForm> FTDictionaryRepository::ListHeadwordForms(const std:
     return Result;
 }
 
+std::vector<FTRankedWord> FTDictionaryRepository::ListGrammarWords(const std::vector<std::string>& EssentialVerbs,
+                                                                   int FallbackVerbCount) const
+{
+    const FTQueryTimer Timer("FTDictionaryRepository::ListGrammarWords");
+
+    std::vector<FTRankedWord> Result;
+
+    const std::string VerbFilter = EssentialVerbs.empty()
+        ? "SELECT id, 1 FROM ("
+          "  SELECT words.id AS id "
+          "  FROM words "
+          "  JOIN parts_of_speech ON parts_of_speech.id = words.part_of_speech_id "
+          "  WHERE parts_of_speech.code = 'verb' AND words.teaching_rank > 0 "
+          "  ORDER BY words.teaching_rank "
+          "  LIMIT ?1)"
+        : "SELECT words.id, 1 "
+          "FROM words "
+          "JOIN parts_of_speech ON parts_of_speech.id = words.part_of_speech_id "
+          "WHERE parts_of_speech.code = 'verb' AND words.headword IN (" + MakePlaceholders(EssentialVerbs.size()) + ")";
+
+    FTStatement Query = Target.Prepare(
+        "SELECT words.id, 0 "
+        "FROM words "
+        "JOIN parts_of_speech ON parts_of_speech.id = words.part_of_speech_id "
+        "WHERE parts_of_speech.code IN ('pron', 'prep', 'conj', 'det', 'article', 'contraction') "
+        "UNION ALL " + VerbFilter);
+
+    if (!Query.IsValid())
+    {
+        qCWarning(LogDatabase) << "ListGrammarWords: the grammar word query failed";
+
+        return Result;
+    }
+
+    if (EssentialVerbs.empty())
+    {
+        Query.BindInt(1, std::max(FallbackVerbCount, 0));
+    }
+
+    for (size_t Index = 0; Index < EssentialVerbs.size(); ++Index)
+    {
+        Query.BindText(static_cast<int>(Index + 1), EssentialVerbs[Index]);
+    }
+
+    while (Query.Step())
+    {
+        FTRankedWord Word;
+        Word.WordId = static_cast<uint32_t>(Query.GetInt64(0));
+        Word.bVerb = Query.GetInt(1) != 0;
+        Word.Headword = Query.GetText(2);
+        Word.PartOfSpeech = Query.GetText(3);
+
+        Result.push_back(Word);
+    }
+
+    return Result;
+}
+
 int FTDictionaryRepository::GetTeachingRankCeiling(int LearnableWordsAbove) const
 {
     const auto Cached = RankCeilingCache.find(LearnableWordsAbove);
@@ -2239,7 +2390,7 @@ std::vector<FTRankedWord> FTDictionaryRepository::ListWordsUpToTeachingRank(int 
     }
 
     FTStatement Query = Target.Prepare(
-        "SELECT words.id, parts_of_speech.code = 'verb' "
+        "SELECT words.id, parts_of_speech.code = 'verb', words.headword, parts_of_speech.code "
         "FROM words "
         "JOIN parts_of_speech ON parts_of_speech.id = words.part_of_speech_id "
         "WHERE words.teaching_rank <= ?1");
@@ -2258,6 +2409,8 @@ std::vector<FTRankedWord> FTDictionaryRepository::ListWordsUpToTeachingRank(int 
         FTRankedWord Word;
         Word.WordId = static_cast<uint32_t>(Query.GetInt64(0));
         Word.bVerb = Query.GetInt(1) != 0;
+        Word.Headword = Query.GetText(2);
+        Word.PartOfSpeech = Query.GetText(3);
 
         Result.push_back(Word);
     }

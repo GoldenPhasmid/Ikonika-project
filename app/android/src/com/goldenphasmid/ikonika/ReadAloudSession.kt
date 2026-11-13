@@ -130,6 +130,7 @@ object ReadAloudSession {
 
         return Notification.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
+            .setLargeIcon(Icon.createWithResource(context, R.mipmap.ic_launcher_round))
             .setColor(ACCENT_COLOR)
             .setContentTitle(title)
             .setContentIntent(launchIntent(context))

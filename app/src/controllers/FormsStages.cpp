@@ -7,14 +7,13 @@
 #include "FlashcardController.h"
 #include "SentenceSelection.h"
 #include "SpeedMatchController.h"
-#include "WrittenProductionController.h"
+#include "GapProductionController.h"
 
 #include "core/FCardSelectorBase.h"
 #include "core/FTLog.h"
 #include "core/FTSentenceCards.h"
 #include "core/FTWordForms.h"
 
-#include <QCoreApplication>
 #include <QElapsedTimer>
 
 #include <algorithm>
@@ -31,28 +30,6 @@ static constexpr size_t FormsRoundCount = 2;
 static bool IsVerbForm(const FTCard& Card)
 {
     return GetFormsKind(Card.Id) == FormsKindVerb;
-}
-
-static FWrittenContent BuildWrittenForm(const FTCard& Card)
-{
-    FWrittenContent Content;
-
-    const std::optional<FTWordForm> Read = ReadWordForm(Card);
-
-    if (!Read.has_value())
-    {
-        Content.Prompt = Card.Translation;
-        Content.AcceptedAnswers = {Card.TargetWord};
-
-        return Content;
-    }
-
-    Content.Heading = Read->Headword;
-    Content.Prompt = MakeFormPrompt(Read->SubjectLabel);
-    Content.AcceptedAnswers = ListAcceptedForms(Card);
-    Content.Translation = Read->Meaning;
-
-    return Content;
 }
 
 static QVariantList BuildWordFormsTable(const FTCard& Form)
@@ -119,23 +96,6 @@ static void AddMatchStage(QObject* Parent, const FTSessionStartParams& Params, F
 
     Result.Controllers.push_back(MatchInstance);
     Result.Stages.push_back(std::make_unique<FProxyStage>(MatchInstance, MatchParams));
-}
-
-static FWrittenContent BuildGapContent(const FTCard& Card, const FTTreeSentence& Sentence)
-{
-    FWrittenContent Content;
-
-    const std::optional<FTWordForm> Read = ReadWordForm(Card);
-
-    Content.Heading = Read.has_value() ? Read->Headword : std::string();
-    Content.Prompt = MakeGapPrompt(Sentence);
-    Content.AcceptedAnswers = ListAcceptedForms(Card);
-    Content.AcceptedAnswers.push_back(GetGapWord(Sentence));
-    Content.Translation = Sentence.Translation;
-    Content.RevealedAnswer = Sentence.Text;
-    Content.bSentence = true;
-
-    return Content;
 }
 
 static std::vector<uint32_t> ListFocusWordIds(const std::vector<FTCardHandle>& Forms, const std::vector<int>& Word)
@@ -548,18 +508,10 @@ static void AddTypingStage(QObject* Parent, const FTSessionStartParams& Params, 
     FTSessionStartParams TypingParams = Params;
     TypingParams.CardState = std::make_shared<FCardState>(Rounds.Cards);
 
-    auto* TypingInstance = new WrittenProductionController(Parent);
-    TypingInstance->SetAskWord(false);
+    auto* TypingInstance = new FormGapController(Parent);
     TypingInstance->SetWordMarkup(AppCards::MarkFormWord);
     TypingInstance->SetFormsTable(BuildWordFormsTable);
-    TypingInstance->SetContentBuilder(
-        [Gaps](const FTCard& Card)
-        {
-            const FTTreeSentence* Gap = FindFormGap(*Gaps, Card.Id);
-
-            return Gap != nullptr ? BuildGapContent(Card, *Gap) : BuildWrittenForm(Card);
-        },
-        QCoreApplication::translate("FormsStages", "Type the form..."));
+    TypingInstance->SetSentenceLookup([Gaps](const FTCard& Card) { return FindFormGap(*Gaps, Card.Id); });
     Result.Controllers.push_back(TypingInstance);
 
     std::vector<FMasteryStageSessionController> Candidates;

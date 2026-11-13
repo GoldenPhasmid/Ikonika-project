@@ -40,7 +40,7 @@ DesktopCard
             DesktopLabel
             {
                 Layout.fillWidth: true
-                text: qsTr("Google asked you to sign in again. Your progress stays on this device until you reconnect.")
+                text: AppSyncController.reconnectDetail
                 font.pixelSize: AppMetrics.fontSmall
                 color: AppTheme.colourSubtle
                 wrapMode: Text.WordWrap

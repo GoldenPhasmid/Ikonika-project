@@ -23,6 +23,14 @@ Item
     property real reveal: 0
     property bool leaving: false
     property bool hideAfterLeaving: false
+    property bool closingItself: false
+
+    function conceal()
+    {
+        root.closingItself = true
+        root.visible = false
+        root.closingItself = false
+    }
 
     function present()
     {
@@ -58,7 +66,7 @@ Item
 
         if (root.reveal === 0)
         {
-            root.visible = false
+            root.conceal()
             root.hidden()
 
             return
@@ -104,6 +112,13 @@ Item
         }
 
         root.reveal = 0
+
+        if (!root.closingItself)
+        {
+            exitAnimation.stop()
+            root.leaving = false
+            root.dismissed()
+        }
     }
 
     NumberAnimation
@@ -134,7 +149,7 @@ Item
 
             if (root.hideAfterLeaving)
             {
-                root.visible = false
+                root.conceal()
                 root.hidden()
 
                 return

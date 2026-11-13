@@ -1,0 +1,60 @@
+word	part_of_speech	translation	meaning_gist
+yo	pron	I	persona
+tú	pron	you (informal)	interlocutor
+él	pron	he	masculino
+ella	pron	she	mujer
+usted	pron	you (formal)	formalidad
+nosotros	pron	we	sujeto
+vosotros	pron	you all (informal)	ustedes
+ellos	pron	they	sujeto
+ellas	pron	they (feminine)	sujeto
+este	pron	this	cercanía
+ese	pron	that	demostrativo
+el	article	the	determinado
+un	article	a, an	indefinido
+mi	det	my	posesivo
+tu	det	your (informal)	posesivo
+su	det	his, her, its, their	él
+nuestro	det	our	posesivo
+vuestro	det	your (informal plural)	posesivo
+para	prep	for	beneficiario
+con	prep	with	compañía
+sobre	prep	on	encima
+sin	prep	without	carencia
+bajo	prep	under	debajo
+después	prep	after	posterior
+antes	prep	before	anteriormente
+hacia	prep	towards	dirección
+entre	prep	between	intervalo
+y	conj	and	unión
+pero	conj	but	contraste
+o	conj	or	alternativa
+entonces	adv	so, therefore	consecuencia
+porque	conj	because	causa
+como	conj	like, as	manera
+cuando	conj	when	momento
+no	adv	no, not	negación
+más	adv	more	comparativo
+bien	adv	well	correctamente
+sí	adv	yes	afirmativo
+aquí	adv	here	lugar
+allí	adv	there	allá
+muy	adv	very	sumamente
+también	adv	also, too	además
+nunca	adv	never	jamás
+siempre	adv	always	constantemente
+ahora	adv	now	actualmente
+mucho	adv	a lot	abundancia
+ser	verb	to be (identity)	identidad
+estar	verb	to be (state, place)	condición
+tener	verb	to have	poseer
+ir	verb	to go	desplazarse
+hacer	verb	to do, to make	realizar
+decir	verb	to say	expresar
+poder	verb	can, to be able to	capacidad
+querer	verb	to want	desear
+deber	verb	must, to have to	obligación
+saber	verb	to know	conocer
+ver	verb	to see	percibir
+venir	verb	to come	llegar
+tomar	verb	to take	coger

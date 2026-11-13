@@ -58,6 +58,7 @@ struct AppQuickLookup::FKeyboardCapture : QObject
     }
 
     static LRESULT CALLBACK OnKeyboardEvent(int Code, WPARAM Message, LPARAM Data);
+    bool OnTypeKey(WPARAM Message, const KBDLLHOOKSTRUCT& Event);
     void OnCopyKey(WPARAM Message, const KBDLLHOOKSTRUCT& Event);
 
     static thread_local FKeyboardCapture* Active;
@@ -69,6 +70,7 @@ struct AppQuickLookup::FKeyboardCapture : QObject
     DWORD ClipboardSequence = 0;
     bool bCopyHeld = false;
     bool bFirstTap = false;
+    bool bTypeKeyHeld = false;
     std::atomic_uint Revision{0};
     unsigned int PendingRevision = 0;
     HWND PendingWindow = nullptr;
@@ -140,10 +142,66 @@ LRESULT CALLBACK AppQuickLookup::FKeyboardCapture::OnKeyboardEvent(int Code, WPA
 {
     if (Code == HC_ACTION && Active != nullptr)
     {
-        Active->OnCopyKey(Message, *reinterpret_cast<const KBDLLHOOKSTRUCT*>(Data));
+        const KBDLLHOOKSTRUCT& Event{*reinterpret_cast<const KBDLLHOOKSTRUCT*>(Data)};
+
+        if (Active->OnTypeKey(Message, Event))
+        {
+            return 1;
+        }
+
+        Active->OnCopyKey(Message, Event);
     }
 
     return CallNextHookEx(nullptr, Code, Message, Data);
+}
+
+bool AppQuickLookup::FKeyboardCapture::OnTypeKey(WPARAM Message, const KBDLLHOOKSTRUCT& Event)
+{
+    if (Event.vkCode != VK_SPACE || (Event.flags & LLKHF_INJECTED) != 0)
+    {
+        return false;
+    }
+
+    if (Message == WM_KEYUP || Message == WM_SYSKEYUP)
+    {
+        const bool bSwallowed{bTypeKeyHeld};
+        bTypeKeyHeld = false;
+
+        return bSwallowed;
+    }
+
+    if (bTypeKeyHeld)
+    {
+        return true;
+    }
+
+    const bool bModifiersMatch{(GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0 && (GetAsyncKeyState(VK_MENU) & 0x8000) != 0
+                               && (GetAsyncKeyState(VK_SHIFT) & 0x8000) == 0
+                               && (GetAsyncKeyState(VK_LWIN) & 0x8000) == 0 && (GetAsyncKeyState(VK_RWIN) & 0x8000) == 0};
+
+    if (!bModifiersMatch)
+    {
+        return false;
+    }
+
+    bTypeKeyHeld = true;
+    bFirstTap = false;
+    ++Revision;
+
+    QMetaObject::invokeMethod(&Owner, [this, Foreground = GetForegroundWindow()]()
+    {
+        if (!Owner.IsEnabled())
+        {
+            return;
+        }
+
+        Owner.ClipboardTimer.stop();
+        ReturnWindow = Foreground;
+        qCInfo(LogApp) << "Quick Add opened for typing";
+        emit Owner.typedLookupRequested();
+    }, Qt::QueuedConnection);
+
+    return true;
 }
 
 void AppQuickLookup::FKeyboardCapture::OnCopyKey(WPARAM Message, const KBDLLHOOKSTRUCT& Event)
@@ -249,32 +307,80 @@ void AppQuickLookup::ReadSelection()
 
     ClipboardTimer.stop();
 
-    constexpr qsizetype MaximumSelectionLength{160};
+    constexpr qsizetype MaximumSelectionLength{5000};
 
-    if (Text.size() <= MaximumSelectionLength && Capture->PendingWindow == GetForegroundWindow()
-        && Capture->PendingRevision == Capture->Revision.load())
+    if (Text.size() > MaximumSelectionLength)
+    {
+        qCInfo(LogApp) << "Quick Add ignored a copy of" << Text.size() << "characters";
+
+        return;
+    }
+
+    if (Capture->PendingWindow == GetForegroundWindow() && Capture->PendingRevision == Capture->Revision.load())
     {
         Capture->ReturnWindow = Capture->PendingWindow;
+        qCInfo(LogApp) << "Quick Add opened for a copy of" << Text.size() << "characters";
         emit lookupRequested(Text);
     }
 }
 
 void AppQuickLookup::present(QWindow* Window)
 {
+    constexpr QPoint CursorOffset{12, 16};
     const QPoint Position{QCursor::pos()};
 
     if (QScreen* Screen = QGuiApplication::screenAt(Position))
     {
-        const QRect Area{Screen->availableGeometry()};
         Window->setScreen(Screen);
-        Window->setFramePosition({
-            qBound(Area.left(), Position.x() + 12, qMax(Area.left(), Area.right() - Window->width() - 16)),
-            qBound(Area.top(), Position.y() + 16, qMax(Area.top(), Area.bottom() - Window->height() - 48))});
     }
 
+    Window->setFramePosition(Position + CursorOffset);
     Window->show();
     Window->raise();
     Window->requestActivate();
+    keepOnScreen(Window);
+}
+
+void AppQuickLookup::keepOnScreen(QWindow* Window)
+{
+    QScreen* Screen{Window->screen()};
+
+    if (Screen == nullptr || !Window->isVisible())
+    {
+        return;
+    }
+
+    const QRect Area{Screen->availableGeometry()};
+    const QRect Frame{Window->frameGeometry()};
+
+    Window->setFramePosition({
+        qBound(Area.left(), Frame.left(), qMax(Area.left(), Area.right() - Frame.width())),
+        qBound(Area.top(), Frame.top(), qMax(Area.top(), Area.bottom() - Frame.height()))});
+}
+
+int AppQuickLookup::availableHeight(QWindow* Window) const
+{
+    QScreen* Screen{Window->screen() != nullptr ? Window->screen() : QGuiApplication::screenAt(QCursor::pos())};
+
+    return Screen != nullptr ? Screen->availableGeometry().height() : 0;
+}
+
+QSize AppQuickLookup::savedSize() const
+{
+    return QSettings{}.value(QStringLiteral("desktop/quickAddSize")).toSize();
+}
+
+void AppQuickLookup::saveSize(int Width, int Height)
+{
+    const QSize Size{Width, Height};
+
+    if (savedSize() == Size)
+    {
+        return;
+    }
+
+    QSettings{}.setValue(QStringLiteral("desktop/quickAddSize"), Size);
+    qCInfo(LogApp) << "Quick Add resized to" << Width << "x" << Height;
 }
 
 void AppQuickLookup::dismiss(QWindow* Window, bool bRestoreFocus)

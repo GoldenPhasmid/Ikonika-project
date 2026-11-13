@@ -12,6 +12,8 @@ Rectangle
     property bool expanded: true
     property int highlightedTranslation: -1
     property int stageCount: 1
+    property int chipColumns: 3
+    property int chipRows: 0
 
     signal translationPicked(string text)
     signal expandRequested()
@@ -141,11 +143,23 @@ Rectangle
             onWordClicked: function(word, sentence) { root.wordClicked(word, sentence) }
         }
 
-        Item
+        Flickable
         {
+            id: chipArea
+
             Layout.fillWidth: true
             Layout.topMargin: AppMetrics.gapSmall
-            implicitHeight: chipGrid.implicitHeight
+            implicitHeight: root.chipRows > 0
+                ? AppMetrics.buttonHeight * root.chipRows + chipGrid.rowSpacing * (root.chipRows - 1)
+                : chipGrid.implicitHeight
+            contentWidth: width
+            contentHeight: chipGrid.implicitHeight
+            flickableDirection: Flickable.VerticalFlick
+            boundsBehavior: Flickable.StopAtBounds
+            interactive: contentHeight > height
+            clip: root.chipRows > 0
+
+            ScrollBar.vertical: DesktopScrollBar {}
 
             Grid
             {
@@ -154,7 +168,7 @@ Rectangle
                 readonly property real cellWidth: (width - columnSpacing * (columns - 1)) / columns
 
                 width: parent.width
-                columns: 3
+                columns: root.chipColumns
                 columnSpacing: AppMetrics.gapSmall
                 rowSpacing: AppMetrics.gapSmall
 

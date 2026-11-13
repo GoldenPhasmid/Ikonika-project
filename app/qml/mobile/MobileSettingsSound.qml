@@ -55,7 +55,6 @@ ColumnLayout
         MobileSettingsSlider
         {
             title: qsTr("Speech rate")
-            lastRow: true
 
             value: Math.round(root.store.speechSpeed * 100)
             from: Math.round(root.store.minimumSpeechSpeed * 100)
@@ -68,6 +67,25 @@ ColumnLayout
             {
                 root.store.speechSpeed = newValue / 100
                 root.store.playVoiceSample()
+            }
+        }
+
+        MobileSettingsSlider
+        {
+            title: qsTr("Sentence speech rate")
+            lastRow: true
+
+            value: Math.round(root.store.sentenceSpeechSpeed * 100)
+            from: Math.round(root.store.minimumSpeechSpeed * 100)
+            to: Math.round(root.store.maximumSpeechSpeed * 100)
+            step: 5
+            suffix: "%"
+            interactive: root.store.audioAvailable
+
+            onEdited: function(newValue)
+            {
+                root.store.sentenceSpeechSpeed = newValue / 100
+                root.store.playSentenceVoiceSample()
             }
         }
     }

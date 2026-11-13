@@ -6,6 +6,7 @@ Button
     id: root
 
     property bool pdf: true
+    property ReaderReadAloud readAloud: null
 
     implicitWidth: AppMetrics.headerIconTapWidth
     implicitHeight: AppMetrics.headerIconTapWidth
@@ -68,6 +69,7 @@ Button
         {
             showPdf: root.pdf
             showText: !root.pdf
+            readAloud: root.pdf ? null : root.readAloud
             inset: AppMetrics.gapCompact
         }
     }

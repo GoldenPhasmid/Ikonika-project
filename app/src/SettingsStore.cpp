@@ -5,7 +5,6 @@
 #include "AppDictionary.h"
 #include "AppPackageDownloader.h"
 #include "AppSpeech.h"
-#include "AppVoiceChoices.h"
 #include "AppWebSearch.h"
 #include "controllers/AppSyncController.h"
 
@@ -81,7 +80,8 @@ SettingsStore::SettingsStore(QObject* Parent)
     // "no voice yet" until this fires, then as whatever actually loaded.
     connect(&AppSpeech::Get(), &AppSpeech::ready, this,
             &SettingsStore::audioSettingsChanged);
-    connect(&AppSpeech::Get(), &AppSpeech::ready, this, &SettingsStore::SelectPendingVoice);
+    connect(&AppSpeech::Get(), &AppSpeech::sentenceSpeedChanged, this,
+            &SettingsStore::audioSettingsChanged);
     connect(&AppCatalog::Get(), &AppCatalog::catalogChanged, this,
             &SettingsStore::audioSettingsChanged);
     connect(&AppCatalog::Get(), &AppCatalog::catalogChanged, this,
@@ -157,51 +157,6 @@ void SettingsStore::SetAudioEnabled(bool bValue)
     emit audioSettingsChanged();
 }
 
-QVariantList SettingsStore::GetVoiceChoices() const
-{
-    const QMutexLocker Guard(&AppSpeech::Get().Lock());
-
-    return AppVoiceChoices::Build(FTSettings::Get().GetLanguageRules().TargetLanguage,
-                                  AppSpeech::Get(),
-                                  AppCatalog::Get().GetCatalog());
-}
-
-void SettingsStore::selectVoice(int Index)
-{
-    {
-        const QMutexLocker Guard(&AppSpeech::Get().Lock());
-
-        if (Index < 0 || Index >= AppSpeech::Get().GetVoiceCount() || AppSpeech::Get().GetActiveVoice() == Index)
-        {
-            return;
-        }
-    }
-
-    AppSpeech::Get().SetActiveVoice(Index);
-
-    qCInfo(LogApp) << "Setting changed: active voice ->" << Index;
-
-    emit audioSettingsChanged();
-}
-
-void SettingsStore::fetchVoice(const QString& PackageId)
-{
-    const std::optional<FTCatalogPackage> Package = AppCatalog::Get().FindPackage(PackageId);
-
-    if (!Package.has_value() || Package->Kind != CatalogKindVoice)
-    {
-        qCWarning(LogApp) << "Voice download asked for an unknown package" << PackageId;
-
-        return;
-    }
-
-    PendingVoiceDirectory = QString::fromStdString(AppVoiceChoices::DirectoryOf(*Package));
-
-    qCInfo(LogApp) << "Voice download requested:" << PackageId;
-
-    AppPackageDownloader::Get().download(PackageId);
-}
-
 void SettingsStore::OnSettingsApplied()
 {
     const FTLanguageRules& Rules = FTSettings::Get().GetLanguageRules();
@@ -225,40 +180,6 @@ void SettingsStore::OnSettingsApplied()
     emit webSearchChanged();
 
     SessionSettings::NotifyDisplayChanged();
-}
-
-void SettingsStore::SelectPendingVoice()
-{
-    if (PendingVoiceDirectory.isEmpty())
-    {
-        return;
-    }
-
-    int Found = -1;
-
-    {
-        const QMutexLocker Guard(&AppSpeech::Get().Lock());
-
-        for (int Index = 0; Index < AppSpeech::Get().GetVoiceCount(); ++Index)
-        {
-            if (QString::fromStdString(AppSpeech::Get().GetVoiceInfo(Index).Name) == PendingVoiceDirectory)
-            {
-                Found = Index;
-
-                break;
-            }
-        }
-    }
-
-    if (Found < 0)
-    {
-        return;
-    }
-
-    PendingVoiceDirectory.clear();
-
-    selectVoice(Found);
-    playVoiceSample();
 }
 
 int SettingsStore::GetSpeakerCount() const
@@ -321,6 +242,25 @@ void SettingsStore::SetSpeechSpeed(qreal Value)
     AppSpeech::Get().SetSpeed(static_cast<float>(Value));
 
     qCInfo(LogApp) << "Setting changed: speech speed ->" << Value;
+
+    emit audioSettingsChanged();
+}
+
+qreal SettingsStore::GetSentenceSpeechSpeed() const
+{
+    return AppSpeech::Get().GetSentenceSpeed();
+}
+
+void SettingsStore::SetSentenceSpeechSpeed(qreal Value)
+{
+    if (qFuzzyCompare(AppSpeech::Get().GetSentenceSpeed(), static_cast<float>(Value)))
+    {
+        return;
+    }
+
+    AppSpeech::Get().SetSentenceSpeed(static_cast<float>(Value));
+
+    qCInfo(LogApp) << "Setting changed: sentence speech speed ->" << Value;
 
     emit audioSettingsChanged();
 }
@@ -814,6 +754,18 @@ QStringList SettingsStore::GetNativeLanguageNames() const
         AvailableNativeLanguages(FTSettings::Get().GetLanguageRules().TargetLanguage));
 }
 
+QStringList SettingsStore::GetNativeLanguageCodes() const
+{
+    QStringList Result;
+
+    for (const std::string& Code : AvailableNativeLanguages(FTSettings::Get().GetLanguageRules().TargetLanguage))
+    {
+        Result.append(QString::fromStdString(Code));
+    }
+
+    return Result;
+}
+
 int SettingsStore::GetNativeLanguageIndex() const
 {
     const FTLanguageRules& Active = FTSettings::Get().GetLanguageRules();
@@ -919,12 +871,25 @@ QString SettingsStore::GetTargetLanguageCode() const
     return QString::fromStdString(FTSettings::Get().GetLanguageRules().TargetLanguage);
 }
 
+void SettingsStore::playSentenceVoiceSample()
+{
+    if (!IsAudioEnabled() || !IsAudioAvailable())
+    {
+        return;
+    }
+
+    bSampleIsSentence = true;
+    SampleDelay.start();
+}
+
 void SettingsStore::playVoiceSample()
 {
     if (!IsAudioEnabled() || !IsAudioAvailable())
     {
         return;
     }
+
+    bSampleIsSentence = false;
 
     /*
      * Held briefly rather than played at once. Clicking through voices or dragging the speed slider
@@ -938,6 +903,8 @@ void SettingsStore::playVoiceSampleNow()
 {
     // No delay: the press is the whole intent.
     SampleDelay.stop();
+
+    bSampleIsSentence = false;
 
     PlaySampleNow();
 }
@@ -960,7 +927,9 @@ void SettingsStore::PlaySampleNow()
         return;
     }
 
-    AppSpeech::Get().Speak(Line, QString::fromStdString(Target));
+    const float RateScale = bSampleIsSentence ? AppSpeech::Get().GetSentenceSpeed() : 1.0f;
+
+    AppSpeech::Get().SpeakAtRate(Line, QString::fromStdString(Target), RateScale);
 }
 
 int SettingsStore::GetExamplesPerSense() const

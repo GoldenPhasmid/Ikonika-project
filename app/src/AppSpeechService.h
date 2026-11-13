@@ -4,6 +4,7 @@
 
 #include <QAtomicInteger>
 
+#include <atomic>
 #include <deque>
 #include <functional>
 #include <string>
@@ -40,6 +41,8 @@ public:
     bool CanNarrate() const override;
     void QueueNarration(int Id, const QString& Text, const QString& LanguageCode) override;
     void StopNarration() override;
+
+    void SetSentenceSpeed(float Value) override;
 
 protected:
     void SpeakNow(const FSpeechRequest& Request) override;
@@ -79,6 +82,7 @@ private:
     void ChangeOnWorker(std::function<void()> Apply);
 
     FTSpeechService Service;
+    std::atomic<float> RequestedSpeed{1.0f};
     QMutex WorkerMutex;
     QMutex StateMutex;
     QAtomicInteger<quint64> PendingGeneration{0};

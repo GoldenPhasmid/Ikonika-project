@@ -6,6 +6,7 @@ DesktopUpdateCard
     id: root
 
     readonly property bool failed: AppUpdater.lastError.length > 0 && !AppUpdater.busy && !AppUpdater.ready
+    readonly property bool packagesPending: AppPackageDownloader.busy || AppPackageDownloader.queue.length > 0
 
     function megabytes(bytes)
     {
@@ -49,7 +50,8 @@ DesktopUpdateCard
         objectName: "strip_app_update_apply"
 
         visible: AppUpdater.ready
-        text: qsTr("Restart and update")
+        enabled: !root.packagesPending
+        text: root.packagesPending ? qsTr("Finish downloads first") : qsTr("Restart and update")
         tone: "primary"
 
         onClicked: AppUpdater.ApplyAndRestart()

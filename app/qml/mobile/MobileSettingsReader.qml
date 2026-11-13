@@ -11,6 +11,7 @@ ColumnLayout
     property bool showPdf: true
     property bool showText: true
     property bool titled: true
+    property ReaderReadAloud readAloud: null
 
     readonly property var pageTones: Tones.list()
     readonly property var pageTone: Tones.find(AppReaderSettings.pageTone)
@@ -142,10 +143,25 @@ ColumnLayout
             onEdited: function(newValue) { AppReaderSettings.textMargin = newValue }
         }
 
+        MobileSettingsSlider
+        {
+            objectName: "reader_sentence_speed"
+
+            visible: root.readAloud !== null
+            title: qsTr("Sentence speech rate")
+            value: root.readAloud !== null ? Math.round(root.readAloud.speed * 100) : 100
+            from: root.readAloud !== null ? Math.round(root.readAloud.minimumSpeed * 100) : 50
+            to: root.readAloud !== null ? Math.round(root.readAloud.maximumSpeed * 100) : 150
+            step: 5
+            suffix: "%"
+
+            onEdited: function(newValue) { root.readAloud.speed = newValue / 100 }
+        }
+
         MobileSettingsRow
         {
             title: qsTr("Highlight vocabulary")
-            lastRow: true
+            lastRow: !AppReaderSettings.highlightVocabulary
 
             MobileSettingsToggle
             {
@@ -154,6 +170,20 @@ ColumnLayout
                 checked: AppReaderSettings.highlightVocabulary
 
                 onToggled: AppReaderSettings.highlightVocabulary = !AppReaderSettings.highlightVocabulary
+            }
+        }
+
+        MobileSettingsRow
+        {
+            visible: AppReaderSettings.highlightVocabulary
+            title: qsTr("Highlight unknown words")
+            lastRow: true
+
+            MobileSettingsToggle
+            {
+                objectName: "reader_highlight_unknown_words"
+                checked: AppReaderSettings.highlightUnknownWords
+                onToggled: AppReaderSettings.highlightUnknownWords = !AppReaderSettings.highlightUnknownWords
             }
         }
     }

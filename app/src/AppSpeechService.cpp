@@ -13,6 +13,8 @@
 #include <QThread>
 #include <QThreadPool>
 
+#include <algorithm>
+
 namespace
 {
     std::vector<std::string> DiscoverModelDirectories()
@@ -36,6 +38,11 @@ namespace
                     continue;
                 }
 
+                if (!IsVoiceModelDirectory(Models.filePath(Name).toStdString()))
+                {
+                    continue;
+                }
+
                 Claimed.append(Name);
                 Directories.push_back(Models.filePath(Name).toStdString());
             }
@@ -55,7 +62,10 @@ AppSpeechService::AppSpeechService()
 {
     const QSettings Settings(FTSettings::Get().OpenStore());
 
-    Service.SetSpeed(Settings.value(SpeedKey, 1.0).toFloat());
+    RequestedSpeed = std::clamp(Settings.value(SpeedKey, 1.0).toFloat(), MinimumSpeechSpeed, MaximumSpeechSpeed);
+
+    Service.SetSpeed(RequestedSpeed);
+    Service.SetSentenceSpeed(AppSpeech::GetSentenceSpeed());
     Service.SetSpeakerId(Settings.value(SpeakerKey, 0).toInt());
     Service.SetEnabled(Settings.value(EnabledKey, true).toBool());
     Service.SetMaximumCacheEntries(FTSettings::Get().GetSpeechRules().CachedLineCount);
@@ -70,9 +80,14 @@ void AppSpeechService::ReloadFromSettings()
 
     qCInfo(LogSpeech) << "Speech settings reloaded for the open workspace, enabled =" << bEnabled;
 
-    ChangeOnWorker([this, Speed, Speaker, bEnabled]()
+    RequestedSpeed = std::clamp(Speed, MinimumSpeechSpeed, MaximumSpeechSpeed);
+
+    const float SentenceSpeed{AppSpeech::GetSentenceSpeed()};
+
+    ChangeOnWorker([this, Speed, SentenceSpeed, Speaker, bEnabled]()
     {
         Service.SetSpeed(Speed);
+        Service.SetSentenceSpeed(SentenceSpeed);
         Service.SetEnabled(bEnabled);
 
         if (Service.IsAvailable())
@@ -99,6 +114,18 @@ void AppSpeechService::EnsureLoaded()
 bool AppSpeechService::LoadVoices()
 {
     std::vector<FTVoiceModel> Models{Service.CreateVoiceModels(DiscoverModelDirectories())};
+
+    std::erase_if(Models, [](const FTVoiceModel& Model)
+    {
+        if (Model.Synthesizer.GetEngine() == SupertonicEngine)
+        {
+            return false;
+        }
+
+        qCInfo(LogSpeech) << "voice skipped, only Supertonic is supported:" << QString::fromStdString(Model.Directory);
+
+        return true;
+    });
 
     const QSettings Settings(FTSettings::Get().OpenStore());
     const QMutexLocker Lock(&StateMutex);
@@ -254,7 +281,16 @@ void AppSpeechService::SetSpeed(float Value)
     QSettings Settings(FTSettings::Get().OpenStore());
     Settings.setValue(SpeedKey, Value);
 
+    RequestedSpeed = std::clamp(Value, MinimumSpeechSpeed, MaximumSpeechSpeed);
+
     ChangeOnWorker([this, Value]() { Service.SetSpeed(Value); });
+}
+
+void AppSpeechService::SetSentenceSpeed(float Value)
+{
+    AppSpeech::SetSentenceSpeed(Value);
+
+    ChangeOnWorker([this, Value]() { Service.SetSentenceSpeed(Value); });
 }
 
 void AppSpeechService::SetSpeakerId(int Value)
@@ -315,7 +351,7 @@ int AppSpeechService::GetSpeakerId() const
 
 float AppSpeechService::GetSpeed() const
 {
-    return Service.GetSpeed();
+    return RequestedSpeed;
 }
 
 QMutex& AppSpeechService::Lock()

@@ -65,6 +65,21 @@ namespace AppCards
 
     std::vector<FTCard> ListFormsCandidates(const std::string& Training);
 
+    struct FFormsCountSources
+    {
+        const FTDictionaryRepository* Dictionary = nullptr;
+        const FTCardRepository* Cards = nullptr;
+        std::string TargetLanguage;
+    };
+
+    std::vector<FTCard> ListFormsCandidates(const std::string& Training, const FFormsCountSources& Sources);
+
+    std::vector<FTenseOffer> ListTenseOffers(const FFormsCountSources& Sources);
+
+    std::vector<FTCardHandle> LoadWaitingFormsCards(const FTCardRepository& CardRepository, const std::string& Training);
+
+    int CountFormsWords(const std::string& Training, const FFormsCountSources& Sources);
+
     void PrioritizeIrregularVerbs(std::vector<FTCard>& Cards);
 
     QString GetVerbGroup(const std::string& Headword, const std::string& PartOfSpeech);

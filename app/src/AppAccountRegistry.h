@@ -13,6 +13,7 @@ struct AppAccount
     QString Email;
     QString Name;
     bool bNeedsReconnect = false;
+    bool bMissingDriveAccess = false;
 };
 
 struct AppWorkspaceFolder
@@ -36,7 +37,7 @@ public:
 
     bool SignIn(const AppAccount& Account, const QString& Credential);
     void SignOut();
-    void MarkNeedsReconnect(const QString& AccountId);
+    void MarkNeedsReconnect(const QString& AccountId, bool bMissingDriveAccess = false);
 
     static AppWorkspaceFolder MakeFolder(const QString& DataRoot, const QString& AccountId);
 

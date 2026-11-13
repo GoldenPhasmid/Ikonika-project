@@ -12,11 +12,13 @@ ColumnLayout
 
     property bool showMute: false
     property bool muted: false
+    property bool showSlowSpeech: false
     property bool showOptions: false
     property bool showSearch: false
     property bool showSettings: false
     property bool showSearchField: false
     property bool titleTappable: false
+    property real contentMaximumWidth: Number.POSITIVE_INFINITY
 
     property alias status: statusRow.data
     property alias searchFieldText: searchField.text
@@ -25,6 +27,7 @@ ColumnLayout
     signal backRequested()
     signal trailingActivated()
     signal muteRequested()
+    signal slowSpeechRequested()
     signal optionsRequested()
     signal searchRequested()
     signal settingsRequested()
@@ -42,22 +45,26 @@ ColumnLayout
     RowLayout
     {
         Layout.fillWidth: true
+        Layout.maximumWidth: root.contentMaximumWidth - 2 * AppMetrics.contentPadding
+        Layout.alignment: Qt.AlignHCenter
         Layout.preferredHeight: AppMetrics.topBarHeight
         Layout.leftMargin: AppMetrics.contentPadding
         Layout.rightMargin: AppMetrics.contentPadding
 
         Item
         {
+            objectName: "header_back"
+
             visible: root.showBack
             Layout.preferredWidth: visible ? AppMetrics.headerIconTapWidth : 0
             Layout.preferredHeight: AppMetrics.topBarHeight
 
-            Text
+            DesktopIcon
             {
                 anchors.centerIn: parent
-                text: "‹"
-                font.pixelSize: AppMetrics.headerChevronSize
-                font.family: AppMetrics.fontFamily
+                name: "arrow_left"
+                width: AppMetrics.headerActionIconSize
+                height: width
                 color: AppTheme.colourText
             }
 
@@ -104,6 +111,26 @@ ColumnLayout
 
         Item
         {
+            objectName: "header_slow_speech"
+
+            visible: root.showSlowSpeech
+            Layout.preferredWidth: visible ? AppMetrics.exerciseActionIconTapWidth : 0
+            Layout.preferredHeight: AppMetrics.topBarHeight
+
+            MobileVectorIcon
+            {
+                anchors.centerIn: parent
+                width: AppMetrics.exerciseMuteIconSize
+                height: AppMetrics.exerciseMuteIconSize
+                svgPath: Icons.Icons.turtle.path
+                color: AppTheme.colourText
+            }
+
+            TapHandler { onTapped: root.slowSpeechRequested() }
+        }
+
+        Item
+        {
             visible: root.showMute
             Layout.preferredWidth: visible ? AppMetrics.exerciseActionIconTapWidth : 0
             Layout.preferredHeight: AppMetrics.topBarHeight
@@ -146,17 +173,12 @@ ColumnLayout
             Layout.preferredWidth: visible ? AppMetrics.exerciseActionIconTapWidth : 0
             Layout.preferredHeight: AppMetrics.topBarHeight
 
-            MobileVectorIcon
+            DesktopIcon
             {
                 anchors.centerIn: parent
+                name: "nav_settings"
                 width: AppMetrics.headerActionIconSize
-                height: AppMetrics.headerActionIconSize
-                minX: Icons.Icons.tab_settings.minX
-                minY: Icons.Icons.tab_settings.minY
-                sourceWidth: Icons.Icons.tab_settings.width
-                sourceHeight: Icons.Icons.tab_settings.height
-                strokeWidth: 1.5 * Icons.Icons.tab_settings.height / 24
-                svgPath: Icons.Icons.tab_settings.path
+                height: width
                 color: AppTheme.colourText
 
                 Rectangle
@@ -189,7 +211,6 @@ ColumnLayout
                 svgPath: Icons.Icons[root.trailingIcon] ? Icons.Icons[root.trailingIcon].path
                                                           : Icons.Icons.kebab.path
                 color: AppTheme.colourText
-                filled: true
             }
 
             TapHandler { onTapped: root.trailingActivated() }
@@ -208,7 +229,6 @@ ColumnLayout
                 height: AppMetrics.headerActionIconSize
                 svgPath: Icons.Icons.kebab.path
                 color: AppTheme.colourText
-                filled: true
             }
 
             TapHandler { onTapped: root.optionsRequested() }

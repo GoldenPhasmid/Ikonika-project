@@ -16,12 +16,12 @@ Item
     readonly property string kind: "review"
     readonly property Item surface: card.surface
 
-    readonly property string title: qsTr("Do you remember?")
+    readonly property string instruction: qsTr("Recall the answer")
     readonly property bool voiceSupported: false
     readonly property bool voiceOn: false
     readonly property bool answered: !!root.controller && root.controller.answered
 
-    signal wordClicked(string word, string sentence)
+    signal wordClicked(string word, string sentence, rect wordRect)
 
     function toggleVoice()
     {
@@ -95,21 +95,34 @@ Item
         tags: card.wordTags(root.controller)
         counterText: root.controller ? qsTr("%1 / %2").arg(root.controller.currentSessionCount).arg(root.controller.maxSessionCount) : ""
 
-        primary: DesktopPromptLabel
-        {
-            id: promptLabel
+        primary: [
+            DesktopPromptLabel
+            {
+                id: promptLabel
 
-            text: root.controller ? promptLabel.withArticle(root.controller.prompt, root.controller.promptArticle || "") : ""
-            textFormat: Text.StyledText
-            speakable: !!(root.controller && root.controller.showsTargetLanguage)
-            gender: root.controller ? root.controller.headwordGender : -1
-            verbGroup: root.controller ? root.controller.headwordVerbGroup : ""
+                text: root.controller ? promptLabel.withArticle(root.controller.prompt, root.controller.promptArticle || "") : ""
+                textFormat: Text.StyledText
+                speakable: !!(root.controller && root.controller.showsTargetLanguage)
+                gender: root.controller ? root.controller.headwordGender : -1
+                verbGroup: root.controller ? root.controller.headwordVerbGroup : ""
 
-            onSpeakRequested: root.controller.speakPrompt()
+                onSpeakRequested: root.controller.speakPrompt()
 
-            Accessible.role: Accessible.Heading
-            Accessible.name: root.controller ? root.controller.prompt : ""
-        }
+                Accessible.role: Accessible.Heading
+                Accessible.name: root.controller ? root.controller.prompt : ""
+            },
+            DesktopLabel
+            {
+                objectName: "review_phonetic"
+
+                text: root.controller && root.controller.showsTargetLanguage && root.controller.phonetic.length > 0
+                    ? root.controller.phonetic : " "
+                font.pixelSize: AppMetrics.fontTitle
+                color: AppTheme.colourMuted
+                Layout.fillWidth: true
+                horizontalAlignment: Text.AlignHCenter
+            }
+        ]
 
         secondary: DesktopMeaningWell
         {
@@ -117,7 +130,7 @@ Item
             controller: root.controller
             answer: root.answered ? root.controller.lastRevealedAnswer : ""
 
-            onWordClicked: function(word, sentence) { root.wordClicked(word, sentence) }
+            onWordClicked: function(word, sentence, wordRect) { root.wordClicked(word, sentence, wordRect) }
         }
 
         overlay: MouseArea

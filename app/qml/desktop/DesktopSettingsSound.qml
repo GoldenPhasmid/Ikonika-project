@@ -10,22 +10,6 @@ ColumnLayout
     Layout.fillWidth: true
     spacing: AppMetrics.gapLarge
 
-    readonly property string selectedVoiceTitle:
-    {
-        for (const choice of root.store.voiceChoices)
-        {
-            if (choice.selected)
-            {
-                return choice.title
-            }
-        }
-
-        return ""
-    }
-
-    readonly property int femaleSpeaker: 2
-    readonly property int maleSpeaker: 5
-
     DesktopSettingsGroup
     {
         title: qsTr("Voice")
@@ -61,35 +45,6 @@ ColumnLayout
 
         DesktopSettingsRow
         {
-            visible: root.store.voiceChoices.length > 1
-            text: qsTr("Voice model")
-
-            DesktopDropdownButton
-            {
-                id: voiceButton
-
-                objectName: "settings_voice_model"
-
-                Layout.fillWidth: false
-                Layout.preferredWidth: AppMetrics.settingsControlWidth
-                popover: voicePopover
-                text: root.selectedVoiceTitle
-
-                Accessible.name: qsTr("Voice model: %1").arg(text)
-
-                DesktopVoicePopover
-                {
-                    id: voicePopover
-
-                    store: root.store
-                    y: voiceButton.height + AppMetrics.gapTight
-                    width: voiceButton.width
-                }
-            }
-        }
-
-        DesktopSettingsRow
-        {
             text: qsTr("Sound effects")
 
             DesktopToggle
@@ -113,12 +68,13 @@ ColumnLayout
                 Layout.preferredWidth: AppMetrics.settingsControlWidth
                 enabled: root.store.supertonicActive && root.store.audioAvailable
                 heading: qsTr("Voice")
-                options: [qsTr("Female"), qsTr("Male")]
-                currentIndex: root.store.speakerId === root.maleSpeaker ? 1 : 0
+                options: ["Sarah", "Lily", "Jessica", "Olivia", "Emily",
+                          "Alex", "James", "Robert", "Sam", "Daniel"]
+                currentIndex: root.store.speakerId
 
                 onChosen: function(index)
                 {
-                    root.store.speakerId = index === 1 ? root.maleSpeaker : root.femaleSpeaker
+                    root.store.speakerId = index
                     root.store.playVoiceSample()
                 }
             }
@@ -133,12 +89,29 @@ ColumnLayout
             step: 5
             suffix: "%"
             interactive: root.store.audioAvailable
-            lastRow: true
 
             onEdited: function(newValue)
             {
                 root.store.speechSpeed = newValue / 100
                 root.store.playVoiceSample()
+            }
+        }
+
+        DesktopSettingsSlider
+        {
+            title: qsTr("Sentence speech rate")
+            value: Math.round(root.store.sentenceSpeechSpeed * 100)
+            from: Math.round(root.store.minimumSpeechSpeed * 100)
+            to: Math.round(root.store.maximumSpeechSpeed * 100)
+            step: 5
+            suffix: "%"
+            interactive: root.store.audioAvailable
+            lastRow: true
+
+            onEdited: function(newValue)
+            {
+                root.store.sentenceSpeechSpeed = newValue / 100
+                root.store.playSentenceVoiceSample()
             }
         }
     }

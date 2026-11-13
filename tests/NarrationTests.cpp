@@ -48,6 +48,21 @@ TEST_CASE("Reading moves through sentences and skips text with nothing to say", 
                               QStringLiteral("Il s'assit près de la fenêtre."), QStringLiteral("« Bonjour ! » dit-il.")});
 }
 
+TEST_CASE("Reading backwards visits the same sentences in reverse", "[reader][narration]")
+{
+    std::optional<FTNarrationSentence> Sentence{FindNarrationSentenceAt(Book, 4, 0, "fr")};
+    QStringList Read;
+
+    while (Sentence.has_value())
+    {
+        Read.prepend(Sentence->Text);
+        Sentence = FindNarrationSentenceBefore(Book, *Sentence, "fr");
+    }
+
+    CHECK(Read == QStringList{QStringLiteral("Chapitre premier"), QStringLiteral("M. Dupont entra."),
+                              QStringLiteral("Il s'assit près de la fenêtre."), QStringLiteral("« Bonjour ! » dit-il.")});
+}
+
 TEST_CASE("A tap past the last sentence of a paragraph starts the next one", "[reader][narration]")
 {
     const std::optional<FTNarrationSentence> Sentence{FindNarrationSentenceAt(Book, 2, 49, "fr")};
@@ -60,6 +75,19 @@ TEST_CASE("A paragraph out of range has no sentence", "[reader][narration]")
 {
     CHECK_FALSE(FindNarrationSentenceAt(Book, 9, 0, "fr").has_value());
     CHECK_FALSE(FindNarrationSentenceAt(Book, -1, 0, "fr").has_value());
+}
+
+TEST_CASE("Dialogue dashes are spoken with a space on both sides", "[reader][narration]")
+{
+    const std::vector<std::string> Dialogue{
+        "\xE2\x80\x94\xC2\xA1Oh!\xE2\x80\x94" "dice el pollo,\xE2\x80\x94" "el cielo ha ca\xC3\xAD" "do.",
+    };
+    const std::optional<FTNarrationSentence> Sentence{FindNarrationSentenceAt(Dialogue, 0, 0, "es")};
+
+    REQUIRE(Sentence.has_value());
+    CHECK(Sentence->Text == QString::fromUtf8("\xE2\x80\x94 \xC2\xA1Oh! \xE2\x80\x94 dice el pollo, \xE2\x80\x94 el cielo ha ca\xC3\xAD" "do."));
+    CHECK(Sentence->Start == 0);
+    CHECK(Sentence->End == QString::fromStdString(Dialogue[0]).size());
 }
 
 TEST_CASE("A faster voice shortens the estimate", "[reader][narration]")

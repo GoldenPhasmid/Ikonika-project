@@ -138,6 +138,41 @@ TEST_CASE("Case folding covers the oe ligature", "[answer]")
     CHECK(CompareAnswer("Œuf", "œuf") == EFTAnswerGrade::Exact);
 }
 
+TEST_CASE("The oe ligature matches its two-letter spelling in either direction", "[answer]")
+{
+    CHECK(CompareAnswer("manoeuvre", "manœuvre") == EFTAnswerGrade::Exact);
+    CHECK(CompareAnswer("manœuvre", "manoeuvre") == EFTAnswerGrade::Exact);
+    CHECK(CompareAnswer("MANOEUVRE", "manœuvre") == EFTAnswerGrade::Exact);
+    CHECK(CompareAnswer("l'oeuf", "l'œuf") == EFTAnswerGrade::Exact);
+}
+
+TEST_CASE("German umlauts and the eszett are accepted spelled out", "[answer]")
+{
+    FTAnswerComparisonRules German;
+    German.bSpellOutUmlauts = true;
+
+    CHECK(CompareAnswer("Aepfel", "Äpfel", German) == EFTAnswerGrade::Exact);
+    CHECK(CompareAnswer("schoen", "schön", German) == EFTAnswerGrade::Exact);
+    CHECK(CompareAnswer("Tuer", "Tür", German) == EFTAnswerGrade::Exact);
+    CHECK(CompareAnswer("Strasse", "Straße", German) == EFTAnswerGrade::Exact);
+    CHECK(CompareAnswer("Äpfel", "Aepfel", German) == EFTAnswerGrade::Exact);
+    CHECK(CompareAnswer("Apfel", "Äpfel", German) == EFTAnswerGrade::AccentsWrong);
+    CHECK(CompareAnswer("Apfel", "Aepfel", German) == EFTAnswerGrade::Wrong);
+
+    FTAnswerComparisonRules Strict = German;
+    Strict.bRequireExactAccents = true;
+
+    CHECK(CompareAnswer("Aepfel", "Äpfel", Strict) == EFTAnswerGrade::Exact);
+    CHECK(CompareAnswer("Apfel", "Äpfel", Strict) == EFTAnswerGrade::Wrong);
+
+    CHECK(CompareAgainstAny("Tuer, Tor", "Tür, Tor", German) == EFTAnswerGrade::Exact);
+}
+
+TEST_CASE("Umlaut spellings stay wrong outside German", "[answer]")
+{
+    CHECK(CompareAnswer("pingueino", "pingüino") == EFTAnswerGrade::Wrong);
+}
+
 TEST_CASE("Whitespace does not count", "[answer]")
 {
     CHECK(CompareAnswer("  le chien  ", "le chien") == EFTAnswerGrade::Exact);

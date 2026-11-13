@@ -18,12 +18,6 @@ std::string ReadDictionaryMetadata(FTDatabase& Target, const std::string& Key);
 /** Every dictionary file is named this way, which is what the scanner matches on. */
 inline constexpr const char* DictionaryFileSuffix = "-dictionary.db";
 
-/**
- * Metadata describing an installed dictionary for UI display without reopening the file.
- *
- * - Contents: Target language, supported translation languages, and display properties.
- * - Structure: Grouped per target language (1:N translations) in a single file to prevent file explosion.
- */
 struct FTDictionaryPackage
 {
     std::string FilePath;
@@ -40,6 +34,8 @@ struct FTDictionaryPackage
     int WordCount = 0;
 
     bool SupportsNative(const std::string& LanguageCode) const;
+
+    bool SharesPairWith(const FTDictionaryPackage& Other) const;
 
     /** False unless the file was built for exactly this app's schema. */
     bool IsCompatible() const;

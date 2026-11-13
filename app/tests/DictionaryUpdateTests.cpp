@@ -64,6 +64,47 @@ namespace
         REQUIRE(mz_zip_writer_end(&Zip));
     }
 
+    void WriteTextArchive(const QString& ArchivePath, const std::vector<std::pair<QString, QByteArray>>& Entries)
+    {
+        REQUIRE(QDir().mkpath(QFileInfo(ArchivePath).absolutePath()));
+
+        mz_zip_archive Zip;
+        std::memset(&Zip, 0, sizeof(Zip));
+
+        REQUIRE(mz_zip_writer_init_file(&Zip, ArchivePath.toUtf8().constData(), 0));
+
+        for (const auto& [Name, Contents] : Entries)
+        {
+            REQUIRE(mz_zip_writer_add_mem(&Zip, Name.toUtf8().constData(), Contents.constData(),
+                                          static_cast<size_t>(Contents.size()),
+                                          static_cast<mz_uint>(MZ_DEFAULT_COMPRESSION)));
+        }
+
+        REQUIRE(mz_zip_writer_finalize_archive(&Zip));
+        REQUIRE(mz_zip_writer_end(&Zip));
+    }
+
+    void WriteText(const QString& Path, const QByteArray& Contents)
+    {
+        REQUIRE(QDir().mkpath(QFileInfo(Path).absolutePath()));
+
+        QFile File{Path};
+        REQUIRE(File.open(QIODevice::WriteOnly | QIODevice::Truncate));
+        File.write(Contents);
+    }
+
+    QByteArray ReadText(const QString& Path)
+    {
+        QFile File{Path};
+
+        return File.open(QIODevice::ReadOnly) ? File.readAll() : QByteArray();
+    }
+
+    bool HasStagingFolder(const QString& StagingRoot)
+    {
+        return !QDir(StagingRoot).entryList({QStringLiteral("staging-*")}, QDir::Dirs | QDir::NoDotAndDotDot).isEmpty();
+    }
+
     struct FTPublishedPackage
     {
         QString Kind{QStringLiteral("dictionary")};
@@ -287,7 +328,7 @@ TEST_CASE("An installed dictionary an app update outdated waits for permission t
 
     Test.LearnThenOutdate(1);
 
-    REQUIRE(AppDictionary::Get().IsOutdated(Language));
+    REQUIRE(AppDictionary::Get().IsOutdated(Language, "en"));
     REQUIRE(FTSettings::Get().GetLanguageRules().TargetLanguage == Language);
 
     SECTION("the saved language waits for its update instead of switching to another one")
@@ -324,7 +365,7 @@ TEST_CASE("An installed dictionary an app update outdated waits for permission t
         REQUIRE(AppPackageDownloader::Get().isPending(PackageId));
         REQUIRE(WaitForInstall(PackageId));
 
-        CHECK_FALSE(AppDictionary::Get().IsOutdated(Language));
+        CHECK_FALSE(AppDictionary::Get().IsOutdated(Language, "en"));
         CHECK(AppCatalog::GetInstalledVersion(PackageId) == 2);
 
         const FTDictionaryPackage* Active{AppDictionary::Get().GetActivePackage()};
@@ -412,6 +453,206 @@ TEST_CASE("Dismissing an app update survives catalog refresh and a newer version
     Published.ApplicationVersion = QStringLiteral("100.0.0");
     REQUIRE(Test.Publish(Published));
     CHECK_FALSE(AppCatalog::Get().IsAppUpdateDismissed());
+}
+
+TEST_CASE("Package work counts as pending from the request until the download is dropped",
+          "[dictionaryupdate]")
+{
+    FTDictionaryUpdateFixture Test;
+    FTPublishedPackage Published;
+    Published.Version = 2;
+
+    REQUIRE(Test.Publish(Published));
+    CHECK_FALSE(AppPackageDownloader::Get().HasPendingWork());
+
+    AppPackageDownloader::Get().download(PackageId);
+
+    CHECK(AppPackageDownloader::Get().HasPendingWork());
+
+    AppPackageDownloader::Get().forget(PackageId);
+
+    CHECK_FALSE(AppPackageDownloader::Get().HasPendingWork());
+}
+
+TEST_CASE("An installed archive replaces what it names and leaves the rest alone", "[dictionaryupdate]")
+{
+    QTemporaryDir Root;
+    REQUIRE(Root.isValid());
+
+    const QString Destination{Root.filePath(QStringLiteral("dest"))};
+    const QString Scratch{Root.filePath(QStringLiteral("scratch"))};
+    const QString Archive{QDir(Scratch).filePath(QStringLiteral("package.zip"))};
+
+    WriteText(QDir(Destination).filePath(QStringLiteral("a.db")), "old-a");
+    WriteText(QDir(Destination).filePath(QStringLiteral("keep.txt")), "keep");
+    WriteTextArchive(Archive, {{QStringLiteral("a.db"), "new-a"}, {QStringLiteral("b.db"), "new-b"}});
+
+    REQUIRE(AppPackageDownloader::InstallArchive(Archive, Destination, Scratch));
+
+    CHECK(ReadText(QDir(Destination).filePath(QStringLiteral("a.db"))) == "new-a");
+    CHECK(ReadText(QDir(Destination).filePath(QStringLiteral("b.db"))) == "new-b");
+    CHECK(ReadText(QDir(Destination).filePath(QStringLiteral("keep.txt"))) == "keep");
+    CHECK(QDir(Destination).entryList({QStringLiteral("*.ikonika-old")}, QDir::AllEntries).isEmpty());
+    CHECK_FALSE(HasStagingFolder(Scratch));
+}
+
+TEST_CASE("An archive that cannot be read leaves the installed files untouched", "[dictionaryupdate]")
+{
+    QTemporaryDir Root;
+    REQUIRE(Root.isValid());
+
+    const QString Destination{Root.filePath(QStringLiteral("dest"))};
+    const QString Scratch{Root.filePath(QStringLiteral("scratch"))};
+    const QString Archive{QDir(Scratch).filePath(QStringLiteral("package.zip"))};
+
+    WriteText(QDir(Destination).filePath(QStringLiteral("a.db")), "old-a");
+    WriteText(Archive, "this is not a zip archive");
+
+    CHECK_FALSE(AppPackageDownloader::InstallArchive(Archive, Destination, Scratch));
+
+    CHECK(ReadText(QDir(Destination).filePath(QStringLiteral("a.db"))) == "old-a");
+    CHECK_FALSE(HasStagingFolder(Scratch));
+}
+
+#if defined(Q_OS_WIN)
+TEST_CASE("A swap that fails halfway puts every replaced file back", "[dictionaryupdate]")
+{
+    QTemporaryDir Root;
+    REQUIRE(Root.isValid());
+
+    const QString Destination{Root.filePath(QStringLiteral("dest"))};
+    const QString Scratch{Root.filePath(QStringLiteral("scratch"))};
+    const QString Archive{QDir(Scratch).filePath(QStringLiteral("package.zip"))};
+    const QString Blocked{QDir(Destination).filePath(QStringLiteral("b.db"))};
+    const QString Inner{QDir(Blocked).filePath(QStringLiteral("inner.txt"))};
+
+    WriteText(QDir(Destination).filePath(QStringLiteral("a.db")), "old-a");
+    WriteText(Inner, "inner");
+    WriteTextArchive(Archive, {{QStringLiteral("a.db"), "new-a"}, {QStringLiteral("b.db"), "new-b"}});
+
+    QFile Holder{Inner};
+    REQUIRE(Holder.open(QIODevice::ReadOnly));
+
+    CHECK_FALSE(AppPackageDownloader::InstallArchive(Archive, Destination, Scratch));
+
+    Holder.close();
+
+    CHECK(ReadText(QDir(Destination).filePath(QStringLiteral("a.db"))) == "old-a");
+    CHECK(ReadText(Inner) == "inner");
+    CHECK(QDir(Destination).entryList({QStringLiteral("*.ikonika-old")}, QDir::AllEntries).isEmpty());
+    CHECK_FALSE(HasStagingFolder(Scratch));
+}
+#endif
+
+TEST_CASE("Recovery puts back a file whose replacement never arrived and clears the rest", "[dictionaryupdate]")
+{
+    QTemporaryDir Root;
+    REQUIRE(Root.isValid());
+
+    const QString Destination{Root.filePath(QStringLiteral("dest"))};
+    const QString Scratch{Root.filePath(QStringLiteral("scratch"))};
+
+    WriteText(QDir(Destination).filePath(QStringLiteral("lost.db.ikonika-old")), "old-lost");
+    WriteText(QDir(Destination).filePath(QStringLiteral("done.db")), "new-done");
+    WriteText(QDir(Destination).filePath(QStringLiteral("done.db.ikonika-old")), "old-done");
+    WriteText(QDir(Destination).filePath(QStringLiteral("nested/deep.db.ikonika-old")), "old-deep");
+    WriteText(QDir(Scratch).filePath(QStringLiteral("staging-leftover/part.db")), "half");
+    WriteText(QDir(Scratch).filePath(QStringLiteral("keep.zip")), "download");
+
+    AppPackageDownloader::RecoverInterruptedInstalls({Destination}, Scratch);
+
+    CHECK(ReadText(QDir(Destination).filePath(QStringLiteral("lost.db"))) == "old-lost");
+    CHECK(ReadText(QDir(Destination).filePath(QStringLiteral("done.db"))) == "new-done");
+    CHECK(ReadText(QDir(Destination).filePath(QStringLiteral("nested/deep.db"))) == "old-deep");
+    CHECK_FALSE(QFileInfo::exists(QDir(Destination).filePath(QStringLiteral("done.db.ikonika-old"))));
+    CHECK_FALSE(QFileInfo::exists(QDir(Destination).filePath(QStringLiteral("lost.db.ikonika-old"))));
+    CHECK_FALSE(HasStagingFolder(Scratch));
+    CHECK(ReadText(QDir(Scratch).filePath(QStringLiteral("keep.zip"))) == "download");
+}
+
+TEST_CASE("Downloads in flight are saved and start again after a restart", "[dictionaryupdate]")
+{
+    FTDictionaryUpdateFixture Test;
+    FTPublishedPackage Published;
+    Published.Version = 2;
+
+    REQUIRE(Test.Publish(Published));
+
+    const QString SavedKey{QStringLiteral("downloads/queue")};
+
+    QSettings().remove(SavedKey);
+
+    AppPackageDownloader::Get().download(PackageId);
+
+    CHECK(QSettings().value(SavedKey).toStringList() == QStringList{PackageId});
+
+    AppPackageDownloader Restarted;
+
+    CHECK_FALSE(Restarted.isPending(PackageId));
+
+    Restarted.RestoreQueue();
+
+    CHECK(Restarted.isPending(PackageId));
+
+    Restarted.forget(PackageId);
+    AppPackageDownloader::Get().forget(PackageId);
+
+    CHECK_FALSE(QSettings().contains(SavedKey));
+}
+
+TEST_CASE("A saved download that is already installed is not started again", "[dictionaryupdate]")
+{
+    FTDictionaryUpdateFixture Test;
+    FTPublishedPackage Published;
+    Published.Version = 2;
+
+    REQUIRE(Test.Publish(Published));
+
+    const QString SavedKey{QStringLiteral("downloads/queue")};
+
+    AppCatalog::SetInstalledVersion(PackageId, 2);
+    QSettings().setValue(SavedKey, QStringList{PackageId});
+
+    AppPackageDownloader Restarted;
+    Restarted.RestoreQueue();
+
+    CHECK_FALSE(Restarted.isPending(PackageId));
+    CHECK_FALSE(QSettings().contains(SavedKey));
+}
+
+TEST_CASE("A saved download whose package is gone is dropped", "[dictionaryupdate]")
+{
+    FTDictionaryUpdateFixture Test;
+    FTPublishedPackage Published;
+    Published.Version = 2;
+
+    REQUIRE(Test.Publish(Published));
+
+    const QString SavedKey{QStringLiteral("downloads/queue")};
+
+    QSettings().setValue(SavedKey, QStringList{QStringLiteral("dictionary-gone")});
+
+    AppPackageDownloader Restarted;
+    Restarted.RestoreQueue();
+
+    CHECK_FALSE(Restarted.isPending(QStringLiteral("dictionary-gone")));
+    CHECK_FALSE(QSettings().contains(SavedKey));
+}
+
+TEST_CASE("A new download before the catalog is read does not erase the saved ones", "[dictionaryupdate]")
+{
+    FTDictionaryUpdateFixture Test;
+
+    const QString SavedKey{QStringLiteral("downloads/queue")};
+
+    QSettings().setValue(SavedKey, QStringList{PackageId});
+
+    AppPackageDownloader Restarted;
+    Restarted.download(QStringLiteral("dictionary-unknown"));
+
+    CHECK(QSettings().value(SavedKey).toStringList() == QStringList{PackageId});
+
+    QSettings().remove(SavedKey);
 }
 
 TEST_CASE("An outdated dictionary is never replaced with a package this app cannot read",

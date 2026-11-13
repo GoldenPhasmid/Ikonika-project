@@ -8,6 +8,7 @@ ItemDelegate
 
     property string description: ""
     property string iconName: ""
+    property string flagCode: ""
     property bool selected: false
     property bool showsCheck: false
     property bool destructive: false
@@ -44,6 +45,14 @@ ItemDelegate
             visible: root.iconName.length > 0
             name: root.iconName
             color: root.destructive ? AppTheme.colourWrong : AppTheme.colourText
+        }
+
+        LanguageFlag
+        {
+            visible: root.flagCode.length > 0
+            code: root.flagCode
+            implicitWidth: AppMetrics.flagWidthSmall
+            implicitHeight: AppMetrics.flagWidthSmall * 3 / 4
         }
 
         ColumnLayout

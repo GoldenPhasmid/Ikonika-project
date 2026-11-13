@@ -107,17 +107,17 @@ MobileBottomSheet
                         color: AppTheme.colourSubtle
                     }
 
-                    Text
+                    DesktopIcon
                     {
                         id: tick
 
                         anchors.right: parent.right
                         anchors.verticalCenter: parent.verticalCenter
 
-                        text: "✓"
+                        name: "check"
                         visible: choice.index === root.currentIndex
-                        font.pixelSize: AppMetrics.fontLabel
-                        font.family: AppMetrics.fontFamily
+                        width: AppMetrics.iconSizeSmall
+                        height: width
                         color: AppTheme.colourText
                     }
 

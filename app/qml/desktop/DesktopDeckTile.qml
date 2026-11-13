@@ -13,30 +13,49 @@ Button
     property int learningCount: 0
     property int learnedCount: 0
     property int untriagedCount: 0
+    property bool pickable: false
+    property bool picked: false
 
     signal trainRequested()
     signal openRequested()
+    signal pickRequested()
 
     readonly property bool trainable: root.untriagedCount > 0
+    readonly property bool lifted: root.enabled && (root.hovered || root.picked)
     readonly property Item face: cover
 
     readonly property real wordCountSafe: Math.max(root.wordCount, 1)
     readonly property color inkColour: AppTheme.colourCoverInk
 
     hoverEnabled: true
-    focusPolicy: Qt.StrongFocus
+    focusPolicy: root.pickable ? Qt.TabFocus : Qt.StrongFocus
     padding: 0
 
-    z: root.hovered ? 1 : 0
-    scale: root.hovered && root.enabled ? AppMetrics.coverHoverScale : 1.0
+    z: root.lifted ? 1 : 0
+    scale: root.lifted ? AppMetrics.coverHoverScale : 1.0
+    opacity: root.enabled ? 1 : AppTheme.opacityDisabled
 
     Behavior on scale { NumberAnimation { duration: AppMetrics.motionBase; easing.type: Easing.OutCubic } }
 
     text: root.title
 
-    onClicked: root.trainable ? root.trainRequested() : root.openRequested()
+    onClicked:
+    {
+        if (root.pickable)
+        {
+            root.pickRequested()
 
-    Accessible.name: root.trainable ? qsTr("Train %1").arg(root.title) : qsTr("Open %1").arg(root.title)
+            return
+        }
+
+        root.trainable ? root.trainRequested() : root.openRequested()
+    }
+
+    Accessible.role: root.pickable ? Accessible.CheckBox : Accessible.Button
+    Accessible.checkable: root.pickable
+    Accessible.checked: root.picked
+    Accessible.name: root.pickable ? root.title
+        : (root.trainable ? qsTr("Train %1").arg(root.title) : qsTr("Open %1").arg(root.title))
     Accessible.description: qsTr("%1 of %2 learned, %3 learning")
         .arg(root.learnedCount).arg(root.wordCount).arg(root.learningCount)
 
@@ -54,7 +73,9 @@ Button
             Layout.fillWidth: true
             Layout.preferredHeight: Math.round(width / AppMetrics.readerTileAspect)
             radius: AppMetrics.coverRadius
-            color: root.hovered ? Qt.tint(root.tint, AppTheme.faded(AppTheme.colourText, AppTheme.alphaFaint)) : root.tint
+            color: !root.enabled ? AppTheme.colourCoverMuted
+                 : root.hovered ? Qt.tint(root.tint, AppTheme.faded(AppTheme.colourText, AppTheme.alphaFaint))
+                 : root.tint
             clip: true
 
             Behavior on color { ColorAnimation { duration: AppMetrics.motionFast } }
@@ -77,6 +98,7 @@ Button
                 anchors.right: parent.right
                 anchors.top: parent.top
                 anchors.margins: AppMetrics.gapSmall
+                visible: !root.pickable
                 shown: root.hovered || root.visualFocus
 
                 DesktopCoverButton
@@ -152,6 +174,28 @@ Button
                         }
                     }
                 }
+            }
+
+            DesktopIcon
+            {
+                anchors.right: parent.right
+                anchors.top: parent.top
+                anchors.margins: AppMetrics.gapMedium
+                width: AppMetrics.deckIconSize
+                height: AppMetrics.deckIconSize
+                visible: root.picked
+                name: "check"
+                color: root.inkColour
+            }
+
+            Rectangle
+            {
+                anchors.fill: parent
+                visible: root.picked
+                radius: AppMetrics.coverRadius
+                color: "transparent"
+                border.color: root.inkColour
+                border.width: AppMetrics.focusRingWidth
             }
 
             DesktopFocusRing

@@ -20,11 +20,19 @@ struct AppCloudCopy
     QString Version;
 };
 
+enum class AppCloudFailureKind
+{
+    Transient,
+    Credential,
+    Permission,
+    Quota
+};
+
 struct AppCloudFailure
 {
     QString Message;
     int Status = 0;
-    bool bCredentialRefused = false;
+    AppCloudFailureKind Kind = AppCloudFailureKind::Transient;
     bool bCancelled = false;
 };
 

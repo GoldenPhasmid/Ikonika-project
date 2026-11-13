@@ -13,6 +13,7 @@ Button
     property bool large: false
     property bool iconOnly: false
     property bool hintOnControl: false
+    property bool alignHintRight: false
 
     readonly property bool showsHint: root.keyHint.length > 0 && !root.compactContent
                                       && (!root.hintOnControl || AppModifierKeys.controlHeld)
@@ -63,7 +64,7 @@ Button
     }
 
     implicitHeight: root.large ? AppMetrics.buttonHeightLarge : AppMetrics.buttonHeight
-    implicitWidth: Math.max(implicitHeight, contentRow.implicitWidth + leftPadding + rightPadding)
+    implicitWidth: Math.max(implicitHeight, contentItem.implicitWidth + leftPadding + rightPadding)
 
     leftPadding: root.showsText ? root.textPadding : 0
     rightPadding: root.showsText ? root.textPadding : 0
@@ -82,14 +83,23 @@ Button
 
     contentItem: Item
     {
-        implicitWidth: contentRow.implicitWidth
-        implicitHeight: contentRow.implicitHeight
+        id: buttonContent
+
+        readonly property real hintSpace: root.alignHintRight && root.showsHint
+                                          ? hint.implicitWidth + contentRow.spacing : 0
+        readonly property real inlineHintWidth: !root.alignHintRight && root.showsHint
+                                                ? hint.implicitWidth + contentRow.spacing : 0
+
+        implicitWidth: contentRow.implicitWidth + inlineHintWidth + 2 * hintSpace
+        implicitHeight: Math.max(contentRow.implicitHeight, root.showsHint ? hint.implicitHeight : 0)
 
         RowLayout
         {
             id: contentRow
 
-            anchors.centerIn: parent
+            x: (parent.width - width - parent.inlineHintWidth) / 2
+            y: (parent.height - height) / 2
+            width: root.alignHintRight ? Math.min(implicitWidth, Math.max(0, parent.width - 2 * parent.hintSpace)) : implicitWidth
             spacing: AppMetrics.gapSmall
 
             DesktopIcon
@@ -108,6 +118,8 @@ Button
 
                 visible: root.showsText
                 text: root.text
+                elide: root.alignHintRight ? Text.ElideRight : Text.ElideNone
+                Layout.minimumWidth: root.alignHintRight ? 0 : implicitWidth
                 font.pixelSize: root.large ? AppMetrics.fontLabel : AppMetrics.fontBody
                 font.weight: Font.DemiBold
                 color: root.contentColour
@@ -125,17 +137,19 @@ Button
                 color: root.contentColour
                 Layout.alignment: Qt.AlignVCenter
             }
+        }
 
-            DesktopKeyHint
-            {
-                id: hint
+        DesktopKeyHint
+        {
+            id: hint
 
-                visible: root.showsHint
-                key: root.keyHint
-                tint: root.contentColour
-                opacity: AppTheme.opacitySecondary
-                Layout.alignment: Qt.AlignVCenter
-            }
+            x: root.alignHintRight ? buttonContent.width - width : contentRow.x + contentRow.width + contentRow.spacing
+            y: (buttonContent.height - height) / 2
+
+            visible: root.showsHint
+            key: root.keyHint
+            tint: root.contentColour
+            opacity: AppTheme.opacitySecondary
         }
     }
 

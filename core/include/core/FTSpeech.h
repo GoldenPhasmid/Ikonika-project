@@ -68,6 +68,8 @@ size_t FindSpeechStart(std::span<const float> Samples, int SampleRate);
 
 std::vector<float> StretchSpeech(std::span<const float> Samples, int SampleRate, float Tempo);
 
+std::vector<float> StretchSpeechPhaseVocoder(std::span<const float> Samples, int SampleRate, float Tempo);
+
 /** Whether the directory holds the files of a voice model this build can load. */
 bool IsVoiceModelDirectory(const std::string& ModelDirectory);
 
@@ -219,6 +221,11 @@ public:
     /** Clamped. Cached audio holds the old speed, so changing this drops the caches. */
     void SetSpeed(float Value);
 
+    /** Multiplier on the speed for narration, which is always whole sentences. Clamped. Cached
+        audio is keyed by the speed it was rendered at, so changing this drops nothing. */
+    float GetSentenceSpeed() const;
+    void SetSentenceSpeed(float Value);
+
     /** Per voice, since the models have different speaker counts. */
     int GetSpeakerId() const;
     void SetSpeakerId(int Value);
@@ -274,6 +281,7 @@ private:
 
     bool bEnabled = true;
     float Speed = 1.0f;
+    float SentenceSpeed = 1.0f;
 
     int MaximumCacheEntries = DefaultMaximumCacheEntries;
 };

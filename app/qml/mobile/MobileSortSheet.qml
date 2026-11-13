@@ -90,12 +90,12 @@ MobileBottomSheet
 
                 onClicked: root.chosen(optionRow.modelData.key, false)
 
-                Text
+                DesktopIcon
                 {
                     visible: optionRow.modelData.key === root.currentKey
-                    text: "✓"
-                    font.pixelSize: AppMetrics.fontLabel
-                    font.family: AppMetrics.fontFamily
+                    name: "check"
+                    width: AppMetrics.iconSizeSmall
+                    height: width
                     color: AppTheme.colourText
                 }
             }

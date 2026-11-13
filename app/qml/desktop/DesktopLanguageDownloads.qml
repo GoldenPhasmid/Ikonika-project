@@ -7,53 +7,76 @@ DesktopSettingsGroup
 
     required property var store
     property int words: 0
+    property var triage: null
     signal placementRequested()
+    signal deleteRequested()
 
-    readonly property var voice: AppCatalog.packages.find(entry => entry.kind === "voice"
-        && entry.target === root.store.targetLanguageCode && entry.id.startsWith("piper-") && entry.compatible) || null
-    readonly property bool voicePending: root.voice !== null
-        && (AppPackageDownloader.activeId === root.voice.id || AppPackageDownloader.queue.indexOf(root.voice.id) >= 0)
-    readonly property bool voiceActive: root.voice !== null && AppPackageDownloader.activeId === root.voice.id
+    title: qsTr("I am learning")
 
-    title: qsTr("Learning %1").arg(root.store.targetLanguageName)
-
-    DesktopSettingsRow
+    Item
     {
-        text: qsTr("Dictionary")
-        description: qsTr("%n words in My Vocabulary", "", root.words)
+        objectName: "account_active_language"
 
-        DesktopLabel
+        Layout.fillWidth: true
+        implicitHeight: activeRow.implicitHeight + AppMetrics.gapLarge * 2
+
+        RowLayout
         {
-            text: qsTr("Installed")
-            color: AppTheme.colourMuted
+            id: activeRow
+
+            anchors.fill: parent
+            anchors.margins: AppMetrics.gapLarge
+            spacing: AppMetrics.gapMedium
+
+            LanguageFlag
+            {
+                code: root.store.targetLanguageCode
+            }
+
+            ColumnLayout
+            {
+                Layout.fillWidth: true
+                spacing: AppMetrics.gapTight
+
+                DesktopLabel
+                {
+                    Layout.fillWidth: true
+                    text: root.store.targetLanguageName
+                    font.pixelSize: AppMetrics.fontTitle
+                    font.weight: Font.DemiBold
+                    elide: Text.ElideRight
+                }
+
+                DesktopLabel
+                {
+                    Layout.fillWidth: true
+                    text: qsTr("%n words in My Vocabulary", "", root.words)
+                    font.pixelSize: AppMetrics.fontSmall
+                    color: AppTheme.colourMuted
+                    elide: Text.ElideRight
+                }
+            }
+        }
+
+        DesktopDivider
+        {
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.bottom: parent.bottom
+            anchors.leftMargin: AppMetrics.gapLarge
+            anchors.rightMargin: AppMetrics.gapLarge
         }
     }
 
     DesktopSettingsRow
     {
-        objectName: "account_piper_voice"
-        text: qsTr("Piper voice")
-        description: qsTr("Offline pronunciation")
+        text: qsTr("Dictionary")
+        description: qsTr("%1 words in the dictionary").arg(Number(root.store.dictionaryWordCount).toLocaleString(Qt.locale(), "f", 0))
 
         DesktopLabel
         {
-            visible: root.voice === null || root.voice.installed || root.voicePending
-            text: root.voice === null ? qsTr("Not available for this language")
-                : root.voice.installed ? qsTr("Installed")
-                : !root.voiceActive ? qsTr("Queued")
-                : qsTr("Downloading, %1%").arg(Math.round(AppPackageDownloader.totalBytes > 0
-                    ? AppPackageDownloader.receivedBytes / AppPackageDownloader.totalBytes * 100 : 0))
+            text: qsTr("Installed")
             color: AppTheme.colourMuted
-        }
-
-        DesktopButton
-        {
-            objectName: "account_piper_download"
-            Layout.preferredWidth: AppMetrics.settingsControlWidth
-            visible: root.voice !== null && !root.voice.installed && !root.voicePending
-            text: qsTr("Download · %1 MB").arg(root.voice ? Math.round(root.voice.bytes / (1024 * 1024)) : 0)
-            Accessible.name: qsTr("Download %1 Piper voice").arg(root.store.targetLanguageName)
-            onClicked: AppPackageDownloader.download(root.voice.id)
         }
     }
 
@@ -83,17 +106,52 @@ DesktopSettingsGroup
         }
     }
 
+    DesktopRankBar
+    {
+        objectName: "account_word_range"
+
+        visible: !!root.triage && root.triage.maximumRank > 0
+        title: qsTr("Training offers new words after this rank")
+        rank: root.triage ? root.triage.startRank : 0
+        maximumRank: root.triage ? root.triage.maximumRank : 0
+        levelMarks: root.triage ? root.triage.levelMarks : []
+
+        onVisibleChanged: if (visible && root.triage) root.triage.refreshStartRank()
+        onRankChosen: function(rank) { root.triage.startRank = rank }
+    }
+
     DesktopSettingsRow
     {
         objectName: "account_placement_test"
         text: qsTr("Placement test")
+        lastRow: !deleteRow.visible
+
+        DesktopButton
+        {
+            objectName: "placement_retake"
+
+            Layout.preferredWidth: AppMetrics.settingsControlWidth
+            text: qsTr("Retake")
+            onClicked: root.placementRequested()
+        }
+    }
+
+    DesktopSettingsRow
+    {
+        id: deleteRow
+
+        visible: root.words > 0
+        text: qsTr("Delete %1 words").arg(root.store.targetLanguageName)
+        description: qsTr("Words and learning progress")
         lastRow: true
 
         DesktopButton
         {
+            objectName: "account_delete_" + root.store.targetLanguageCode
             Layout.preferredWidth: AppMetrics.settingsControlWidth
-            text: qsTr("Retake")
-            onClicked: root.placementRequested()
+            tone: "dangerOutline"
+            text: qsTr("Delete")
+            onClicked: root.deleteRequested()
         }
     }
 }

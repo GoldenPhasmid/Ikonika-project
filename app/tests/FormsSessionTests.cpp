@@ -382,7 +382,7 @@ TEST_CASE("A verb's table holds the singular persons in one column and the plura
 
     CHECK(ReadTableCell(Table, 0, 0, "cue") == "je");
     CHECK(ReadTableCell(Table, 0, 1, "cue") == "tu");
-    CHECK(ReadTableCell(Table, 0, 2, "cue") == "il/elle");
+    CHECK(ReadTableCell(Table, 0, 2, "cue") == "il/elle/on");
     CHECK(ReadTableCell(Table, 1, 0, "cue") == "nous");
     CHECK(ReadTableCell(Table, 1, 1, "cue") == "vous");
     CHECK(ReadTableCell(Table, 1, 2, "cue") == "ils/elles");
@@ -578,8 +578,8 @@ TEST_CASE("The match stage pairs each person with a form, and equal forms are in
     REQUIRE(Left.size() == 6);
     REQUIRE(Right.size() == 6);
 
-    CHECK(QSet<QString>(Left.begin(), Left.end()) == QSet<QString>{"je", "tu", "il/elle", "nous", "vous", "ils/elles"});
-    CHECK(Left == QStringList{"je", "tu", "il/elle", "nous", "vous", "ils/elles"});
+    CHECK(QSet<QString>(Left.begin(), Left.end()) == QSet<QString>{"je", "tu", "il/elle/on", "nous", "vous", "ils/elles"});
+    CHECK(Left == QStringList{"je", "tu", "il/elle/on", "nous", "vous", "ils/elles"});
     CHECK(Right.count("veux") == 2);
     CHECK(QSet<QString>(Right.begin(), Right.end())
           == QSet<QString>{"veux", "veut", "voulons", "voulez", "veulent"});
@@ -601,10 +601,10 @@ TEST_CASE("The match stage pairs each person with a form, and equal forms are in
     CHECK(Match->GetLeftMatched()[Left.indexOf("tu")]);
     CHECK(Match->GetWrongPairCount() == 0);
 
-    Match->tapLeft(static_cast<int>(Left.indexOf("il/elle")));
+    Match->tapLeft(static_cast<int>(Left.indexOf("il/elle/on")));
     Match->tapRight(static_cast<int>(Right.indexOf("voulons")));
 
-    CHECK_FALSE(Match->GetLeftMatched()[Left.indexOf("il/elle")]);
+    CHECK_FALSE(Match->GetLeftMatched()[Left.indexOf("il/elle/on")]);
     CHECK(Match->GetWrongPairCount() == 1);
 
     Controller.endSession();

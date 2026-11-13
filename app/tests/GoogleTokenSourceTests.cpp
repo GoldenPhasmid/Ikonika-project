@@ -160,7 +160,7 @@ TEST_CASE("Google refusing the refresh token fails as a refused credential", "[s
     const FTokenOutcome Outcome{RequestAndWait(Harness)};
 
     REQUIRE(Outcome.Failure.has_value());
-    CHECK(Outcome.Failure->bCredentialRefused);
+    CHECK(Outcome.Failure->Kind == AppCloudFailureKind::Credential);
     CHECK(Outcome.Token.isEmpty());
 }
 
@@ -173,7 +173,7 @@ TEST_CASE("A token endpoint error other than a refused grant does not blame the 
     const FTokenOutcome Outcome{RequestAndWait(Harness)};
 
     REQUIRE(Outcome.Failure.has_value());
-    CHECK_FALSE(Outcome.Failure->bCredentialRefused);
+    CHECK(Outcome.Failure->Kind == AppCloudFailureKind::Transient);
 }
 
 TEST_CASE("A token endpoint that never answers fails after the timeout without blaming the credential",
@@ -187,7 +187,7 @@ TEST_CASE("A token endpoint that never answers fails after the timeout without b
 
     REQUIRE(WaitUntil([&Outcome] { return Outcome.bFinished; }, 3000));
     REQUIRE(Outcome.Failure.has_value());
-    CHECK_FALSE(Outcome.Failure->bCredentialRefused);
+    CHECK(Outcome.Failure->Kind == AppCloudFailureKind::Transient);
 }
 
 TEST_CASE("With no account signed in, a token request fails without asking Google", "[sync][token]")
@@ -197,7 +197,7 @@ TEST_CASE("With no account signed in, a token request fails without asking Googl
     const FTokenOutcome Outcome{RequestAndWait(Harness)};
 
     REQUIRE(Outcome.Failure.has_value());
-    CHECK_FALSE(Outcome.Failure->bCredentialRefused);
+    CHECK(Outcome.Failure->Kind == AppCloudFailureKind::Transient);
     CHECK(Harness.Server.Requests.empty());
 }
 
@@ -244,7 +244,7 @@ TEST_CASE("A token answered after the account changed is handed to nobody", "[sy
 
     REQUIRE(WaitUntil([&Outcome] { return Outcome.bFinished; }));
     REQUIRE(Outcome.Failure.has_value());
-    CHECK_FALSE(Outcome.Failure->bCredentialRefused);
+    CHECK(Outcome.Failure->Kind == AppCloudFailureKind::Transient);
     CHECK(Outcome.Token.isEmpty());
 }
 

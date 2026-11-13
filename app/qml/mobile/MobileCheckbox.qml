@@ -15,12 +15,13 @@ Rectangle
     border.color: root.checked ? AppTheme.colourText : AppTheme.colourBorder
     border.width: AppMetrics.borderWidth
 
-    Text
+    DesktopIcon
     {
         anchors.centerIn: parent
         visible: root.checked
-        text: "✓"
-        font.pixelSize: AppMetrics.fontMeta
+        name: "check"
+        width: AppMetrics.fontMeta
+        height: width
         color: AppTheme.colourPanel
     }
 

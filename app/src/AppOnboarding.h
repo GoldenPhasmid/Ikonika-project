@@ -3,6 +3,8 @@
 #include <QObject>
 #include <QQmlEngine>
 #include <QString>
+#include <QStringList>
+#include <QVariantList>
 
 class AppOnboarding : public QObject
 {
@@ -16,6 +18,12 @@ class AppOnboarding : public QObject
     Q_PROPERTY(QString dictionaryId READ GetDictionaryId NOTIFY chosenLanguageChanged)
     Q_PROPERTY(QString voiceId READ GetVoiceId NOTIFY chosenLanguageChanged)
     Q_PROPERTY(bool resumingLanguage READ IsResumingLanguage NOTIFY chosenLanguageChanged)
+    Q_PROPERTY(QString spokenLanguage READ GetSpokenLanguage NOTIFY spokenLanguageChanged)
+    Q_PROPERTY(QVariantList learnableLanguages READ GetLearnableLanguages NOTIFY learnableLanguagesChanged)
+    Q_PROPERTY(QString step READ GetStep NOTIFY stepChanged)
+    Q_PROPERTY(QStringList steps READ GetSteps NOTIFY stepChanged)
+    Q_PROPERTY(bool canGoBack READ CanGoBack NOTIFY stepChanged)
+    Q_PROPERTY(bool todayTourPending READ IsTodayTourPending NOTIFY todayTourChanged)
 
 public:
     static AppOnboarding& Get();
@@ -38,7 +46,18 @@ public:
 
     Q_INVOKABLE void markLanguageSetUp(const QString& LanguageCode);
 
+    Q_INVOKABLE void selectSpokenLanguage(const QString& LanguageCode);
+    Q_INVOKABLE void chooseLearning(const QString& LanguageCode);
+
+    Q_INVOKABLE void next();
+    Q_INVOKABLE void back();
+
+    Q_INVOKABLE void finishTodayTour();
+    Q_INVOKABLE void replayTodayTour();
+
     bool IsRequired() const;
+
+    void RequestCoreCards(const QString& TargetLanguage);
 
     /** The code being set up, empty until something is chosen. */
     QString GetChosenLanguage() const;
@@ -56,24 +75,45 @@ public:
 
     bool IsResumingLanguage() const;
 
+    QString GetSpokenLanguage() const;
+    QVariantList GetLearnableLanguages() const;
+    QString GetStep() const;
+    QStringList GetSteps() const;
+    bool CanGoBack() const;
+    bool IsTodayTourPending() const;
+
 signals:
     void requiredChanged();
     void chosenLanguageChanged();
+    void spokenLanguageChanged();
+    void learnableLanguagesChanged();
+    void stepChanged();
+    void todayTourChanged();
 
 private:
     void OnPackageInstalled(const QString& Id);
     void ReevaluateRequired();
     void ChooseChosenLanguage();
+    void RequestPackages();
+    void ForgetPendingPackages();
+    void ApplySpokenLanguage();
+    void RestartSteps();
 
     QString ChosenLanguage;
     QString ChosenNative;
     QString ChosenDictionaryId;
     QString ChosenVoiceId;
+    QString SpokenLanguage;
+    QString CurrentStep;
+    QString PendingCoreCardsLanguage;
+
+    bool bPlacementOffered = true;
 
     bool bRequired = false;
     bool bDictionaryReady = false;
     bool bVoiceReady = false;
     bool bResumingLanguage = false;
+    bool bTodayTourPending = false;
 };
 
 struct AppOnboardingSingleton

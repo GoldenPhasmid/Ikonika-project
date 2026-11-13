@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/FTCatalog.h"
 #include "core/FTDatabase.h"
 #include "core/FTDictionaryPackage.h"
 #include "core/FTDictionaryRepository.h"
@@ -56,7 +57,11 @@ public:
 
     const std::vector<FTDictionaryPackage>& GetOutdatedPackages() const;
 
-    bool IsOutdated(const std::string& TargetLanguage) const;
+    bool IsOutdated(const std::string& TargetLanguage, const std::string& NativeLanguage) const;
+
+    bool IsInstalled(const std::string& TargetLanguage, const std::string& NativeLanguage) const;
+
+    bool IsReplacedBy(const FTCatalogPackage& Published) const;
 
     /** Nothing when no dictionary is open. */
     const FTDictionaryPackage* GetActivePackage() const;
@@ -78,6 +83,12 @@ public:
 
     const FTSentenceTree* GetSentenceTree();
 
+    /** The tree when it is already loaded, so a background task can read it without loading a second copy. */
+    std::shared_ptr<const FTSentenceTree> GetLoadedSentenceTree() const;
+
+    /** Keeps a tree a background task loaded, unless the dictionary changed meanwhile or the tree is already loaded. */
+    void AdoptSentenceTree(std::shared_ptr<const FTSentenceTree> Tree, uint64_t ForGeneration);
+
     static QStringList GetSearchPaths();
 
     /** Where a downloaded package belongs. Created on demand by whatever writes there. */
@@ -89,7 +100,7 @@ private:
     std::unique_ptr<FTDatabase> Connection;
     std::unique_ptr<FTDictionaryRepository> Repository;
 
-    std::optional<FTSentenceTree> SentenceTree;
+    std::shared_ptr<const FTSentenceTree> SentenceTree;
     bool bSentenceTreeLoaded = false;
 
     std::vector<FTDictionaryPackage> Packages;

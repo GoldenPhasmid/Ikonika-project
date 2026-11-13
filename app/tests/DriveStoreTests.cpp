@@ -124,8 +124,54 @@ TEST_CASE("A refused credential fails as refused and sends nothing to Drive", "[
     const FFindOutcome Outcome{Find(Harness)};
 
     REQUIRE(Outcome.Failure.has_value());
-    CHECK(Outcome.Failure->bCredentialRefused);
+    CHECK(Outcome.Failure->Kind == AppCloudFailureKind::Credential);
     CHECK(Harness.Server.Requests.empty());
+}
+
+TEST_CASE("Drive forbidding the request for lack of permission fails as a missing permission", "[sync]")
+{
+    FDriveHarness Harness;
+    Harness.Server.Answer(403, R"({"error":{"code":403,"errors":[{"reason":"insufficientPermissions"}]}})");
+
+    const FFindOutcome Outcome{Find(Harness)};
+
+    REQUIRE(Outcome.Failure.has_value());
+    CHECK(Outcome.Failure->Kind == AppCloudFailureKind::Permission);
+    CHECK(Outcome.Failure->Status == 403);
+    CHECK(Outcome.Failure->Message.contains("insufficientPermissions"));
+}
+
+TEST_CASE("Drive forbidding the request without a reason fails as a missing permission", "[sync]")
+{
+    FDriveHarness Harness;
+    Harness.Server.Answer(403, "");
+
+    const FFindOutcome Outcome{Find(Harness)};
+
+    REQUIRE(Outcome.Failure.has_value());
+    CHECK(Outcome.Failure->Kind == AppCloudFailureKind::Permission);
+}
+
+TEST_CASE("Drive limiting the rate of requests fails as transient", "[sync]")
+{
+    FDriveHarness Harness;
+    Harness.Server.Answer(403, R"({"error":{"code":403,"errors":[{"reason":"userRateLimitExceeded"}]}})");
+
+    const FFindOutcome Outcome{Find(Harness)};
+
+    REQUIRE(Outcome.Failure.has_value());
+    CHECK(Outcome.Failure->Kind == AppCloudFailureKind::Transient);
+}
+
+TEST_CASE("Drive running out of storage fails as a full quota", "[sync]")
+{
+    FDriveHarness Harness;
+    Harness.Server.Answer(403, R"({"error":{"code":403,"errors":[{"reason":"storageQuotaExceeded"}]}})");
+
+    const FFindOutcome Outcome{Find(Harness)};
+
+    REQUIRE(Outcome.Failure.has_value());
+    CHECK(Outcome.Failure->Kind == AppCloudFailureKind::Quota);
 }
 
 TEST_CASE("Drive answering unauthorised drops the access token without blaming the credential", "[sync]")
@@ -136,7 +182,7 @@ TEST_CASE("Drive answering unauthorised drops the access token without blaming t
     const FFindOutcome Outcome{Find(Harness)};
 
     REQUIRE(Outcome.Failure.has_value());
-    CHECK_FALSE(Outcome.Failure->bCredentialRefused);
+    CHECK(Outcome.Failure->Kind == AppCloudFailureKind::Transient);
     CHECK(Harness.Tokens.InvalidateCount == 1);
 }
 
@@ -148,7 +194,7 @@ TEST_CASE("A server error fails without blaming the credential", "[sync]")
     const FFindOutcome Outcome{Find(Harness)};
 
     REQUIRE(Outcome.Failure.has_value());
-    CHECK_FALSE(Outcome.Failure->bCredentialRefused);
+    CHECK(Outcome.Failure->Kind == AppCloudFailureKind::Transient);
 }
 
 TEST_CASE("A request that hears nothing fails after the timeout", "[sync]")
@@ -168,7 +214,7 @@ TEST_CASE("A request that hears nothing fails after the timeout", "[sync]")
 
     REQUIRE(WaitUntil([&bFinished] { return bFinished; }, 3000));
     REQUIRE(Failure.has_value());
-    CHECK_FALSE(Failure->bCredentialRefused);
+    CHECK(Failure->Kind == AppCloudFailureKind::Transient);
 }
 
 TEST_CASE("A complete download lands at the destination", "[sync]")

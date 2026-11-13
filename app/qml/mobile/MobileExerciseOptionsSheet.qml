@@ -10,6 +10,7 @@ MobileBottomSheet
 
     property bool showStageActions: true
     property bool showEditCard: false
+    property bool showCompleteStage: true
 
     property bool showVoiceOption: false
     property bool voiceOn: false
@@ -100,7 +101,7 @@ MobileBottomSheet
 
         MobileSettingsRow
         {
-            visible: root.showStageActions
+            visible: root.showStageActions && root.showCompleteStage
             title: qsTr("Complete stage")
 
             onClicked: root.completeStageRequested()

@@ -454,6 +454,66 @@ TEST_CASE("A refused credential marks the account and keeps its workspace open",
     CHECK(Harness.Store.FindCount == 1);
 }
 
+TEST_CASE("A missing Drive permission marks the account and is not retried", "[sync]")
+{
+    FSyncHarness Harness;
+    Harness.StartSync();
+
+    Harness.Sync->SyncNow();
+    Harness.Store.FinishFind(MakeForbidden(), std::nullopt);
+
+    REQUIRE(Harness.Registry.GetActiveAccount().has_value());
+    CHECK(Harness.Registry.GetActiveAccount()->bNeedsReconnect);
+    CHECK(Harness.Registry.GetActiveAccount()->bMissingDriveAccess);
+    CHECK(Harness.Sync->GetLastFailureKind() == AppCloudFailureKind::Permission);
+    CHECK(Harness.Finished == std::vector<bool>{false});
+
+    CHECK_FALSE(Harness.RetryTimer().isActive());
+    CHECK(Harness.Store.FindCount == 1);
+}
+
+TEST_CASE("A full Drive stops the cycle without retrying or blaming the account", "[sync]")
+{
+    FSyncHarness Harness;
+    Harness.StartSync();
+
+    Harness.Sync->SyncNow();
+    Harness.Store.FinishFind(MakeStorageFull(), std::nullopt);
+
+    REQUIRE(Harness.Registry.GetActiveAccount().has_value());
+    CHECK_FALSE(Harness.Registry.GetActiveAccount()->bNeedsReconnect);
+    CHECK(Harness.Sync->GetLastFailureKind() == AppCloudFailureKind::Quota);
+    CHECK(Harness.Finished == std::vector<bool>{false});
+
+    CHECK_FALSE(Harness.RetryTimer().isActive());
+    CHECK(Harness.Store.FindCount == 1);
+}
+
+TEST_CASE("A refused credential is not marked as a missing Drive permission", "[sync]")
+{
+    FSyncHarness Harness;
+    Harness.StartSync();
+
+    Harness.Sync->SyncNow();
+    Harness.Store.FinishFind(MakeRefused(), std::nullopt);
+
+    REQUIRE(Harness.Registry.GetActiveAccount().has_value());
+    CHECK(Harness.Registry.GetActiveAccount()->bNeedsReconnect);
+    CHECK_FALSE(Harness.Registry.GetActiveAccount()->bMissingDriveAccess);
+}
+
+TEST_CASE("An offline failure schedules a retry", "[sync]")
+{
+    FSyncHarness Harness;
+    Harness.StartSync();
+
+    Harness.Sync->SyncNow();
+    Harness.Store.FinishFind(MakeOffline(), std::nullopt);
+
+    CHECK(Harness.Sync->IsRetryScheduled());
+    CHECK(Harness.Sync->GetLastFailureKind() == AppCloudFailureKind::Transient);
+}
+
 TEST_CASE("The signed-out workspace never syncs", "[sync]")
 {
     FSyncHarness Harness{false};

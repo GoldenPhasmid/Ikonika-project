@@ -212,6 +212,7 @@ jobs:
         run: |
           "$QT_ROOT/$QT_VERSION/ios/bin/qt-cmake" -S "$GITHUB_WORKSPACE" -B "$BUILD_DIR" -G Xcode \
             -DQT_HOST_PATH="$QT_ROOT/$QT_VERSION/macos" \
+            -DCMAKE_OSX_SYSROOT=iphonesimulator \
             -DCMAKE_XCODE_GENERATE_SCHEME=ON \
             -DQT_QML_NO_CACHEGEN=ON \
             -DIKONIKA_IOS_GOOGLE_CLIENT_ID="${{ vars.IOS_GOOGLE_CLIENT_ID }}" \

@@ -17,6 +17,14 @@ static bool IsSpeakable(const QString& Text, qsizetype Start, qsizetype End)
     return false;
 }
 
+static QString MakeSpokenText(const QString& Text)
+{
+    QString Spoken{Text};
+    Spoken.replace(u'—', QStringLiteral(" — "));
+
+    return Spoken.simplified();
+}
+
 static std::vector<FTNarrationSentence> FindSpeakableSentences(const std::vector<std::string>& Paragraphs, int Paragraph,
                                                                const std::string& LanguageCode)
 {
@@ -43,7 +51,7 @@ static std::vector<FTNarrationSentence> FindSpeakableSentences(const std::vector
             continue;
         }
 
-        Sentences.push_back({Paragraph, Start, End, Text.mid(Start, End - Start).simplified()});
+        Sentences.push_back({Paragraph, Start, End, MakeSpokenText(Text.mid(Start, End - Start))});
     }
 
     return Sentences;
@@ -102,6 +110,38 @@ std::optional<FTNarrationSentence> FindNarrationSentenceAfter(const std::vector<
     }
 
     return FindFirstSentenceFrom(Paragraphs, Previous.Paragraph + 1, LanguageCode);
+}
+
+std::optional<FTNarrationSentence> FindNarrationSentenceBefore(const std::vector<std::string>& Paragraphs,
+                                                               const FTNarrationSentence& Next,
+                                                               const std::string& LanguageCode)
+{
+    if (Next.Paragraph < 0 || Next.Paragraph >= static_cast<int>(Paragraphs.size()))
+    {
+        return std::nullopt;
+    }
+
+    const std::vector<FTNarrationSentence> Sentences{FindSpeakableSentences(Paragraphs, Next.Paragraph, LanguageCode)};
+
+    for (auto Sentence{Sentences.rbegin()}; Sentence != Sentences.rend(); ++Sentence)
+    {
+        if (Sentence->End <= Next.Start)
+        {
+            return *Sentence;
+        }
+    }
+
+    for (int Index{Next.Paragraph - 1}; Index >= 0; --Index)
+    {
+        const std::vector<FTNarrationSentence> Earlier{FindSpeakableSentences(Paragraphs, Index, LanguageCode)};
+
+        if (!Earlier.empty())
+        {
+            return Earlier.back();
+        }
+    }
+
+    return std::nullopt;
 }
 
 double EstimateNarrationSeconds(const QString& Text, float Speed)

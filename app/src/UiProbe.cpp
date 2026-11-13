@@ -6,6 +6,7 @@
 #include <QDateTime>
 #include <QDir>
 #include <QFile>
+#include <QGuiApplication>
 #include <QImage>
 #include <QKeyEvent>
 #include <QKeySequence>
@@ -471,6 +472,26 @@ void UiProbe::OnSnapshotPoll()
     for (const QString& Line : Lines)
     {
         const QStringList Parts = Line.trimmed().split(QLatin1Char(' '), Qt::SkipEmptyParts);
+
+        if (Parts.size() >= 2 && Parts[0] == QStringLiteral("window"))
+        {
+            const QString Title = Line.trimmed().mid(Parts[0].size() + 1);
+
+            for (QWindow* Candidate : QGuiApplication::topLevelWindows())
+            {
+                QQuickWindow* QuickWindow = qobject_cast<QQuickWindow*>(Candidate);
+
+                if (QuickWindow != nullptr && QuickWindow->isVisible() && QuickWindow->title() == Title)
+                {
+                    SnapshotWindow = QuickWindow;
+                    qCInfo(LogApp) << "PROBE: snapshot window" << Title;
+
+                    break;
+                }
+            }
+
+            continue;
+        }
 
         if (Parts.size() == 3 && Parts[0] == QStringLiteral("size"))
         {

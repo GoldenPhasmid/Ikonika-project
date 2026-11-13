@@ -74,7 +74,7 @@ void AppDictionary::Discover()
             const auto Existing = std::find_if(Packages.begin(), Packages.end(),
                 [&Found](const FTDictionaryPackage& Other)
                 {
-                    return Other.TargetLanguage == Found.TargetLanguage;
+                    return Other.SharesPairWith(Found);
                 });
 
             if (Existing != Packages.end())
@@ -84,6 +84,7 @@ void AppDictionary::Discover()
 
             qCInfo(LogDatabase) << "Dictionary found:" << QString::fromStdString(Found.FilePath)
                                 << "teaches" << QString::fromStdString(Found.TargetLanguage)
+                                << "in" << QString::fromStdString(Found.NativeLanguages.front())
                                 << "with" << Found.WordCount << "words";
 
             Packages.push_back(std::move(Found));
@@ -97,12 +98,13 @@ void AppDictionary::Discover()
 
     for (FTDictionaryPackage& Outdated : InstalledIncompatible)
     {
-        if (IsOutdated(Outdated.TargetLanguage)
-            || std::any_of(Packages.begin(), Packages.end(),
-                           [&Outdated](const FTDictionaryPackage& Other)
-                           {
-                               return Other.TargetLanguage == Outdated.TargetLanguage;
-                           }))
+        const auto SharesPair = [&Outdated](const FTDictionaryPackage& Other)
+        {
+            return Other.SharesPairWith(Outdated);
+        };
+
+        if (std::any_of(OutdatedPackages.begin(), OutdatedPackages.end(), SharesPair)
+            || std::any_of(Packages.begin(), Packages.end(), SharesPair))
         {
             continue;
         }
@@ -149,7 +151,9 @@ void AppDictionary::Discover()
 
     // The saved pair was accepted unchecked while nothing was known to be installed, so it is
     // checked now that the files have been seen.
-    if (!IsOutdated(FTSettings::Get().GetLanguageRules().TargetLanguage))
+    const FTLanguageRules& Saved = FTSettings::Get().GetLanguageRules();
+
+    if (!IsOutdated(Saved.TargetLanguage, Saved.NativeLanguage))
     {
         FTSettings::Get().RevalidateLanguageRules();
     }
@@ -199,7 +203,7 @@ bool AppDictionary::Initialise()
         return true;
     }
 
-    if (IsOutdated(Wanted.TargetLanguage))
+    if (IsOutdated(Wanted.TargetLanguage, Wanted.NativeLanguage))
     {
         return false;
     }
@@ -286,12 +290,30 @@ const std::vector<FTDictionaryPackage>& AppDictionary::GetOutdatedPackages() con
     return OutdatedPackages;
 }
 
-bool AppDictionary::IsOutdated(const std::string& TargetLanguage) const
+bool AppDictionary::IsOutdated(const std::string& TargetLanguage, const std::string& NativeLanguage) const
 {
     return std::any_of(OutdatedPackages.begin(), OutdatedPackages.end(),
-                       [&TargetLanguage](const FTDictionaryPackage& Package)
+                       [&TargetLanguage, &NativeLanguage](const FTDictionaryPackage& Package)
                        {
-                           return Package.TargetLanguage == TargetLanguage;
+                           return Package.TargetLanguage == TargetLanguage && Package.SupportsNative(NativeLanguage);
+                       });
+}
+
+bool AppDictionary::IsInstalled(const std::string& TargetLanguage, const std::string& NativeLanguage) const
+{
+    return std::any_of(Packages.begin(), Packages.end(),
+                       [&TargetLanguage, &NativeLanguage](const FTDictionaryPackage& Package)
+                       {
+                           return Package.TargetLanguage == TargetLanguage && Package.SupportsNative(NativeLanguage);
+                       });
+}
+
+bool AppDictionary::IsReplacedBy(const FTCatalogPackage& Published) const
+{
+    return std::any_of(OutdatedPackages.begin(), OutdatedPackages.end(),
+                       [&Published](const FTDictionaryPackage& Package)
+                       {
+                           return Published.Replaces(Package);
                        });
 }
 
@@ -354,9 +376,31 @@ const FTSentenceTree* AppDictionary::GetSentenceTree()
 
     if (!bSentenceTreeLoaded)
     {
-        SentenceTree = FTSentenceTree::Load(*Connection);
+        std::optional<FTSentenceTree> Loaded = FTSentenceTree::Load(*Connection);
+
+        if (Loaded.has_value())
+        {
+            SentenceTree = std::make_shared<const FTSentenceTree>(std::move(*Loaded));
+        }
+
         bSentenceTreeLoaded = true;
     }
 
-    return SentenceTree.has_value() ? &*SentenceTree : nullptr;
+    return SentenceTree.get();
+}
+
+std::shared_ptr<const FTSentenceTree> AppDictionary::GetLoadedSentenceTree() const
+{
+    return SentenceTree;
+}
+
+void AppDictionary::AdoptSentenceTree(std::shared_ptr<const FTSentenceTree> Tree, uint64_t ForGeneration)
+{
+    if (Tree == nullptr || ForGeneration != Generation || bSentenceTreeLoaded)
+    {
+        return;
+    }
+
+    SentenceTree = std::move(Tree);
+    bSentenceTreeLoaded = true;
 }

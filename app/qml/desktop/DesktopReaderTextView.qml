@@ -17,6 +17,8 @@ ListView
     property ReaderReadAloud readAloud: null
     property real readAloudInset: 0
     property bool followingReadAloud: true
+    property bool readingAway: false
+    property var pickedPlace: null
     property bool selecting: false
 
     signal wordPicked(string word, string sentence)
@@ -113,22 +115,39 @@ ListView
         }
 
         root.followingReadAloud = true
+        ReadAloudPlace.play(root, root.readAloud, root.topParagraph, root.contentY,
+                            root.contentY + root.height - root.readAloudInset)
+    }
 
-        if (root.readAloud.started)
+    function readFrom(place)
+    {
+        if (root.readAloud === null || place === null)
         {
-            root.readAloud.resume()
-
             return
         }
 
-        const place = ReadAloudPlace.startPlace(root, root.topParagraph, root.contentY)
-
+        root.clearSelection()
+        root.followingReadAloud = true
         root.readAloud.startAt(place.paragraph, place.character)
     }
 
-    function followReadAloud()
+    function showReading()
     {
-        if (root.readAloud === null || !root.readAloud.playing || !root.followingReadAloud)
+        root.followingReadAloud = true
+        root.followReadAloud(true)
+    }
+
+    function updateReadingAway()
+    {
+        root.readingAway = root.readAloud !== null && root.readAloud.started && !root.followingReadAloud
+            && !ReadAloudPlace.isReadingShown(root, root.readAloud, root.contentY,
+                                              root.contentY + root.height - root.readAloudInset)
+    }
+
+    function followReadAloud(force)
+    {
+        if (root.readAloud === null || !root.readAloud.started || !root.followingReadAloud
+            || (!force && !root.readAloud.playing))
         {
             return
         }
@@ -165,9 +184,14 @@ ListView
 
         function onStateChanged()
         {
-            Qt.callLater(root.followReadAloud)
+            Qt.callLater(root.followReadAloud, false)
+            Qt.callLater(root.updateReadingAway)
         }
     }
+
+    onContentYChanged: root.updateReadingAway()
+    onHeightChanged: root.updateReadingAway()
+    onFollowingReadAloudChanged: root.updateReadingAway()
 
     function isWordCharacter(character)
     {
@@ -643,6 +667,8 @@ ListView
 
                     if (paragraph.display.substring(paragraphText.selectionStart, paragraphText.selectionEnd).trim().length > 0)
                     {
+                        root.pickedPlace = { paragraph: paragraph.index, character: paragraphText.selectionStart }
+
                         const first = root.wordRange(paragraph.display, paragraphText.selectionStart)
                         const last = root.wordRange(paragraph.display, paragraphText.selectionEnd - 1)
                         let start = first !== null ? first.start : paragraphText.selectionStart
@@ -677,15 +703,7 @@ ListView
                         return
                     }
 
-                    if (readAloud !== null && readAloud.enabled && !readAloud.started)
-                    {
-                        root.clearSelection()
-                        root.followingReadAloud = true
-                        readAloud.startAt(paragraph.index, range.start)
-
-                        return
-                    }
-
+                    root.pickedPlace = { paragraph: paragraph.index, character: range.start }
                     paragraphText.select(range.start, range.end)
                     root.wordPicked(paragraph.display.substring(range.start, range.end), contextLookup.sentenceAt(paragraph.display, range.start))
                     root.translationWanted()
@@ -706,7 +724,8 @@ ListView
 
                 textDocument: (root.vocabulary !== null && root.vocabulary.enabled) || reading ? paragraphText.textDocument : null
                 vocabulary: root.vocabulary
-                learningColour: AppTheme.faded(AppTheme.colourAccent, AppTheme.alphaMedium)
+                darkPaper: root.inkColour.hslLightness > 0.5
+                learningColour: darkPaper ? AppTheme.colourReaderMarkDark : AppTheme.colourAccent
                 sentenceStart: reading ? root.readAloud.sentenceStart : -1
                 sentenceEnd: reading ? root.readAloud.sentenceEnd : -1
                 sentenceColour: AppTheme.faded(root.inkColour, AppTheme.alphaSoft)

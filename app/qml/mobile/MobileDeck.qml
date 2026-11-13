@@ -15,17 +15,34 @@ Item
     property int learnedCount: 0
     property int untriagedCount: 0
     property bool compact: false
+    property bool pickable: false
+    property bool picked: false
 
     signal trainRequested()
     signal openRequested()
+    signal pickRequested()
 
     readonly property bool trainable: root.untriagedCount > 0
+    readonly property bool pressed: coverTap.pressed
+    readonly property bool lifted: root.enabled && !root.compact && (root.pressed || root.picked)
     readonly property real wordCountSafe: Math.max(root.wordCount, 1)
     readonly property string iconPath: Icons.Icons[root.iconName] ? Icons.Icons[root.iconName].path : ""
     readonly property string detail: Decks.detail(root)
 
+    function wiggle()
+    {
+        refusal.restart()
+    }
+
     function activate()
     {
+        if (root.pickable)
+        {
+            root.pickRequested()
+
+            return
+        }
+
         if (root.trainable)
         {
             root.trainRequested()
@@ -37,6 +54,11 @@ Item
     }
 
     implicitHeight: root.compact ? AppMetrics.readerRowHeight : Math.round(root.width / AppMetrics.readerTileAspect)
+    opacity: root.enabled ? 1 : AppTheme.opacityDisabled
+    z: root.lifted ? 1 : 0
+    scale: root.lifted ? AppMetrics.coverHoverScale : 1.0
+
+    Behavior on scale { NumberAnimation { duration: AppMetrics.motionBase; easing.type: Easing.OutCubic } }
 
     Accessible.role: Accessible.Button
     Accessible.name: root.trainable ? qsTr("Train %1, %2").arg(root.title).arg(root.detail)
@@ -72,6 +94,8 @@ Item
     {
         property color iconColour: AppTheme.colourCoverInk
 
+        visible: !root.pickable
+
         Accessible.role: Accessible.Button
         Accessible.name: qsTr("Words of %1").arg(root.title)
 
@@ -93,13 +117,23 @@ Item
         }
     }
 
+    DesktopWiggleAnimation
+    {
+        id: refusal
+
+        target: root
+    }
+
     Rectangle
     {
         anchors.fill: parent
         visible: !root.compact
         radius: AppMetrics.coverRadius
-        color: root.tint
-        opacity: coverTap.pressed ? AppTheme.opacityHover : 1.0
+        color: !root.enabled ? AppTheme.colourCoverMuted
+             : root.pressed ? Qt.tint(root.tint, AppTheme.faded(AppTheme.colourText, AppTheme.alphaFaint))
+             : root.tint
+
+        Behavior on color { ColorAnimation { duration: AppMetrics.motionFast } }
 
         TapHandler
         {
@@ -120,6 +154,29 @@ Item
 
             svgPath: root.iconPath
             color: AppTheme.colourCoverInk
+        }
+
+        MobileVectorIcon
+        {
+            anchors.top: parent.top
+            anchors.right: parent.right
+            anchors.margins: AppMetrics.gapCompact
+            width: AppMetrics.deckIconSize
+            height: width
+            visible: root.picked
+
+            svgPath: Icons.Icons.check.path
+            color: AppTheme.colourCoverInk
+        }
+
+        Rectangle
+        {
+            anchors.fill: parent
+            visible: root.picked
+            radius: AppMetrics.coverRadius
+            color: "transparent"
+            border.color: AppTheme.colourCoverInk
+            border.width: AppMetrics.focusRingWidth
         }
 
         WordsButton

@@ -157,6 +157,11 @@ namespace
             return GenderFeminine;
         }
 
+        if (Code == QStringLiteral("n"))
+        {
+            return GenderNeuter;
+        }
+
         return std::nullopt;
     }
 
@@ -470,6 +475,8 @@ int main(int ArgumentCount, char* Arguments[])
 
     LoadBundledFonts();
 
+    AppPackageDownloader::RecoverInterruptedInstalls();
+
     AppDictionary::Get().Initialise();
 
     AppStartup::Mark("dictionary");
@@ -560,7 +567,15 @@ int main(int ArgumentCount, char* Arguments[])
 
     AppStartup::Mark("localisation");
 
-    QQuickWindow* Window = LoadInterface(false);
+    bool bStartHidden = Application.arguments().contains(QStringLiteral("--minimised"));
+
+#if defined(Q_OS_WIN)
+    bStartHidden = bStartHidden || AppStartupTask::WasLaunchedAtSignIn();
+#endif
+
+    bStartHidden = bStartHidden && Reminder.ShouldHideOnClose();
+
+    QQuickWindow* Window = LoadInterface(bStartHidden);
 
 #if defined(IKONIKA_DESKTOP)
     if (!BookPath.isEmpty())
@@ -656,18 +671,8 @@ int main(int ArgumentCount, char* Arguments[])
 
         QObject::connect(&Reminder, &AppReminder::quitRequested, &Application, &QApplication::quit);
 
-        // Launched by Windows at sign-in, so it starts in the tray rather than putting a window in
-        // front of someone who was doing something else.
-        bool bStartHidden = Application.arguments().contains(QStringLiteral("--minimised"));
-
-#if defined(Q_OS_WIN)
-        bStartHidden = bStartHidden || AppStartupTask::WasLaunchedAtSignIn();
-#endif
-
-        if (bStartHidden && Reminder.ShouldHideOnClose())
+        if (bStartHidden)
         {
-            Window->hide();
-
             qCInfo(LogApp) << "Started minimised to the tray";
         }
 
@@ -683,6 +688,14 @@ int main(int ArgumentCount, char* Arguments[])
             QTimer::singleShot(0, QuickLookup.get(), [&QuickLookup, QuickLookupText]()
             {
                 emit QuickLookup->lookupRequested(QuickLookupText);
+            });
+        }
+
+        if (QuickLookup && AppPaths::IsHeadless() && Application.arguments().contains(QStringLiteral("-quick-type")))
+        {
+            QTimer::singleShot(0, QuickLookup.get(), [&QuickLookup]()
+            {
+                emit QuickLookup->typedLookupRequested();
             });
         }
 #endif
@@ -717,6 +730,11 @@ int main(int ArgumentCount, char* Arguments[])
         qCInfo(LogApp) << "Version" << AppCatalog::Get().GetPublishedVersion()
                        << "is published; this is" << QCoreApplication::applicationVersion();
     });
+
+    QObject::connect(&Catalog, &AppCatalog::catalogChanged, &Catalog, []()
+    {
+        AppPackageDownloader::Get().RestoreQueue();
+    }, Qt::SingleShotConnection);
 
     const QString RequestedPackage = qEnvironmentVariable("IKONIKA_INSTALL_PACKAGE");
 

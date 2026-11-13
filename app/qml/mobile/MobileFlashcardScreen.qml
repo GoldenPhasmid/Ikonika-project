@@ -49,6 +49,7 @@ Item
 
         exerciseName: qsTr("Flashcard")
         store: root.store
+        controller: root.controller
 
         progress: root.controller.exerciseProgress
 
@@ -100,12 +101,13 @@ Item
                 {
                     objectName: "flashcard_phonetic"
 
-                    visible: false
-                    text: root.controller.phonetic
+                    visible: !root.sentenceText
+                    text: root.controller.phonetic.length > 0 ? root.controller.phonetic : " "
                     font.pixelSize: AppMetrics.fontTitle
                     font.family: AppMetrics.fontFamily
                     color: AppTheme.colourMuted
                     Layout.fillWidth: true
+                    Layout.topMargin: -13
                     horizontalAlignment: Text.AlignHCenter
                 },
                 MobileSentenceText

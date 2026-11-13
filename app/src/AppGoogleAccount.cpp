@@ -78,11 +78,11 @@ namespace
         return Candidates;
     }
 
-    AppCloudFailure MakeFailure(const QString& Message, bool bCredentialRefused = false)
+    AppCloudFailure MakeFailure(const QString& Message, AppCloudFailureKind Kind = AppCloudFailureKind::Transient)
     {
         AppCloudFailure Failure;
         Failure.Message = Message;
-        Failure.bCredentialRefused = bCredentialRefused;
+        Failure.Kind = Kind;
 
         return Failure;
     }
@@ -500,7 +500,8 @@ void AppGoogleAccount::HandleAndroidAuthorizationFailed(const QString& Message, 
     {
         bSilentPending = false;
 
-        DeliverToken(MakeFailure(Message, bRefused), QString());
+        DeliverToken(MakeFailure(Message, bRefused ? AppCloudFailureKind::Credential : AppCloudFailureKind::Transient),
+                     QString());
 
         if (bInteractivePending)
         {
@@ -598,6 +599,15 @@ void AppGoogleAccount::PrepareFlow()
 
     connect(Flow.get(), &QAbstractOAuth::granted, this, [this]
             {
+                if (!Flow->grantedScopeTokens().contains(DriveScope.toUtf8()))
+                {
+                    qCWarning(LogSync) << "Google granted only" << Flow->grantedScopeTokens();
+
+                    FailSignIn(tr("Google did not give Ikonika permission to store your data in Google Drive. Sign in again and tick every permission box."));
+
+                    return;
+                }
+
                 const QString RefreshToken{Flow->refreshToken()};
 
                 if (RefreshToken.isEmpty())

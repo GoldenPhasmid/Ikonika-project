@@ -7,7 +7,7 @@
 | UI | Qt 6: Quick, Quick Controls 2 | Official Qt installer |
 | Storage | SQLite via `QSqlDatabase`/`QSqlQuery` (`QSQLITE` driver) | Bundled with Qt |
 | Audio playback | miniaudio | - |
-| Speech | sherpa-onnx with Piper on desktop; the platform's own TTS on Android; Supertonic kept for dev | `tools\fetch-native.ps1` |
+| Speech | sherpa-onnx with original Supertonic 3 on desktop; platform TTS on Android | `tools\fetch-native.ps1` |
 | Machine translation | OPUS-MT int8 through ONNX Runtime on desktop; Google ML Kit on Android | `tools\fetch-native.ps1` on desktop |
 | Tests | Catch2 v3 | CMake FetchContent |
 | Dictionary import | `scripts/dictionary/build_dictionary.py` | Build-time tool |
@@ -57,12 +57,11 @@ Ogg Vorbis, so the importer takes the mp3 set.
 
 One shipped engine per platform, decided by [docs/voice.md](docs/voice.md)'s measurements.
 
-Desktop: neural synthesis, fully offline, via sherpa-onnx's **C API**, loaded at start-up.
-**Piper `fr_FR-siwis-medium`** — VITS, eSpeak phonemes, 22050 Hz, one speaker, French-only,
-Apache-2.0. Phonemes come from French rules rather than being inferred, so it can't mispronounce an
-unfamiliar word. MinGW links the DLL directly, no import library needed. MSVC needs the `.lib`
+Desktop: neural synthesis, fully offline, via sherpa-onnx's **C API**, loaded at start-up. Supertonic 3 is the only voice the app offers, publishes and loads. MinGW links the DLL directly, no import library needed. MSVC needs the `.lib`
 import library the same official Python wheel also ships (`fetch-native.ps1` grabs both). Libraries
-and the ~77 MB model are not in git; `fetch-native.ps1` fetches them.
+and the ~380 MB model are not in git; `fetch-native.ps1` fetches them.
+
+Piper (`fr_FR-siwis-medium`, VITS, eSpeak phonemes, one language per model) was the first desktop voice and was retired in favour of one model that speaks every language. Its loader stays in `core` so the speech tests can still cover it.
 
 **sherpa-onnx is pinned at 1.13.8.** Releases before 1.13.5 leave out the pad token Piper expects
 right after the start marker, and Piper then loses the first sound of every line: salé came out as
@@ -77,10 +76,7 @@ device has installed — no bundled fallback today. The APK carries neither sher
 Runtime: core builds without its voice engine there, which keeps about 25 MB of arm64 libraries out
 of every install.
 
-**No longer offered to users:** Supertonic — paid a near-fixed ~500 ms per call regardless of length,
-both platforms (see voice.md). `FTSpeechSynthesizer` still detects and loads a Supertonic directory;
-`tools\fetch-native.ps1` still fetches it for local comparison. It just isn't fetched into a real
-install, bundled, or served by the catalog any more.
+**Desktop default:** Supertonic 3 with original ONNX weights, ten named voices and Sarah as the default. Native speed control is used, with no stretching, gain adjustment or silence trimming. The four model files total 379.6 MiB against 137.8 MiB for INT8, and peak resident memory is 542.1 MiB against 339.1 MiB. INT8 was dropped after listening comparisons exposed background noise. Piper is retired. See [voice.md](voice.md) for measurements and playback details.
 
 **Rejected outright:** eSpeak (formant synthesis, unpleasant, nothing fixed it), pre-recorded audio
 alone (covers single words only, not arbitrary sentences), cloud synthesis (better quality, but a

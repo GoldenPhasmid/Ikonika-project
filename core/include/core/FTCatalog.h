@@ -8,6 +8,8 @@
 #include <string>
 #include <vector>
 
+struct FTDictionaryPackage;
+
 inline constexpr int CatalogSchemaVersion = 1;
 
 inline constexpr const char* CatalogKindDictionary = "dictionary";
@@ -38,6 +40,7 @@ struct FTCatalogPackage
     bool IsCompatible() const;
     bool ServesTarget(const std::string& LanguageCode) const;
     bool SupportsNative(const std::string& LanguageCode) const;
+    bool Replaces(const FTDictionaryPackage& Installed) const;
 };
 
 struct FTCatalogApp
@@ -58,7 +61,8 @@ struct FTCatalog
     std::vector<FTWebSearchSource> WebSearchSources;
     std::map<std::string, std::string> BookCatalogUrls;
 
-    const FTCatalogPackage* FindCompatibleDictionary(const std::string& TargetLanguage) const;
+    const FTCatalogPackage* FindCompatibleDictionary(const std::string& TargetLanguage,
+                                                     const std::string& NativeLanguage) const;
 };
 
 std::optional<FTCatalog> ParseCatalog(const std::string& Json);

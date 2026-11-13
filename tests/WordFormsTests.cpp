@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <array>
+#include <filesystem>
 #include <optional>
 #include <string>
 #include <unordered_map>
@@ -276,11 +277,11 @@ TEST_CASE("Only a single-word verb of a supported language is offered", "[conjug
 
     CHECK_FALSE(MakeFormsCard(FormsKindVerb, Noun, "fr", "want").has_value());
     CHECK_FALSE(MakeFormsCard(FormsKindVerb, Phrase, "fr", "want").has_value());
-    CHECK_FALSE(MakeFormsCard(FormsKindVerb, MakeVouloir(), "de", "want").has_value());
+    CHECK_FALSE(MakeFormsCard(FormsKindVerb, MakeVouloir(), "en", "want").has_value());
 
     CHECK(SupportsForms(FormsKindVerb, "fr"));
     CHECK(SupportsForms(FormsKindVerb, "es"));
-    CHECK_FALSE(SupportsForms(FormsKindVerb, "de"));
+    CHECK(SupportsForms(FormsKindVerb, "de"));
 }
 
 TEST_CASE("A stored card expands into six forms in person order", "[conjugation]")
@@ -372,7 +373,7 @@ TEST_CASE("A third person is labelled with both genders and accepts either prono
     const std::optional<FTWordForm> Singular = ReadWordForm(Forms[2]);
     REQUIRE(Singular.has_value());
     CHECK(Singular->Subject == "il");
-    CHECK(Singular->SubjectLabel == "il/elle");
+    CHECK(Singular->SubjectLabel == "il/elle/on");
 
     const std::optional<FTWordForm> Plural = ReadWordForm(Forms[5]);
     REQUIRE(Plural.has_value());
@@ -1102,7 +1103,7 @@ TEST_CASE("French has four tenses and every later one opens from the present", "
     CHECK(ListFormsTenses("fr") == std::vector<std::string>{"present", "imperfect", "future", "perfect"});
     CHECK(ListFormsTenses("es")
           == std::vector<std::string>{"present", "imperfect", "preterite", "future", "perfect"});
-    CHECK(ListFormsTenses("de").empty());
+    CHECK(ListFormsTenses("en").empty());
 
     CHECK(GetFormsTenseLabel("fr", "present") == "présent");
     CHECK(GetFormsTenseLabel("fr", "imperfect") == "imparfait");
@@ -1127,7 +1128,7 @@ TEST_CASE("A deck tense has the dictionary's tense code", "[conjugation][tenses]
     CHECK(GetFormsTenseCode("es", "preterite") == 3);
     CHECK(GetFormsTenseCode("es", "perfect") == 8);
 
-    CHECK(GetFormsTenseCode("de", "present") == 0);
+    CHECK(GetFormsTenseCode("de", "present") == 1);
     CHECK(GetFormsTenseCode("fr", "") == 0);
 }
 
@@ -1836,7 +1837,7 @@ TEST_CASE("A Portuguese verb is irregular when its stem or endings leave the mod
 TEST_CASE("Only a verb can be irregular", "[conjugation][irregular]")
 {
     CHECK_FALSE(IsIrregularVerb("fr", MakeNoun("cheval", GenderMasculine, "chevaux")));
-    CHECK_FALSE(IsIrregularVerb("de", MakeVouloir()));
+    CHECK_FALSE(IsIrregularVerb("en", MakeVouloir()));
 }
 
 TEST_CASE("A verb that conjugates as a prefix plus another verb is derived from it", "[conjugation][irregular]")
@@ -2137,5 +2138,89 @@ TEST_CASE("Verb colours classify conjugation groups across languages", "[conjuga
     CHECK(GetVerbGroup("pt", MakeVerb("partir", {"parto", "partes", "parte", "partimos", "partis", "partem"})) == "third");
     CHECK(GetVerbGroup("pt", MakeVerb("fazer", {"faço", "fazes", "faz", "fazemos", "fazeis", "fazem"})) == "irregular");
     CHECK(GetVerbGroup("fr", MakeNoun("cheval", GenderMasculine, "chevaux")).empty());
-    CHECK(GetVerbGroup("de", MakeVouloir()).empty());
+    CHECK(GetVerbGroup("en", MakeVouloir()).empty());
+}
+
+
+TEST_CASE("German conjugation trains separable verbs and five tense choices", "[conjugation][german]")
+{
+    CHECK(ListFormsTenses("de") == std::vector<std::string>{"present", "perfect", "preterite", "future", "subjunctive"});
+    FTDictionaryEntry Verb = MakeVerb("abfahren", {"fahre ab", "fährst ab", "fährt ab", "fahren ab", "fahrt ab", "fahren ab"});
+    Verb.Tags = {"auxiliary-sein"};
+    FTDictionaryForm Participle;
+    Participle.Text = "abgefahren";
+    Participle.Tense = 8;
+    Verb.Forms.push_back(Participle);
+
+    const std::vector<FTCard> Present = ExpandVerb(Verb, "de");
+    REQUIRE(Present.size() == 6);
+    CHECK(Present[2].TargetWord == "er fährt ab");
+    const auto Perfect = MakeFormsCard(FormsKindVerb, Verb, "de", "depart", "perfect");
+    REQUIRE(Perfect.has_value());
+    const auto PerfectForms = ExpandFormsCard(*Perfect, Verb, "de");
+    REQUIRE(PerfectForms.size() == 6);
+    CHECK(PerfectForms[0].TargetWord == "ich bin abgefahren");
+    CHECK(PerfectForms[3].TargetWord == "wir sind abgefahren");
+    const auto Future = MakeFormsCard(FormsKindVerb, Verb, "de", "depart", "future");
+    REQUIRE(Future.has_value());
+    CHECK(ExpandFormsCard(*Future, Verb, "de")[2].TargetWord == "er wird abfahren");
+
+    for (int Number = 1; Number <= 2; ++Number)
+    {
+        for (int Person = 1; Person <= 3; ++Person)
+        {
+            FTDictionaryForm Form = MakeForm("führe ab", Person, Number, 2);
+            Form.Mood = 2;
+            Verb.Forms.push_back(Form);
+        }
+    }
+    const auto Subjunctive = MakeFormsCard(FormsKindVerb, Verb, "de", "depart", "subjunctive");
+    REQUIRE(Subjunctive.has_value());
+    CHECK(ExpandFormsCard(*Subjunctive, Verb, "de")[0].TargetWord == "ich führe ab");
+    CHECK(GetFormsTenseLabel("de", "subjunctive") == "Konjunktiv II");
+    CHECK(ListFormsCues(FormsKindVerb, "de")[2] == "er/sie/es");
+}
+
+TEST_CASE("German perfect requires a source auxiliary and keeps haben forms", "[conjugation][german]")
+{
+    FTDictionaryEntry Verb = MakeVerb("machen", {"mache", "machst", "macht", "machen", "macht", "machen"});
+    FTDictionaryForm Participle;
+    Participle.Text = "gemacht";
+    Participle.Tense = 8;
+    Verb.Forms.push_back(Participle);
+    CHECK_FALSE(MakeFormsCard(FormsKindVerb, Verb, "de", "make", "perfect").has_value());
+    Verb.Tags = {"auxiliary-haben"};
+    const auto Card = MakeFormsCard(FormsKindVerb, Verb, "de", "make", "perfect");
+    REQUIRE(Card.has_value());
+    CHECK(ExpandFormsCard(*Card, Verb, "de")[0].TargetWord == "ich habe gemacht");
+    const auto Forms = ListConjugationForms(Verb, "de");
+    CHECK(std::any_of(Forms.begin(), Forms.end(), [](const FTDictionaryForm& Form)
+    {
+        return Form.Text == "haben gemacht" && Form.Person == 1 && Form.Number == 2 && Form.Tense == 9;
+    }));
+}
+
+TEST_CASE("Built German dictionary supplies complete conjugation tables", "[conjugation][german][dictionary]")
+{
+    const std::string Path = std::string(DICTIONARY_PACKAGES_PATH) + "/de/de-dictionary.db";
+    if (!std::filesystem::exists(Path))
+    {
+        SKIP("German dictionary is unavailable");
+    }
+    std::optional<FTDatabase> Database = FTDatabase::OpenReadOnly(Path);
+    REQUIRE(Database.has_value());
+    const FTDictionaryRepository Repository(*Database, "en");
+    for (const std::string Headword : {"machen", "haben", "sein", "gehen", "abfahren", "werden"})
+    {
+        INFO(Headword);
+        const auto Entry = Repository.LookUpForForms(Headword, FormsKindVerb);
+        REQUIRE(Entry.has_value());
+        for (const std::string& Tense : ListFormsTenses("de"))
+        {
+            INFO(Tense);
+            const auto Card = MakeFormsCard(FormsKindVerb, *Entry, "de", "translation", Tense);
+            REQUIRE(Card.has_value());
+            CHECK(ExpandFormsCard(*Card, *Entry, "de").size() == 6);
+        }
+    }
 }

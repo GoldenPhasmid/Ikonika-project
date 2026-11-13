@@ -49,14 +49,15 @@ Item
 
     readonly property bool showGenderPicker: root.shownPartOfSpeech === "noun"
 
-    readonly property var genderByCode: ({ "m": 0, "f": 1, "m/f": 2 })
+    readonly property var genderByCode: ({ "m": 0, "f": 1, "m/f": 2, "n": 3 })
 
-    readonly property var genderOptions: [
+    readonly property var genderOptions: (dictionary.targetLanguageCode === "DE"
+        ? [{ label: qsTr("Neuter"), value: 3 }] : []).concat([
         { label: qsTr("Masculine"), value: 0 },
         { label: qsTr("Feminine"), value: 1 },
         { label: qsTr("Either (m/f)"), value: 2 },
         { label: qsTr("None (no article)"), value: -1 }
-    ]
+    ])
 
     function partOfSpeechLabel(value)
     {

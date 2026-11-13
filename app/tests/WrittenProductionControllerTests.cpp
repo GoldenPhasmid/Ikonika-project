@@ -2,6 +2,7 @@
 
 #include "CatchQtTypes.h"
 
+#include "GapProductionController.h"
 #include "WrittenProductionController.h"
 
 #include "ExerciseFlowStages.h"
@@ -391,82 +392,110 @@ TEST_CASE("Continuing to the next card speaks its prompt when asking for the wor
     CHECK(SpeechGuard.Mock.LastText == Controller.GetPrompt());
 }
 
-TEST_CASE("A content builder's prompt speech is spoken in place of the prompt", "[writtenproduction]")
+TEST_CASE("Slow speech says nothing while a translation prompt is hidden", "[writtenproduction]")
 {
     FAppSpeechGuard SpeechGuard;
 
     WrittenProductionController Controller;
     Controller.SetAskWord(false);
-    Controller.SetContentBuilder(
-        [](const FTCard& Card)
-        {
-            FWrittenContent Content;
-            Content.Prompt = "Je ___ une pomme.";
-            Content.AcceptedAnswers = {"mange"};
-            Content.PromptSpeech = Card.TargetWord;
+    Controller.Start(MakeParams(MakeCards(1)));
 
-            return Content;
-        },
-        "Type the missing word...");
+    Controller.speakSlowly();
+    Controller.replay();
 
-    Controller.Start(MakeParams({
-        MakeCardHandle(MakeCard("Je mange une pomme.", "I eat an apple.")),
-        MakeCardHandle(MakeCard("Je mange une pomme.", "I eat an apple.")),
-    }));
+    CHECK(SpeechGuard.Mock.SpeakCount == 0);
+    CHECK_FALSE(Controller.CanReplay());
+
+    Controller.submitAnswer(Controller.GetAnswer());
+    Controller.speakSlowly();
+
+    CHECK(SpeechGuard.Mock.SpeakCount == 2);
+    CHECK(SpeechGuard.Mock.LastText == "word0");
+    CHECK(SpeechGuard.Mock.LastRateScale == AppSpeech::SlowRateScale);
+}
+
+TEST_CASE("The sentence gap speaks the whole sentence while hidden and nothing once revealed", "[writtenproduction][gap]")
+{
+    FAppSpeechGuard SpeechGuard;
+    SpeechGuard.Mock.SentenceSpeed = 0.8f;
+
+    FTTreeSentence Sentence;
+    Sentence.Text = "Je mange une pomme.";
+    Sentence.Translation = "I eat an apple.";
+    Sentence.GapStart = 3;
+    Sentence.GapLength = 5;
+
+    const auto Sentences = std::make_shared<const FGapSentences>(FGapSentences{{"phrase", Sentence}});
+
+    SentenceGapController Controller;
+    Controller.SetSentenceLookup(MakeGapSentenceLookup(Sentences));
+    Controller.Start(MakeParams({MakeCardHandle(MakeCard("phrase", "I eat an apple."))}));
 
     CHECK(Controller.GetPrompt() == "Je ___ une pomme.");
-    CHECK(Controller.HasPromptSpeech());
+    CHECK(Controller.CanReplay());
     CHECK(SpeechGuard.Mock.SpeakCount == 1);
     CHECK(SpeechGuard.Mock.LastText == "Je mange une pomme.");
-    CHECK(SpeechGuard.Mock.LastRateScale == 1.0f);
+    CHECK(SpeechGuard.Mock.LastRateScale == 0.8f);
 
     Controller.replay();
 
     CHECK(SpeechGuard.Mock.SpeakCount == 2);
+    CHECK(SpeechGuard.Mock.LastText == "Je mange une pomme.");
+
+    Controller.speakSlowly();
+
+    CHECK(SpeechGuard.Mock.SpeakCount == 3);
+    CHECK(SpeechGuard.Mock.LastText == "Je mange une pomme.");
+    CHECK(SpeechGuard.Mock.LastRateScale == 0.8f * AppSpeech::SlowRateScale);
 
     Controller.submitAnswer("Mange");
 
     CHECK(Controller.WasLastAnswerCorrect());
-    CHECK(Controller.GetLastRevealedAnswer() == "Je mange une pomme.");
-    CHECK(Controller.GetLastCardTranslation() == "I eat an apple.");
+    CHECK_FALSE(Controller.CanReplay());
 
-    CHECK(SpeechGuard.Mock.SpeakCount == 2);
-
-    Controller.advance();
+    Controller.replay();
+    Controller.speakSlowly();
 
     CHECK(SpeechGuard.Mock.SpeakCount == 3);
-    CHECK(SpeechGuard.Mock.LastText == "Je mange une pomme.");
-
-    Controller.submitAnswer("mangez");
-
-    CHECK_FALSE(Controller.WasLastAnswerCorrect());
 }
 
-TEST_CASE("A content builder without prompt speech leaves a translation prompt silent", "[writtenproduction]")
+TEST_CASE("The forms gap stays silent while hidden and speaks the whole sentence once revealed",
+          "[writtenproduction][gap]")
 {
     FAppSpeechGuard SpeechGuard;
+    SpeechGuard.Mock.SentenceSpeed = 0.8f;
 
-    WrittenProductionController Controller;
-    Controller.SetAskWord(false);
-    Controller.SetContentBuilder(
-        [](const FTCard&)
-        {
-            FWrittenContent Content;
-            Content.Prompt = "tu ___ (vouloir)";
-            Content.AcceptedAnswers = {"veux"};
+    FTTreeSentence Sentence;
+    Sentence.Text = "Tu veux du pain.";
+    Sentence.Translation = "You want bread.";
+    Sentence.GapStart = 3;
+    Sentence.GapLength = 4;
 
-            return Content;
-        },
-        "Type the form...");
+    const auto Sentences = std::make_shared<const FGapSentences>(FGapSentences{{"veux", Sentence}});
 
-    Controller.Start(MakeParams(MakeCards(1)));
+    FormGapController Controller;
+    Controller.SetSentenceLookup(MakeGapSentenceLookup(Sentences));
+    Controller.Start(MakeParams({MakeCardHandle(MakeCard("veux", "want"))}));
 
-    CHECK_FALSE(Controller.HasPromptSpeech());
+    CHECK(Controller.GetPrompt() == "Tu ___ du pain.");
+    CHECK_FALSE(Controller.CanReplay());
+
+    Controller.replay();
+    Controller.speakSlowly();
+
     CHECK(SpeechGuard.Mock.SpeakCount == 0);
+
+    Controller.submitAnswer("veux");
+
+    CHECK(Controller.WasLastAnswerCorrect());
+    CHECK(SpeechGuard.Mock.SpeakCount == 1);
+    CHECK(SpeechGuard.Mock.LastText == "Tu veux du pain.");
+    CHECK(SpeechGuard.Mock.LastRateScale == 0.8f);
 
     Controller.replay();
 
-    CHECK(SpeechGuard.Mock.SpeakCount == 0);
+    CHECK(SpeechGuard.Mock.SpeakCount == 2);
+    CHECK(SpeechGuard.Mock.LastText == "Tu veux du pain.");
 }
 
 TEST_CASE("Typing the translation forgives a one-letter typo and the opening words", "[writtenproduction]")
@@ -518,10 +547,11 @@ TEST_CASE("Typing the target word stays exact", "[writtenproduction]")
     CHECK_FALSE(Controller.WasLastAnswerCorrect());
 }
 
-TEST_CASE("The mastery stage gap exercise blanks a saved sentence and stays silent until answered",
+TEST_CASE("The mastery stage gap exercise speaks the sentence without its word, then the word",
           "[writtenproduction][gap]")
 {
     FAppSpeechGuard SpeechGuard;
+    SpeechGuard.Mock.SentenceSpeed = 0.8f;
     FSessionSettingsGuard SettingsGuard;
     SessionSettings::Review().SetGapExercise(true);
 
@@ -542,7 +572,7 @@ TEST_CASE("The mastery stage gap exercise blanks a saved sentence and stays sile
 
     CHECK(Stage->GetGapSentences().size() == 1);
 
-    auto* Gap = qobject_cast<WrittenProductionController*>(Stage->GetControllers()[2]);
+    auto* Gap = qobject_cast<WordGapController*>(Stage->GetControllers()[2]);
     REQUIRE(Gap != nullptr);
 
     Gap->Start(Params);
@@ -550,13 +580,27 @@ TEST_CASE("The mastery stage gap exercise blanks a saved sentence and stays sile
     CHECK(Gap->GetPrompt() == "Il descend du ___.");
     CHECK(Gap->GetPromptHeading() == "He gets off the train.");
     CHECK(Gap->IsSentencePrompt());
-    CHECK(SpeechGuard.Mock.SpeakCount == 0);
+    CHECK(SpeechGuard.Mock.SpeakCount == 1);
+    CHECK(SpeechGuard.Mock.LastText == "Il descend du ….");
+    CHECK(SpeechGuard.Mock.LastRateScale == 0.8f);
+
+    Gap->speakSlowly();
+
+    CHECK(SpeechGuard.Mock.SpeakCount == 2);
+    CHECK(SpeechGuard.Mock.LastText == "Il descend du ….");
+    CHECK(SpeechGuard.Mock.LastRateScale == 0.8f * AppSpeech::SlowRateScale);
 
     Gap->submitAnswer("train");
 
     CHECK(Gap->WasLastAnswerCorrect());
     CHECK(Gap->GetLastRevealedAnswer() == "Il descend du train.");
-    CHECK(SpeechGuard.Mock.SpeakCount == 1);
+    CHECK(SpeechGuard.Mock.SpeakCount == 3);
+    CHECK(SpeechGuard.Mock.LastText == "train");
+    CHECK(SpeechGuard.Mock.LastRateScale == 1.0f);
+
+    Gap->replay();
+
+    CHECK(SpeechGuard.Mock.SpeakCount == 4);
     CHECK(SpeechGuard.Mock.LastText == "train");
 }
 
@@ -582,14 +626,50 @@ TEST_CASE("The mastery stage gap exercise speaks only the missing word when the 
     const std::unique_ptr<FMasteryStage> Stage =
         FMasteryStage::Create(&Parent, Params, SessionSettings::Review(), FGapSentences{{Card.Id, Sentence}});
 
-    auto* Gap = qobject_cast<WrittenProductionController*>(Stage->GetControllers()[2]);
+    auto* Gap = qobject_cast<WordGapController*>(Stage->GetControllers()[2]);
     REQUIRE(Gap != nullptr);
 
     Gap->Start(Params);
     Gap->skip();
 
-    CHECK(SpeechGuard.Mock.SpeakCount == 1);
+    CHECK(SpeechGuard.Mock.SpeakCount == 2);
     CHECK(SpeechGuard.Mock.LastText == "train");
+}
+
+TEST_CASE("Auto-speak off silences the gap in both states but replay still speaks", "[writtenproduction][gap]")
+{
+    FAppSpeechGuard SpeechGuard;
+
+    const bool bPreviousAutoSpeak = FTSettings::Get().GetSpeechRules().bAutoSpeak;
+    FTSettings::Get().SetAutoSpeak(false);
+
+    FTTreeSentence Sentence;
+    Sentence.Text = "Il descend du train.";
+    REQUIRE(PlaceGap(Sentence, {"train"}, true));
+
+    const auto Sentences = std::make_shared<const FGapSentences>(FGapSentences{{"train", Sentence}});
+
+    WordGapController Controller;
+    Controller.SetSentenceLookup(MakeGapSentenceLookup(Sentences));
+    Controller.Start(MakeParams({MakeCardHandle(MakeCard("train", "train"))}));
+
+    CHECK(SpeechGuard.Mock.SpeakCount == 0);
+
+    Controller.replay();
+
+    CHECK(SpeechGuard.Mock.SpeakCount == 1);
+    CHECK(SpeechGuard.Mock.LastText == "Il descend du ….");
+
+    Controller.submitAnswer("train");
+
+    CHECK(SpeechGuard.Mock.SpeakCount == 1);
+
+    Controller.replay();
+
+    CHECK(SpeechGuard.Mock.SpeakCount == 2);
+    CHECK(SpeechGuard.Mock.LastText == "train");
+
+    FTSettings::Get().SetAutoSpeak(bPreviousAutoSpeak);
 }
 
 TEST_CASE("Gap sentences survive a round trip through the checkpoint JSON", "[writtenproduction][gap][checkpoint]")

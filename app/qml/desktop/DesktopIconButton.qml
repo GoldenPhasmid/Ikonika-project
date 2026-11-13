@@ -6,12 +6,15 @@ Button
     id: root
 
     property string iconName: ""
+    property url imageSource: ""
+    property url hoveredImageSource: ""
     property color iconColour: AppTheme.colourText
     property int iconSize: AppMetrics.iconSize
     property bool active: false
     property string shortcutKey: ""
 
     readonly property bool showsShortcut: root.shortcutKey.length > 0 && AppModifierKeys.controlHeld
+    readonly property bool showsImage: root.imageSource.toString().length > 0
 
     implicitWidth: AppMetrics.headerIconTapWidth
     implicitHeight: AppMetrics.headerIconTapWidth
@@ -38,10 +41,19 @@ Button
             tint: root.active ? AppTheme.colourAccent : root.iconColour
         }
 
+        Image
+        {
+            anchors.fill: parent
+            visible: !root.showsShortcut && root.showsImage
+            source: root.hovered && root.hoveredImageSource.toString().length > 0 ? root.hoveredImageSource : root.imageSource
+            fillMode: Image.PreserveAspectFit
+            mipmap: true
+        }
+
         DesktopIcon
         {
             anchors.centerIn: parent
-            visible: !root.showsShortcut
+            visible: !root.showsShortcut && !root.showsImage
             name: root.iconName
             width: root.iconSize
             height: root.iconSize
@@ -52,8 +64,9 @@ Button
     background: Rectangle
     {
         radius: AppMetrics.radiusMedium
-        color: root.down ? AppTheme.colourPressed
-                         : (root.hovered || root.checked ? AppTheme.colourHover : AppTheme.faded(AppTheme.colourHover, 0))
+        color: root.showsImage ? AppTheme.faded(AppTheme.colourHover, 0)
+             : root.down ? AppTheme.colourPressed
+             : (root.hovered || root.checked ? AppTheme.colourHover : AppTheme.faded(AppTheme.colourHover, 0))
 
         Behavior on color { ColorAnimation { duration: AppMetrics.motionFast } }
 

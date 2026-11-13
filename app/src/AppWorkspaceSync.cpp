@@ -268,6 +268,16 @@ bool AppWorkspaceSync::HasUnsentWrites() const
     return WriteCount != SentWriteCount;
 }
 
+bool AppWorkspaceSync::IsRetryScheduled() const
+{
+    return RetryTimer.isActive();
+}
+
+AppCloudFailureKind AppWorkspaceSync::GetLastFailureKind() const
+{
+    return LastFailureKind;
+}
+
 bool AppWorkspaceSync::CanSync() const
 {
     const std::optional<AppAccount> Account{Registry->GetActiveAccount()};
@@ -306,6 +316,7 @@ void AppWorkspaceSync::StartCycle()
     QuietTimer.stop();
     RetryTimer.stop();
     LastCycleStart = Now();
+    LastFailureKind = AppCloudFailureKind::Transient;
 
     Cycle = std::make_shared<FCycle>();
 
@@ -724,14 +735,29 @@ void AppWorkspaceSync::UpdateUnsentMarker()
 
 void AppWorkspaceSync::Fail(const AppCloudFailure& Failure)
 {
-    if (Failure.bCredentialRefused)
+    LastFailureKind = Failure.Kind;
+
+    if (Failure.Kind == AppCloudFailureKind::Credential || Failure.Kind == AppCloudFailureKind::Permission)
     {
+        qCWarning(LogSync) << "Sync cycle failed and will not be retried, Google wants the account reconnected:"
+                           << Failure.Message;
+
         const std::optional<AppAccount> Account{Registry->GetActiveAccount()};
 
         if (Account.has_value())
         {
-            Registry->MarkNeedsReconnect(Account->Id);
+            Registry->MarkNeedsReconnect(Account->Id, Failure.Kind == AppCloudFailureKind::Permission);
         }
+
+        Finish(false);
+
+        return;
+    }
+
+    if (Failure.Kind == AppCloudFailureKind::Quota)
+    {
+        qCWarning(LogSync) << "Sync cycle failed and will not be retried, the Drive storage is full:"
+                           << Failure.Message;
 
         Finish(false);
 
@@ -753,6 +779,7 @@ void AppWorkspaceSync::Finish(bool bSuccess)
     if (bSuccess)
     {
         bLastCycleFailedToConnect = false;
+        LastFailureKind = AppCloudFailureKind::Transient;
     }
 
     qCInfo(LogSync) << "Sync cycle finished, success =" << bSuccess;

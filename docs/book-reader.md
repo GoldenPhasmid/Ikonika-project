@@ -133,7 +133,7 @@ The desktop has no dictionary pane and no search button in a book. A click on a 
 - **Machine translation.** A selection with no exact match, or a longer one, is translated by the offline model and shown in large text.
 - **Download.** Without the translation model, the popup is a single download button. When the download finishes with the popup still open, the selection is translated without being selected again.
 
-The dictionary match and the machine translation end in one row of icon buttons: listen, copy for a machine translation, open in the dictionary for a match, and add to My Vocabulary. Add opens the add-word dialog with the translation and the sentence as the hint. A selection of several words with no dictionary match is added as a phrase, and a whole sentence gets no hint, since it would repeat the card itself. The icons name themselves in a tooltip only.
+The dictionary match and the machine translation end in one row of icon buttons: listen, copy for a machine translation, open in the dictionary for a match, and add to My Vocabulary. Add opens the add-word dialog with the translation and the hint. The hint is the part of the sentence around the word, cut at the nearest comma, semicolon, colon or sentence end, and a hint in all capitals is written in sentence case. A selection of several words with no dictionary match is added as a phrase, and a whole sentence gets no hint, since it would repeat the card itself. The icons name themselves in a tooltip only.
 
 The hint sentence and machine translation split text into sentences by the rules of the language being learned. Qt's own splitter ends a sentence at every period followed by a capital letter, which cut "M. Dupont entra." after "M.". A period after one of the language's abbreviations, such as "M." and "av." in French, "Sra." and "pág." in Spanish, or "Mr." in English, does not end the sentence. Neither does a period after a single capital initial, as in "J. R. R. Tolkien". A question or exclamation mark that the same sentence continues in lowercase, as in "Vraiment ? dit-il.", does not end it either. A dash or opening quote that starts the next line of dialogue belongs to that next sentence. "etc." is left off the abbreviation lists, since it usually ends the sentence it closes.
 
@@ -143,23 +143,29 @@ A word popup is as wide as a menu. A sentence popup is at least half the text co
 
 EPUB, FB2 and TXT books can mark the learner's own words on the page. The setting is called Highlight my words, it sits with the other text reading settings, and it is off by default. A PDF is never marked.
 
-- **What is marked.** A word on the ladder is shaded in the accent colour. A finished word is underlined in the ink colour. A word still waiting in the pool is not marked, the same rule the learned dot follows everywhere else in the app.
+- **What is marked.** Every word in My Vocabulary. A word in the pool or on the ladder is shaded, and a finished word is underlined in the ink colour.
+- **The shade fades with progress.** A word in the pool gets the strongest shade, and each ladder stage fades it a step, down to a third of that strength at the last stage. The darker a word, the less the learner knows it, the same idea as LingQ's fading levels. Unlike LingQ, a word moves only through exercises, never by turning a page.
+- **Blue on light pages, amber on dark ones.** The shade is the accent blue on white, sepia and the light theme. A faint blue is dark, so on a dark page it sinks into the page and dims the text on it. A faint amber is bright and lifts off a dark page, so dark pages use amber, a little stronger than the blue. A page counts as dark when its ink is light.
 - **Forms count.** Every inflected form the dictionary lists for a card's headword is marked too, so "allait" shows as "aller" and "petites" as "petit". A card with a part of speech takes only that reading's forms.
 - **Phrases.** A card of several words, such as "tout à fait", is marked only where its words follow each other with nothing but spaces between them.
 - **Elision and hyphens.** "L'homme" marks "homme", and "dit-il" marks "dit". A word written whole, such as "aujourd'hui" or "peut-être", is matched whole first.
-- **Two cards, one spelling.** When a learning card and a finished card share a spelling, it is shaded, since the learner still has to look at it.
+- **Two cards, one spelling.** When cards share a spelling, the least known one decides: a shaded card wins over a finished one, and the earlier stage wins between two shaded ones.
 - **Case and accents.** Case is ignored, accents are not: "a" and "à" are different words.
 
 The marks are rebuilt when a book opens, when the reader screen comes back into view, and when the app returns to the foreground, but only when the card data or the dictionary changed since the last build. A build for a few thousand cards reads one forms query per five hundred headwords. Marking a paragraph is a lookup per word, done for the paragraphs on screen only.
 
 ## Read aloud
 
-EPUB, FB2 and TXT books can be read aloud with the voice the app already uses for words: Piper or Supertonic on the desktop, the platform voice on the phone. A PDF has no read aloud.
+EPUB, FB2 and TXT books can be read aloud with the voice the app already uses for words: Supertonic on the desktop, the platform voice on the phone. A PDF has no read aloud.
 
-- **Voice mode.** A headphones button in the reader's top bar turns it on. It shows a small play bar with play or pause, and stop.
-- **Where reading starts.** In voice mode, with nothing read yet, tapping a word reads from the start of its sentence. Play reads from the sentence at the top of the screen.
-- **A tap pauses.** Tapping a word while the voice reads pauses it and opens the translation, the dictionary sheet on the phone and the popup on the desktop. Play then restarts the paused sentence, so the learner hears it again after the lookup. The phone's voice cannot pause in the middle of a sentence anyway.
-- **Stop.** Stop clears the place, and the next tap on a word starts there.
+- **Starting.** The headphones button in the reader's top bar starts reading at once and opens the play bar. Pressing it again closes the bar, the same as the bar's close button.
+- **The play bar.** Previous sentence, play or pause, next sentence, the speed, and close. Previous replays the current sentence when it has played for more than two seconds, and goes one sentence back otherwise, so a second press steps back. The speed steps through 50, 75, 100, 125 and 150 percent. It is the sentence speech rate from the sound settings, which the reader's Appearance panel also shows as a slider. A new speed restarts the sentence being read, so it applies at once.
+- **Where reading starts.** Play reads what is on screen. It resumes the paused sentence when that sentence is visible, continues from the sentence read last in this book when that one is visible, and otherwise starts from the sentence at the top of the screen. The sentence read last is kept per book on this device.
+- **A tap always translates.** Tapping a word opens the translation, the dictionary sheet on the phone and the popup on the desktop, whether the voice is reading or not. A tap while reading pauses it, and Play then restarts the paused sentence, so the learner hears it again after the lookup. The phone's voice cannot pause in the middle of a sentence anyway. The popup and the sheet offer Read aloud from here, which starts at the tapped word's sentence.
+- **Back to reading.** Scrolling by hand while the bar is open stops the view from following. When the sentence being read leaves the screen, a Back to reading button above the bar scrolls to it and follows again.
+- **Keys on the desktop.** While the bar is open, Space plays or pauses, and Ctrl+Left and Ctrl+Right move by a sentence. Without the bar, Space turns the page.
+- **No voice.** When speech is turned off, or the desktop voice is not installed, the headphones button opens a notice in place of the bar: Turn on, or Download with its progress. Once the voice becomes available, reading starts.
+- **Dialogue dashes.** The spoken text puts a space on both sides of every em-dash. The rule was written for Piper, which paused at a comma or an exclamation mark only when whitespace follows it, and the app still applies it. Spanish dialogue writes them as "¡Oh!—dice el pollo,—el cielo", so without the spaces the voice ran straight through.
 - **The sentence is shaded, not the word.** Neither desktop voice reports when each word starts, and an estimate drifts with French liaisons and fast Spanish. Shading the sentence is exact on every platform.
 - **The view follows.** When the read sentence goes past the bottom of the visible text, the view scrolls it near the top. Scrolling by hand stops following until play is pressed again.
 - **Leaving.** Closing the book stops reading. Leaving the reader screen pauses it. On the desktop a minimised window keeps reading.
@@ -236,7 +242,7 @@ A zoom step can re-render three pages on the render thread. Word lookup uses the
 | `FTVocabularyMarks` | Finds the learner's words, forms and phrases in a paragraph; see [Vocabulary highlighting](#vocabulary-highlighting). |
 | `ReaderVocabulary` | Builds the marks from the cards and the dictionary's forms, and rebuilds them when either changes. |
 | `ReaderTextHighlighter` | Paints the vocabulary marks and the sentence being read into one paragraph's text, on the phone and the desktop. |
-| `ReaderReadAloud` | Read aloud: the place in the book, the sentences queued ahead, and pause, resume and stop. |
+| `ReaderReadAloud` | Read aloud: the place in the book and the one kept for it, the sentences queued ahead, pause, resume, stop, previous and next sentence, and the speed. |
 | `FTNarration` | Finds the sentence under a tapped character and the next sentence worth reading. |
 | `ReadAloudSession`, `ReadAloudService` | The phone's media session, notification, audio focus and foreground service. |
 | `FTSpeechService` narration | Renders a sentence outside the speech cache and appends it to the voice that is playing. |

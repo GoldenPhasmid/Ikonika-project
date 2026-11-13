@@ -95,6 +95,7 @@ struct FTFormsTense
     int Tense = 0;
     bool bCompound = false;
     FTFormsEndings Endings;
+    int Mood = MoodIndicative;
 };
 
 struct FTFormsLanguage
@@ -128,11 +129,33 @@ struct FTFormsLanguage
     std::string_view PluralReplaces;
 };
 
-static constexpr std::array<FTFormsLanguage, 4> FormsLanguages{{
+static constexpr FTFormsLanguage MakeGermanFormsLanguage()
+{
+    FTFormsLanguage Language{};
+    Language.Language = "de";
+    Language.Pronouns = {"ich", "du", "er", "wir", "ihr", "sie"};
+    Language.PronounLabels = {"ich", "du", "er/sie/es", "wir", "ihr", "sie/Sie"};
+    Language.SubjectWords = {"ich", "du", "er sie es", "wir", "ihr", "sie Sie"};
+    Language.Tenses = {{
+        {FormsTensePresent, "Präsens", "", TensePresent, false,
+         {{{"e"}, {"st", "est"}, {"t", "et"}, {"en", "n"}, {"t", "et"}, {"en", "n"}}}},
+        {"perfect", "Perfekt", FormsTensePresent, TensePastParticiple, true, {}},
+        {"preterite", "Präteritum", FormsTensePresent, TensePreterite, false,
+         {{{"te", "ete"}, {"test", "etest"}, {"te", "ete"}, {"ten", "eten"}, {"tet", "etet"}, {"ten", "eten"}}}},
+        {"future", "Futur I", FormsTensePresent, TenseFuture, false, {}},
+        {"subjunctive", "Konjunktiv II", FormsTensePresent, TenseImperfect, false, {}, 2}
+    }};
+    Language.Auxiliary = {"habe", "hast", "hat", "haben", "habt", "haben"};
+    Language.SecondAuxiliary = {"bin", "bist", "ist", "sind", "seid", "sind"};
+    Language.ModelInfinitiveEndings = {"en", "n", "en"};
+    return Language;
+}
+
+static constexpr std::array<FTFormsLanguage, 5> FormsLanguages{{
     {
         "fr",
         {"je", "tu", "il", "nous", "vous", "ils"},
-        {"je", "tu", "il/elle", "nous", "vous", "ils/elles"},
+        {"je", "tu", "il/elle/on", "nous", "vous", "ils/elles"},
         "j'",
         {{
             {FormsTensePresent, "présent", "", TensePresent, false,
@@ -285,7 +308,8 @@ static constexpr std::array<FTFormsLanguage, 4> FormsLanguages{{
         {"are", "ere", "ire"},
         true,
         "o"
-    }
+    },
+    MakeGermanFormsLanguage()
 }};
 
 static const FTFormsKind* FindKind(std::string_view Name)
@@ -518,14 +542,15 @@ static bool CollectSpelling(const std::vector<FTDictionaryForm>& Forms, const FT
 }
 
 static std::vector<std::string> CollectSpellings(const std::vector<FTDictionaryForm>& Forms,
-                                                 const FTDictionaryForm& Wanted)
+                                                 const FTDictionaryForm& Wanted, bool bAllowSpaces = false)
 {
     std::vector<std::string> Found;
 
     for (const FTDictionaryForm& Form : Forms)
     {
         const bool bMatches = Form.Mood == Wanted.Mood && Form.Tense == Wanted.Tense && Form.Person == Wanted.Person
-            && Form.Gender == Wanted.Gender && Form.Number == Wanted.Number && IsSingleWord(Form.Text);
+            && Form.Gender == Wanted.Gender && Form.Number == Wanted.Number
+            && (bAllowSpaces || IsSingleWord(Form.Text));
 
         if (bMatches && std::find(Found.begin(), Found.end(), Form.Text) == Found.end())
         {
@@ -640,7 +665,11 @@ static std::optional<FTFormsTable> FindCompoundForms(const FTFormsLanguage& Lang
     FTDictionaryForm Wanted;
     Wanted.Tense = Tense.Tense;
 
-    const std::vector<std::string> Participles = CollectSpellings(Entry.Forms, Wanted);
+    std::vector<std::string> Participles = CollectSpellings(Entry.Forms, Wanted);
+    if (Language.Language == "de" && Entry.Headword == "werden")
+    {
+        Participles.erase(std::remove(Participles.begin(), Participles.end(), "worden"), Participles.end());
+    }
 
     if (Participles.empty() || Language.Auxiliary.front().empty())
     {
@@ -650,8 +679,16 @@ static std::optional<FTFormsTable> FindCompoundForms(const FTFormsLanguage& Lang
     const std::string Participle = PickFurthestSpelling(Participles, Entry.Headword);
     const std::vector<std::string> OtherParticiples = ListOtherSpellings(Participles, Participle);
 
-    const bool bSecondAuxiliary = std::find(Language.SecondAuxiliaryVerbs.begin(), Language.SecondAuxiliaryVerbs.end(),
-                                            std::string_view(Entry.Headword)) != Language.SecondAuxiliaryVerbs.end();
+    const bool bSecondAuxiliary = Language.Language == "de"
+        ? std::find(Entry.Tags.begin(), Entry.Tags.end(), "auxiliary-sein") != Entry.Tags.end()
+        : std::find(Language.SecondAuxiliaryVerbs.begin(), Language.SecondAuxiliaryVerbs.end(),
+                    std::string_view(Entry.Headword)) != Language.SecondAuxiliaryVerbs.end();
+
+    if (Language.Language == "de"
+        && !bSecondAuxiliary && std::find(Entry.Tags.begin(), Entry.Tags.end(), "auxiliary-haben") == Entry.Tags.end())
+    {
+        return std::nullopt;
+    }
 
     const std::array<std::string_view, VerbCellCount>& Auxiliary =
         bSecondAuxiliary ? Language.SecondAuxiliary : Language.Auxiliary;
@@ -660,7 +697,7 @@ static std::optional<FTFormsTable> FindCompoundForms(const FTFormsLanguage& Lang
 
     for (int Number = FormSingular; Number <= FormPlural; ++Number)
     {
-        const bool bAgrees = bSecondAuxiliary && Number == FormPlural;
+        const bool bAgrees = Language.Language != "de" && bSecondAuxiliary && Number == FormPlural;
 
         const auto Agree = [&Language, bAgrees](const std::string& Spelling)
         {
@@ -677,6 +714,12 @@ static std::optional<FTFormsTable> FindCompoundForms(const FTFormsLanguage& Lang
             for (const std::string& Other : OtherParticiples)
             {
                 Item.Alternatives.push_back(Lead + Agree(Other));
+            }
+
+            if (Language.Language == "de" && bSecondAuxiliary
+                && std::find(Entry.Tags.begin(), Entry.Tags.end(), "auxiliary-haben") != Entry.Tags.end())
+            {
+                Item.Alternatives.push_back(std::string(Language.Auxiliary[CellIndex]) + " " + Participle);
             }
 
             Table.Items.push_back(std::move(Item));
@@ -702,12 +745,20 @@ static std::optional<FTFormsTable> FindVerbForms(const FTFormsLanguage& Language
         for (int Person = 1; Person <= PersonsPerNumber; ++Person)
         {
             FTDictionaryForm Wanted;
-            Wanted.Mood = MoodIndicative;
+            Wanted.Mood = Tense.Mood;
             Wanted.Tense = Tense.Tense;
             Wanted.Person = Person;
             Wanted.Number = Number;
 
-            const std::vector<std::string> Spellings = CollectSpellings(Entry.Forms, Wanted);
+            std::vector<std::string> Spellings = CollectSpellings(Entry.Forms, Wanted, Language.Language == "de");
+
+            if (Language.Language == "de" && Tense.Tense == TenseFuture)
+            {
+                static constexpr std::array<std::string_view, VerbCellCount> FutureAuxiliary{
+                    "werde", "wirst", "wird", "werden", "werdet", "werden"};
+                const size_t CellIndex = static_cast<size_t>((Number - 1) * PersonsPerNumber + Person - 1);
+                Spellings = {std::string(FutureAuxiliary[CellIndex]) + " " + Entry.Headword};
+            }
 
             if (Spellings.empty())
             {
@@ -821,7 +872,8 @@ static bool DeviatesFromRegularModel(const FTFormsLanguage& Language, const FTDi
 
     for (const FTFormsTense& Tense : Language.Tenses)
     {
-        if (Tense.Name.empty() || Tense.bCompound)
+        if (Tense.Name.empty() || Tense.bCompound
+            || (Language.Language == "de" && (Tense.Mood != MoodIndicative || Tense.Tense == TenseFuture)))
         {
             continue;
         }
@@ -1277,6 +1329,37 @@ std::string GetFormsTenseRequirement(const std::string& TargetLanguage, const st
     const FTFormsTense* Found = Language != nullptr ? FindTense(*Language, Tense) : nullptr;
 
     return Found != nullptr ? std::string(Found->Requires) : std::string();
+}
+
+std::vector<FTDictionaryForm> ListConjugationForms(const FTDictionaryEntry& Entry,
+                                                 const std::string& TargetLanguage)
+{
+    std::vector<FTDictionaryForm> Result = Entry.Forms;
+    const FTFormsLanguage* Language = FindLanguage(TargetLanguage);
+    if (TargetLanguage != "de" || Language == nullptr || Entry.PartOfSpeech != FormsKindVerb)
+    {
+        return Result;
+    }
+
+    for (const FTFormsTense& Tense : Language->Tenses)
+    {
+        const std::optional<FTFormsTable> Table = FindVerbForms(*Language, Tense, Entry);
+        if (!Table.has_value())
+        {
+            continue;
+        }
+        for (const FTFormsItem& Item : Table->Items)
+        {
+            FTDictionaryForm Form;
+            Form.Text = Item.Form;
+            Form.Mood = Tense.Mood;
+            Form.Tense = Tense.bCompound ? 9 : Tense.Tense;
+            Form.Person = Item.Cell.First;
+            Form.Number = Item.Cell.Number;
+            Result.push_back(std::move(Form));
+        }
+    }
+    return Result;
 }
 
 int GetFormsTenseCode(const std::string& TargetLanguage, const std::string& Tense)
@@ -1846,6 +1929,18 @@ std::string MakeFormPrompt(const std::string& Cue)
     return Cue + " " + std::string(PromptBlank);
 }
 
+static FTCard BuildFormsCard(const FTFormsKind& Kind, const std::string& TargetLanguage, const std::string& Headword,
+                             const std::string& Translation, const std::string& Tense)
+{
+    FTCard Card;
+    Card.Id = std::string(Kind.IdPrefix) + "-" + TargetLanguage + "-" + Headword
+        + (Kind.bHasTenses ? "-" + Tense : std::string());
+    Card.TargetWord = Headword;
+    Card.Translation = Translation;
+
+    return Card;
+}
+
 std::optional<FTCard> MakeFormsCard(const std::string& Kind, const FTDictionaryEntry& Entry,
                                     const std::string& TargetLanguage, const std::string& Translation,
                                     const std::string& Tense)
@@ -1865,13 +1960,25 @@ std::optional<FTCard> MakeFormsCard(const std::string& Kind, const FTDictionaryE
         return std::nullopt;
     }
 
-    FTCard Card;
-    Card.Id = std::string(Found->IdPrefix) + "-" + TargetLanguage + "-" + Entry.Headword
-        + (Found->bHasTenses ? "-" + Tense : std::string());
-    Card.TargetWord = Entry.Headword;
-    Card.Translation = Translation;
+    return BuildFormsCard(*Found, TargetLanguage, Entry.Headword, Translation, Tense);
+}
 
-    return Card;
+bool IsFormsEligible(const FTDictionaryEntry& Entry, const std::string& TargetLanguage)
+{
+    return MakeFormsCard(Entry.PartOfSpeech, Entry, TargetLanguage, std::string()).has_value();
+}
+
+std::optional<FTCard> MakeEligibleFormsCard(const std::string& Kind, const std::string& Headword,
+                                            const std::string& TargetLanguage, const std::string& Tense)
+{
+    const FTFormsKind* Found = FindKind(Kind);
+
+    if (Found == nullptr || FindLanguage(TargetLanguage) == nullptr)
+    {
+        return std::nullopt;
+    }
+
+    return BuildFormsCard(*Found, TargetLanguage, Headword, std::string(), Tense);
 }
 
 std::vector<FTCard> ExpandFormsCard(const FTCard& Stored, const FTDictionaryEntry& Entry,
@@ -1969,6 +2076,20 @@ std::vector<std::string> ListFormsCues(const std::string& Kind, const std::strin
     const std::array<std::string_view, AgreementCellCount>& Cues = GetAgreementCues(*Found, *Language);
 
     return {Cues.begin(), Cues.end()};
+}
+
+std::string AttachFormsSubject(const std::string& TargetLanguage, int CellIndex, const std::string& Form)
+{
+    const FTFormsKind* Found = FindKind(FormsKindVerb);
+    const FTFormsLanguage* Language = FindLanguage(TargetLanguage);
+
+    if (Found == nullptr || Language == nullptr || !IsSupported(*Found, *Language) || CellIndex < 0
+        || CellIndex >= VerbCellCount)
+    {
+        return Form;
+    }
+
+    return AttachSubject(*Found, *Language, static_cast<size_t>(CellIndex), Form);
 }
 
 std::string FindFormEnding(const std::string& TargetLanguage, const std::string& Headword, int Mood, int Tense,

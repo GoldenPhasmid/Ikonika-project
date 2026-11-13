@@ -1,0 +1,65 @@
+word	part_of_speech	translation	meaning_gist
+je	pron	I	sujet
+tu	pron	you (informal)	familier
+il	pron	he	masculin
+elle	pron	she	féminin
+on	pron	one, people, we	généralité
+nous	pron	we	sujet
+vous	pron	you (formal)	destinataire
+ils	pron	they	pluriel
+elles	pron	they (feminine)	sujet
+moi	pron	me (emphatic)	tonique
+toi	pron	you (emphatic)	interlocuteur
+ce	pron	this, that	neutre
+le	article	the	défini
+un	article	a, an	indéfini
+mon	det	my	possession
+ton	det	your (informal)	possession
+son	det	his, her, its	indéfini
+notre	det	our	possession
+votre	det	your (formal)	possession
+leur	det	their	possession
+pour	prep	for	bénéfice
+dans	prep	in	intérieur
+avec	prep	with	compagnie
+sur	prep	on	support
+chez	prep	at the home of	lieu
+sans	prep	without	absence
+sous	prep	under	position
+après	prep	after	ensuite
+avant	prep	before	antériorité
+vers	prep	towards	direction
+entre	prep	between	deux
+et	conj	and	addition
+mais	conj	but	opposition
+ou	conj	or	choix
+donc	conj	so, therefore	conséquence
+car	conj	because, for	cause
+comme	conj	like, as	manière
+quand	conj	when	moment
+parce que	conj	because	cause
+pas	adv	not	négation
+plus	adv	more	comparatif
+bien	adv	well	manière
+non	adv	no	refus
+oui	adv	yes	affirmation
+ici	adv	here	lieu
+là	adv	there	lieu
+très	adv	very	intensité
+aussi	adv	also, too	également
+jamais	adv	never	négation
+toujours	adv	always	constamment
+maintenant	adv	now	actuellement
+beaucoup	adv	a lot	intensité
+être	verb	to be	état
+avoir	verb	to have	possession
+aller	verb	to go	déplacement
+faire	verb	to do, to make	accomplir
+dire	verb	to say	énoncer
+pouvoir	verb	can, to be able to	capacité
+vouloir	verb	to want	désirer
+devoir	verb	must, to have to	obligation
+savoir	verb	to know	connaître
+voir	verb	to see	percevoir
+venir	verb	to come	arriver
+prendre	verb	to take	saisir

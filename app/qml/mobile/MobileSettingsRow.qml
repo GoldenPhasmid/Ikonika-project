@@ -16,18 +16,32 @@ Item
     property real fillProgress: 0
 
     default property alias control: controlHolder.data
+    property alias leading: leadingHolder.data
 
     signal clicked()
 
     Layout.fillWidth: true
     implicitHeight: Math.max(60, label.implicitHeight + 28)
 
+    Row
+    {
+        id: leadingHolder
+
+        anchors.left: parent.left
+        anchors.leftMargin: AppMetrics.contentPadding
+        anchors.verticalCenter: parent.verticalCenter
+
+        spacing: AppMetrics.gapSmall
+    }
+
     ColumnLayout
     {
         id: label
 
         anchors.left: parent.left
-        anchors.leftMargin: AppMetrics.contentPadding
+        anchors.leftMargin: leadingHolder.width > 0
+            ? AppMetrics.contentPadding + leadingHolder.width + AppMetrics.gapMedium
+            : AppMetrics.contentPadding
         anchors.right: controlHolder.left
         anchors.rightMargin: AppMetrics.gapCompact
         anchors.verticalCenter: parent.verticalCenter

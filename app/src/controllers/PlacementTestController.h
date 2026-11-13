@@ -18,6 +18,7 @@ class PlacementTestController : public QObject
     Q_PROPERTY(QString partOfSpeech READ GetPartOfSpeech NOTIFY stateChanged)
     Q_PROPERTY(QString gender READ GetGender NOTIFY stateChanged)
     Q_PROPERTY(int headwordGender READ GetHeadwordGender NOTIFY stateChanged)
+    Q_PROPERTY(QString headwordVerbGroup READ GetHeadwordVerbGroup NOTIFY stateChanged)
     Q_PROPERTY(QString cardMeta READ GetCardMeta NOTIFY stateChanged)
     Q_PROPERTY(QString definition READ GetDefinition CONSTANT)
     Q_PROPERTY(QString example READ GetExample CONSTANT)
@@ -38,9 +39,13 @@ public:
 
     Q_INVOKABLE bool isOffered(const QString& TargetLanguage, const QString& NativeLanguage) const;
 
-    Q_INVOKABLE bool start(const QString& TargetLanguage, const QString& NativeLanguage);
+    static bool HasWordListFor(const QString& TargetLanguage, const QString& NativeLanguage);
 
-    Q_INVOKABLE void skip(const QString& TargetLanguage);
+    static bool IsOfferedFor(const QString& TargetLanguage, const QString& NativeLanguage);
+
+    Q_INVOKABLE bool start(const QString& TargetLanguage, const QString& NativeLanguage, int Level);
+
+    Q_INVOKABLE void markNew(const QString& TargetLanguage);
 
     Q_INVOKABLE void reveal();
     Q_INVOKABLE void answerYes();
@@ -53,6 +58,7 @@ public:
     QString GetPartOfSpeech() const;
     QString GetGender() const;
     int GetHeadwordGender() const;
+    QString GetHeadwordVerbGroup() const;
     QString GetCardMeta() const;
     QString GetDefinition() const { return {}; }
     QString GetExample() const { return {}; }
@@ -80,6 +86,8 @@ private:
 
     QString TargetLanguage;
     QString NativeLanguage;
+
+    int Level = 1;
 
     bool bRevealed = false;
 };

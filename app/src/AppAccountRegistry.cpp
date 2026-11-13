@@ -18,6 +18,7 @@ namespace
     const QString EmailKey{QStringLiteral("email")};
     const QString NameKey{QStringLiteral("name")};
     const QString NeedsReconnectKey{QStringLiteral("needsReconnect")};
+    const QString MissingDriveAccessKey{QStringLiteral("missingDriveAccess")};
 
     bool IsPlainFolderName(const QString& AccountId)
     {
@@ -97,6 +98,7 @@ bool AppAccountRegistry::SignIn(const AppAccount& Account, const QString& Creden
 
     AppAccount Stored{Account};
     Stored.bNeedsReconnect = false;
+    Stored.bMissingDriveAccess = false;
 
     Accounts.insert(Stored.Id, Stored);
     ActiveAccountId = Stored.Id;
@@ -125,7 +127,7 @@ void AppAccountRegistry::SignOut()
     PrepareActiveFolder();
 }
 
-void AppAccountRegistry::MarkNeedsReconnect(const QString& AccountId)
+void AppAccountRegistry::MarkNeedsReconnect(const QString& AccountId, bool bMissingDriveAccess)
 {
     const auto Found = Accounts.find(AccountId);
 
@@ -137,11 +139,12 @@ void AppAccountRegistry::MarkNeedsReconnect(const QString& AccountId)
     }
 
     Found->bNeedsReconnect = true;
+    Found->bMissingDriveAccess = bMissingDriveAccess;
 
     Save();
 
-    qCInfo(LogApp) << "Google refused the credential of" << Found->Email
-                   << ", the account needs reconnect";
+    qCInfo(LogApp) << (bMissingDriveAccess ? "Google withheld Drive access from" : "Google refused the credential of")
+                   << Found->Email << ", the account needs reconnect";
 }
 
 void AppAccountRegistry::Load()
@@ -164,6 +167,7 @@ void AppAccountRegistry::Load()
         Account.Email = Registry.value(EmailKey).toString();
         Account.Name = Registry.value(NameKey).toString();
         Account.bNeedsReconnect = Registry.value(NeedsReconnectKey).toBool();
+        Account.bMissingDriveAccess = Registry.value(MissingDriveAccessKey).toBool();
 
         Accounts.insert(AccountId, Account);
 
@@ -200,6 +204,7 @@ void AppAccountRegistry::Save() const
         Registry.setValue(EmailKey, Account.Email);
         Registry.setValue(NameKey, Account.Name);
         Registry.setValue(NeedsReconnectKey, Account.bNeedsReconnect);
+        Registry.setValue(MissingDriveAccessKey, Account.bMissingDriveAccess);
         Registry.endGroup();
     }
 

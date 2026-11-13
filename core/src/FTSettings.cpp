@@ -22,6 +22,7 @@ namespace
     constexpr const char* SessionsPerDayKey = "intensiveLearning/sessionsPerDay";
     constexpr const char* TrainingWordCountKey = "intensiveLearning/trainingWordCount";
     constexpr const char* ReviewWordCountKey = "repetition/reviewWordCount";
+    constexpr const char* GermanLanguageCode = "de";
     constexpr const char* TargetLanguageKey = "languages/target";
     constexpr const char* NativeLanguageKey = "languages/native";
     constexpr const char* AllowMissingArticleKey = "answers/allowMissingArticle";
@@ -696,6 +697,7 @@ FTAnswerComparisonRules FTSettings::GetComparisonRules(const std::string& Group)
     // a keyboard makes all three easy to get wrong. Only the two the user controls are settings.
     Result.bAllowMissingArticle = LeniencyRules.bAllowMissingArticle;
     Result.bRequireExactAccents = GetSessionExercises(Group).bRequireExactAccents;
+    Result.bSpellOutUmlauts = LanguageRules.TargetLanguage == GermanLanguageCode;
 
     return Result;
 }
@@ -826,6 +828,26 @@ void FTSettings::SetExamplesPerSense(int Value)
 const std::string& FTSettings::GetWebSearchSource() const
 {
     return WebSearchSource;
+}
+
+std::vector<std::string> FTSettings::GetEssentialVerbs(const std::string& Language) const
+{
+    const QStringList Verbs =
+        ShippedDefault(QStringLiteral("essentialVerbs/") + QString::fromStdString(Language), QStringList{}).toStringList();
+
+    std::vector<std::string> Result;
+
+    for (const QString& Verb : Verbs)
+    {
+        const QString Trimmed = Verb.trimmed();
+
+        if (!Trimmed.isEmpty())
+        {
+            Result.push_back(Trimmed.toStdString());
+        }
+    }
+
+    return Result;
 }
 
 void FTSettings::SetWebSearchSource(const std::string& Id)

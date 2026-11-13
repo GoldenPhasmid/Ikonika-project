@@ -33,7 +33,12 @@ Button
 
     contentItem: RowLayout
     {
-        spacing: AppMetrics.gapSmall
+        spacing: AppMetrics.gapMedium
+
+        LanguageFlag
+        {
+            code: root.entry.code
+        }
 
         ColumnLayout
         {

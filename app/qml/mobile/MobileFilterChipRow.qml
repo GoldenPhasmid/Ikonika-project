@@ -8,6 +8,8 @@ Item
     property string title: ""
     property var options: []
     property bool lastRow: false
+    property bool fillWidth: false
+    property bool showCounts: true
 
     signal chosen(var option)
 
@@ -39,6 +41,8 @@ Item
 
         Flow
         {
+            id: chips
+
             Layout.fillWidth: true
 
             spacing: AppMetrics.gapSmall
@@ -51,8 +55,12 @@ Item
                 {
                     required property var modelData
 
+                    width: root.fillWidth && root.options.length > 0
+                        ? (chips.width - chips.spacing * (root.options.length - 1)) / root.options.length
+                        : implicitWidth
+
                     label: modelData.label
-                    count: modelData.count === undefined ? "" : modelData.count.toString()
+                    count: !root.showCounts || modelData.count === undefined ? "" : modelData.count.toString()
                     selected: modelData.selected
                     enabled: modelData.available !== false
                     opacity: enabled ? 1.0 : AppTheme.opacityDisabled

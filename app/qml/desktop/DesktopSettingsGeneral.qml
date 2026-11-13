@@ -50,9 +50,9 @@ ColumnLayout
         DesktopSettingsRow
         {
             visible: quickLookupService !== null
+            lastRow: true
             text: qsTr("Quick Add")
             description: qsTr("Hold Ctrl and tap C twice on selected text")
-            lastRow: true
 
             DesktopToggle
             {
@@ -74,10 +74,13 @@ ColumnLayout
 
             DesktopSelect
             {
+                objectName: "settings_interface_language"
+
                 Layout.fillWidth: false
                 Layout.preferredWidth: AppMetrics.settingsControlWidth
                 heading: qsTr("Interface language")
                 options: AppLocalization.languageNames
+                flagCodes: AppLocalization.languageCodes
                 currentIndex: AppLocalization.languageIndex
 
                 onChosen: function(index) { AppLocalization.languageIndex = index }
@@ -120,10 +123,13 @@ ColumnLayout
 
             DesktopSelect
             {
+                objectName: "settings_native_language"
+
                 Layout.fillWidth: false
                 Layout.preferredWidth: AppMetrics.settingsControlWidth
                 heading: qsTr("Your language")
                 options: root.store.nativeLanguageNames
+                flagCodes: root.store.nativeLanguageCodes
                 currentIndex: root.store.nativeLanguageIndex
                 enabled: root.store.nativeLanguageNames.length > 1
 

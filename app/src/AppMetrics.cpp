@@ -384,6 +384,11 @@ int AppMetrics::GetExerciseAdvanceDelayCorrect() const
     return 800;
 }
 
+int AppMetrics::GetExerciseAdvanceDelayWrong() const
+{
+    return 1600;
+}
+
 int AppMetrics::GetMotion(int Milliseconds) const
 {
     if (IsMotionReduced() || (!IsMobileLayoutEnabled() && !AreTransitionsEnabled()))
@@ -569,6 +574,41 @@ int AppMetrics::GetTextAreaHeight() const
     return IsMobileLayout() ? 0 : 96;
 }
 
+int AppMetrics::GetQuickAddWidth() const
+{
+    return IsMobileLayout() ? 0 : 520;
+}
+
+int AppMetrics::GetQuickAddHeight() const
+{
+    return IsMobileLayout() ? 0 : 600;
+}
+
+int AppMetrics::GetQuickAddMinimumWidth() const
+{
+    return IsMobileLayout() ? 0 : 400;
+}
+
+int AppMetrics::GetQuickAddMinimumHeight() const
+{
+    return IsMobileLayout() ? 0 : 320;
+}
+
+int AppMetrics::GetQuickAddSearchDelay() const
+{
+    return 300;
+}
+
+qreal AppMetrics::GetQuickAddInputShare() const
+{
+    return 0.4;
+}
+
+int AppMetrics::GetQuickAddFocusGrace() const
+{
+    return 200;
+}
+
 int AppMetrics::GetHeroFigureSize() const
 {
     return IsMobileLayout() ? 32 : 44;
@@ -582,11 +622,6 @@ int AppMetrics::GetSessionTileHeight() const
 int AppMetrics::GetSessionTileHeightCompact() const
 {
     return IsMobileLayout() ? 56 : 64;
-}
-
-int AppMetrics::GetDayTileHeight() const
-{
-    return IsMobileLayout() ? 0 : 62;
 }
 
 int AppMetrics::GetGoalRingSize() const
@@ -614,34 +649,119 @@ int AppMetrics::GetWelcomeGreetingSize() const
     return IsMobileLayout() ? 0 : 40;
 }
 
-int AppMetrics::GetPathNodeSize() const
+int AppMetrics::GetTodayRingSize() const
 {
-    return IsMobileLayout() ? 0 : 16;
+    return IsMobileLayout() ? 0 : 124;
 }
 
-int AppMetrics::GetPathLineWidth() const
+int AppMetrics::GetTodayRingStroke() const
 {
-    return IsMobileLayout() ? 0 : 2;
+    return IsMobileLayout() ? 0 : 10;
 }
 
-int AppMetrics::GetTodayRingColumnWidth() const
+int AppMetrics::GetTodayRingGap() const
 {
-    return IsMobileLayout() ? 0 : 168;
+    return IsMobileLayout() ? 0 : 4;
 }
 
-int AppMetrics::GetTodayRingOverhang() const
+int AppMetrics::GetTodayRingFigure() const
 {
-    return IsMobileLayout() ? 0 : 12;
+    return IsMobileLayout() ? 0 : 38;
 }
 
-int AppMetrics::GetTodayBracketOffset() const
+int AppMetrics::GetTodayInsetX() const
 {
-    return IsMobileLayout() ? 0 : 16;
+    return IsMobileLayout() ? 0 : 18;
 }
 
-int AppMetrics::GetTodayPracticeGap() const
+int AppMetrics::GetTodayInsetY() const
+{
+    return IsMobileLayout() ? 0 : 14;
+}
+
+int AppMetrics::GetTodayLabelHeight() const
+{
+    return IsMobileLayout() ? 0 : 14;
+}
+
+int AppMetrics::GetTodayDayGap() const
+{
+    return IsMobileLayout() ? 0 : 18;
+}
+
+int AppMetrics::GetTodayNameGap() const
+{
+    return IsMobileLayout() ? 0 : 6;
+}
+
+int AppMetrics::GetTodayLinkGap() const
+{
+    return IsMobileLayout() ? 0 : 22;
+}
+
+int AppMetrics::GetTodayLinkReach() const
+{
+    return IsMobileLayout() ? 0 : 36;
+}
+
+int AppMetrics::GetTodayLinkGlow() const
+{
+    return IsMobileLayout() ? 0 : 48;
+}
+
+int AppMetrics::GetTodayColumnGap() const
 {
     return IsMobileLayout() ? 0 : 32;
+}
+
+int AppMetrics::GetTodayPrimaryWidth() const
+{
+    return IsMobileLayout() ? 0 : 440;
+}
+
+int AppMetrics::GetTodaySessionsWidth() const
+{
+    return IsMobileLayout() ? 0 : 304;
+}
+
+int AppMetrics::GetTodayTileGap() const
+{
+    return IsMobileLayout() ? 0 : 10;
+}
+
+int AppMetrics::GetTodaySessionGap() const
+{
+    return IsMobileLayout() ? 0 : 6;
+}
+
+qreal AppMetrics::GetTodayMarkHoverScale() const
+{
+    return 1.12;
+}
+
+qreal AppMetrics::GetTodayCatAspect() const
+{
+    return 676.0 / 1213.0;
+}
+
+qreal AppMetrics::GetTodayBookAspect() const
+{
+    return 484.0 / 126.0;
+}
+
+qreal AppMetrics::GetTodayMaximumZoom() const
+{
+    return 1.25;
+}
+
+int AppMetrics::GetTodayMaximumWidth() const
+{
+    return IsMobileLayout() ? 0 : 1100;
+}
+
+int AppMetrics::GetTodayMaximumHeight() const
+{
+    return IsMobileLayout() ? 0 : 680;
 }
 
 int AppMetrics::GetWeekDayCellSize() const
@@ -662,11 +782,6 @@ int AppMetrics::GetWeekRingStroke() const
 int AppMetrics::GetWeekRingGap() const
 {
     return IsMobileLayout() ? 0 : 2;
-}
-
-int AppMetrics::GetWeekFutureDotSize() const
-{
-    return IsMobileLayout() ? 0 : 6;
 }
 
 int AppMetrics::GetFocusRingWidth() const
@@ -706,12 +821,12 @@ int AppMetrics::GetRowProgressWidth() const
 
 int AppMetrics::GetCategoryPaneWidth() const
 {
-    return IsMobileLayout() ? 0 : 260;
+    return IsMobileLayout() ? 170 : 260;
 }
 
 int AppMetrics::GetCoverTileMinimumWidth() const
 {
-    return IsMobileLayout() ? 0 : 260;
+    return IsMobileLayout() ? 170 : 260;
 }
 
 qreal AppMetrics::GetReaderTileAspect() const
@@ -789,24 +904,19 @@ qreal AppMetrics::GetCoverStripeRightEnd() const
     return 0.53;
 }
 
-qreal AppMetrics::GetSessionTileBandWidth() const
+qreal AppMetrics::GetPickTopFill() const
 {
-    return 0.4;
+    return 0.5;
 }
 
-qreal AppMetrics::GetSessionTileBandTop() const
+int AppMetrics::GetResultTileMinimumWidth() const
 {
-    return 0.14;
+    return 220;
 }
 
-qreal AppMetrics::GetTodayTopFill() const
+int AppMetrics::GetFontPickTitle() const
 {
-    return 0.41;
-}
-
-qreal AppMetrics::GetTodaySideShare() const
-{
-    return 0.39;
+    return IsMobileLayout() ? 26 : 34;
 }
 
 int AppMetrics::GetReaderRowHeight() const
@@ -1054,6 +1164,31 @@ int AppMetrics::GetActionButtonWidth() const
     return IsMobileLayout() ? 0 : 200;
 }
 
+int AppMetrics::GetFlagWidth() const
+{
+    return IsMobileLayout() ? 48 : 64;
+}
+
+int AppMetrics::GetFlagWidthSmall() const
+{
+    return IsMobileLayout() ? 0 : 24;
+}
+
+int AppMetrics::GetTourCardWidth() const
+{
+    return IsMobileLayout() ? 0 : 400;
+}
+
+int AppMetrics::GetSelectedBorderWidth() const
+{
+    return 2;
+}
+
+int AppMetrics::GetLanguageChoiceWidth() const
+{
+    return IsMobileLayout() ? 0 : 152;
+}
+
 int AppMetrics::GetTriageWordSize() const
 {
     return IsMobileLayout() ? 0 : 44;
@@ -1061,12 +1196,12 @@ int AppMetrics::GetTriageWordSize() const
 
 int AppMetrics::GetRankTrackWidth() const
 {
-    return IsMobileLayout() ? 0 : 40;
+    return IsMobileLayout() ? 32 : 40;
 }
 
 int AppMetrics::GetRankHandleSize() const
 {
-    return IsMobileLayout() ? 0 : 6;
+    return 6;
 }
 
 int AppMetrics::GetWaveformButtonWidth() const

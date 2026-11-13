@@ -175,6 +175,7 @@ Item
 
         exerciseName: root.exerciseName
         store: root.store
+        controller: root.controller
         hasActions: true
 
         progress: root.controller.exerciseProgress
@@ -314,8 +315,7 @@ Item
                 },
                 MobileExampleBlock
                 {
-                    collapsible: true
-                    sentence: root.revealed && !root.sentenceText ? root.controller.example : ""
+                    sentence: root.revealed && !root.controller.lastAnswerCorrect && !root.sentenceText ? root.controller.example : ""
                     translation: root.controller.exampleTranslation
 
                     onWordTapped: function(word, sentence) { root.wordTapped(word, sentence) }

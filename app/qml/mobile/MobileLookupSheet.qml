@@ -13,9 +13,11 @@ MobileBottomSheet
     readonly property alias dictionary: lookup
 
     property string sourceSentence: ""
+    property bool readAloudOffered: false
 
     signal addWordRequested(string word, string translation, string partOfSpeech, string hint)
     signal entryOpened(string headword, string partOfSpeech, string hint)
+    signal readAloudRequested()
 
     function openFor(word, focusField, sentence)
     {
@@ -92,9 +94,29 @@ MobileBottomSheet
         Layout.preferredHeight: Math.min(resultsHeight,
             Math.max(0, root.maximumBodyHeight - lookupField.Layout.preferredHeight - AppMetrics.gapWide))
 
+        MobileMachineTranslation
+        {
+            id: formTranslation
+
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: parent.top
+
+            visible: AppMachineTranslation.enabled && lookup.results.length > 0 && root.dictionary.formTerm.length > 0
+            lookup: root.dictionary
+            term: root.term
+
+            onAddRequested: function(word, translation)
+            {
+                root.close()
+                root.addWordRequested(word, translation, "", root.sourceSentence)
+            }
+        }
+
         MobileWordCardList
         {
             anchors.fill: parent
+            anchors.topMargin: formTranslation.visible ? formTranslation.height + AppMetrics.gapSmall : 0
             visible: lookup.results.length > 0
 
             model: lookup.results
@@ -154,18 +176,6 @@ MobileBottomSheet
                     }
                 }
 
-                Text
-                {
-                    Layout.fillWidth: true
-                    visible: lookup.results.length === 0 && root.term.length > 0 && !lookup.translating && lookup.machineTranslation.length === 0
-
-                    text: qsTr("Not in the dictionary — you can still add it by hand.")
-                    color: AppTheme.colourMuted
-                    font.pixelSize: AppMetrics.fontBody
-                    font.family: AppMetrics.fontFamily
-                    wrapMode: Text.WordWrap
-                }
-
                 MobileWideButton
                 {
                     Layout.fillWidth: true
@@ -182,5 +192,18 @@ MobileBottomSheet
                 }
             }
         }
+    }
+
+    MobileWideButton
+    {
+        objectName: "lookup_read_aloud"
+
+        Layout.fillWidth: true
+        visible: root.readAloudOffered
+
+        label: qsTr("Read aloud from here")
+        filled: false
+
+        onClicked: root.readAloudRequested()
     }
 }

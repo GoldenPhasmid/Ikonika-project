@@ -97,8 +97,9 @@ CREATE TABLE TriagedWords
     TargetLanguage TEXT NOT NULL DEFAULT '',
     PartOfSpeech   TEXT NOT NULL,
     Gender         INTEGER NOT NULL DEFAULT -1,
+    MeaningGist    TEXT NOT NULL DEFAULT '',
     MarkedDate     INTEGER NOT NULL,
-    PRIMARY KEY (TargetWord, TargetLanguage, PartOfSpeech, Gender)
+    PRIMARY KEY (TargetWord, TargetLanguage, PartOfSpeech, Gender, MeaningGist)
 );
 
 -- What was actually done on a day, so the calendar can show the past.

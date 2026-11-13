@@ -401,3 +401,22 @@ TEST_CASE("A gendered Italian card takes il, lo, la or l' by its first letters",
     CHECK(Display("iena", GenderFeminine) == "la iena");
     CHECK(Display("cantante", GenderCommon) == "il cantante");
 }
+
+
+TEST_CASE("German nouns display their three citation articles", "[types][german]")
+{
+    FTCard Card;
+    Card.PartOfSpeech = "noun";
+    Card.TargetWord = "Mann";
+    Card.Gender = GenderMasculine;
+    CHECK(GetDisplayWord(Card, "de") == "der Mann");
+    Card.TargetWord = "Frau";
+    Card.Gender = GenderFeminine;
+    CHECK(GetDisplayWord(Card, "de") == "die Frau");
+    Card.TargetWord = "Mädchen";
+    Card.Gender = GenderNeuter;
+    CHECK(GetDisplayWord(Card, "de") == "das Mädchen");
+    CHECK(GetGenderCode(Card.Gender) == "n");
+    Card.Gender.reset();
+    CHECK(GetDisplayWord(Card, "de") == "Mädchen");
+}

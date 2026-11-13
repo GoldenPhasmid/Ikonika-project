@@ -181,6 +181,7 @@ Item
 
         exerciseName: root.exerciseName
         store: root.store
+        controller: root.controller
         hasActions: true
 
         progress: root.controller.exerciseProgress
@@ -229,14 +230,14 @@ Item
             masteryTarget: root.controller.masteryTarget
             masteryFilled: root.controller.cardMasteryCount
             secondaryFillsArea: true
-            primaryFitsContent: root.sentenceMode
+            primaryShare: 40
 
             primaryContent: [
                 Text
                 {
                     visible: root.hasHeading
                     text: root.controller.promptHeading
-                    font.pixelSize: root.sentenceMode ? AppMetrics.sessionTranslationSize : AppMetrics.sessionAnswerSize
+                    font.pixelSize: root.sentenceMode ? AppMetrics.sessionOptionSize : AppMetrics.sessionAnswerSize
                     font.weight: Font.Medium
                     font.family: AppMetrics.fontFamily
                     color: root.sentenceMode ? AppTheme.colourSubtle : AppTheme.colourText
@@ -270,13 +271,27 @@ Item
                         ? AppMetrics.sessionWordSize : AppMetrics.sessionTranslationSize
                     weight: root.hasHeading ? Font.Medium : Font.DemiBold
                 },
+                Text
+                {
+                    visible: root.sentenceMode
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: Math.ceil(font.pixelSize * 1.4)
+                    text: root.controller.lastCardTranslation
+                    opacity: root.revealed ? 1.0 : 0.0
+                    font.pixelSize: AppMetrics.sessionOptionSize
+                    font.weight: Font.Medium
+                    font.family: AppMetrics.fontFamily
+                    color: AppTheme.colourSubtle
+                    horizontalAlignment: Text.AlignHCenter
+                    elide: Text.ElideRight
+
+                    Behavior on opacity { NumberAnimation { duration: AppMetrics.motionFast } }
+                },
                 MobileSentenceAudioSlot
                 {
                     visible: root.sentenceMode
-                    revealed: root.revealed
-                    canPlay: !!root.controller.hasPromptSpeech
+                    canPlay: !!root.controller.canReplay
                     playing: root.controller.speaking
-                    translation: root.controller.lastCardTranslation
 
                     onReplayRequested: root.controller.replay()
                 },
@@ -290,6 +305,11 @@ Item
                     visible: !root.sentenceMode
                     text:
                     {
+                        if (!root.revealed)
+                        {
+                            return ""
+                        }
+
                         if (root.hasHeading)
                         {
                             return root.controller.lastCardTranslation
@@ -351,8 +371,7 @@ Item
                 },
                 MobileExampleBlock
                 {
-                    collapsible: true
-                    sentence: root.revealed && !root.sentenceMode ? root.controller.example : ""
+                    sentence: root.revealed && !root.controller.lastAnswerCorrect && !root.sentenceMode ? root.controller.example : ""
                     translation: root.controller.exampleTranslation
 
                     onWordTapped: function(word, sentence) { root.wordTapped(word, sentence) }

@@ -214,3 +214,15 @@ TEST_CASE("Each start picks its cards at random from the matching ones", "[exerc
 
     CHECK(Picks.size() > 1);
 }
+
+TEST_CASE("The gap exercise starts nothing when no card has a sentence", "[exerciselauncher]")
+{
+    FAppDatabaseGuard DatabaseGuard;
+    FAppSpeechGuard SpeechGuard;
+
+    SeedVocabulary(5);
+
+    ExerciseLauncherController Launcher;
+    CHECK_FALSE(Launcher.startExercise("gap", false, -1, 3));
+    CHECK(Launcher.GetActiveController() == nullptr);
+}

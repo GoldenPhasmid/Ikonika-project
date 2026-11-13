@@ -1,0 +1,60 @@
+word	part_of_speech	translation	meaning_gist
+I	pron	я	speaker
+you	pron	ти, ви	familiar
+he	pron	він	man
+she	pron	вона	woman
+it	pron	воно	thing
+we	pron	ми	group
+they	pron	вони	people
+this	det	цей, ця, це	nearby
+that	det	той, та, те	distant
+my	pron	мій, моя, моє	belonging
+your	pron	твій, ваш	familiar
+his	pron	його	possession
+her	det	її	possession
+its	pron	його, її	belonging
+our	pron	наш, наша, наше	possessive
+their	pron	їхній	possession
+for	prep	для	recipient
+with	prep	з	company
+in	prep	в, у	inside
+on	prep	на	surface
+without	prep	без	lacking
+under	prep	під	beneath
+after	prep	після	later
+before	prep	перед, до	earlier
+between	prep	між	position
+and	conj	і, та	addition
+but	conj	але	contrast
+or	conj	чи, або	alternative
+so	conj	тому, тож	therefore
+because	conj	бо, тому що	reason
+when	conj	коли	time
+like	conj	як	similarly
+not	adv	не	negation
+more	adv	більше	additional
+well	adv	добре	skilfully
+no	adv	ні	negation
+yes	intj	так	affirmative
+here	adv	тут	location
+there	adv	там	yonder
+very	adv	дуже	extremely
+also	adv	також, теж	too
+never	adv	ніколи	frequency
+always	adv	завжди	invariably
+now	adv	зараз, тепер	present
+much	det	багато	abundance
+be	verb	бути	exist
+have	verb	мати	possess
+go	verb	йти, ходити	walk
+do	verb	робити, виконувати	perform
+make	verb	створювати, виготовляти	create
+say	verb	казати, говорити	utter
+can	verb	могти, вміти	ability
+want	verb	хотіти	desire
+must	verb	мусити	obligation
+know	verb	знати	knowledge
+see	verb	бачити	perceive
+come	verb	приходити	arrive
+take	verb	брати	grab
+get	verb	отримувати	receive

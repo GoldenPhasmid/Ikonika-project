@@ -27,7 +27,8 @@ Item
     readonly property int shelfCount: root.freeShown ? reader.freeBooks.length : root.bookCount
     readonly property real chromeShown: bookMorph.chromeShown
     readonly property ReaderReadAloud readAloud: reader.readAloud
-    readonly property bool readAloudOffered: root.readable && !reader.isPdf && reader.readAloud.available
+    readonly property bool readAloudOffered: root.readable && !reader.isPdf
+    property bool voiceNoticeShown: false
 
     property bool immersive: false
     readonly property string sortOrder: Shelf.sortOrders.indexOf(AppReaderSettings.librarySortOrder) >= 0
@@ -298,6 +299,71 @@ Item
         }
     }
 
+    function toggleReadAloud()
+    {
+        keys.forceActiveFocus()
+
+        if (reader.readAloud.started)
+        {
+            reader.readAloud.stop()
+
+            return
+        }
+
+        if (!reader.readAloud.available)
+        {
+            root.voiceNoticeShown = !root.voiceNoticeShown
+
+            return
+        }
+
+        root.voiceNoticeShown = false
+        textView.playReadAloud()
+    }
+
+    function handleReadAloudKey(event)
+    {
+        if (reader.isPdf || !reader.readAloud.started)
+        {
+            return false
+        }
+
+        if (event.key === Qt.Key_Space && event.modifiers === Qt.NoModifier)
+        {
+            if (reader.readAloud.playing)
+            {
+                reader.readAloud.pause()
+            }
+            else
+            {
+                textView.playReadAloud()
+            }
+
+            return true
+        }
+
+        if (!(event.modifiers & Qt.ControlModifier))
+        {
+            return false
+        }
+
+        if (event.key === Qt.Key_Left)
+        {
+            reader.readAloud.previous()
+
+            return true
+        }
+
+        if (event.key === Qt.Key_Right)
+        {
+            reader.readAloud.next()
+
+            return true
+        }
+
+        return false
+    }
+
     function pickText(text, sentence)
     {
         pageArea.forceActiveFocus()
@@ -367,6 +433,11 @@ Item
                 translationLookup.copyToClipboard(selection)
             }
 
+            return
+        }
+
+        if (root.handleReadAloudKey(event))
+        {
             return
         }
 
@@ -475,6 +546,7 @@ Item
             root.pdfPendingPage = reader.currentPosition
             root.pdfPendingZoom = reader.currentZoom
             root.pdfPendingScroll = reader.currentScroll
+            root.voiceNoticeShown = false
 
             if (!reader.reading)
             {
@@ -493,6 +565,22 @@ Item
     DictionaryController
     {
         id: translationLookup
+    }
+
+    Connections
+    {
+        target: reader.readAloud
+
+        function onAvailableChanged()
+        {
+            if (!root.voiceNoticeShown || !reader.readAloud.available)
+            {
+                return
+            }
+
+            root.voiceNoticeShown = false
+            textView.playReadAloud()
+        }
     }
 
     Timer
@@ -842,7 +930,11 @@ Item
                     inkColour: root.pageTone.ink
 
                     onWordPicked: function(word, sentence) { root.pickText(word, sentence) }
-                    onTranslationWanted: Qt.callLater(translation.show)
+                    onTranslationWanted:
+                    {
+                        translation.expect()
+                        Qt.callLater(translation.show)
+                    }
                     onCurrentPageChanged: function(page)
                     {
                         root.pdfPendingPage = page
@@ -884,7 +976,11 @@ Item
                     readAloudInset: playBar.visible ? playBar.height + AppMetrics.gapMedium * 2 : 0
 
                     onWordPicked: function(word, sentence) { root.pickText(word, sentence) }
-                    onTranslationWanted: Qt.callLater(translation.show)
+                    onTranslationWanted:
+                    {
+                        translation.expect()
+                        Qt.callLater(translation.show)
+                    }
                     onContentYChanged: positionSaveTimer.restart()
                     onZoomRequested: function(closer) { root.zoom(closer) }
                 }
@@ -903,12 +999,50 @@ Item
                     darkPaper: !reader.isPdf && root.textPaper.hslLightness < 0.5
                     contentWidth: reader.isPdf ? Math.min(pageArea.width, pdfView.fitPoints * pdfView.renderScale) : textView.textWidth
                     geometry: reader.isPdf ? pdfView.selectionGeometry() : textView.selectionGeometry()
+                    readAloudOffered: !reader.isPdf && reader.readAloud.available && textView.pickedPlace !== null
 
                     onAddWordRequested: function(word, translation, partOfSpeech, hint)
                     {
                         root.addWordRequested(word, translation, partOfSpeech, hint)
                     }
                     onDictionaryRequested: function(word) { root.lookUpRequested(word) }
+                    onReadAloudRequested:
+                    {
+                        const place = textView.pickedPlace
+
+                        translation.dismiss()
+                        root.voiceNoticeShown = false
+                        textView.readFrom(place)
+                    }
+                }
+
+                Rectangle
+                {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    anchors.bottom: playBar.top
+                    anchors.bottomMargin: AppMetrics.gapSmall
+                    visible: playBar.visible && textView.readingAway
+                    opacity: bookMorph.chromeShown
+                    implicitWidth: backToReading.implicitWidth
+                    implicitHeight: backToReading.implicitHeight
+                    radius: height / 2
+                    color: AppTheme.colourCard
+                    border.width: AppMetrics.borderWidth
+                    border.color: AppTheme.colourBorder
+
+                    DesktopButton
+                    {
+                        id: backToReading
+
+                        objectName: "reader_read_aloud_back"
+
+                        anchors.fill: parent
+                        focusPolicy: Qt.NoFocus
+                        tone: "ghost"
+                        text: qsTr("Back to reading")
+
+                        onClicked: textView.showReading()
+                    }
                 }
 
                 DesktopReaderPlayBar
@@ -918,12 +1052,25 @@ Item
                     anchors.horizontalCenter: parent.horizontalCenter
                     anchors.bottom: parent.bottom
                     anchors.bottomMargin: AppMetrics.gapMedium
-                    visible: root.readAloudOffered && reader.readAloud.enabled && !reader.loading
+                    visible: root.readAloudOffered && reader.readAloud.started && !reader.loading
                     opacity: bookMorph.chromeShown
 
                     readAloud: reader.readAloud
 
                     onPlayRequested: textView.playReadAloud()
+                }
+
+                DesktopReaderVoiceNotice
+                {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    anchors.bottom: parent.bottom
+                    anchors.bottomMargin: AppMetrics.gapMedium
+                    visible: root.voiceNoticeShown && root.readAloudOffered && !reader.loading && !reader.readAloud.available
+                    opacity: bookMorph.chromeShown
+
+                    readAloud: reader.readAloud
+
+                    onClosed: root.voiceNoticeShown = false
                 }
 
                 DesktopLabel

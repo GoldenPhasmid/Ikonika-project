@@ -70,6 +70,10 @@ public:
      */
     QVariantList GetLanguages() const;
 
+    /** The voice package that speaks this language on the desktop, installed or not. Empty on a
+        phone, which speaks through the platform voice. */
+    QString FindVoicePackage(const std::string& TargetLanguage) const;
+
     std::optional<FTCatalogPackage> FindTranslationPackage(const std::string& TargetLanguage,
                                                            const std::string& NativeLanguage) const;
 

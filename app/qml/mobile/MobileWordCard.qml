@@ -112,7 +112,7 @@ Rectangle
                 height: actionsRow.height
                 visible: root.showAddAction
 
-                icon: "+"
+                iconSvg: Icons.Icons.plus.path
                 tint: AppTheme.colourAccent
                 iconColor: AppTheme.colourPanel
 
@@ -125,7 +125,7 @@ Rectangle
                 height: actionsRow.height
                 visible: root.showLookAction
 
-                iconSvg: Icons.Icons.search.path
+                iconSvg: Icons.Icons.nav_words.path
                 tint: AppTheme.colourFaint
                 iconColor: AppTheme.colourText
 

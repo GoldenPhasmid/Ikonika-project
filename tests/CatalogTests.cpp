@@ -162,11 +162,11 @@ TEST_CASE("A language resolves to the dictionary this app can read", "[catalog]"
     REQUIRE(Catalog.has_value());
     REQUIRE(Catalog->Packages.size() == 2);
 
-    const FTCatalogPackage* Found = Catalog->FindCompatibleDictionary("fr");
+    const FTCatalogPackage* Found = Catalog->FindCompatibleDictionary("fr", "en");
 
     REQUIRE(Found != nullptr);
     CHECK(Found->Id == "dictionary-fr-current");
-    CHECK(Catalog->FindCompatibleDictionary("es") == nullptr);
+    CHECK(Catalog->FindCompatibleDictionary("es", "en") == nullptr);
 }
 
 TEST_CASE("No dictionary is offered when none is built for this app's schema", "[catalog]")
@@ -175,7 +175,7 @@ TEST_CASE("No dictionary is offered when none is built for this app's schema", "
         ParseCatalog(OnePackage(DictionaryFields(OldestDictionarySchemaVersion - 1)));
 
     REQUIRE(Catalog.has_value());
-    CHECK(Catalog->FindCompatibleDictionary("fr") == nullptr);
+    CHECK(Catalog->FindCompatibleDictionary("fr", "en") == nullptr);
 }
 
 TEST_CASE("Of two readable dictionaries the newer schema is offered", "[catalog]")
@@ -189,7 +189,7 @@ TEST_CASE("Of two readable dictionaries the newer schema is offered", "[catalog]
 
     REQUIRE(Catalog.has_value());
 
-    const FTCatalogPackage* Found = Catalog->FindCompatibleDictionary("fr");
+    const FTCatalogPackage* Found = Catalog->FindCompatibleDictionary("fr", "en");
 
     REQUIRE(Found != nullptr);
     CHECK(Found->Id == "dictionary-fr-current");
@@ -214,12 +214,57 @@ TEST_CASE("The newest readable dictionary is offered whichever order the catalog
 
         REQUIRE(Catalog.has_value());
 
-        const FTCatalogPackage* Found = Catalog->FindCompatibleDictionary("fr");
+        const FTCatalogPackage* Found = Catalog->FindCompatibleDictionary("fr", "en");
 
         REQUIRE(Found != nullptr);
         CHECK(Found->Id == "dictionary-fr");
         CHECK(Found->DictionarySchema == DictionarySchemaVersion);
     }
+}
+
+TEST_CASE("Two pairs of one language resolve to their own dictionaries", "[catalog]")
+{
+    const std::string English = DictionaryFields();
+    std::string Ukrainian = DictionaryFields();
+    Ukrainian.replace(Ukrainian.find("dictionary-fr"), 13, "dictionary-fr-uk");
+    Ukrainian.replace(Ukrainian.find(R"(["en"])"), 6, R"(["uk"])");
+
+    const std::optional<FTCatalog> Catalog =
+        ParseCatalog(R"({"schema":1,"packages":[{)" + English + "},{" + Ukrainian + "}]}");
+
+    REQUIRE(Catalog.has_value());
+
+    const FTCatalogPackage* ForEnglish = Catalog->FindCompatibleDictionary("fr", "en");
+    const FTCatalogPackage* ForUkrainian = Catalog->FindCompatibleDictionary("fr", "uk");
+
+    REQUIRE(ForEnglish != nullptr);
+    REQUIRE(ForUkrainian != nullptr);
+    CHECK(ForEnglish->Id == "dictionary-fr");
+    CHECK(ForUkrainian->Id == "dictionary-fr-uk");
+    CHECK(Catalog->FindCompatibleDictionary("fr", "de") == nullptr);
+}
+
+TEST_CASE("A published dictionary replaces only the installed file of its own pair", "[catalog]")
+{
+    const std::optional<FTCatalog> Catalog = ParseCatalog(OnePackage(DictionaryFields()));
+
+    REQUIRE(Catalog.has_value());
+
+    const FTCatalogPackage& Published = Catalog->Packages.front();
+
+    FTDictionaryPackage SamePair;
+    SamePair.TargetLanguage = "fr";
+    SamePair.NativeLanguages = {"en"};
+
+    FTDictionaryPackage OtherNative{SamePair};
+    OtherNative.NativeLanguages = {"uk"};
+
+    FTDictionaryPackage OtherTarget{SamePair};
+    OtherTarget.TargetLanguage = "es";
+
+    CHECK(Published.Replaces(SamePair));
+    CHECK_FALSE(Published.Replaces(OtherNative));
+    CHECK_FALSE(Published.Replaces(OtherTarget));
 }
 
 TEST_CASE("Only dictionaries are held to a schema", "[catalog]")

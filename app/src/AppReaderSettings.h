@@ -31,6 +31,7 @@ class AppReaderSettings : public QObject
     Q_PROPERTY(QStringList textFonts READ GetTextFonts CONSTANT)
     Q_PROPERTY(bool cropMargins READ IsCropMargins WRITE SetCropMargins NOTIFY changed)
     Q_PROPERTY(bool volumeKeysTurnPages READ AreVolumeKeysTurningPages WRITE SetVolumeKeysTurnPages NOTIFY changed)
+    Q_PROPERTY(bool highlightUnknownWords READ IsHighlightingUnknownWords WRITE SetHighlightUnknownWords NOTIFY changed)
     Q_PROPERTY(bool highlightVocabulary READ IsHighlightingVocabulary WRITE SetHighlightVocabulary NOTIFY changed)
     Q_PROPERTY(QString librarySortOrder READ GetLibrarySortOrder WRITE SetLibrarySortOrder NOTIFY changed)
     Q_PROPERTY(bool librarySortReversed READ IsLibrarySortReversed WRITE SetLibrarySortReversed NOTIFY changed)
@@ -76,6 +77,9 @@ public:
 
     bool AreVolumeKeysTurningPages() const;
     void SetVolumeKeysTurnPages(bool bValue);
+
+    bool IsHighlightingUnknownWords() const;
+    void SetHighlightUnknownWords(bool bValue);
 
     bool IsHighlightingVocabulary() const;
     void SetHighlightVocabulary(bool bValue);

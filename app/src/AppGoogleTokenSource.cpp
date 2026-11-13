@@ -20,11 +20,11 @@ namespace
     constexpr qint64 ExpiryMarginMilliseconds{60000};
     constexpr int HttpFirstError{400};
 
-    AppCloudFailure MakeFailure(const QString& Message, bool bCredentialRefused = false)
+    AppCloudFailure MakeFailure(const QString& Message, AppCloudFailureKind Kind = AppCloudFailureKind::Transient)
     {
         AppCloudFailure Failure;
         Failure.Message = Message;
-        Failure.bCredentialRefused = bCredentialRefused;
+        Failure.Kind = Kind;
 
         return Failure;
     }
@@ -90,7 +90,7 @@ void AppGoogleTokenSource::RequestToken(TokenCallback Done)
     {
         qCWarning(LogSync) << "No stored refresh token for the account" << AccountId;
 
-        Deliver(MakeFailure(QStringLiteral("no refresh token is stored"), true), QString());
+        Deliver(MakeFailure(QStringLiteral("no refresh token is stored"), AppCloudFailureKind::Credential), QString());
 
         return;
     }
@@ -190,7 +190,9 @@ void AppGoogleTokenSource::Refresh(const QString& AccountId, const QString& Refr
 
                              OnRefreshed(AccountId,
                                          MakeFailure(QStringLiteral("Google answered %1 %2").arg(Status).arg(Error),
-                                                     Error == QStringLiteral("invalid_grant")),
+                                                     Error == QStringLiteral("invalid_grant")
+                                                         ? AppCloudFailureKind::Credential
+                                                         : AppCloudFailureKind::Transient),
                                          {});
 
                              return;

@@ -1,3 +1,4 @@
+#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
 #include "CatchQtTypes.h"
@@ -245,6 +246,94 @@ TEST_CASE("GetDefinition is empty when the card has none", "[exercisecontrollerb
     Controller.Start(MakeParams(MakeCards(1)));
 
     CHECK(Controller.GetDefinition().isEmpty());
+}
+
+TEST_CASE("A card with no meaning shows its hint as the example", "[exercisecontrollerbase][example]")
+{
+    FAppSpeechGuard SpeechGuard;
+
+    FTCard Card = MakeCard("word0", "translation0");
+    Card.Hint = "Il entra dans la maison";
+
+    std::vector<FTCardHandle> Cards;
+    Cards.push_back(MakeCardHandle(std::move(Card)));
+
+    FlashcardController Controller;
+    Controller.Start(MakeParams(std::move(Cards)));
+
+    CHECK(Controller.GetExample() == "Il entra dans la maison");
+    CHECK(Controller.GetExampleTranslation().isEmpty());
+}
+
+TEST_CASE("A card with neither meaning nor hint shows no example", "[exercisecontrollerbase][example]")
+{
+    FAppSpeechGuard SpeechGuard;
+
+    FlashcardController Controller;
+    Controller.Start(MakeParams(MakeCards(1)));
+
+    CHECK(Controller.GetExample().isEmpty());
+    CHECK(Controller.GetExampleTranslation().isEmpty());
+}
+
+TEST_CASE("A meaning that cannot be found falls back to the hint", "[exercisecontrollerbase][example]")
+{
+    FAppSpeechGuard SpeechGuard;
+
+    FTCard Card = MakeCard("word0", "translation0");
+    Card.MeaningGist = "a gist the dictionary does not hold";
+    Card.Hint = "Il entra dans la maison";
+
+    std::vector<FTCardHandle> Cards;
+    Cards.push_back(MakeCardHandle(std::move(Card)));
+
+    FlashcardController Controller;
+    Controller.Start(MakeParams(std::move(Cards)));
+
+    CHECK(Controller.GetExample() == "Il entra dans la maison");
+}
+
+TEST_CASE("Slow speech repeats the word at a slower rate", "[exercisecontrollerbase][slowspeech]")
+{
+    FAppSpeechGuard SpeechGuard;
+
+    FlashcardController Controller;
+    Controller.Start(MakeParams(MakeCards(2)));
+
+    SpeechGuard.Mock.SpeakCount = 0;
+    Controller.speakSlowly();
+
+    CHECK(SpeechGuard.Mock.SpeakCount == 1);
+    CHECK(SpeechGuard.Mock.LastText == QString::fromStdString(Controller.GetCurrentCard()->TargetWord));
+    CHECK(SpeechGuard.Mock.LastRateScale == Catch::Approx(0.6f));
+}
+
+TEST_CASE("Slow speech speaks the current card even when sound was off for it", "[exercisecontrollerbase][slowspeech]")
+{
+    FAppSpeechGuard SpeechGuard;
+
+    FlashcardController Controller;
+    Controller.Start(MakeParams(MakeCards(2)));
+    Controller.advance();
+
+    Controller.speakSlowly();
+
+    CHECK(SpeechGuard.Mock.LastText == QString::fromStdString(Controller.GetCurrentCard()->TargetWord));
+    CHECK(SpeechGuard.Mock.LastRateScale == Catch::Approx(0.6f));
+}
+
+TEST_CASE("Slow speech scales the sentence speech rate for a sentence exercise", "[exercisecontrollerbase][slowspeech]")
+{
+    FAppSpeechGuard SpeechGuard;
+    SpeechGuard.Mock.SentenceSpeed = 0.75f;
+
+    FlashcardController Controller;
+    Controller.SetSpeaksSentences(true);
+    Controller.Start(MakeParams(MakeCards(1)));
+
+    Controller.speakSlowly();
+
+    CHECK(SpeechGuard.Mock.LastRateScale == Catch::Approx(0.45f));
 }
 
 TEST_CASE("Card metadata follows the current card as it changes", "[exercisecontrollerbase]")

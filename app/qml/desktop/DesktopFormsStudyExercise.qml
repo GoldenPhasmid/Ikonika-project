@@ -13,7 +13,7 @@ Item
     readonly property Item surface: card.surface
     readonly property bool editable: false
 
-    readonly property string title: qsTr("Forms")
+    readonly property string instruction: qsTr("Study forms")
     readonly property bool voiceSupported: false
     readonly property bool voiceOn: false
 

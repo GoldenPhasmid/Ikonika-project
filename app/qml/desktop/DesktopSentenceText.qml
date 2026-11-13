@@ -12,7 +12,9 @@ DesktopPromptLabel
     property int gapLength: 0
     property bool interactive: true
 
-    signal wordClicked(string word, string sentence)
+    signal wordClicked(string word, string sentence, rect wordRect)
+
+    property point pressPosition
 
     readonly property int hoveredWord: root.hoveredLink.startsWith("word:") ? parseInt(root.hoveredLink.substring(5)) : -1
 
@@ -41,9 +43,10 @@ DesktopPromptLabel
 
             markup += root.escapeHtml(sentence.substring(cursor, start))
 
+            const inGap = gapLength > 0 && start < gapStart + gapLength && end > gapStart
+
             if (letterPattern.test(word) && root.interactive)
             {
-                const inGap = gapLength > 0 && start < gapStart + gapLength && end > gapStart
                 const colour = inGap ? AppTheme.colourAccent : AppTheme.colourText
                 const decoration = words.length === hovered ? "underline" : "none"
 
@@ -51,6 +54,10 @@ DesktopPromptLabel
                     + root.escapeHtml(word) + "</a>"
 
                 words.push(word)
+            }
+            else if (inGap)
+            {
+                markup += "<span style=\"color:" + AppTheme.colourAccent + ";\">" + root.escapeHtml(word) + "</span>"
             }
             else
             {
@@ -76,6 +83,34 @@ DesktopPromptLabel
 
     Accessible.name: root.sentence
 
+    function linkRect(link)
+    {
+        const position = root.pressPosition
+        let left = position.x
+        let right = position.x
+        let top = position.y
+        let bottom = position.y
+
+        while (left > 0 && root.linkAt(left - 1, position.y) === link)
+        {
+            --left
+        }
+        while (right < root.width && root.linkAt(right, position.y) === link)
+        {
+            ++right
+        }
+        while (top > 0 && root.linkAt(position.x, top - 1) === link)
+        {
+            --top
+        }
+        while (bottom < root.height && root.linkAt(position.x, bottom) === link)
+        {
+            ++bottom
+        }
+
+        return root.mapToItem(null, Qt.rect(left, top, right - left, bottom - top))
+    }
+
     onLinkActivated: function(link)
     {
         if (!link.startsWith("word:"))
@@ -87,8 +122,14 @@ DesktopPromptLabel
 
         if (word.length > 0)
         {
-            root.wordClicked(word, root.sentence)
+            root.wordClicked(word, root.sentence, root.linkRect(link))
         }
+    }
+
+    PointHandler
+    {
+        enabled: root.interactive
+        onActiveChanged: if (active) root.pressPosition = point.position
     }
 
     HoverHandler

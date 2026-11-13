@@ -18,6 +18,8 @@ Item
     readonly property bool lookupOpen: lookupSheet.shown
     property bool outlineOpen: false
     property bool settingsOpen: false
+    property bool voiceNoticeShown: false
+    property var lookupPlace: null
 
     property int pdfPendingPage: 0
     property real pdfPendingZoom: 0
@@ -45,8 +47,6 @@ Item
         }
     }
     readonly property bool listLayout: AppViewLayouts.revision >= 0 && AppViewLayouts.isList("reader")
-    readonly property real tileWidth: root.listLayout ? libraryColumn.width
-                                                      : Math.floor((libraryColumn.width - AppMetrics.gapCompact) / 2)
 
     readonly property int topParagraph: Math.max(0, readingList.indexAt(1, readingList.contentY + 1))
     readonly property bool cannotRead: root.reading
@@ -172,9 +172,30 @@ Item
         reader.fullScreen = !reader.fullScreen
     }
 
-    function openLookup(term, focusField, sentence)
+    function openLookup(term, focusField, sentence, place)
     {
+        root.lookupPlace = place || null
         lookupSheet.openFor(term, focusField, sentence)
+    }
+
+    function toggleReadAloud()
+    {
+        if (reader.readAloud.started)
+        {
+            reader.readAloud.stop()
+
+            return
+        }
+
+        if (!reader.readAloud.available)
+        {
+            root.voiceNoticeShown = !root.voiceNoticeShown
+
+            return
+        }
+
+        root.voiceNoticeShown = false
+        readingList.playReadAloud()
     }
 
     function closeLookup()
@@ -375,10 +396,27 @@ Item
 
     Connections
     {
+        target: reader.readAloud
+
+        function onAvailableChanged()
+        {
+            if (!root.voiceNoticeShown || !reader.readAloud.available)
+            {
+                return
+            }
+
+            root.voiceNoticeShown = false
+            readingList.playReadAloud()
+        }
+    }
+
+    Connections
+    {
         target: reader
 
         function onCurrentDocumentChanged()
         {
+            root.voiceNoticeShown = false
             root.pdfPendingPage = reader.currentPosition
             root.pdfPendingZoom = reader.currentZoom
             root.pdfPendingScroll = reader.currentScroll
@@ -539,10 +577,11 @@ Item
                         }
                     }
 
-                    Flow
+                    MobileCoverGrid
                     {
-                        Layout.fillWidth: true
-                        spacing: root.listLayout ? 0 : AppMetrics.gapCompact
+                        id: coverGrid
+
+                        listLayout: root.listLayout
 
                         Accessible.role: Accessible.List
                         Accessible.name: qsTr("Books")
@@ -551,7 +590,7 @@ Item
                         {
                             objectName: "reader_open_tile"
 
-                            width: root.tileWidth
+                            width: coverGrid.tileWidth
                             compact: root.listLayout
                             visible: !root.freeShown && root.searchTerm.length === 0
 
@@ -571,7 +610,7 @@ Item
 
                                 objectName: "reader_book_" + index
 
-                                width: root.tileWidth
+                                width: coverGrid.tileWidth
                                 compact: root.listLayout
 
                                 title: modelData.title
@@ -665,11 +704,11 @@ Item
                         {
                             objectName: "reader_read_aloud"
 
-                            visible: !reader.isPdf && reader.readAloud.available
-                            active: reader.readAloud.enabled
+                            visible: !reader.isPdf
+                            active: reader.readAloud.started || root.voiceNoticeShown
                             iconSvg: Icons.Icons.headphones.path
 
-                            onClicked: reader.readAloud.enabled = !reader.readAloud.enabled
+                            onClicked: root.toggleReadAloud()
                         }
 
                         MobileActionIconButton
@@ -708,6 +747,7 @@ Item
                     {
                         Layout.fillWidth: true
                         Layout.preferredHeight: 43
+                        visible: reader.isPdf
 
                         radius: AppMetrics.radiusMedium
                         color: AppTheme.colourPanel
@@ -762,116 +802,143 @@ Item
                         }
                     },
 
-                    Item
+                    RowLayout
                     {
-                        id: scrubber
-
                         Layout.fillWidth: true
-                        Layout.preferredHeight: thumb.height
                         Layout.topMargin: AppMetrics.gapSmall
+                        spacing: AppMetrics.gapMedium
                         visible: root.chromeVisible && root.positionCount > 1
 
-                        property int previewIndex: -1
-
-                        readonly property int shownIndex: scrubber.previewIndex >= 0
-                            ? scrubber.previewIndex : root.positionIndex
-                        readonly property real fraction: root.positionCount > 1
-                            ? scrubber.shownIndex / (root.positionCount - 1) : 0
-
-                        function indexFromRatio(ratio)
+                        Text
                         {
-                            const clamped = Math.max(0, Math.min(1, ratio))
-                            return Math.round(clamped * (root.positionCount - 1))
-                        }
+                            visible: !reader.isPdf
+                            Layout.preferredWidth: percentMetrics.advanceWidth
 
-                        Rectangle
-                        {
-                            anchors.verticalCenter: parent.verticalCenter
-                            width: parent.width
-                            height: AppMetrics.borderWidth * 2
-                            radius: height / 2
-                            color: AppTheme.colourBorder
-                        }
+                            text: qsTr("%1%").arg(root.percentOf(scrubber.shownIndex))
+                            font.pixelSize: AppMetrics.fontMeta
+                            font.family: AppMetrics.fontFamily
+                            color: AppTheme.colourMuted
+                            horizontalAlignment: Text.AlignLeft
 
-                        Rectangle
-                        {
-                            anchors.verticalCenter: parent.verticalCenter
-                            width: thumb.x + thumb.width / 2
-                            height: AppMetrics.borderWidth * 2
-                            radius: height / 2
-                            color: AppTheme.colourAccent
-                        }
-
-                        Rectangle
-                        {
-                            id: thumb
-
-                            x: (scrubber.width - width) * scrubber.fraction
-                            anchors.verticalCenter: parent.verticalCenter
-
-                            width: 16
-                            height: 16
-                            radius: 8
-                            color: AppTheme.colourPanel
-                            border.width: AppMetrics.borderWidth
-                            border.color: AppTheme.colourAccent
-                        }
-
-                        Rectangle
-                        {
-                            visible: scrubberArea.pressed
-                            z: 1
-
-                            x: Math.max(0, Math.min(scrubber.width - width, thumb.x + thumb.width / 2 - width / 2))
-                            y: thumb.y - height - AppMetrics.gapSmall
-
-                            width: bubbleLabel.implicitWidth + AppMetrics.gapMedium
-                            height: bubbleLabel.implicitHeight + AppMetrics.gapSmall
-                            radius: AppMetrics.radiusMedium
-                            color: AppTheme.colourPanel
-                            border.width: AppMetrics.borderWidth
-                            border.color: AppTheme.colourBorder
-
-                            Text
+                            TextMetrics
                             {
-                                id: bubbleLabel
-                                anchors.centerIn: parent
-                                text: reader.isPdf
-                                    ? scrubber.shownIndex + 1
-                                    : qsTr("%1%").arg(root.percentOf(scrubber.shownIndex))
+                                id: percentMetrics
+
                                 font.pixelSize: AppMetrics.fontMeta
                                 font.family: AppMetrics.fontFamily
-                                color: AppTheme.colourText
+                                text: qsTr("100%")
                             }
                         }
 
-                        MouseArea
+                        Item
                         {
-                            id: scrubberArea
+                            id: scrubber
 
-                            anchors.fill: parent
-                            anchors.margins: -12
-                            preventStealing: true
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: thumb.height
 
-                            onPressed: function(mouse)
+                            property int previewIndex: -1
+
+                            readonly property int shownIndex: scrubber.previewIndex >= 0
+                                ? scrubber.previewIndex : root.positionIndex
+                            readonly property real fraction: root.positionCount > 1
+                                ? scrubber.shownIndex / (root.positionCount - 1) : 0
+
+                            function indexFromRatio(ratio)
                             {
-                                scrubber.previewIndex = scrubber.indexFromRatio(mouse.x / scrubber.width)
+                                const clamped = Math.max(0, Math.min(1, ratio))
+                                return Math.round(clamped * (root.positionCount - 1))
                             }
-                            onPositionChanged: function(mouse)
+
+                            Rectangle
                             {
-                                if (scrubberArea.pressed)
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: parent.width
+                                height: AppMetrics.borderWidth * 2
+                                radius: height / 2
+                                color: AppTheme.colourBorder
+                            }
+
+                            Rectangle
+                            {
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: thumb.x + thumb.width / 2
+                                height: AppMetrics.borderWidth * 2
+                                radius: height / 2
+                                color: AppTheme.colourAccent
+                            }
+
+                            Rectangle
+                            {
+                                id: thumb
+
+                                x: (scrubber.width - width) * scrubber.fraction
+                                anchors.verticalCenter: parent.verticalCenter
+
+                                width: 16
+                                height: 16
+                                radius: 8
+                                color: AppTheme.colourPanel
+                                border.width: AppMetrics.borderWidth
+                                border.color: AppTheme.colourAccent
+                            }
+
+                            Rectangle
+                            {
+                                visible: scrubberArea.pressed
+                                z: 1
+
+                                x: Math.max(0, Math.min(scrubber.width - width, thumb.x + thumb.width / 2 - width / 2))
+                                y: thumb.y - height - AppMetrics.gapSmall
+
+                                width: bubbleLabel.implicitWidth + AppMetrics.gapMedium
+                                height: bubbleLabel.implicitHeight + AppMetrics.gapSmall
+                                radius: AppMetrics.radiusMedium
+                                color: AppTheme.colourPanel
+                                border.width: AppMetrics.borderWidth
+                                border.color: AppTheme.colourBorder
+
+                                Text
+                                {
+                                    id: bubbleLabel
+                                    anchors.centerIn: parent
+                                    text: reader.isPdf
+                                        ? scrubber.shownIndex + 1
+                                        : qsTr("%1%").arg(root.percentOf(scrubber.shownIndex))
+                                    font.pixelSize: AppMetrics.fontMeta
+                                    font.family: AppMetrics.fontFamily
+                                    color: AppTheme.colourText
+                                }
+                            }
+
+                            MouseArea
+                            {
+                                id: scrubberArea
+
+                                anchors.fill: parent
+                                anchors.margins: -12
+                                preventStealing: true
+
+                                onPressed: function(mouse)
                                 {
                                     scrubber.previewIndex = scrubber.indexFromRatio(mouse.x / scrubber.width)
                                 }
-                            }
-                            onReleased:
-                            {
-                                if (scrubber.previewIndex >= 0)
+                                onPositionChanged: function(mouse)
                                 {
-                                    root.goToPosition(scrubber.previewIndex)
+                                    if (scrubberArea.pressed)
+                                    {
+                                        scrubber.previewIndex = scrubber.indexFromRatio(mouse.x / scrubber.width)
+                                    }
                                 }
+                                onReleased:
+                                {
+                                    if (scrubber.previewIndex >= 0)
+                                    {
+                                        root.goToPosition(scrubber.previewIndex)
+                                    }
 
-                                scrubber.previewIndex = -1
+                                    scrubber.previewIndex = -1
+                                }
                             }
                         }
                     }
@@ -941,6 +1008,7 @@ Item
 
                         property var selectedText: null
                         property bool followingReadAloud: true
+                        property bool readingAway: false
                         readonly property real readAloudTop: readingFrame.topCover
                         readonly property real readAloudBottom: readingFrame.bottomCover
                             + (playBar.visible ? playBar.height + AppMetrics.gapMedium * 2 : 0)
@@ -954,23 +1022,41 @@ Item
                         function playReadAloud()
                         {
                             readingList.followingReadAloud = true
+                            ReadAloudPlace.play(readingList, reader.readAloud, root.topParagraph,
+                                                readingList.contentY + readingList.readAloudTop,
+                                                readingList.contentY + readingList.height - readingList.readAloudBottom)
+                        }
 
-                            if (reader.readAloud.started)
+                        function readFrom(place)
+                        {
+                            if (place === null)
                             {
-                                reader.readAloud.resume()
-
                                 return
                             }
 
-                            const place = ReadAloudPlace.startPlace(readingList, root.topParagraph,
-                                                                    readingList.contentY + readingList.readAloudTop)
-
+                            readingList.clearSelection()
+                            readingList.followingReadAloud = true
                             reader.readAloud.startAt(place.paragraph, place.character)
                         }
 
-                        function followReadAloud()
+                        function showReading()
                         {
-                            if (!reader.readAloud.playing || !readingList.followingReadAloud)
+                            readingList.followingReadAloud = true
+                            readingList.followReadAloud(true)
+                        }
+
+                        function updateReadingAway()
+                        {
+                            readingList.readingAway = reader.readAloud.started && !readingList.followingReadAloud
+                                && !ReadAloudPlace.isReadingShown(readingList, reader.readAloud,
+                                                                  readingList.contentY + readingList.readAloudTop,
+                                                                  readingList.contentY + readingList.height - readingList.readAloudBottom)
+                        }
+
+                        function followReadAloud(force)
+                        {
+                            if (!reader.readAloud.started || !readingList.followingReadAloud
+                                || (!force && !reader.readAloud.playing))
                             {
                                 return
                             }
@@ -1025,9 +1111,18 @@ Item
 
                             function onStateChanged()
                             {
-                                Qt.callLater(readingList.followReadAloud)
+                                Qt.callLater(readingList.followReadAloud, false)
+                                Qt.callLater(readingList.updateReadingAway)
                             }
                         }
+
+                        onContentYChanged:
+                        {
+                            positionSaveTimer.restart()
+                            readingList.updateReadingAway()
+                        }
+                        onHeightChanged: readingList.updateReadingAway()
+                        onFollowingReadAloudChanged: readingList.updateReadingAway()
 
                         function claimSelection(owner)
                         {
@@ -1067,8 +1162,6 @@ Item
                         property var selectingText: null
                         property int selectionAnchorStart: 0
                         property int selectionAnchorEnd: 0
-
-                        onContentYChanged: positionSaveTimer.restart()
 
                         delegate: Item
                         {
@@ -1243,7 +1336,8 @@ Item
 
                                     textDocument: reader.vocabulary.enabled || reading ? paragraphText.textDocument : null
                                     vocabulary: reader.vocabulary
-                                    learningColour: AppTheme.faded(AppTheme.colourAccent, AppTheme.alphaMedium)
+                                    darkPaper: root.textInk.hslLightness > 0.5
+                                    learningColour: darkPaper ? AppTheme.colourReaderMarkDark : AppTheme.colourAccent
                                     sentenceStart: reading ? reader.readAloud.sentenceStart : -1
                                     sentenceEnd: reading ? reader.readAloud.sentenceEnd : -1
                                     sentenceColour: AppTheme.faded(root.textInk, AppTheme.alphaSoft)
@@ -1267,20 +1361,12 @@ Item
                                             return
                                         }
 
-                                        if (reader.readAloud.enabled && !reader.readAloud.started)
-                                        {
-                                            readingList.clearSelection()
-                                            readingList.followingReadAloud = true
-                                            reader.readAloud.startAt(paragraph.index, range.start)
-
-                                            return
-                                        }
-
                                         reader.readAloud.pause()
                                         readingList.claimSelection(paragraphText)
                                         paragraphText.select(range.start, range.end)
                                         root.openLookup(paragraph.display.substring(range.start, range.end),
-                                                        false, lookupSheet.dictionary.sentenceAt(paragraph.display, range.start))
+                                                        false, lookupSheet.dictionary.sentenceAt(paragraph.display, range.start),
+                                                        { paragraph: paragraph.index, character: range.start })
                                     }
 
                                     onLongPressed:
@@ -1344,7 +1430,8 @@ Item
 
                                         if (phrase.length > 0)
                                         {
-                                            root.openLookup(phrase, false, lookupSheet.dictionary.sentenceAt(paragraph.display, paragraphText.selectionStart))
+                                            root.openLookup(phrase, false, lookupSheet.dictionary.sentenceAt(paragraph.display, paragraphText.selectionStart),
+                                                            { paragraph: paragraph.index, character: paragraphText.selectionStart })
                                         }
                                     }
                                 }
@@ -1362,11 +1449,58 @@ Item
                 anchors.bottom: parent.bottom
                 anchors.bottomMargin: readingFrame.bottomCover + AppMetrics.gapMedium
                                       + (readingFrame.controlsVisible ? 0 : readingFrame.SafeArea.margins.bottom)
-                visible: !reader.isPdf && !reader.loading && reader.readAloud.available && reader.readAloud.enabled
+                visible: !reader.isPdf && !reader.loading && reader.readAloud.started
 
                 readAloud: reader.readAloud
 
                 onPlayRequested: readingList.playReadAloud()
+            }
+
+            Rectangle
+            {
+                objectName: "reader_read_aloud_back"
+
+                anchors.horizontalCenter: parent.horizontalCenter
+                anchors.bottom: playBar.top
+                anchors.bottomMargin: AppMetrics.gapSmall
+                visible: playBar.visible && readingList.readingAway
+                implicitWidth: backLabel.implicitWidth + AppMetrics.gapMedium * 2
+                implicitHeight: backLabel.implicitHeight + AppMetrics.gapSmall * 2
+                radius: height / 2
+                color: AppTheme.colourCard
+                border.width: AppMetrics.borderWidth
+                border.color: AppTheme.colourBorder
+
+                Text
+                {
+                    id: backLabel
+
+                    anchors.centerIn: parent
+                    text: qsTr("Back to reading")
+                    color: AppTheme.colourText
+                    font.pixelSize: AppMetrics.fontBody
+                    font.weight: Font.Medium
+                    font.family: AppMetrics.fontFamily
+                }
+
+                MouseArea
+                {
+                    anchors.fill: parent
+
+                    onClicked: readingList.showReading()
+                }
+            }
+
+            MobileReaderVoiceNotice
+            {
+                anchors.horizontalCenter: parent.horizontalCenter
+                anchors.bottom: parent.bottom
+                anchors.bottomMargin: playBar.anchors.bottomMargin
+                visible: root.voiceNoticeShown && !reader.isPdf && !reader.loading && !reader.readAloud.available
+
+                readAloud: reader.readAloud
+
+                onClosed: root.voiceNoticeShown = false
             }
 
             LoadingScreen
@@ -1463,10 +1597,20 @@ Item
         id: lookupSheet
 
         anchors.fill: parent
+        readAloudOffered: !reader.isPdf && reader.readAloud.available && root.lookupPlace !== null
 
         onAddWordRequested: function(word, translation, partOfSpeech, hint)
         {
             root.addWordRequested(word, translation, partOfSpeech, hint)
+        }
+
+        onReadAloudRequested:
+        {
+            const place = root.lookupPlace
+
+            lookupSheet.close()
+            root.voiceNoticeShown = false
+            readingList.readFrom(place)
         }
 
         onEntryOpened: function(headword, partOfSpeech, hint) { root.entryOpened(headword, partOfSpeech, hint) }
@@ -1574,6 +1718,7 @@ Item
             showPdf: reader.isPdf
             showText: !reader.isPdf
             titled: false
+            readAloud: reader.isPdf ? null : reader.readAloud
         }
     }
 

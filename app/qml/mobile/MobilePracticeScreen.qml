@@ -19,10 +19,12 @@ Item
           subtitle: qsTr("Guess then reveal") },
         { key: "choice", iconSvg: Icons.Icons.exercise_choice.path,
           label: qsTr("Multiple choice"), subtitle: qsTr("Pick the right answer") },
-        { key: "correctincorrect", icon: "\u{2713}", label: qsTr("Correct / Incorrect"),
+        { key: "correctincorrect", iconSvg: Icons.Icons.check.path, label: qsTr("Correct / Incorrect"),
           subtitle: qsTr("Mark yourself honestly") },
         { key: "written", iconSvg: Icons.Icons.exercise_written.path, label: qsTr("Typed translation"),
           subtitle: qsTr("Type the translation") },
+        { key: "gap", iconSvg: Icons.Icons.edit.path, label: qsTr("Fill the gap"),
+          subtitle: qsTr("Type the missing word") },
         { key: "audio", iconSvg: Icons.Icons.speaker_on.path,
           label: qsTr("Audio transcription"), subtitle: qsTr("Listen and type") },
         { key: "speedmatch", iconSvg: Icons.Icons.exercise_speedmatch.path, label: qsTr("Speed matching"),
@@ -60,7 +62,6 @@ Item
                 {
                     required property var modelData
 
-                    icon: modelData.icon || ""
                     iconSvg: modelData.iconSvg || ""
                     label: modelData.label
                     subtitle: modelData.subtitle
@@ -83,7 +84,6 @@ Item
             sourceComponent: MobileExercisePracticeSheet
             {
                 exerciseKey: root.selectedExercise ? root.selectedExercise.key : ""
-                exerciseIcon: root.selectedExercise ? (root.selectedExercise.icon || "") : ""
                 exerciseIconSvg: root.selectedExercise ? (root.selectedExercise.iconSvg || "") : ""
                 exerciseLabel: root.selectedExercise ? root.selectedExercise.label : ""
                 exerciseSubtitle: root.selectedExercise ? root.selectedExercise.subtitle : ""

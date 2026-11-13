@@ -14,7 +14,102 @@
 #include <QCryptographicHash>
 #include <QDir>
 #include <QFile>
+#include <QFileInfo>
+#include <QScopeGuard>
+#include <QSettings>
 #include <QStorageInfo>
+#include <QUuid>
+
+#include <utility>
+#include <vector>
+
+namespace
+{
+    const QString SavedQueueKey{QStringLiteral("downloads/queue")};
+    const QString StagingPrefix{QStringLiteral("staging-")};
+    const QString AsideSuffix{QStringLiteral(".ikonika-old")};
+
+    constexpr QDir::Filters EveryEntry{QDir::AllEntries | QDir::NoDotAndDotDot | QDir::Hidden | QDir::System};
+
+    struct FSwappedEntry
+    {
+        QString Target;
+        QString Aside;
+        bool bHadOld = false;
+    };
+
+    bool IsRealDirectory(const QString& Path)
+    {
+        const QFileInfo Info(Path);
+
+        return Info.isDir() && !Info.isSymLink();
+    }
+
+    void RemoveEntry(const QString& Path)
+    {
+        if (IsRealDirectory(Path))
+        {
+            QDir(Path).removeRecursively();
+
+            return;
+        }
+
+        QFile::remove(Path);
+    }
+
+    void RollBack(const std::vector<FSwappedEntry>& Swapped)
+    {
+        for (auto Entry = Swapped.rbegin(); Entry != Swapped.rend(); ++Entry)
+        {
+            RemoveEntry(Entry->Target);
+
+            if (Entry->bHadOld && !QDir().rename(Entry->Aside, Entry->Target))
+            {
+                qCWarning(LogUpdate) << "Could not put back" << Entry->Target << "from" << Entry->Aside;
+            }
+        }
+    }
+
+    void RecoverIn(const QDir& Directory)
+    {
+        const QFileInfoList Entries = Directory.entryInfoList(EveryEntry);
+
+        for (const QFileInfo& Entry : Entries)
+        {
+            const QString Path = Entry.absoluteFilePath();
+
+            if (!Entry.fileName().endsWith(AsideSuffix))
+            {
+                if (IsRealDirectory(Path))
+                {
+                    RecoverIn(QDir(Path));
+                }
+
+                continue;
+            }
+
+            const QString Original = Path.left(Path.size() - AsideSuffix.size());
+
+            if (QFileInfo::exists(Original))
+            {
+                qCInfo(LogUpdate) << "Removing the old copy left beside" << Original;
+
+                RemoveEntry(Path);
+
+                continue;
+            }
+
+            if (QDir().rename(Path, Original))
+            {
+                qCWarning(LogUpdate) << "An install was interrupted, put back" << Original;
+
+                continue;
+            }
+
+            qCWarning(LogUpdate) << "Could not put back" << Original << "from" << Path;
+        }
+    }
+}
 
 AppPackageDownloader& AppPackageDownloader::Get()
 {
@@ -45,6 +140,11 @@ AppPackageDownloader::AppPackageDownloader(QObject* Parent)
 
     connect(Transfer.get(), &AppFileTransfer::failed, this,
             [this](const QString& Error) { Fail(Error); });
+
+    PendingRestore = QSettings().value(SavedQueueKey).toStringList();
+
+    connect(this, &AppPackageDownloader::queueChanged, this, &AppPackageDownloader::PersistQueue);
+    connect(this, &AppPackageDownloader::busyChanged, this, &AppPackageDownloader::PersistQueue);
 }
 
 AppPackageDownloader::~AppPackageDownloader() = default;
@@ -52,6 +152,11 @@ AppPackageDownloader::~AppPackageDownloader() = default;
 bool AppPackageDownloader::IsBusy() const
 {
     return !ActiveId.isEmpty();
+}
+
+bool AppPackageDownloader::HasPendingWork() const
+{
+    return IsBusy() || !Queue.isEmpty();
 }
 
 QString AppPackageDownloader::GetActiveId() const
@@ -100,6 +205,58 @@ void AppPackageDownloader::download(const QString& Id)
     qCInfo(LogUpdate) << "Queued" << Id << "; waiting behind" << Queue.size() - 1;
 
     StartNextInQueue();
+}
+
+void AppPackageDownloader::PersistQueue() const
+{
+    QStringList Wanted;
+
+    if (!ActiveId.isEmpty())
+    {
+        Wanted.append(ActiveId);
+    }
+
+    for (const QString& Id : Queue + PendingRestore)
+    {
+        if (!Wanted.contains(Id))
+        {
+            Wanted.append(Id);
+        }
+    }
+
+    QSettings Settings;
+
+    if (Wanted.isEmpty())
+    {
+        Settings.remove(SavedQueueKey);
+
+        return;
+    }
+
+    Settings.setValue(SavedQueueKey, Wanted);
+}
+
+void AppPackageDownloader::RestoreQueue()
+{
+    const QStringList Saved = std::exchange(PendingRestore, {});
+
+    for (const QString& Id : Saved)
+    {
+        const std::optional<FTCatalogPackage> Package = AppCatalog::Get().FindPackage(Id);
+
+        if (Package.has_value() && AppCatalog::GetInstalledVersion(Id) >= Package->Version)
+        {
+            qCInfo(LogUpdate) << "Not resuming" << Id << "because it is installed";
+
+            continue;
+        }
+
+        qCInfo(LogUpdate) << "Resuming" << Id << "after the app restarted";
+
+        download(Id);
+    }
+
+    PersistQueue();
 }
 
 void AppPackageDownloader::forget(const QString& Id)
@@ -241,6 +398,115 @@ void AppPackageDownloader::cancel()
     StartNextInQueue();
 }
 
+bool AppPackageDownloader::InstallArchive(const QString& ArchivePath, const QString& DestinationDirectory,
+                                          const QString& StagingRoot)
+{
+    const QString Staging = QDir(StagingRoot).filePath(StagingPrefix + QUuid::createUuid().toString(QUuid::WithoutBraces));
+
+    if (!QDir().mkpath(Staging))
+    {
+        qCWarning(LogUpdate) << "Cannot create the staging folder" << Staging;
+
+        return false;
+    }
+
+    const auto RemoveStaging = qScopeGuard([&Staging] { QDir(Staging).removeRecursively(); });
+
+    if (!ExtractZipArchive(ArchivePath.toStdString(), Staging.toStdString()))
+    {
+        return false;
+    }
+
+    const QFileInfoList Staged = QDir(Staging).entryInfoList(EveryEntry);
+
+    if (Staged.isEmpty())
+    {
+        qCWarning(LogUpdate) << "The archive held nothing to install:" << ArchivePath;
+
+        return false;
+    }
+
+    if (!QDir().mkpath(DestinationDirectory))
+    {
+        qCWarning(LogUpdate) << "Cannot create" << DestinationDirectory;
+
+        return false;
+    }
+
+    std::vector<FSwappedEntry> Swapped;
+
+    for (const QFileInfo& Entry : Staged)
+    {
+        FSwappedEntry Swap;
+        Swap.Target = QDir(DestinationDirectory).filePath(Entry.fileName());
+        Swap.Aside = Swap.Target + AsideSuffix;
+        Swap.bHadOld = QFileInfo::exists(Swap.Target);
+
+        if (QFileInfo::exists(Swap.Aside))
+        {
+            RemoveEntry(Swap.Aside);
+        }
+
+        if (Swap.bHadOld && !QDir().rename(Swap.Target, Swap.Aside))
+        {
+            qCWarning(LogUpdate) << "Cannot move the current" << Swap.Target << "out of the way";
+
+            RollBack(Swapped);
+
+            return false;
+        }
+
+        if (!QDir().rename(Entry.absoluteFilePath(), Swap.Target))
+        {
+            qCWarning(LogUpdate) << "Cannot move the new" << Swap.Target << "into place";
+
+            if (Swap.bHadOld)
+            {
+                QDir().rename(Swap.Aside, Swap.Target);
+            }
+
+            RollBack(Swapped);
+
+            return false;
+        }
+
+        Swapped.push_back(std::move(Swap));
+    }
+
+    for (const FSwappedEntry& Swap : Swapped)
+    {
+        if (Swap.bHadOld)
+        {
+            RemoveEntry(Swap.Aside);
+        }
+    }
+
+    return true;
+}
+
+void AppPackageDownloader::RecoverInterruptedInstalls(const QStringList& Roots, const QString& StagingRoot)
+{
+    const QDir Scratch(StagingRoot);
+
+    for (const QString& Name : Scratch.entryList({StagingPrefix + QLatin1Char('*')}, QDir::Dirs | QDir::NoDotAndDotDot))
+    {
+        qCInfo(LogUpdate) << "Removing a staging folder left by an install that did not finish:" << Name;
+
+        QDir(Scratch.filePath(Name)).removeRecursively();
+    }
+
+    for (const QString& Root : Roots)
+    {
+        RecoverIn(QDir(Root));
+    }
+}
+
+void AppPackageDownloader::RecoverInterruptedInstalls()
+{
+    RecoverInterruptedInstalls({AppPaths::InstalledDictionariesDirectory(), AppPaths::DownloadedModelsDirectory()},
+                               AppPaths::DownloadScratchDirectory());
+}
+
 bool AppPackageDownloader::Unpack(const FTCatalogPackage& Package,
                                  const QString& ArchiveFilePath)
 {
@@ -258,15 +524,11 @@ bool AppPackageDownloader::Unpack(const FTCatalogPackage& Package,
     // first and the same pair is opened again afterwards.
     const FTDictionaryPackage* Active = AppDictionary::Get().GetActivePackage();
 
-    const bool bReplacingOpenDictionary = Package.Kind == CatalogKindDictionary
-        && Active != nullptr
-        && Active->TargetLanguage == Package.TargetLanguage;
+    const bool bReplacingOpenDictionary = Active != nullptr && Package.Replaces(*Active);
 
     const FTLanguageRules Reopen = FTSettings::Get().GetLanguageRules();
 
-    const bool bReplacingOutdatedDictionary = Package.Kind == CatalogKindDictionary
-        && Active == nullptr
-        && AppDictionary::Get().IsOutdated(Package.TargetLanguage);
+    const bool bReplacingOutdatedDictionary = Active == nullptr && AppDictionary::Get().IsReplacedBy(Package);
 
     if (bReplacingOpenDictionary)
     {
@@ -278,7 +540,7 @@ bool AppPackageDownloader::Unpack(const FTCatalogPackage& Package,
         AppTranslator::Reset();
     }
 
-    if (!ExtractZipArchive(ArchiveFilePath.toStdString(), Destination.toStdString()))
+    if (!InstallArchive(ArchiveFilePath, Destination, AppPaths::DownloadScratchDirectory()))
     {
         if (bReplacingOpenDictionary)
         {

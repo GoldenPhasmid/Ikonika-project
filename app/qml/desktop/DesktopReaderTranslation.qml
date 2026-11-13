@@ -14,16 +14,22 @@ Item
     property real contentWidth: root.width
     property int maxStage: 1
     property bool selecting: false
+    property bool showTrigger: true
+    property bool readAloudOffered: false
 
     property bool open: false
     property bool searching: false
+    property bool pending: false
 
     signal addWordRequested(string word, string translation, string partOfSpeech, string hint)
     signal dictionaryRequested(string word)
+    signal readAloudRequested()
 
     readonly property int words: root.wordCount(root.text)
     readonly property bool brief: root.words > 0 && root.words <= AppMetrics.readerLookupWordLimit
-    readonly property var match: root.open && root.brief && !root.searching ? root.findMatch(root.lookup.results) : null
+    readonly property var matches: root.open && root.brief && !root.searching ? root.findMatches(root.lookup.results) : []
+    readonly property var shownMatches: root.rankMatches(root.matches, contextLookup.machineTranslation)
+    readonly property var match: root.shownMatches.length > 0 ? root.shownMatches[0] : null
     readonly property bool cardShown: root.match !== null
     readonly property bool translated: !root.lookup.translating && root.lookup.machineTranslation.length > 0
     readonly property bool downloadShown: !root.cardShown && !root.lookup.translating && !root.translated
@@ -38,21 +44,72 @@ Item
         return text.split(/\s+/).filter(part => part.length > 0).length
     }
 
-    function findMatch(results)
+    function findMatches(results)
     {
-        for (const row of results)
+        return results.filter(Row => Row.exact)
+    }
+
+    function translationStem(phrase)
+    {
+        if (phrase.length > 5)
         {
-            if (row.exact)
-            {
-                return row
-            }
+            return phrase.slice(0, -2)
         }
 
-        return null
+        return phrase.length > 3 ? phrase.slice(0, -1) : phrase
+    }
+
+    function supportedBy(row, contextText)
+    {
+        const words = contextText.split(/[\s.,;:!?"()\[\]«»—–-]+/).filter(Word => Word.length > 0)
+
+        return (row.translation || "").split(", ").some(function(Phrase)
+        {
+            const phrase = Phrase.trim().toLowerCase().replace(/^(to|a|an|the)\s+/, "")
+
+            if (phrase.length === 0)
+            {
+                return false
+            }
+
+            if (phrase.indexOf(" ") >= 0)
+            {
+                return contextText.indexOf(phrase) >= 0
+            }
+
+            const stem = root.translationStem(phrase)
+
+            return words.some(Word => Word === phrase || Word.startsWith(stem))
+        })
+    }
+
+    function rankMatches(rows, contextTranslation)
+    {
+        const contextText = contextTranslation.toLowerCase()
+
+        if (rows.length < 2 || contextText.length === 0)
+        {
+            return rows
+        }
+
+        const supported = rows.filter(Row => root.supportedBy(Row, contextText))
+
+        if (supported.length === 0 || supported.length === rows.length)
+        {
+            return rows
+        }
+
+        return supported.concat(rows.filter(Row => supported.indexOf(Row) < 0))
+    }
+
+    function expect()
+    {
+        root.pending = true
     }
 
     function show()
     {
+        root.pending = false
         console.info("Learner asked to translate", root.words, "words selected in the book")
 
         root.open = true
@@ -80,12 +137,21 @@ Item
         return true
     }
 
+    function containsPopup(position)
+    {
+        return box.visible && box.contains(box.mapFromItem(root, position))
+    }
+
+    function addMatch(row)
+    {
+        root.addWordRequested(row.word, (row.translation || "").split(", ")[0], row.partOfSpeech || "", root.sentence)
+    }
+
     function addWord()
     {
         if (root.match !== null)
         {
-            root.addWordRequested(root.match.word, (root.match.translation || "").split(", ")[0],
-                                  root.match.partOfSpeech || "", root.sentence)
+            root.addMatch(root.match)
 
             return
         }
@@ -108,10 +174,22 @@ Item
         root.lookup.translate(root.text)
     }
 
+    function translateContext()
+    {
+        contextLookup.translate("")
+
+        if (root.matches.length > 1 && root.sentence.trim().length > 0)
+        {
+            console.info("Translating the sentence to rank", root.matches.length, "dictionary matches")
+            contextLookup.translate(root.sentence)
+        }
+    }
+
     onTextChanged:
     {
         root.open = false
         root.searching = false
+        contextLookup.translate("")
     }
     onGeometryChanged: if (root.geometry === null) root.open = false
 
@@ -137,11 +215,20 @@ Item
         {
             root.searching = false
 
-            if (root.lookup.results.length > 0 && root.findMatch(root.lookup.results) === null)
+            if (root.lookup.results.length > 0 && root.findMatches(root.lookup.results).length === 0)
             {
                 root.lookup.translate(root.text)
+
+                return
             }
+
+            root.translateContext()
         }
+    }
+
+    DictionaryController
+    {
+        id: contextLookup
     }
 
     DesktopButton
@@ -150,7 +237,7 @@ Item
 
         objectName: "reader_translate"
 
-        visible: !root.open && !root.selecting && root.onScreen && root.available
+        visible: root.showTrigger && !root.open && !root.pending && !root.selecting && root.onScreen && root.available
         x: Math.max(AppMetrics.gapSmall, Math.min(root.width - trigger.width - AppMetrics.gapSmall, root.geometry ? root.geometry.endX : 0))
         y: root.geometry ? (root.geometry.bottom + trigger.height + AppMetrics.gapSmall <= root.height
             ? root.geometry.bottom + AppMetrics.gapSmall
@@ -239,25 +326,54 @@ Item
             anchors.margins: box.padding
             spacing: AppMetrics.gapSmall
 
-            DesktopWordRow
+            ColumnLayout
             {
-                objectName: "reader_translation_card"
-
                 Layout.fillWidth: true
-                Layout.leftMargin: box.cardInset
-                Layout.rightMargin: box.cardInset
-                Layout.topMargin: box.cardInset
                 visible: root.cardShown
+                spacing: 0
 
-                word: root.match ? root.match.displayWord || root.match.word : ""
-                translation: root.match ? root.match.translation || "" : ""
-                cefrLevel: root.match ? root.match.cefrLevel || "" : ""
-                verbGroup: root.match ? root.match.verbGroup || "" : ""
-                stage: root.match && root.match.stage !== undefined ? root.match.stage : -1
-                completed: root.match ? !!root.match.completed : false
-                maxStage: root.maxStage
+                Repeater
+                {
+                    model: root.shownMatches
 
-                onClicked: root.addWord()
+                    delegate: DesktopWordRow
+                    {
+                        required property var modelData
+                        required property int index
+
+                        objectName: "reader_translation_card_" + index
+
+                        Layout.fillWidth: true
+                        Layout.leftMargin: box.cardInset
+                        Layout.rightMargin: box.cardInset
+                        Layout.topMargin: index === 0 ? box.cardInset : 0
+
+                        word: modelData.displayWord || modelData.word
+                        translation: modelData.translation || ""
+                        partOfSpeech: root.shownMatches.length > 1 ? (modelData.partOfSpeechLabel || "") : ""
+                        verbGroup: modelData.verbGroup || ""
+                        stage: modelData.stage !== undefined ? modelData.stage : -1
+                        completed: !!modelData.completed
+                        maxStage: root.maxStage
+
+                        onClicked: root.addMatch(modelData)
+                    }
+                }
+            }
+
+            DesktopMachineTranslation
+            {
+                objectName: "reader_translation_form"
+
+                lookup: root.lookup
+                term: root.text
+                rowInset: box.cardInset
+                visible: root.cardShown && root.lookup.formTerm.length > 0
+
+                onAddRequested: function(word, translation)
+                {
+                    root.addWordRequested(word, translation, "phrase", root.sentence)
+                }
             }
 
             DesktopLabel
@@ -275,43 +391,14 @@ Item
                 textFormat: Text.PlainText
             }
 
-            DesktopButton
+            DesktopTranslationDownload
             {
                 id: download
 
-                objectName: "reader_translation_download"
+                buttonName: "reader_translation_download"
 
                 Layout.fillWidth: true
-                visible: root.downloadShown && !AppMachineTranslation.downloading
-                focusPolicy: Qt.NoFocus
-                tone: "primary"
-                iconName: "cloud_download"
-                text: AppMachineTranslation.bytes > 0
-                    ? qsTr("Download translation · %1 MB").arg(Math.round(AppMachineTranslation.bytes / (1024 * 1024)))
-                    : qsTr("Download translation")
-
-                onClicked: AppMachineTranslation.download()
-            }
-
-            RowLayout
-            {
-                Layout.fillWidth: true
-                visible: root.downloadShown && AppMachineTranslation.downloading
-                spacing: AppMetrics.gapSmall
-
-                DesktopProgressBar
-                {
-                    Layout.fillWidth: true
-                    fill: AppTheme.colourAccent
-                    progress: AppMachineTranslation.progress
-                }
-
-                DesktopLabel
-                {
-                    text: qsTr("%1%").arg(Math.round(AppMachineTranslation.progress * 100))
-                    font.pixelSize: AppMetrics.fontSmall
-                    color: AppTheme.colourMuted
-                }
+                visible: root.downloadShown
             }
 
             RowLayout
@@ -333,6 +420,19 @@ Item
                     text: qsTr("Listen")
 
                     onClicked: root.lookup.speak(root.cardShown ? root.match.word : root.text)
+                }
+
+                DesktopIconButton
+                {
+                    objectName: "reader_translation_read_aloud"
+
+                    visible: root.readAloudOffered
+                    focusPolicy: Qt.NoFocus
+                    iconName: "headphones"
+                    iconColour: AppTheme.colourMuted
+                    text: qsTr("Read aloud from here")
+
+                    onClicked: root.readAloudRequested()
                 }
 
                 DesktopIconButton

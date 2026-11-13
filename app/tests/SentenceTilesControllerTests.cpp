@@ -117,12 +117,13 @@ TEST_CASE("Replaying speaks the sentence again", "[sentencetiles]")
     CHECK(SpeechGuard.Mock.LastText == "Je mange une pomme rouge.");
 }
 
-TEST_CASE("The tiles exercise speaks at the rate it was given", "[sentencetiles]")
+TEST_CASE("The tiles exercise speaks at the sentence speech rate", "[sentencetiles]")
 {
     FAppSpeechGuard SpeechGuard;
+    SpeechGuard.Mock.SentenceSpeed = 0.75f;
 
     SentenceTilesController Controller;
-    Controller.SetSpeechRateScale(0.75f);
+    Controller.SetSpeaksSentences(true);
     Controller.Start(MakeApple());
 
     CHECK(SpeechGuard.Mock.LastRateScale == 0.75f);

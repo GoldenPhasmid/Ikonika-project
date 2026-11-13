@@ -25,6 +25,7 @@ Item
 
         exerciseName: qsTr("Forms")
         store: root.store
+        controller: root.controller
 
         progress: root.controller.exerciseProgress
 

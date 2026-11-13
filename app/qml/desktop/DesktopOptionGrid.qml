@@ -11,6 +11,7 @@ GridLayout
     property var verbGroups: []
     property var stateColours: []
     property var cellOpacities: []
+    property var filledCells: []
     property var keyHints: []
     property bool interactive: true
     property bool styledText: false
@@ -57,6 +58,7 @@ GridLayout
             readonly property bool isAnswered: cell.isCorrect || cell.isWrong
             readonly property string keyHint: cell.index < root.keyHints.length ? root.keyHints[cell.index] : ""
             readonly property bool isVoice: root.voiceColumn && cell.index % 2 === 0 && !cell.isCorrect
+            readonly property bool isFilled: cell.index < root.filledCells.length && !!root.filledCells[cell.index]
 
             property real shakeOffset: 0
 
@@ -64,7 +66,7 @@ GridLayout
             Layout.preferredWidth: 1
             Layout.preferredHeight: root.cellHeight
 
-            leftPadding: AppMetrics.gapMedium + (cell.keyHint.length > 0 ? AppMetrics.keyHintSize + AppMetrics.gapCompact : 0)
+            leftPadding: AppMetrics.gapMedium + (cell.keyHint.length > 0 ? hintBox.implicitWidth + AppMetrics.gapCompact : 0)
             rightPadding: AppMetrics.gapMedium + AppMetrics.keyHintSize
 
             hoverEnabled: true
@@ -104,7 +106,7 @@ GridLayout
                 id: cellText
 
                 text: cell.isVoice ? "" : (root.styledText ? FormsMarkup.colourEndings(cell.modelData, AppTheme.colourAccent) : cell.modelData)
-                color: AppTheme.verbGroupColours[root.verbGroups[cell.index]] ?? AppTheme.colourText
+                color: cell.isFilled ? AppTheme.colourPanel : (AppTheme.verbGroupColours[root.verbGroups[cell.index]] ?? AppTheme.colourText)
                 textFormat: root.styledText ? Text.StyledText : Text.PlainText
                 font.pixelSize: AppMetrics.sessionOptionSize
                 font.weight: Font.Medium
@@ -127,6 +129,11 @@ GridLayout
                         return Qt.tint(AppTheme.colourWell, AppTheme.faded(cell.stateColour, AppTheme.alphaSoft))
                     }
 
+                    if (cell.isFilled)
+                    {
+                        return AppTheme.colourText
+                    }
+
                     return cell.down && root.interactive ? AppTheme.colourPage : AppTheme.colourWell
                 }
 
@@ -138,13 +145,16 @@ GridLayout
 
                 DesktopKeyHint
                 {
+                    id: hintBox
+
                     visible: cell.keyHint.length > 0
                     anchors.left: parent.left
                     anchors.leftMargin: AppMetrics.gapMedium
                     anchors.verticalCenter: parent.verticalCenter
                     key: cell.keyHint
                     tint: cell.isAnswered || cell.isSelected ? cell.stateColour
-                                                             : (cell.hovered && root.interactive ? AppTheme.colourSubtle : AppTheme.colourMuted)
+                        : cell.isFilled ? AppTheme.colourPanel
+                        : (cell.hovered && root.interactive ? AppTheme.colourSubtle : AppTheme.colourMuted)
                 }
 
                 DesktopWaveform

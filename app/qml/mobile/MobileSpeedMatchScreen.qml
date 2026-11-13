@@ -144,6 +144,7 @@ Item
 
         exerciseName: qsTr("Match a pair")
         store: root.store
+        controller: root.controller
 
         progress: root.controller.exerciseProgress
         hasActions: root.manualAdvance
@@ -202,7 +203,20 @@ Item
                 Layout.fillWidth: true
 
                 cardModel: root.cells
-                verbGroups: root.controller ? root.controller.leftVerbGroups.flatMap(group => [group, ""]) : []
+                verbGroups:
+                {
+                    const groups = []
+
+                    if (root.controller)
+                    {
+                        for (const group of root.controller.leftVerbGroups)
+                        {
+                            groups.push(group, "")
+                        }
+                    }
+
+                    return groups
+                }
                 fitHeight: contentArea.secondaryHeight
                 styledText: root.styledRight
                 interactive: root.controller ? root.controller.awaitingAnswer : false

@@ -26,6 +26,8 @@ struct FTReaderDocumentRow
     double LastScrollY = 0.0;
     std::string CloudId;
     int64_t PositionCount = 0;
+    int64_t ReadAloudParagraph = -1;
+    int64_t ReadAloudCharacter = 0;
     bool bExists = true;
 };
 
@@ -77,6 +79,9 @@ public:
     bool SetCloudId(const std::string& Id, const std::string& CloudId);
 
     bool SetPositionCount(const std::string& Id, int64_t PositionCount);
+
+    /** Where read aloud last started a sentence, so the next Play can continue there. */
+    bool SetReadAloudPlace(const std::string& Id, int64_t Paragraph, int64_t Character);
 
     bool SetFilePath(const std::string& Id, const std::string& FilePath);
 

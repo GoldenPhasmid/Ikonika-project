@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
+import "../DictionaryTenseNames.js" as TenseNames
 
 ColumnLayout
 {
@@ -8,6 +9,7 @@ ColumnLayout
     property var forms: ({ kind: "none" })
     property string chosenKey: ""
     property string conjugationUrl: ""
+    property string synonymsUrl: ""
 
     onFormsChanged: root.chosenKey = root.forms.matchedKey || ""
 
@@ -37,15 +39,12 @@ ColumnLayout
     TextMetrics
     {
         id: tenseLabelMetrics
-        text: root.subjunctiveNames.concat(root.tenseNames).reduce((longest, label) => label.length > longest.length ? label : longest, "")
+        text: TenseNames.longest(root.forms.language)
         font.family: AppMetrics.fontFamily
         font.pixelSize: AppMetrics.fontSmall
         font.weight: Font.Medium
     }
 
-    readonly property var tenseNames: ["", qsTr("Present"), qsTr("Imperfect"), qsTr("Simple past"), qsTr("Future")]
-    readonly property var subjunctiveNames: ["", qsTr("Subjunctive"), qsTr("Imperfect subjunctive"), "",
-        qsTr("Future subjunctive")]
     readonly property var nonfiniteNames: ["", "", "", "", "", "", qsTr("Gerund"), qsTr("Present participle"),
         qsTr("Past participle")]
 
@@ -65,7 +64,7 @@ ColumnLayout
             {
                 listed.push({ key: mood.mood + "-" + tense.tense, label: root.nameOf(mood.mood, tense.tense),
                               marked: tense.marked, matches: tense.matches || [], matched: !!tense.matched,
-                              description: (mood.mood === 3 ? qsTr("Present conditional") : mood.mood === 4 ? qsTr("Present imperative") : mood.mood === 2 && tense.tense === 1 ? qsTr("Present subjunctive") : root.nameOf(mood.mood, tense.tense)), row: Math.floor(place / root.tenseColumns),
+                              description: root.nameOf(mood.mood, tense.tense), row: Math.floor(place / root.tenseColumns),
                               column: place % root.tenseColumns })
                 ++place
             }
@@ -156,22 +155,7 @@ ColumnLayout
 
     function nameOf(mood, tense)
     {
-        if (mood === 2)
-        {
-            return root.subjunctiveNames[tense] || qsTr("Subjunctive")
-        }
-
-        if (mood === 3)
-        {
-            return qsTr("Conditional")
-        }
-
-        if (mood === 4)
-        {
-            return qsTr("Imperative")
-        }
-
-        return root.tenseNames[tense] || qsTr("Present")
+        return TenseNames.name(root.forms.language, mood, tense)
     }
 
     function cell(cueIndex, form, matched)
@@ -189,9 +173,19 @@ ColumnLayout
         DesktopSectionLabel { Layout.fillWidth: true; text: root.verb ? qsTr("Conjugation") : qsTr("Forms") }
         DesktopButton
         {
+            objectName: "dictionary_synonyms"
+            visible: root.verb && root.synonymsUrl.length > 0
+            text: qsTr("Synonyms")
+            iconName: "external_link"
+            Accessible.name: qsTr("Open synonyms on Reverso")
+            onClicked: Qt.openUrlExternally(root.synonymsUrl)
+        }
+
+        DesktopButton
+        {
             objectName: "dictionary_reverso"
             visible: root.verb && root.conjugationUrl.length > 0
-            text: qsTr("Reverso")
+            text: qsTr("Conjugations")
             iconName: "external_link"
             Accessible.name: qsTr("Open conjugation on Reverso")
             onClicked: Qt.openUrlExternally(root.conjugationUrl)

@@ -36,8 +36,9 @@ Item
         {
             id: footerRow
 
-            anchors.right: parent.right
-            spacing: AppMetrics.gapMedium
+            anchors.horizontalCenter: parent.horizontalCenter
+            width: Math.min(footerRow.implicitWidth, footerArea.width)
+            spacing: AppMetrics.gapSmall
         }
     }
 }

@@ -1,0 +1,1190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mobile · Discover</title>
+  <!-- Self-contained, unlike the other fragments: it carries real dictionary rows and runs the
+       selection model, so it has to open on its own. Tokens are copied from ../v3/wireframe.css. -->
+  <style>
+    :root {
+      --wf-ink: #111;
+      --wf-mid: #888;
+      --wf-soft: #ccc;
+      --wf-faint: #eee;
+      --wf-line: #d0d0d0;
+      --wf-paper: #fafafa;
+      --wf-panel: #ffffff;
+      --wf-canvas: #f2f2f2;
+      --wf-new: #5b6270;
+      --wf-learning: #2f6fe0;
+      --wf-done: #2f9563;
+      --wf-new-text: #5b6270;
+      --wf-learning-text: #2b66d0;
+      --wf-done-text: #237a50;
+      --wf-font: system-ui, sans-serif;
+      --wf-mono: ui-monospace, "Cascadia Mono", monospace;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      background: var(--wf-canvas);
+      color: var(--wf-ink);
+      font-family: var(--wf-font);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    button { font-family: inherit; color: inherit; }
+
+    .stage {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 24px;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 24px;
+    }
+
+    .phone {
+      display: flex;
+      flex-direction: column;
+      width: 412px;
+      height: min(915px, calc(100vh - 48px));
+      min-height: 680px;
+      background: var(--wf-paper);
+      border: 1px solid var(--wf-line);
+      overflow: hidden;
+    }
+
+    .phone-topbar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      height: 56px;
+      flex: none;
+      padding: 0 16px;
+      border-bottom: 1px solid var(--wf-line);
+      background: var(--wf-panel);
+    }
+
+    .phone-topbar .title {
+      flex: 1;
+      font-size: 17px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .icon-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 44px;
+      height: 44px;
+      flex: none;
+      border: 1px solid transparent;
+      background: transparent;
+      font-size: 19px;
+      cursor: pointer;
+    }
+
+    .scroll {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 16px;
+      overflow: auto;
+    }
+
+    .footer {
+      flex: none;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 12px 16px 16px;
+      border-top: 1px solid var(--wf-line);
+      background: var(--wf-panel);
+    }
+
+    .segments { display: flex; gap: 4px; flex: none; }
+    .segments i { flex: 1; height: 4px; border-radius: 2px; background: var(--wf-faint); }
+    .segments i.done { background: var(--wf-ink); }
+
+    .tray {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      min-height: 26px;
+      flex: none;
+      overflow-x: auto;
+      font-size: 12px;
+      color: var(--wf-mid);
+      white-space: nowrap;
+    }
+
+    .mini {
+      padding: 3px 8px;
+      border: 1px solid var(--wf-learning);
+      border-radius: 2px;
+      color: var(--wf-learning-text);
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .card {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      padding: 20px;
+      background: var(--wf-panel);
+      border: 1px solid var(--wf-line);
+      border-radius: 2px;
+    }
+
+    .tag {
+      align-self: flex-start;
+      padding: 2px 8px;
+      border: 1px solid var(--wf-line);
+      border-radius: 2px;
+      font-size: 11px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--wf-mid);
+    }
+
+    .meta { font-size: 13px; color: var(--wf-mid); }
+    .center { text-align: center; }
+
+    .word {
+      font-size: 38px;
+      font-weight: 500;
+      letter-spacing: -0.01em;
+      text-align: center;
+      line-height: 1.15;
+    }
+
+    .prompt-native { font-size: 26px; font-weight: 500; text-align: center; }
+    .sentence { font-size: 19px; line-height: 1.45; }
+    .sentence mark, .clue mark { background: none; color: inherit; font-weight: 600; border-bottom: 2px solid var(--wf-ink); }
+    .sub { font-size: 14px; line-height: 1.4; color: var(--wf-mid); }
+
+    .clue {
+      padding: 6px 0 6px 12px;
+      border-left: 2px solid var(--wf-soft);
+      font-size: 16px;
+      line-height: 1.45;
+    }
+
+    .options { display: grid; gap: 8px; }
+
+    .opt {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      min-height: 48px;
+      padding: 10px 14px;
+      border: 1px solid var(--wf-line);
+      border-radius: 2px;
+      background: var(--wf-panel);
+      font-size: 16px;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .opt:hover:not(:disabled) { border-color: var(--wf-mid); }
+    .opt:disabled { cursor: default; }
+    .opt.gone { opacity: 0.3; text-decoration: line-through; }
+    .opt.right { border: 2px solid var(--wf-done); color: var(--wf-done-text); }
+    .opt.picked { border: 2px solid var(--wf-ink); }
+    .opt small { font-size: 12px; color: var(--wf-mid); }
+
+    .reveal {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding-top: 14px;
+      border-top: 1px solid var(--wf-line);
+    }
+
+    .verdict { font-size: 13px; font-weight: 600; }
+    .verdict.known { color: var(--wf-done-text); }
+    .verdict.almost, .verdict.new { color: var(--wf-learning-text); }
+
+    .headline { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+    .headline b { font-size: 22px; font-weight: 600; }
+    .headline .ph { font-family: var(--wf-mono); font-size: 13px; color: var(--wf-mid); }
+    .speak { border: 0; background: none; cursor: pointer; font-size: 16px; padding: 0; }
+
+    .seg3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      border: 1px solid var(--wf-line);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .seg3 button {
+      height: 36px;
+      border: 0;
+      border-left: 1px solid var(--wf-line);
+      background: var(--wf-panel);
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    .seg3 button:first-child { border-left: 0; }
+    .seg3 button.on.learn { background: var(--wf-learning); color: #fff; }
+    .seg3 button.on.know { background: var(--wf-done); color: #fff; }
+    .seg3 button.on.skip { background: var(--wf-new); color: #fff; }
+    .seg3.small button { height: 28px; font-size: 12px; }
+
+    .btn {
+      height: 48px;
+      padding: 0 16px;
+      border: 1px solid var(--wf-line);
+      border-radius: 2px;
+      background: var(--wf-panel);
+      font-size: 15px;
+      cursor: pointer;
+    }
+
+    .btn.primary { background: var(--wf-ink); border-color: var(--wf-ink); color: #fff; }
+    .btn.ghost { border-color: transparent; background: transparent; color: var(--wf-mid); }
+
+    .section-label {
+      margin-top: 4px;
+      font-size: 12px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--wf-mid);
+    }
+
+    .row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 14px;
+      background: var(--wf-panel);
+      border: 1px solid var(--wf-line);
+      border-radius: 2px;
+      cursor: pointer;
+    }
+
+    .row .grow { flex: 1; min-width: 0; }
+    .row .name { font-size: 16px; }
+    .row .line2 { font-size: 13px; color: var(--wf-mid); margin-top: 2px; }
+    .check {
+      width: 22px; height: 22px; flex: none;
+      border: 1px solid var(--wf-mid); border-radius: 2px;
+      display: flex; align-items: center; justify-content: center; font-size: 14px;
+    }
+    .check.on { background: var(--wf-ink); border-color: var(--wf-ink); color: #fff; }
+
+    .bar { height: 4px; background: var(--wf-faint); border-radius: 2px; overflow: hidden; margin-top: 6px; }
+    .bar i { display: block; height: 100%; background: var(--wf-done); }
+
+    .result {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 10px 12px;
+      background: var(--wf-panel);
+      border: 1px solid var(--wf-line);
+      border-radius: 2px;
+    }
+
+    .result .top { display: flex; align-items: baseline; gap: 8px; }
+    .result .top b { font-size: 16px; font-weight: 600; }
+    .result .top span { font-size: 14px; color: var(--wf-mid); flex: 1; }
+    .result .top em { font-style: normal; font-size: 11px; color: var(--wf-learning-text); white-space: nowrap; }
+
+    .stepper { display: flex; align-items: center; gap: 0; }
+    .stepper button { width: 40px; height: 36px; border: 1px solid var(--wf-line); background: var(--wf-panel); cursor: pointer; font-size: 16px; }
+    .stepper span { width: 48px; text-align: center; font-size: 16px; }
+
+    .proto {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 12px;
+      border: 1px dashed var(--wf-mid);
+      border-radius: 2px;
+      font-size: 13px;
+      color: var(--wf-mid);
+    }
+
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .chip {
+      padding: 6px 10px;
+      border: 1px solid var(--wf-line);
+      border-radius: 2px;
+      background: var(--wf-panel);
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .chip.on { background: var(--wf-ink); border-color: var(--wf-ink); color: #fff; }
+
+    .note {
+      padding: 10px 12px;
+      border: 1px dashed var(--wf-mid);
+      font-size: 13px;
+      line-height: 1.45;
+      color: var(--wf-mid);
+    }
+
+    .model {
+      width: 300px;
+      padding: 14px;
+      background: var(--wf-panel);
+      border: 1px dashed var(--wf-mid);
+      font-family: var(--wf-mono);
+      font-size: 12px;
+      line-height: 1.5;
+      color: #444;
+    }
+
+    .model h3 { margin: 0 0 8px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--wf-mid); }
+    .model .k { color: var(--wf-mid); }
+    .model ol { margin: 6px 0 0; padding-left: 20px; }
+    .model .curve { display: flex; align-items: flex-end; gap: 1px; height: 40px; margin-top: 6px; }
+    .model .curve i { flex: 1; background: var(--wf-soft); }
+  </style>
+</head>
+<body>
+  <div class="stage">
+    <div class="phone" id="phone"></div>
+    <aside class="model" id="model"></aside>
+  </div>
+
+<script>
+const DATA = {"Nourriture":[{"word":"eau","pos":"noun","gender":1,"rank":73,"phonetic":"/o/","sense":{"gist":"liquide","definition":"A transparent liquid with no color or smell that forms rivers, seas and rain, and that people drink.","example":"Je bois un verre d'eau chaque matin.","exampleTranslation":"I drink a glass of water every morning.","translations":["water","aqua","liquid water or steam","hydrogen oxide"],"weight":0.827},"others":[],"allTranslations":["aqua","cooling water","hydrogen oxide","liquid water or steam","rain","saliva","spittle","sweat","water","water for radiator"],"senseCount":5},{"word":"verre","pos":"noun","gender":0,"rank":137,"phonetic":"/vɛʁ/","sense":{"gist":"récipient","definition":"A small container that people drink from.","example":"Il a posé son verre sur la table.","exampleTranslation":"He put his glass on the table.","translations":["glass","tumbler"],"weight":0.65},"others":[{"gist":"boisson","definition":"A drink, often alcoholic, that one has with someone.","example":"On va prendre un verre après le travail ?","exampleTranslation":"Shall we go for a drink after work?","translations":["drink"],"weight":0.511}],"allTranslations":["drink","glass","glasses","glassful","lens","tumbler"],"senseCount":5},{"word":"table","pos":"noun","gender":1,"rank":153,"phonetic":"/tabl/","sense":{"gist":"meuble","definition":"A piece of furniture made of a flat top on legs.","example":"Nous mangeons à la table de la cuisine.","exampleTranslation":"We eat at the kitchen table.","translations":["table"],"weight":0.117},"others":[],"allTranslations":["systematic list of content","table"],"senseCount":2},{"word":"café","pos":"noun","gender":0,"rank":157,"phonetic":"/ka.fe/","sense":{"gist":"boisson","definition":"A hot, bitter drink made from roasted beans.","example":"Je prends un café noir chaque matin.","exampleTranslation":"I have a black coffee every morning.","translations":["coffee"],"weight":0.796},"others":[{"gist":"établissement","definition":"A public place where people drink and can sit.","example":"On se retrouve au café en face de la gare.","exampleTranslation":"Let's meet at the café opposite the station.","translations":["cafe","café","coffeehouse","coffee shop"],"weight":0.072}],"allTranslations":["cafe","café","coffee","coffee bean","coffee colour","coffee house","coffee shop","coffeehouse","public house"],"senseCount":4},{"word":"carte","pos":"noun","gender":1,"rank":187,"phonetic":"/kaʁt/","sense":{"gist":"restaurant","definition":"The list of dishes offered in a restaurant.","example":"Le serveur nous apporte la carte des desserts.","exampleTranslation":"The waiter brings us the dessert menu.","translations":["menu","bill of fare"],"weight":0.005},"others":[{"gist":"carton","definition":"A small rectangle of paper or stiff plastic carrying information or used for playing.","example":"Il a sorti sa carte de crédit pour payer.","exampleTranslation":"He took out his card to pay.","translations":["card","carte","visiting card","visiting_card"],"weight":0.647},{"gist":"plan","definition":"A drawn representation of an area on a flat surface.","example":"Nous avons déplié la carte pour trouver la route.","exampleTranslation":"We unfolded the map to find the route.","translations":["map","chart","landmap"],"weight":0.166}],"allTranslations":["bill of fare","card","carte","chart","landmap","letter-card","map","menu","postal card","postcard","visiting card","visiting_card"],"senseCount":4},{"word":"faim","pos":"noun","gender":1,"rank":217,"phonetic":"/fɛ̃/","sense":{"gist":"appétit","definition":"The need or desire to eat that one feels.","example":"J'ai très faim après le sport.","exampleTranslation":"I'm very hungry after exercising.","translations":["hunger"],"weight":0.061},"others":[],"allTranslations":["hunger","starvation"],"senseCount":2},{"word":"cuisine","pos":"noun","gender":1,"rank":266,"phonetic":"/kɥi.zin/","sense":{"gist":"pièce","definition":"The room in a house or ship where meals are prepared.","example":"Nous mangeons dans la cuisine ce soir.","exampleTranslation":"We are eating in the kitchen tonight.","translations":["kitchen","galley"],"weight":0.581},"others":[{"gist":"préparation","definition":"The activity of preparing meals.","example":"Mon père fait la cuisine tous les dimanches.","exampleTranslation":"My father does the cooking every Sunday.","translations":["cooking","cookery"],"weight":0.144}],"allTranslations":["cookery","cooking","cuisine","culinary art or cuisine","galley","kitchen"],"senseCount":3},{"word":"vin","pos":"noun","gender":0,"rank":281,"phonetic":"/vɛ̃/","sense":{"gist":"boisson","definition":"An alcoholic drink made from fermented grapes.","example":"Nous buvons un verre de vin rouge.","exampleTranslation":"We are having a glass of red wine.","translations":["wine"],"weight":0.863},"others":[],"allTranslations":["wine"],"senseCount":1},{"word":"dîner","pos":"noun","gender":0,"rank":300,"phonetic":"/di.ne/","sense":{"gist":"soir","definition":"The meal eaten in the evening.","example":"Nous prenons le dîner à vingt heures.","exampleTranslation":"We have dinner at eight o'clock.","translations":["dinner","supper","evening meal"],"weight":0.848},"others":[],"allTranslations":["dinner","dinner party","evening meal","lunch","midday meal","supper"],"senseCount":3},{"word":"poisson","pos":"noun","gender":0,"rank":334,"phonetic":"/pwa.sɔ̃/","sense":{"gist":"animal","definition":"An aquatic vertebrate animal that breathes through gills.","example":"Le poisson nage dans l'aquarium.","exampleTranslation":"The fish swims in the aquarium.","translations":["fish"],"weight":0.87},"others":[],"allTranslations":["fish","pisces"],"senseCount":2},{"word":"goût","pos":"noun","gender":0,"rank":341,"phonetic":"/ɡu/","sense":{"gist":"saveur","definition":"The sensation a food produces on the tongue.","example":"Cette soupe a un goût de citron.","exampleTranslation":"This soup has a lemon flavor.","translations":["taste","flavor","flavour","relish"],"weight":1.417},"others":[],"allTranslations":["appetite","discrimination","flavor","flavour","gusto","liking","relish","taste"],"senseCount":3},{"word":"bière","pos":"noun","gender":1,"rank":345,"phonetic":"/bjɛʁ/","sense":{"gist":"boisson","definition":"An alcoholic drink made from fermented barley and hops.","example":"Il boit une bière fraîche à la terrasse.","exampleTranslation":"He is drinking a cold beer on the terrace.","translations":["beer","ale","brew"],"weight":0.91},"others":[],"allTranslations":["ale","beer","bier","brew","coffin"],"senseCount":2},{"word":"marché","pos":"noun","gender":0,"rank":349,"phonetic":"/maʁ.ʃe/","sense":{"gist":"lieu","definition":"A public place where traders sell goods, often outdoors.","example":"Je vais au marché tous les samedis matin.","exampleTranslation":"I go to the market every Saturday morning.","translations":["market","marketplace","mart","market place"],"weight":0.289},"others":[{"gist":"accord","definition":"A commercial agreement by which something is bought or sold at a certain price.","example":"Ils ont conclu un marché avec ce fournisseur.","exampleTranslation":"They struck a deal with that supplier.","translations":["deal","bargain","contract"],"weight":0.228}],"allTranslations":["adjudication","bargain","contract","deal","market","market place","marketplace","mart"],"senseCount":3},{"word":"glace","pos":"noun","gender":1,"rank":351,"phonetic":"/ɡlas/","sense":{"gist":"dessert","definition":"A sweet frozen dessert, often served in a scoop or on a stick.","example":"Je voudrais une glace à la fraise, s'il vous plaît.","exampleTranslation":"I would like a strawberry ice cream, please.","translations":["ice cream","ice-cream","popsicle","icecream"],"weight":0.083},"others":[{"gist":"gel","definition":"Water that has frozen solid because of the cold.","example":"Il y a de la glace sur le lac.","exampleTranslation":"There is ice on the lake.","translations":["ice"],"weight":0.744}],"allTranslations":["glass","glasses","ice","ice cream","ice-cream","ice_cream","icecream","looking glass","mirror","pane","plate glass","popsicle","windowpane"],"senseCount":4},{"word":"bouteille","pos":"noun","gender":1,"rank":378,"phonetic":"/bu.tɛj/","sense":{"gist":"récipient","definition":"A narrow-necked container made to hold a liquid.","example":"Il a acheté une bouteille d'eau au magasin.","exampleTranslation":"He bought a bottle of water at the shop.","translations":["bottle","flask","flagon"],"weight":0.859},"others":[],"allTranslations":["alcohol","bottle","cylinder","experience","flagon","flask"],"senseCount":4},{"word":"bar","pos":"noun","gender":0,"rank":381,"phonetic":"/baʁ/","sense":{"gist":"café","definition":"A public place where people drink beverages, often alcoholic ones.","example":"Nous avons retrouvé nos amis dans un bar du centre.","exampleTranslation":"We met our friends at a bar downtown.","translations":["bar","pub","lounge","saloon"],"weight":0.271},"others":[],"allTranslations":["bar","barroom","barye","bass","buffet","counter","lounge","pub","saloon","sea bass","seabass","taproom"],"senseCount":4},{"word":"chef","pos":"noun","gender":0,"rank":398,"phonetic":"/ʃɛf/","sense":{"gist":"cuisinier","definition":"A professional cook who runs the kitchen of a restaurant.","example":"Le chef prépare un menu spécial ce soir.","exampleTranslation":"The chef is preparing a special menu tonight.","translations":["chef","a culinary chef","chief cook","head cook"],"weight":0.015},"others":[{"gist":"supérieur","definition":"A person who leads, commands or has authority over a group or department.","example":"Mon chef m'a demandé de finir ce rapport.","exampleTranslation":"My boss asked me to finish this report.","translations":["chief","leader","boss","head"],"weight":0.64}],"allTranslations":["a boss","a culinary chef","article","boss","charge","chef","chief","chief cook","chieftain","count of indictment","governor","head","head cook","headman","leader","manager","principal motive","principal point","skipper","super","superintendent","top dog"],"senseCount":4},{"word":"entrée","pos":"noun","gender":1,"rank":404,"phonetic":"/ɑ̃.tʁe/","sense":{"gist":"plat","definition":"The first dish of a meal, served before the main course.","example":"En entrée, je prends une soupe de légumes.","exampleTranslation":"For a starter, I'll have a vegetable soup.","translations":["appetizer","starter","entree","entrée"],"weight":0.034},"others":[{"gist":"porte","definition":"The place through which one enters a location.","example":"L'entrée de l'immeuble est de l'autre côté.","exampleTranslation":"The entrance to the building is on the other side.","translations":["entrance","entryway","gateway","ingress"],"weight":0.345},{"gist":"touche","definition":"The keyboard key used to confirm a command or start a new line.","example":"Appuie sur la touche entrée pour valider.","exampleTranslation":"Press the Enter key to confirm.","translations":["Enter","Return"],"weight":0.104},{"gist":"article","definition":"A word or expression treated in its alphabetical place in a dictionary.","example":"Ce dictionnaire contient dix mille entrées.","exampleTranslation":"This dictionary contains ten thousand entries.","translations":["entry","headword"],"weight":0.068}],"allTranslations":["access","accession","act of entering","admission","admittance","appetizer","enter","entering","entrance","entree","entry","entryway","entrée","foyer","gateway","headword","ingress","inlet","input","mudroom","return","start","starter","ticket","way in"],"senseCount":10},{"word":"repas","pos":"noun","gender":0,"rank":452,"phonetic":"/ʁə.pa/","sense":{"gist":"nourriture","definition":"The food eaten at a more or less fixed time, such as morning, noon or evening.","example":"Nous prenons le repas du soir à huit heures.","exampleTranslation":"We have our evening meal at eight o'clock.","translations":["meal","repast"],"weight":0.468},"others":[],"allTranslations":["meal","repast"],"senseCount":1},{"word":"viande","pos":"noun","gender":1,"rank":533,"phonetic":"/vjɑ̃d/","sense":{"gist":"chair","definition":"The flesh of animals, especially mammals and birds, eaten as food.","example":"Je ne mange pas de viande le vendredi.","exampleTranslation":"I don't eat meat on Fridays.","translations":["meat","a piece of meat"],"weight":0.769},"others":[],"allTranslations":["a piece of meat","meat"],"senseCount":1},{"word":"pain","pos":"noun","gender":0,"rank":569,"phonetic":"/pɛ̃/","sense":{"gist":"aliment","definition":"A food made of flour, water and salt, baked in an oven.","example":"Je mange du pain avec le fromage.","exampleTranslation":"I eat bread with the cheese.","translations":["bread","piece of bread"],"weight":0.57},"others":[],"allTranslations":["basic sustenance","bread","bread-and-butter needs","food","loaf","loaf of bread","mistake during a performance","piece of bread","punch"],"senseCount":5},{"word":"sucre","pos":"noun","gender":0,"rank":656,"phonetic":"/sykʁ/","sense":{"gist":"aliment","definition":"A white substance with a sweet taste, used to sweeten food and drinks.","example":"Je prends mon café sans sucre.","exampleTranslation":"I have my coffee without sugar.","translations":["sugar"],"weight":0.794},"others":[],"allTranslations":["sugar"],"senseCount":1},{"word":"huile","pos":"noun","gender":1,"rank":752,"phonetic":"/ɥil/","sense":{"gist":"liquide","definition":"A fatty liquid of plant, animal or mineral origin, used in cooking or as a lubricant.","example":"Je fais cuire les légumes avec un peu d'huile d'olive.","exampleTranslation":"I cook the vegetables with a little olive oil.","translations":["oil"],"weight":0.737},"others":[],"allTranslations":["big cheese","big gun","oil"],"senseCount":2},{"word":"pêche","pos":"noun","gender":1,"rank":753,"phonetic":"/pɛʃ/","sense":{"gist":"fruit","definition":"A round fruit with fuzzy skin, sweet flesh and a large stone.","example":"Je mange une pêche bien mûre au dessert.","exampleTranslation":"I'm eating a nice ripe peach for dessert.","translations":["peach"],"weight":0.256},"others":[{"gist":"activité","definition":"The activity of catching fish.","example":"Mon grand-père adore la pêche à la ligne.","exampleTranslation":"My grandfather loves fishing with a rod.","translations":["fishing","angling","sport fishing","sportfishing"],"weight":0.455}],"allTranslations":["angling","catch","energy","fishery","fishing","form","peach","punch","sport fishing","sportfishing"],"senseCount":5},{"word":"salade","pos":"noun","gender":1,"rank":838,"phonetic":"/sa.lad/","sense":{"gist":"plat","definition":"A cold dish of raw vegetables dressed with oil and vinegar.","example":"Je prends une salade verte avec du poulet.","exampleTranslation":"I'll have a green salad with chicken.","translations":["salad"],"weight":0.735},"others":[],"allTranslations":["bullshit","nonsense","salad","sallet"],"senseCount":3},{"word":"riz","pos":"noun","gender":0,"rank":952,"phonetic":"/ʁi/","sense":{"gist":"céréale","definition":"White or brown grains that are cooked and eaten.","example":"Je mange du riz avec du poulet.","exampleTranslation":"I am eating rice with chicken.","translations":["rice"],"weight":0.874},"others":[],"allTranslations":["rice","rice plant"],"senseCount":2},{"word":"chèvre","pos":"noun","gender":0,"rank":1072,"phonetic":"/ʃɛvʁ/","sense":{"gist":"fromage","definition":"Cheese made from goat's milk.","example":"Je prends une salade avec du chèvre chaud.","exampleTranslation":"I'll have a salad with warm goat cheese.","translations":["goat cheese","goat's cheese"],"weight":0},"others":[{"gist":"animal","definition":"A horned domestic animal that gives milk and grazes on grass.","example":"La chèvre mange l'herbe derrière la ferme.","exampleTranslation":"The goat is eating the grass behind the farm.","translations":["goat","she-goat","nanny goat"],"weight":0.927}],"allTranslations":["goat","goat cheese","goat's cheese","nanny goat","sawbuck","sawhorse","she-goat","trestle"],"senseCount":3},{"word":"revenir","pos":"verb","gender":null,"rank":1141,"phonetic":"/ʁə.v(ə).niʁ/","sense":{"gist":"dorer","definition":"To cook food over high heat until it turns golden brown.","example":"Faites revenir les oignons dans un peu d'huile.","exampleTranslation":"Brown the onions in a little oil.","translations":["to brown"],"weight":0},"others":[{"gist":"retour","definition":"To go back to a place or state where one was before.","example":"Je reviens à la maison vers dix-huit heures.","exampleTranslation":"I'll be back home around six p.m.","translations":["to come back","to return","come again","to revert"],"weight":0.361},{"gist":"rétractation","definition":"To abandon what one had said or decided.","example":"Il est revenu sur sa promesse hier soir.","exampleTranslation":"He went back on his promise last night.","translations":["to go back on","to backtrack","to renege","to recant"],"weight":0.248},{"gist":"repousse","definition":"To grow again, said of a plant or hair.","example":"Après l'hiver, l'herbe revient vite dans le jardin.","exampleTranslation":"After winter, the grass grows back quickly in the garden.","translations":["to grow back"],"weight":0.247}],"allTranslations":["amount","backtrack","backtracking","be mentioned repeatedly","be remembered","brown","come again","come back","come to mind","go back on","grow back","recant","recur","recurring","renege","return","returns","revert"],"senseCount":7},{"word":"coca","pos":"noun","gender":0,"rank":1202,"phonetic":"/kɔ.ka/","sense":{"gist":"boisson","definition":"A sweet, brown, fizzy drink with a cola flavor.","example":"Je voudrais un coca avec de la glace, s'il vous plaît.","exampleTranslation":"I'd like a Coke with ice, please.","translations":["Coke","cola"],"weight":0.829},"others":[],"allTranslations":["coca","coca shrub","cocaine","coke","cola"],"senseCount":3},{"word":"porc","pos":"noun","gender":0,"rank":1373,"phonetic":"/pɔʁ/","sense":{"gist":"viande","definition":"The flesh of this animal, eaten as food.","example":"Nous avons mangé du porc rôti.","exampleTranslation":"We ate roasted pork.","translations":["pork"],"weight":0.338},"others":[{"gist":"animal","definition":"A stocky domestic mammal raised for its meat.","example":"Le fermier nourrit ses porcs chaque matin.","exampleTranslation":"The farmer feeds his pigs every morning.","translations":["pig","swine","hog"],"weight":0.585}],"allTranslations":["contemptible person","cop","dirty pig","hog","pig","pork","swine"],"senseCount":4},{"word":"farine","pos":"noun","gender":1,"rank":1388,"phonetic":"/fa.ʁin/","sense":{"gist":"poudre","definition":"Powder made by grinding grains, mostly used in cooking.","example":"Il faut mélanger la farine avec les œufs.","exampleTranslation":"You need to mix the flour with the eggs.","translations":["flour","meal","farina"],"weight":0.863},"others":[],"allTranslations":["animal food","farina","feed","flour","meal"],"senseCount":2},{"word":"délicieux","pos":"adj","gender":null,"rank":1535,"phonetic":"/de.li.sjø/","sense":{"gist":"savoureux","definition":"Having a very pleasant taste to eat or drink.","example":"Ce gâteau est vraiment délicieux !","exampleTranslation":"This cake is really delicious!","translations":["delicious","tasty","yummy","scrumptious"],"weight":1.197},"others":[],"allTranslations":["delectable","delicious","delightful","lovely","scrumptious","tasty","yummy"],"senseCount":2},{"word":"miel","pos":"noun","gender":0,"rank":1744,"phonetic":"/mjɛl/","sense":{"gist":"nectar","definition":"A sweet substance produced by bees from flower nectar.","example":"Je tartine mon pain avec du miel.","exampleTranslation":"I spread honey on my bread.","translations":["honey"],"weight":0.421},"others":[],"allTranslations":["honey"],"senseCount":1},{"word":"céréale","pos":"noun","gender":1,"rank":1975,"phonetic":"/se.ʁe.al/","sense":{"gist":"grain","definition":"A food product made from grains, often eaten at breakfast.","example":"Je mange des céréales au petit-déjeuner.","exampleTranslation":"I eat cereal for breakfast.","translations":["cereal"],"weight":0.69},"others":[],"allTranslations":["cereal"],"senseCount":1},{"word":"tranche","pos":"noun","gender":1,"rank":2170,"phonetic":"/tʁɑ̃ʃ/","sense":{"gist":"morceau","definition":"A thin, flat piece cut from a food such as bread or meat.","example":"Je mange une tranche de jambon.","exampleTranslation":"I eat a slice of ham.","translations":["slice","rasher","steak","topside"],"weight":0.559},"others":[],"allTranslations":["arris","bevel","bracket","chip","edge","edge of a book","edge of a coin","lammela","rasher","reactor block","rim","slice","sliver","spine of a book","steak","topside","tranche","wafer"],"senseCount":6},{"word":"banane","pos":"noun","gender":1,"rank":2197,"phonetic":"/ba.nan/","sense":{"gist":"fruit","definition":"An elongated fruit, yellow when ripe, with sweet flesh.","example":"Je mange une banane tous les matins.","exampleTranslation":"I eat a banana every morning.","translations":["banana"],"weight":0.885},"others":[],"allTranslations":["banana","bum bag","fanny pack","fool","idiot","moon bag","pompadour","quiff"],"senseCount":4},{"word":"carafe","pos":"noun","gender":1,"rank":2556,"phonetic":"/ka.ʁaf/","sense":{"gist":"récipient","definition":"A glass container with a narrow neck, used to serve water or wine.","example":"Pose la carafe d'eau sur la table.","exampleTranslation":"Put the water decanter on the table.","translations":["decanter","carafe"],"weight":0.258},"others":[],"allTranslations":["carafe","decanter","jugful"],"senseCount":2},{"word":"réserver","pos":"verb","gender":null,"rank":2879,"phonetic":"/ʁe.zɛʁ.ve/","sense":{"gist":"retenir","definition":"To arrange in advance to use a seat, a room or a service.","example":"J'ai réservé une table pour huit heures.","exampleTranslation":"I booked a table for eight o'clock.","translations":["to reserve","to book","to make a reservation"],"weight":0.691},"others":[],"allTranslations":["book","make a reservation","put aside","reserve"],"senseCount":2},{"word":"grillé","pos":"adj","gender":null,"rank":3221,"phonetic":"/ɡʁi.je/","sense":{"gist":"cuit","definition":"Cooked on a grill or over high heat.","example":"J'ai commandé un steak grillé.","exampleTranslation":"I ordered a grilled steak.","translations":["grilled","seared"],"weight":0},"others":[],"allTranslations":["burnt","grilled","seared"],"senseCount":2},{"word":"poêle","pos":"noun","gender":1,"rank":3626,"phonetic":"/pwal/","sense":{"gist":"cuisine","definition":"A flat kitchen utensil with low sides, used to fry or sauté food.","example":"Fais chauffer la poêle avec un peu d'huile.","exampleTranslation":"Heat the pan with a little oil.","translations":["pan","skillet","frying pan"],"weight":0.497},"others":[{"gist":"chauffage","definition":"A closed heating appliance that burns wood, coal or gas.","example":"On allume le poêle à bois le soir.","exampleTranslation":"We light the wood stove in the evening.","translations":["stove"],"weight":0.323}],"allTranslations":["frying pan","metal detector","pall","pan","skillet","stove"],"senseCount":4},{"word":"fraise","pos":"noun","gender":1,"rank":3729,"phonetic":"/fʁɛz/","sense":{"gist":"fruit","definition":"A small sweet red fruit from a plant of the genus Fragaria.","example":"Ce yaourt contient de vraies fraises.","exampleTranslation":"This yogurt contains real strawberries.","translations":["strawberry"],"weight":0.916},"others":[],"allTranslations":["bulwark","calf's mesentery","cutter","dental drill","dentist's drill","drill","end mill","mill","milling cutter","nipple","palisade","reamer","ruff","strawberry"],"senseCount":8},{"word":"limonade","pos":"noun","gender":1,"rank":4106,"phonetic":"/li.mɔ.nad/","sense":{"gist":"gazeuse","definition":"A sweet, fizzy, usually non-alcoholic drink.","example":"Il a commandé une limonade au bar.","exampleTranslation":"He ordered a soda pop at the bar.","translations":["soda pop"],"weight":0.057},"others":[{"gist":"citron","definition":"A sweet drink made with lemon juice, still or fizzy.","example":"Je voudrais une limonade bien fraîche.","exampleTranslation":"I'd like a cold lemonade.","translations":["lemonade","a serving of lemonade"],"weight":0.771}],"allTranslations":["a serving of lemonade","lemonade","limeade","soda pop"],"senseCount":3},{"word":"barbecue","pos":"noun","gender":0,"rank":4621,"phonetic":"/baʁ.bə.kju/","sense":{"gist":"grillade","definition":"An outdoor meal where meat and vegetables are grilled over a fire or grill.","example":"Nous organisons un barbecue dans le jardin samedi.","exampleTranslation":"We are having a barbecue in the garden on Saturday.","translations":["barbecue","cookout","bbq"],"weight":0.153},"others":[],"allTranslations":["barbecue","bbq","cookout"],"senseCount":1},{"word":"ingrédient","pos":"noun","gender":0,"rank":5230,"phonetic":"/ɛ̃.ɡʁe.djɑ̃/","sense":{"gist":"composant","definition":"An element that goes into the make-up of a mixture or dish.","example":"Ajoutez un ingrédient secret à la sauce.","exampleTranslation":"Add one secret ingredient to the sauce.","translations":["ingredient"],"weight":0.887},"others":[],"allTranslations":["ingredient"],"senseCount":1},{"word":"navet","pos":"noun","gender":0,"rank":5797,"phonetic":"/na.vɛ/","sense":{"gist":"légume","definition":"A vegetable with white flesh and an edible root, grown for its roots.","example":"J'ai mangé de la soupe aux navets.","exampleTranslation":"I ate turnip soup.","translations":["turnip"],"weight":0.642},"others":[{"gist":"échec","definition":"A film considered very bad, a failure both artistically and commercially.","example":"Ce film est un vrai navet.","exampleTranslation":"This film is a real turkey.","translations":["a very bad movie","flop","turkey","bomb"],"weight":0.119}],"allTranslations":["a turkey","a very bad movie","bomb","flop","lousy film","turkey","turnip"],"senseCount":2},{"word":"framboise","pos":"noun","gender":1,"rank":5894,"phonetic":"/fʁɑ̃.bwaz/","sense":{"gist":"fruit","definition":"A small, sweet, fragrant red fruit that grows on a shrub.","example":"Je mange des framboises au petit-déjeuner.","exampleTranslation":"I eat raspberries for breakfast.","translations":["raspberry"],"weight":0.837},"others":[],"allTranslations":["raspberry"],"senseCount":1},{"word":"sucette","pos":"noun","gender":1,"rank":6661,"phonetic":"/sy.sɛt/","sense":{"gist":"bonbon","definition":"A hard sweet on the end of a small stick, to be licked.","example":"Le petit garçon mange une sucette rouge.","exampleTranslation":"The little boy is eating a red lollipop.","translations":["lollipop","sucker"],"weight":0.603},"others":[],"allTranslations":["dummy","lollipop","pacifier","soother","sucker"],"senseCount":2},{"word":"poivron","pos":"noun","gender":0,"rank":7056,"phonetic":"/pwa.vʁɔ̃/","sense":{"gist":"légume","definition":"A fleshy, sweet fruit, green, red or yellow, from a garden plant.","example":"J'ajoute un poivron rouge à la salade.","exampleTranslation":"I'm adding a red bell pepper to the salad.","translations":["pepper","bell pepper","sweet pepper","capsicum"],"weight":0.902},"others":[],"allTranslations":["bell pepper","capsicum","pepper","sweet pepper"],"senseCount":1},{"word":"frire","pos":"verb","gender":null,"rank":7530,"phonetic":"/fʁiʁ/","sense":{"gist":"cuisson","definition":"To cook food in hot fat.","example":"Je fais frire les oignons dans la poêle.","exampleTranslation":"I'm frying the onions in the pan.","translations":["to fry"],"weight":0.774},"others":[],"allTranslations":["deep-fry","fry","stir-fry"],"senseCount":3},{"word":"passoire","pos":"noun","gender":1,"rank":8165,"phonetic":null,"sense":{"gist":"ustensile","definition":"A kitchen utensil pierced with small holes, used to drain or filter food.","example":"Égoutte les pâtes dans la passoire.","exampleTranslation":"Drain the pasta in the colander.","translations":["sieve","strainer","colander","cullender"],"weight":0.644},"others":[],"allTranslations":["colander","cullender","sieve","strainer"],"senseCount":1},{"word":"croûton","pos":"noun","gender":0,"rank":8489,"phonetic":"/kʁu.tɔ̃/","sense":{"gist":"morceau","definition":"A small piece of toasted or fried bread, served with soups or salads.","example":"Ajoutez des croûtons dorés à la soupe.","exampleTranslation":"Add golden croutons to the soup.","translations":["crouton"],"weight":0.281},"others":[],"allTranslations":["crouton","heel","mediocre person"],"senseCount":3},{"word":"pastèque","pos":"noun","gender":1,"rank":9351,"phonetic":"/pas.tɛk/","sense":{"gist":"fruit","definition":"A large round fruit with sweet red flesh and a green rind.","example":"Nous mangeons une pastèque bien fraîche.","exampleTranslation":"We are eating a nice cold watermelon.","translations":["watermelon"],"weight":0.875},"others":[],"allTranslations":["watermelon"],"senseCount":1},{"word":"marmelade","pos":"noun","gender":1,"rank":9620,"phonetic":null,"sense":{"gist":"confiture","definition":"A thick preserve made from citrus fruit, especially bitter oranges.","example":"Je tartine du pain avec de la marmelade.","exampleTranslation":"I spread some bread with marmalade.","translations":["marmalade"],"weight":0.796},"others":[],"allTranslations":["compote","marmalade"],"senseCount":2},{"word":"semoule","pos":"noun","gender":1,"rank":10505,"phonetic":"/sə.mul/","sense":{"gist":"blé","definition":"A granular product obtained by grinding durum wheat, used in cooking.","example":"Je prépare de la semoule pour le couscous ce soir.","exampleTranslation":"I'm making semolina for the couscous tonight.","translations":["semolina"],"weight":0.218},"others":[],"allTranslations":["semolina"],"senseCount":1},{"word":"charlotte","pos":"noun","gender":1,"rank":10914,"phonetic":"/ʃaʁ.lɔt/","sense":{"gist":"entremets","definition":"A dessert made with sponge fingers or bread, cream or fruit, set in a mould.","example":"Elle a préparé une charlotte aux pommes pour le dîner.","exampleTranslation":"She made an apple charlotte for dinner.","translations":["charlotte"],"weight":0},"others":[],"allTranslations":["charlotte","charlotte bonnet","charlotte hat","mob cap"],"senseCount":2},{"word":"roux","pos":"noun","gender":0,"rank":12323,"phonetic":"/ʁu/","sense":{"gist":"sauce","definition":"A mixture of flour and butter cooked together, used to thicken sauces.","example":"Ajoutez le roux à la béchamel en remuant.","exampleTranslation":"Add the roux to the béchamel while stirring.","translations":["roux"],"weight":0},"others":[{"gist":"couleur","definition":"A reddish-brown colour, especially the coat of some animals.","example":"Le roux du poil de ce cheval est superbe.","exampleTranslation":"The sorrel of this horse's coat is superb.","translations":["red","sorrel"],"weight":0.596},{"gist":"cheveux","definition":"A person whose hair is a coppery colour.","example":"Mon frère est un roux aux yeux verts.","exampleTranslation":"My brother is a redhead with green eyes.","translations":["ginger","redhead"],"weight":0.306}],"allTranslations":["ginger","red","redhead","roux","sorrel"],"senseCount":3},{"word":"cumin","pos":"noun","gender":0,"rank":13872,"phonetic":"/ky.mɛ̃/","sense":{"gist":"épice","definition":"A dried aromatic seed used to flavour dishes.","example":"Ajoutez une pincée de cumin au ragoût.","exampleTranslation":"Add a pinch of cumin to the stew.","translations":["cumin","a spice","Its seed"],"weight":0},"others":[],"allTranslations":["a spice","cumin","its seed","the plant cumin"],"senseCount":2},{"word":"poêle à frire","pos":"noun","gender":1,"rank":15671,"phonetic":"/pwa.l‿a fʁiʁ/","sense":{"gist":"ustensile","definition":"A flat kitchen utensil with low sides, used to fry or sauté food.","example":"Fais chauffer la poêle à frire avec un peu d'huile.","exampleTranslation":"Heat the frying pan with a little oil.","translations":["frying pan","skillet","stirfry pan"],"weight":0},"others":[],"allTranslations":["frying pan","skillet","stirfry pan"],"senseCount":1},{"word":"saucière","pos":"noun","gender":1,"rank":17713,"phonetic":"/so.sjɛʁ/","sense":{"gist":"récipient","definition":"A small deep dish with a handle, used to serve sauce.","example":"Elle verse la sauce dans la saucière.","exampleTranslation":"She pours the sauce into the gravy boat.","translations":["gravy boat","sauce boat","sauceboat","sauce-boat"],"weight":0.704},"others":[],"allTranslations":["gravy boat","sauce boat","sauce-boat","sauceboat"],"senseCount":1},{"word":"poivre de Cayenne","pos":"noun","gender":0,"rank":20000,"phonetic":"/pwavʁ də ka.jɛn/","sense":{"gist":"épice","definition":"A very hot spice made from dried and ground chili peppers.","example":"Ajoutez une pincée de poivre de Cayenne.","exampleTranslation":"Add a pinch of cayenne pepper.","translations":["cayenne pepper"],"weight":0},"others":[],"allTranslations":["cayenne pepper"],"senseCount":1}],"Travail":[{"word":"travail","pos":"noun","gender":0,"rank":66,"phonetic":"/tʁa.vaj/","sense":{"gist":"emploi","definition":"A regular professional activity for which one is paid.","example":"Elle a trouvé un travail dans une banque.","exampleTranslation":"She found a job at a bank.","translations":["job"],"weight":0.28},"others":[{"gist":"activité","definition":"Activity in which one makes an effort to produce something or achieve a result.","example":"Le travail de la terre demande beaucoup de patience.","exampleTranslation":"Working the land takes a lot of patience.","translations":["work","working","labor","labour"],"weight":0.522}],"allTranslations":["job","labor","labour","piece of workmanship","task","trave","travise","work","working","workings","workload","workmanship","workplace"],"senseCount":8},{"word":"bureau","pos":"noun","gender":0,"rank":163,"phonetic":"/by.ʁo/","sense":{"gist":"travail","definition":"A place or room where people work, especially on administrative or professional tasks.","example":"Elle arrive au bureau à huit heures.","exampleTranslation":"She gets to the office at eight o'clock.","translations":["office","law office"],"weight":0.673},"others":[{"gist":"meuble","definition":"A table with drawers on which one writes or works.","example":"Il y a une lampe sur mon bureau.","exampleTranslation":"There is a lamp on my desk.","translations":["desk"],"weight":0.122}],"allTranslations":["an administrative unit","board","booking_office","bureau","cabinet","desk","desktop","law office","office","study","ticket office"],"senseCount":7},{"word":"client","pos":"noun","gender":0,"rank":242,"phonetic":"/kli.jɑ̃/","sense":{"gist":"acheteur","definition":"A person who buys goods or services from a business.","example":"Le client attend à la caisse depuis dix minutes.","exampleTranslation":"The customer has been waiting at the checkout for ten minutes.","translations":["client","customer","guest","patron"],"weight":0.676},"others":[],"allTranslations":["buyer","client","customer","follower","guest","patron","punter","retainer"],"senseCount":2},{"word":"poste","pos":"noun","gender":0,"rank":301,"phonetic":"/pɔst/","sense":{"gist":"emploi","definition":"A function or job held in a company or an administration.","example":"Elle a obtenu un poste de directrice commerciale.","exampleTranslation":"She got a job as sales director.","translations":["post","job","position"],"weight":0.58},"others":[],"allTranslations":["extension","item","job","mail","position","post","post office","post_office","postal service/system","receiver","station","stint","stretch","transceiver","transmitter","transmitter-receiver"],"senseCount":8},{"word":"service","pos":"noun","gender":0,"rank":331,"phonetic":"/sɛʁ.vis/","sense":{"gist":"département","definition":"A division of a company or an administration.","example":"Il travaille au service des ventes.","exampleTranslation":"He works in the sales department.","translations":["department","office","branch","section"],"weight":0.078},"others":[{"gist":"prestation","definition":"Work or activity provided to a customer or the public.","example":"Le service est rapide dans ce restaurant.","exampleTranslation":"The service is quick in this restaurant.","translations":["service","serving","facility","function"],"weight":0.204},{"gist":"aide","definition":"An act done to help someone.","example":"Peux-tu me rendre un service, s'il te plaît ?","exampleTranslation":"Can you do me a favor, please?","translations":["favor","favour","favo r"],"weight":0.146}],"allTranslations":["activity","attendance","branch","capacity","crockery set","cutlery","department","employment","facility","favo r","favor","favour","function","job","office","position","post","section","serve","service","service charge","services","serving","set","sitting","tour of duty","turn","waiting","work"],"senseCount":9},{"word":"chef","pos":"noun","gender":0,"rank":398,"phonetic":"/ʃɛf/","sense":{"gist":"supérieur","definition":"A person who leads, commands or has authority over a group or department.","example":"Mon chef m'a demandé de finir ce rapport.","exampleTranslation":"My boss asked me to finish this report.","translations":["chief","leader","boss","head"],"weight":0.64},"others":[],"allTranslations":["a boss","a culinary chef","article","boss","charge","chef","chief","chief cook","chieftain","count of indictment","governor","head","head cook","headman","leader","manager","principal motive","principal point","skipper","super","superintendent","top dog"],"senseCount":4},{"word":"directeur","pos":"noun","gender":0,"rank":424,"phonetic":"/di.ʁɛk.tœʁ/","sense":{"gist":"dirigeant","definition":"A person who runs a company, a department or an establishment.","example":"Le directeur de l'usine a annoncé de nouveaux horaires.","exampleTranslation":"The factory manager announced new working hours.","translations":["director","manager","president","executive"],"weight":0.655},"others":[],"allTranslations":["(thesis) advisor","administrator","chairperson","director","editor","executive","governor","headmaster","manager","president","principal","rector","school principal","station manager","superintendent","supervisor","vice principal","warden"],"senseCount":6},{"word":"réunion","pos":"noun","gender":1,"rank":475,"phonetic":"/ʁe.y.njɔ̃/","sense":{"gist":"rencontre","definition":"A gathering of several people in one place to talk or do something together.","example":"La réunion commence à neuf heures au bureau.","exampleTranslation":"The meeting starts at nine o'clock at the office.","translations":["meeting","gathering","assembly","get-together"],"weight":0.792},"others":[{"gist":"retrouvailles","definition":"The act of seeing each other again after a long separation.","example":"La réunion de la mère et de son fils fut émouvante.","exampleTranslation":"The reunion of the mother and her son was moving.","translations":["reunion"],"weight":0.056}],"allTranslations":["assembly","function","gathering","get-together","joining","meeting","powwow","reunion","set union","union"],"senseCount":4},{"word":"équipe","pos":"noun","gender":1,"rank":490,"phonetic":"/e.kip/","sense":{"gist":"groupe","definition":"A group of people who work or play together toward the same goal.","example":"Notre équipe a gagné le match hier soir.","exampleTranslation":"Our team won the game last night.","translations":["team","crew","squad","party"],"weight":0.828},"others":[],"allTranslations":["crew","detail","gang","group","outfit","party","shift","squad","team"],"senseCount":2},{"word":"usine","pos":"noun","gender":1,"rank":493,"phonetic":"/y.zin/","sense":{"gist":"fabrique","definition":"An industrial building where goods are manufactured using machines.","example":"Mon père travaille dans une usine de voitures.","exampleTranslation":"My father works in a car factory.","translations":["factory","plant","mill","works"],"weight":0.852},"others":[],"allTranslations":["factory","mill","plant","works"],"senseCount":1},{"word":"secrétaire","pos":"noun","gender":null,"rank":633,"phonetic":"/sə.kʁe.tɛʁ/","sense":{"gist":"employé","definition":"A person whose job is to answer the phone, organize work and handle the mail for a boss or department.","example":"La secrétaire du directeur répond au téléphone toute la journée.","exampleTranslation":"The director's secretary answers the phone all day.","translations":["secretary"],"weight":1.664},"others":[],"allTranslations":["amanuensis","secretaire","secretary","writing desk","writing table"],"senseCount":6},{"word":"travailler","pos":"verb","gender":null,"rank":668,"phonetic":"/tʁa.va.je/","sense":{"gist":"œuvrer","definition":"To have a job or make an effort to produce something.","example":"Mon père travaille dans une banque depuis dix ans.","exampleTranslation":"My father has worked in a bank for ten years.","translations":["to work","working","to labour"],"weight":0.916},"others":[],"allTranslations":["craft","labour","operate","operating","study","work","working"],"senseCount":4},{"word":"dossier","pos":"noun","gender":0,"rank":675,"phonetic":"/do.sje/","sense":{"gist":"documents","definition":"A set of papers gathered for a request or a subject.","example":"Je prépare un dossier pour ma demande de visa.","exampleTranslation":"I am putting together a file for my visa application.","translations":["file","dossier","documentation","documentation file"],"weight":0.907},"others":[{"gist":"antécédents","definition":"The information about a person's past history.","example":"Ce candidat a un dossier professionnel excellent.","exampleTranslation":"This candidate has an excellent track record.","translations":["record","records","track record"],"weight":0.205},{"gist":"affaire","definition":"The set of papers of a legal or administrative matter.","example":"L'avocat étudie le dossier de son client.","exampleTranslation":"The lawyer is studying his client's case.","translations":["case","brief","briefs"],"weight":0.138}],"allTranslations":["back","back of furniture","back rest","backrest","brief","briefs","case","directory","documentation","documentation file","dossier","file","folder","record","records","track record"],"senseCount":6},{"word":"projet","pos":"noun","gender":0,"rank":697,"phonetic":"/pʁɔ.ʒɛ/","sense":{"gist":"intention","definition":"What one intends to do, with ideas about how to carry it out.","example":"J'ai un projet de voyage pour cet été.","exampleTranslation":"I have a travel plan for this summer.","translations":["project","plan","scheme","venture"],"weight":0.753},"others":[],"allTranslations":["blueprint","design","diagram","draft constitution","ground plan","plan","project","proposal","scheme","venture"],"senseCount":3},{"word":"expérience","pos":"noun","gender":1,"rank":698,"phonetic":"/ɛk.spe.ʁjɑ̃s/","sense":{"gist":"savoir","definition":"Knowledge and skills gained over time through practice.","example":"Elle a dix ans d'expérience dans l'enseignement.","exampleTranslation":"She has ten years of experience in teaching.","translations":["experience","background","knowledge and skills"],"weight":0.557},"others":[{"gist":"essai","definition":"An operation carried out to study a phenomenon or check a hypothesis.","example":"Les élèves font une expérience de chimie en classe.","exampleTranslation":"The students are doing a chemistry experiment in class.","translations":["experiment","test","trial"],"weight":0.313}],"allTranslations":["background","experience","experiment","knowledge and skills","test","trial"],"senseCount":2},{"word":"assistant","pos":"noun","gender":0,"rank":706,"phonetic":"/a.sis.tɑ̃/","sense":{"gist":"aide","definition":"A person who helps someone with their work.","example":"L'assistant du médecin prépare les dossiers des patients.","exampleTranslation":"The doctor's assistant prepares the patients' files.","translations":["assistant","aide","helper"],"weight":0.396},"others":[],"allTranslations":["aide","assistant","coworker","deputy","helper","subordinate","wizard","yeoman"],"senseCount":5},{"word":"patron","pos":"noun","gender":0,"rank":767,"phonetic":"/pa.tʁɔ̃/","sense":{"gist":"chef","definition":"A person who runs a company or a team and employs staff.","example":"Mon patron veut me voir dans son bureau.","exampleTranslation":"My boss wants to see me in his office.","translations":["boss","manager","chief","employer"],"weight":0.764},"others":[],"allTranslations":["a boss","a model or template","a pattern","a pimp or brothel-keeper","a stencil","boss","chief","employer","gaffer","head of the firm","manager","owner","patron","pattern"],"senseCount":5},{"word":"métier","pos":"noun","gender":0,"rank":774,"phonetic":"/me.tje/","sense":{"gist":"profession","definition":"A professional activity that a person regularly carries out.","example":"Mon père a toujours aimé son métier d'infirmier.","exampleTranslation":"My father has always loved his job as a nurse.","translations":["job","profession","trade","occupation"],"weight":0.416},"others":[],"allTranslations":["avocation","craft","device","handicraft","job","living","loom","machine","metier","occupation","profession","skill","trade"],"senseCount":5},{"word":"rapport","pos":"noun","gender":0,"rank":776,"phonetic":"/ʁa.pɔʁ/","sense":{"gist":"compte-rendu","definition":"A document or account that describes facts, an investigation or a situation.","example":"Le médecin a rédigé un rapport sur l'accident.","exampleTranslation":"The doctor wrote a report on the accident.","translations":["report","record","statement","account"],"weight":0.547},"others":[{"gist":"lien","definition":"A logical link or connection between two things.","example":"Cette remarque n'a aucun rapport avec le sujet.","exampleTranslation":"This remark has no connection with the subject.","translations":["relationship","connection","relation","relevance"],"weight":0.087}],"allTranslations":["account","concern","connection","debriefing","dispatch","earnings","gain","hotchpot","income","intercourse","rapport","ratio","record","records","relation","relations","relationship","relevance","report","revenue","revenue-earning","statement"],"senseCount":6},{"word":"copie","pos":"noun","gender":1,"rank":807,"phonetic":"/kɔ.pi/","sense":{"gist":"reproduction","definition":"A document or object made identical to an original, or the act of making it.","example":"Je fais une copie de ce document pour toi.","exampleTranslation":"I'm making a copy of this document for you.","translations":["copy","copying","duplicate","replication"],"weight":0.796},"others":[],"allTranslations":["copies","copy","copying","duplicate","file copy","paper","replication","script"],"senseCount":2},{"word":"document","pos":"noun","gender":0,"rank":814,"phonetic":"/dɔ.ky.mɑ̃/","sense":{"gist":"écrit","definition":"A written or printed text that provides information.","example":"Elle a signé le document avant de partir.","exampleTranslation":"She signed the paper before leaving.","translations":["document","paper"],"weight":0.62},"others":[],"allTranslations":["act","certificate","deed","document","file","paper","record","text document","warrant"],"senseCount":4},{"word":"commerce","pos":"noun","gender":0,"rank":865,"phonetic":"/kɔ.mɛʁs/","sense":{"gist":"négoce","definition":"The activity of buying and selling goods.","example":"Le commerce entre les deux pays augmente chaque année.","exampleTranslation":"Trade between the two countries grows every year.","translations":["trade","trading","traffic","commerce"],"weight":0.254},"others":[{"gist":"boutique","definition":"A place where goods are sold to the public.","example":"Mon oncle tient un commerce près de la gare.","exampleTranslation":"My uncle runs a shop near the station.","translations":["shop","store"],"weight":0.054}],"allTranslations":["biz","commerce","dealing","dealings","shop","store","trade","trader","trades","trading","traffic"],"senseCount":4},{"word":"gagner","pos":"verb","gender":null,"rank":894,"phonetic":"/ɡa.ɲe/","sense":{"gist":"salaire","definition":"To receive money in exchange for work.","example":"Il gagne trois mille euros par mois.","exampleTranslation":"He earns three thousand euros a month.","translations":["to earn","earn (a profit)","earning"],"weight":0.085},"others":[{"gist":"vaincre","definition":"To be the victor in a competition, game or fight.","example":"Notre équipe a gagné le match hier soir.","exampleTranslation":"Our team won the match last night.","translations":["to win","to beat","win (an abstract object)"],"weight":0.631},{"gist":"obtenir","definition":"To acquire something useful or advantageous.","example":"Il veut gagner du temps avant la réunion.","exampleTranslation":"He wants to gain some time before the meeting.","translations":["to get","to gain","to secure","to obtain"],"weight":0.074}],"allTranslations":["beat","deserve","earn","earn (a profit)","earning","enrol","enroll","gain","get","obtain","rally","reach","recruit","secure","spread","win","win (an abstract object)","win over (a person) (faire changer d'avis à quelqu'un)"],"senseCount":8},{"word":"rendez-vous","pos":"noun","gender":0,"rank":911,"phonetic":"/ʁɑ̃.de.vu/","sense":{"gist":"consultation","definition":"A meeting arranged in advance with a professional or for a specific commitment.","example":"J'ai rendez-vous chez le dentiste à quatorze heures.","exampleTranslation":"I have an appointment at the dentist's at two o'clock.","translations":["appointment","engagement"],"weight":0.412},"others":[{"gist":"amour","definition":"A meeting arranged between two people who are romantically interested in each other.","example":"Il a un rendez-vous galant ce soir avec Léa.","exampleTranslation":"He has a date with Léa tonight.","translations":["date","dating","tryst","assignation"],"weight":0.536}],"allTranslations":["appointment","assignation","date","dating","engagement","rendez-vous","rendezvous","tryst"],"senseCount":3},{"word":"candidat","pos":"noun","gender":0,"rank":1060,"phonetic":"/kɑ̃.di.da/","sense":{"gist":"examen","definition":"A person taking an exam or a competitive test.","example":"Les candidats attendent devant la salle d'examen.","exampleTranslation":"The candidates are waiting outside the exam room.","translations":["candidate","examinee"],"weight":1.69},"others":[],"allTranslations":["applicant","candidate","contender","examinee","nominee"],"senseCount":3},{"word":"retraite","pos":"noun","gender":1,"rank":1075,"phonetic":"/ʁə.tʁɛt/","sense":{"gist":"cessation","definition":"The end of a person's working life when they stop working at a certain age.","example":"Mon père part à la retraite en juin.","exampleTranslation":"My father is retiring in June.","translations":["retirement","superannuation"],"weight":0.205},"others":[{"gist":"repli","definition":"The act of withdrawing or falling back from an enemy or a difficulty.","example":"L'armée a ordonné la retraite avant la nuit.","exampleTranslation":"The army ordered the retreat before nightfall.","translations":["retreat","stand-down"],"weight":0.26},{"gist":"argent","definition":"Money paid regularly to a person who has stopped working.","example":"Ma grand-mère touche une petite retraite chaque mois.","exampleTranslation":"My grandmother receives a small pension every month.","translations":["pension","annuity"],"weight":0.08}],"allTranslations":["annuity","counterdraft","cubbyhole","pension","redraft","retirement","retreat","stand-down","superannuation"],"senseCount":5},{"word":"département","pos":"noun","gender":0,"rank":1090,"phonetic":"/de.paʁ.tə.mɑ̃/","sense":{"gist":"service","definition":"A division of a company or university that handles a specific area.","example":"Elle travaille dans le département des ventes.","exampleTranslation":"She works in the sales department.","translations":["department"],"weight":0.751},"others":[],"allTranslations":["department","département","ministry"],"senseCount":3},{"word":"collègue","pos":"noun","gender":2,"rank":1108,"phonetic":"/kɔ.lɛɡ/","sense":{"gist":"travail","definition":"A person who works in the same company or department as another.","example":"Mon collègue m'a aidé à finir le dossier.","exampleTranslation":"My colleague helped me finish the file.","translations":["colleague","coworker","co-worker","fellow worker"],"weight":0.769},"others":[],"allTranslations":["co-worker","colleague","coworker","fellow worker","fellow-worker","friend","workmate"],"senseCount":2},{"word":"carrière","pos":"noun","gender":1,"rank":1131,"phonetic":"/ka.ʁjɛʁ/","sense":{"gist":"profession","definition":"The series of jobs and positions a person holds during their working life.","example":"Elle a fait toute sa carrière dans la même entreprise.","exampleTranslation":"She spent her whole career at the same company.","translations":["career"],"weight":0.791},"others":[],"allTranslations":["career","gravel pit","quarry","racecourse","racing course"],"senseCount":3},{"word":"mission","pos":"noun","gender":1,"rank":1172,"phonetic":"/mi.sjɔ̃/","sense":{"gist":"tâche","definition":"A task or duty entrusted to a person or a group.","example":"Le directeur lui a confié une mission difficile.","exampleTranslation":"The director gave her a difficult assignment.","translations":["mission","assignment"],"weight":0.15},"others":[],"allTranslations":["assignment","mission"],"senseCount":1},{"word":"pause","pos":"noun","gender":1,"rank":1405,"phonetic":"/poz/","sense":{"gist":"arrêt","definition":"A brief interruption of an activity to rest.","example":"Faisons une pause avant de continuer.","exampleTranslation":"Let's take a break before we continue.","translations":["break","rest","pause","time-out"],"weight":0.673},"others":[],"allTranslations":["break","commercial","commercial break","gap","halftime","interlude","intermission","interval","lull","pause","recess","respite","rest","semibreve rest","time-out","timeout","whole rest"],"senseCount":6},{"word":"salaire","pos":"noun","gender":0,"rank":1443,"phonetic":"/sa.lɛʁ/","sense":{"gist":"paie","definition":"Money regularly paid to an employee in exchange for work.","example":"Son salaire a augmenté cette année.","exampleTranslation":"His salary went up this year.","translations":["salary","wage","pay","earnings"],"weight":0.769},"others":[],"allTranslations":["earnings","pay","remuneration","salary","stipend","wage","wages"],"senseCount":2},{"word":"congé","pos":"noun","gender":0,"rank":1561,"phonetic":"/kɔ̃.ʒe/","sense":{"gist":"repos","definition":"Time off granted to an employee, for a day or a short period.","example":"Je prends mon congé le lundi.","exampleTranslation":"I take my day off on Mondays.","translations":["day off","time off"],"weight":0.298},"others":[{"gist":"permission","definition":"An authorised absence from work, often for personal or family reasons.","example":"Elle a pris un congé de maternité.","exampleTranslation":"She took maternity leave.","translations":["leave","leave of absence","furlough"],"weight":0.276},{"gist":"vacances","definition":"A period when one does not work and rests or travels.","example":"Nous partons en congé la semaine prochaine.","exampleTranslation":"We are going on holiday next week.","translations":["vacation","holiday"],"weight":0.127}],"allTranslations":["day off","discharge","dismissal","eviction","furlough","holiday","lay-off","leave","leave of absence","sack","time off","vacation"],"senseCount":5},{"word":"entretien","pos":"noun","gender":0,"rank":1574,"phonetic":"/ɑ̃.tʁə.tjɛ̃/","sense":{"gist":"discussion","definition":"A formal or in-depth exchange between two people or two groups.","example":"L'entretien d'embauche a duré une heure.","exampleTranslation":"The job interview lasted an hour.","translations":["interview","talk","colloquy","talks"],"weight":0.739},"others":[],"allTranslations":["care","colloquy","fostering","interview","maintenance","service","services","servicing","sustenance","talk","talks","upkeep","welfare","well-being"],"senseCount":4},{"word":"collaborateur","pos":"noun","gender":0,"rank":1698,"phonetic":"/kɔ.la.bɔ.ʁa.tœʁ/","sense":{"gist":"collègue","definition":"A person who works with others within the same organization.","example":"Mon collaborateur m'a aidé sur ce projet.","exampleTranslation":"My coworker helped me on this project.","translations":["collaborator","coworker"],"weight":0.787},"others":[],"allTranslations":["collaborationist","collaborator","contributor","coworker","quisling","traitorous collaborator"],"senseCount":3},{"word":"chômeur","pos":"noun","gender":0,"rank":1911,"phonetic":"/ʃo.mœʁ/","sense":{"gist":"sans-emploi","definition":"A person who is looking for work without finding any.","example":"Mon voisin est chômeur depuis un an.","exampleTranslation":"My neighbour has been unemployed for a year.","translations":["an unemployed person","unemployed person","jobless"],"weight":0.418},"others":[{"gist":"ouvrier","definition":"A factory or manual worker who has lost his job and no longer works.","example":"Ce chômeur travaillait autrefois comme ouvrier à l'usine.","exampleTranslation":"This jobless man once worked as a factory hand.","translations":["unemployed workman"],"weight":0.209}],"allTranslations":["an unemployed person","jobless","unemployed person","unemployed workman"],"senseCount":2},{"word":"photocopie","pos":"noun","gender":1,"rank":2122,"phonetic":"/fɔ.to.kɔ.pi/","sense":{"gist":"reproduction","definition":"The process or result of reproducing a document on a photocopier.","example":"Il faut faire une photocopie de ce contrat.","exampleTranslation":"We need to make a photocopy of this contract.","translations":["photocopy","xerox","photostat","photostatic copy"],"weight":0.476},"others":[{"gist":"exemplaire","definition":"A reproduction of a document that is an exact duplicate of it.","example":"Je garde une photocopie de mon passeport.","exampleTranslation":"I keep a copy of my passport.","translations":["copy"],"weight":0.453}],"allTranslations":["copy","photocopy","photostat","photostatic copy","xerox","xeroxing"],"senseCount":2},{"word":"conférence","pos":"noun","gender":1,"rank":2514,"phonetic":"/kɔ̃.fe.ʁɑ̃s/","sense":{"gist":"réunion","definition":"A meeting organised to discuss a subject, often among specialists.","example":"La conférence réunit des experts du monde entier.","exampleTranslation":"The conference brings together experts from around the world.","translations":["conference"],"weight":1.346},"others":[{"gist":"exposé","definition":"An oral presentation of a subject given to an audience.","example":"Il a fait une conférence sur l'histoire de Rome.","exampleTranslation":"He gave a lecture on the history of Rome.","translations":["lecture","talk"],"weight":0.165}],"allTranslations":["address","conference","discourse","lecture","parley","speech","talk"],"senseCount":4},{"word":"cadre","pos":"noun","gender":0,"rank":2559,"phonetic":"/kadʁ/","sense":{"gist":"dirigeant","definition":"An employee who holds a management or leadership position in a company.","example":"Il travaille comme cadre dans une banque.","exampleTranslation":"He works as an executive in a bank.","translations":["executive","manager","cadre","middle manager"],"weight":0.177},"others":[{"gist":"encadrement","definition":"A border that surrounds and displays a painting, window or door.","example":"Le tableau est dans un cadre doré.","exampleTranslation":"The painting is in a gold frame.","translations":["frame","border","sash","panel"],"weight":0.215},{"gist":"contexte","definition":"The circumstances or surroundings in which something takes place.","example":"Le cadre du roman est Paris.","exampleTranslation":"The setting of the novel is Paris.","translations":["setting","environment","scope","context"],"weight":0.065}],"allTranslations":["backbone","border","box","cadre","context","environment","executive","exposure window","frame","frame antenna","frame-work","framework","fuselage frame","lattice","manager","middle manager","panel","parameters","sash","scope","setting","settings","square"],"senseCount":8},{"word":"grève","pos":"noun","gender":1,"rank":2639,"phonetic":"/ɡʁɛv/","sense":{"gist":"arrêt","definition":"A collective stoppage of work decided by employees to obtain their demands.","example":"Les cheminots ont annoncé une grève demain.","exampleTranslation":"The railway workers announced a strike for tomorrow.","translations":["strike"],"weight":0.827},"others":[],"allTranslations":["shore","strand","strike"],"senseCount":2},{"word":"professionnel","pos":"adj","gender":null,"rank":2730,"phonetic":"/pʁɔ.fɛ.sjɔ.nɛl/","sense":{"gist":"métier","definition":"Relating to the activity someone does to earn a living.","example":"Elle suit une formation professionnelle.","exampleTranslation":"She is taking a vocational course.","translations":["professional","occupational","vocational","by trade"],"weight":1.242},"others":[],"allTranslations":["by trade","occupational","pro","professional","vocational","workmanlike"],"senseCount":2},{"word":"prime","pos":"noun","gender":1,"rank":2759,"phonetic":"/pʁim/","sense":{"gist":"gratification","definition":"A sum of money paid on top of wages to reward work.","example":"Il a reçu une prime à Noël.","exampleTranslation":"He received a bonus at Christmas.","translations":["bonus"],"weight":0.221},"others":[{"gist":"récompense","definition":"A sum or benefit given to someone for a success, a merit or a specific act.","example":"Il a reçu une prime pour son courage.","exampleTranslation":"He got a reward for his courage.","translations":["bounty","reward","prize"],"weight":0.381}],"allTranslations":["bonus","bounty","premium","prize","reward","subsidy"],"senseCount":4},{"word":"motivation","pos":"noun","gender":1,"rank":2991,"phonetic":"/mo.ti.va.sjɔ̃/","sense":{"gist":"volonté","definition":"A deep desire that pushes someone to act.","example":"Sa motivation reste forte malgré les difficultés.","exampleTranslation":"Her motivation stays strong despite the difficulties.","translations":["motivation"],"weight":0.12},"others":[{"gist":"stimulant","definition":"Something that encourages someone to act or make an effort.","example":"Le bonus est une motivation pour les vendeurs.","exampleTranslation":"The bonus is an incentive for the sales staff.","translations":["incentive","motivator"],"weight":0.069}],"allTranslations":["incentive","motivation","motivator"],"senseCount":2},{"word":"syndicat","pos":"noun","gender":0,"rank":3352,"phonetic":"/sɛ̃.di.ka/","sense":{"gist":"salariés","definition":"An organisation that defends the professional interests of employees.","example":"Il a adhéré au syndicat de son entreprise.","exampleTranslation":"He joined the union at his company.","translations":["union","labor union","labour union","trade union"],"weight":0.719},"others":[{"gist":"association","definition":"A group of people or businesses that join forces or share interests.","example":"Le syndicat des copropriétaires se réunit demain.","exampleTranslation":"The association of co-owners meets tomorrow.","translations":["syndicate","association","syndicship"],"weight":0.164}],"allTranslations":["association","labor union","labour union","syndicate","syndicship","trade union","trade-union","trades union","tradeunion","union"],"senseCount":2},{"word":"démission","pos":"noun","gender":1,"rank":3836,"phonetic":"/de.mi.sjɔ̃/","sense":{"gist":"départ","definition":"The act of voluntarily leaving a position or office.","example":"Le ministre a annoncé sa démission hier.","exampleTranslation":"The minister announced his resignation yesterday.","translations":["resignation"],"weight":0.682},"others":[],"allTranslations":["abdication","resignation"],"senseCount":2},{"word":"agenda","pos":"noun","gender":0,"rank":4210,"phonetic":"/a.ʒɛ̃.da/","sense":{"gist":"carnet","definition":"A book in which one records appointments and tasks.","example":"Je note mon rendez-vous dans mon agenda.","exampleTranslation":"I write my appointment in my diary.","translations":["diary","appointment book","engagement book","organiser"],"weight":0.24},"others":[],"allTranslations":["agenda","appointment book","appointments diary","diary","engagement book","organiser"],"senseCount":2},{"word":"démissionner","pos":"verb","gender":null,"rank":4682,"phonetic":"/de.mi.sjɔ.ne/","sense":{"gist":"partir","definition":"To voluntarily leave one's post or position.","example":"Il a décidé de démissionner dès lundi.","exampleTranslation":"He decided to resign starting Monday.","translations":["to quit","to resign","resigning"],"weight":0.91},"others":[],"allTranslations":["make resign","quit","resign","resigning"],"senseCount":2},{"word":"temps partiel","pos":"noun","gender":0,"rank":4802,"phonetic":null,"sense":{"gist":"emploi","definition":"A working time shorter than the standard or usual full-time hours.","example":"Elle travaille à temps partiel depuis deux ans.","exampleTranslation":"She has worked part-time for two years.","translations":["part-time"],"weight":0},"others":[],"allTranslations":["part-time"],"senseCount":1},{"word":"lieu de travail","pos":"noun","gender":0,"rank":5540,"phonetic":"/ljø də tʁa.vaj/","sense":{"gist":"entreprise","definition":"A place where a person carries out their professional work.","example":"Mon lieu de travail est proche de chez moi.","exampleTranslation":"My workplace is close to my home.","translations":["workplace"],"weight":0},"others":[],"allTranslations":["workplace"],"senseCount":1},{"word":"embauche","pos":"noun","gender":1,"rank":5990,"phonetic":"/ɑ̃.boʃ/","sense":{"gist":"recrutement","definition":"The action of recruiting someone for a job.","example":"L'embauche de personnel commence en janvier.","exampleTranslation":"The hiring of staff begins in January.","translations":["hiring","taking-on","hiring of workmen"],"weight":0.302},"others":[],"allTranslations":["employment","hiring","hiring of workmen","taking-on","vacancy"],"senseCount":3},{"word":"manager","pos":"noun","gender":0,"rank":7078,"phonetic":"/ma.na.dʒɛʁ/","sense":{"gist":"dirigeant","definition":"A person in charge of leading a team, a company or a department.","example":"Le manager organise la réunion de l'équipe demain.","exampleTranslation":"The manager is organising the team meeting tomorrow.","translations":["manager"],"weight":0.068},"others":[],"allTranslations":["manager"],"senseCount":1},{"word":"compétence","pos":"noun","gender":1,"rank":7908,"phonetic":"/kɔ̃.pe.tɑ̃s/","sense":{"gist":"aptitude","definition":"The ability to perform a task or activity well.","example":"Il a une grande compétence en informatique.","exampleTranslation":"He has great skill in computing.","translations":["skill","ability","expertise","competence"],"weight":0.87},"others":[],"allTranslations":["ability","ambit","capability","competence","competency","expertise","proficiency","scope","skill","subject-matter jurisdiction","talent"],"senseCount":3},{"word":"entretien d’embauche","pos":"noun","gender":0,"rank":8659,"phonetic":"/ɑ̃.tʁə.tjɛ̃ d‿ɑ̃.boʃ/","sense":{"gist":"recrutement","definition":"A meeting between a candidate and an employer to assess an application for a job.","example":"J’ai un entretien d’embauche demain matin.","exampleTranslation":"I have a job interview tomorrow morning.","translations":["job interview"],"weight":0},"others":[],"allTranslations":["job interview"],"senseCount":1},{"word":"recruteur","pos":"noun","gender":0,"rank":9858,"phonetic":"/ʁə.kʁy.tœʁ/","sense":{"gist":"embaucheur","definition":"A person responsible for finding and selecting candidates for a position.","example":"Le recruteur a reçu trois candidats ce matin.","exampleTranslation":"The recruiter met three candidates this morning.","translations":["recruiter","talent scout"],"weight":0.862},"others":[],"allTranslations":["headhunter","recruiter","talent scout"],"senseCount":2},{"word":"alternance","pos":"noun","gender":1,"rank":10894,"phonetic":"/al.tɛʁ.nɑ̃s/","sense":{"gist":"formation","definition":"Training that combines academic classes with work in a company.","example":"Elle prépare son diplôme en alternance.","exampleTranslation":"She is doing her degree through a work-study program.","translations":["coop (education)","dual education system"],"weight":0},"others":[],"allTranslations":["alternation","coop (education)","dual education system","half-cycle"],"senseCount":3},{"word":"charge de travail","pos":"noun","gender":1,"rank":12175,"phonetic":null,"sense":{"gist":"quantité","definition":"The amount of work that a person or team has to do.","example":"Sa charge de travail a beaucoup augmenté cette année.","exampleTranslation":"Her workload has increased a lot this year.","translations":["workload"],"weight":0},"others":[],"allTranslations":["workload"],"senseCount":1},{"word":"ordre du jour","pos":"noun","gender":0,"rank":14157,"phonetic":"/ɔʁ.dʁə dy ʒuʁ/","sense":{"gist":"réunion","definition":"A list of items to be discussed at a meeting.","example":"Le premier point de l'ordre du jour est le budget.","exampleTranslation":"The first item on the agenda is the budget.","translations":["agenda","order of the day","agendum","docket"],"weight":0},"others":[],"allTranslations":["agenda","agendum","docket","order of the day","schedule"],"senseCount":2},{"word":"recrutement","pos":"noun","gender":0,"rank":15325,"phonetic":"/ʁə.kʁyt.mɑ̃/","sense":{"gist":"embauche","definition":"The action of seeking out and hiring new people for a job or an organisation.","example":"Le recrutement de nouveaux employés commence lundi.","exampleTranslation":"The recruitment of new employees starts on Monday.","translations":["recruitment","recruiting"],"weight":0.606},"others":[],"allTranslations":["levy","recruiting","recruitment"],"senseCount":2},{"word":"contrat de travail","pos":"noun","gender":0,"rank":16935,"phonetic":"/kɔ̃.tʁa də tʁa.vaj/","sense":{"gist":"emploi","definition":"A written agreement between an employer and an employee setting out the terms of employment.","example":"Elle a signé son contrat de travail hier.","exampleTranslation":"She signed her employment contract yesterday.","translations":["employment contract","work contract","agreement of service","service contract"],"weight":0},"others":[],"allTranslations":["agreement of service","employment contract","service contract","work contract"],"senseCount":1},{"word":"curriculum vitae","pos":"noun","gender":0,"rank":19253,"phonetic":"/ky.ʁi.ky.lɔm vi.te/","sense":{"gist":"document","definition":"A document presenting a person's education and work history, sent when applying for a job.","example":"Joignez votre curriculum vitae à la candidature.","exampleTranslation":"Attach your résumé to the application.","translations":["curriculum vitae","résumé"],"weight":0},"others":[],"allTranslations":["curriculum vitae","résumé"],"senseCount":1}]};
+
+// Deck sizes in the built French dictionary. The prototype carries a sample of each.
+const DECK_TOTALS = { Nourriture: 838, Travail: 125 };
+const DECK_NAMES = { Nourriture: "Nourriture", Travail: "Travail" };
+
+// Stand-in for Placements.CutoffRank. Bands follow learning-model.md.
+const PLACEMENTS = [
+  { id: "none", label: "Not taken", cutoff: 0 },
+  { id: "a1", label: "A1 · 600", cutoff: 600 },
+  { id: "a2", label: "A2 · 2,000", cutoff: 2000 },
+  { id: "b1", label: "B1 · 5,000", cutoff: 5000 },
+  { id: "b2", label: "B2 · 10,000", cutoff: 10000 },
+];
+
+const TARGET_CHANCE = 0.5;
+const PROBE_MIN_WEIGHT = 0.05;
+const MAX_PROBES = 2;
+const MAX_CONFIRMS = 2;
+const CONFIRM_BELOW = 0.3;
+const NEW_TERRITORY_AFTER = 4;
+const H_ASPIRE = new Set(["haricot", "hamburger", "homard", "hachis", "hareng", "houblon", "hors-d’œuvre"]);
+
+const ITEMS = [];
+for (const deck of Object.keys(DATA)) {
+  DATA[deck].forEach((item, i) => ITEMS.push({ ...item, deck, id: deck + ":" + i }));
+}
+
+// ---------- text helpers ----------
+
+function esc(s) {
+  return String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+}
+
+function fold(s) {
+  return s.normalize("NFC").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+}
+
+function clean(t) {
+  return t.replace(/\s*\(.*?\)\s*/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function normT(t) {
+  return fold(clean(t)).replace(/^to /, "").trim();
+}
+
+function withArticle(item) {
+  if (item.pos !== "noun" || item.gender === null || item.gender === undefined) {
+    return item.word;
+  }
+  const first = fold(item.word)[0];
+  if ("aeiouy".includes(first) || (first === "h" && !H_ASPIRE.has(item.word))) {
+    return "l’" + item.word;
+  }
+  return (item.gender === 1 ? "la " : "le ") + item.word;
+}
+
+function posLabel(item) {
+  if (item.pos === "noun") {
+    return item.gender === 1 ? "noun · f" : item.gender === 0 ? "noun · m" : "noun";
+  }
+  return item.pos === "adj" ? "adjective" : item.pos;
+}
+
+function findWord(sentence, word) {
+  const s = sentence.normalize("NFC");
+  const fs = fold(s);
+  const fw = fold(word);
+  let start = fs.indexOf(fw);
+  let length = fw.length;
+  if (start >= 0) {
+    while (start + length < fs.length && /[a-z]/.test(fs[start + length])) {
+      length++;
+    }
+    return { s, start, length };
+  }
+  const stem = fw.length > 5 ? fw.slice(0, fw.length - 2) : fw.slice(0, Math.max(3, fw.length - 1));
+  const match = new RegExp("(^|[^a-z])(" + stem.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "[a-z]*)").exec(fs);
+  if (!match) {
+    return { s, start: -1, length: 0 };
+  }
+  return { s, start: match.index + match[1].length, length: match[2].length };
+}
+
+function highlight(sentence, word) {
+  const { s, start, length } = findWord(sentence, word);
+  if (start < 0) {
+    return esc(s);
+  }
+  return esc(s.slice(0, start)) + "<mark>" + esc(s.slice(start, start + length)) + "</mark>" + esc(s.slice(start + length));
+}
+
+function gap(sentence, word) {
+  const { s, start, length } = findWord(sentence, word);
+  if (start < 0) {
+    return esc(s);
+  }
+  return esc(s.slice(0, start)) + "<b>" + s[start] + " _____</b>" + esc(s.slice(start + length));
+}
+
+function shuffle(list) {
+  const a = list.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function speak(text) {
+  if (S.muted || !("speechSynthesis" in window)) {
+    return;
+  }
+  try {
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = "fr-FR";
+    speechSynthesis.cancel();
+    speechSynthesis.speak(u);
+  } catch (e) {
+  }
+}
+
+// ---------- level model, the placement test's curve ----------
+
+const GRID = 200;
+const LMIN = Math.log(20);
+const LMAX = Math.log(60000);
+const LS = Array.from({ length: GRID }, (_, i) => LMIN + (LMAX - LMIN) * i / (GRID - 1));
+
+function normalize(b) {
+  const sum = b.reduce((a, x) => a + x, 0);
+  return b.map(x => x / sum);
+}
+
+function priorBelief(cutoff) {
+  const mean = cutoff > 0 ? Math.log(cutoff / 0.78) : Math.log(400);
+  const spread = cutoff > 0 ? 0.8 : 2.0;
+  return normalize(LS.map(L => Math.exp(-0.5 * ((L - mean) / spread) ** 2)));
+}
+
+function knownChance(rank, L) {
+  return 1 / (1 + Math.exp((Math.log(rank) - L) / 0.6));
+}
+
+function expectedKnown(belief, rank) {
+  return belief.reduce((sum, b, i) => sum + b * knownChance(rank, LS[i]), 0);
+}
+
+// An answer is evidence about the level. Four options make a blind guess right a quarter of the time.
+const LIKELIHOOD = {
+  known: p => 0.97 * p + 0.25 * (1 - p),
+  almost: p => 0.2 * p + 0.35 * (1 - p),
+  new: p => 0.03 * p + 0.4 * (1 - p),
+};
+
+function updateBelief(belief, rank, outcome) {
+  return normalize(belief.map((b, i) => b * LIKELIHOOD[outcome](knownChance(rank, LS[i]))));
+}
+
+function frontierRank(belief) {
+  const mean = belief.reduce((sum, b, i) => sum + b * LS[i], 0);
+  return Math.round(Math.exp(mean - 0.6 * Math.log(0.6 / 0.4)));
+}
+
+function levelName(rank) {
+  if (rank < 1500) return "A1";
+  if (rank < 4000) return "A2";
+  if (rank < 9000) return "B1";
+  return "B2";
+}
+
+// ---------- options: exactly one can be right ----------
+
+function translationSet(list) {
+  return new Set(list.map(normT));
+}
+
+function nearest(item, candidates, take) {
+  const scored = candidates.map(c => ({
+    c,
+    d: Math.abs(Math.log(c.rank) - Math.log(item.rank)) + (c.deck === item.deck ? 0 : 1) + Math.random() * 0.3,
+  }));
+  scored.sort((a, b) => a.d - b.d);
+  return shuffle(scored.slice(0, 8)).slice(0, take).map(x => x.c);
+}
+
+// A native-language distractor may not be any meaning of the word being asked, in any sense.
+function nativeDistractors(item, taken, count) {
+  const forbidden = translationSet(item.allTranslations.concat(item.sense.translations));
+  const pool = ITEMS.filter(other =>
+    other.pos === item.pos
+    && other.word !== item.word
+    && other.sense.translations.every(t => !forbidden.has(normT(t)))
+    && !taken.has(normT(other.sense.translations[0])));
+  const picks = [];
+  for (const other of nearest(item, pool, 20)) {
+    const text = clean(other.sense.translations[0]);
+    if (picks.length < count && !taken.has(normT(text))) {
+      taken.add(normT(text));
+      picks.push(text);
+    }
+  }
+  return picks;
+}
+
+// A French distractor may not have the asked meaning among any of its own translations.
+function frenchDistractors(item, sense, count) {
+  const asked = translationSet(sense.translations);
+  const pool = ITEMS.filter(other =>
+    other.pos === item.pos
+    && other.word !== item.word
+    && other.allTranslations.every(t => !asked.has(normT(t))));
+  const seen = new Set();
+  const picks = [];
+  for (const other of nearest(item, pool, 20)) {
+    if (picks.length < count && !seen.has(other.word)) {
+      seen.add(other.word);
+      picks.push(withArticle(other));
+    }
+  }
+  return picks;
+}
+
+function makeQuestion(item, kind, role, sense, extra = {}) {
+  let options;
+  if (kind === "reverse") {
+    options = [{ text: withArticle(item), correct: true }]
+      .concat(frenchDistractors(item, sense, 3).map(text => ({ text, correct: false })));
+  } else {
+    const correct = clean(sense.translations[0]);
+    const taken = new Set([normT(correct)]);
+    const traps = [];
+    if (kind === "context") {
+      // The word's other meanings are the most telling wrong answers: they are what a learner who
+      // knows only one meaning will reach for.
+      const others = [item.sense].concat(item.others).filter(s => s !== sense);
+      for (const other of others) {
+        const text = clean(other.translations[0]);
+        if (traps.length < 2 && !taken.has(normT(text))) {
+          taken.add(normT(text));
+          traps.push(text);
+        }
+      }
+    }
+    const fill = nativeDistractors(item, taken, 3 - traps.length);
+    options = [{ text: correct, correct: true }]
+      .concat(traps.map(text => ({ text, correct: false, trap: true })))
+      .concat(fill.map(text => ({ text, correct: false })));
+  }
+  const clues = kind === "recognise" ? ["sentence", "fifty"] : kind === "reverse" ? ["gap", "fifty"] : ["fifty"];
+  return {
+    item, kind, role, sense,
+    options: shuffle(options),
+    clues,
+    clueStep: 0,
+    removed: new Set(),
+    answered: false,
+    chosen: null,
+    outcome: null,
+    decision: null,
+    ...extra,
+  };
+}
+
+// ---------- round ----------
+
+const S = {
+  screen: "start",
+  decks: ["Nourriture"],
+  placement: "none",
+  length: 12,
+  seen: new Set(),
+  muted: false,
+  round: null,
+  message: "",
+};
+
+function key(item) {
+  return item.word + "|" + item.pos;
+}
+
+function newRound() {
+  const cutoff = PLACEMENTS.find(p => p.id === S.placement).cutoff;
+  S.round = {
+    belief: priorBelief(cutoff),
+    questions: [],
+    pending: [],
+    used: new Set(),
+    probes: 0,
+    confirms: 0,
+    previews: [],
+    keepQuizzing: false,
+    territory: false,
+  };
+  S.message = "";
+  S.screen = "quiz";
+  advance();
+}
+
+function freshKind(item) {
+  if (item.pos !== "noun") {
+    return "context";
+  }
+  if (frontierRank(S.round.belief) >= 4000 && Math.random() < 0.35) {
+    return "reverse";
+  }
+  return "recognise";
+}
+
+function editDistance(a, b) {
+  const row = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= a.length; i++) {
+    let previous = row[0];
+    row[0] = i;
+    for (let j = 1; j <= b.length; j++) {
+      const saved = row[j];
+      row[j] = Math.min(row[j] + 1, row[j - 1] + 1, previous + (a[i - 1] === b[j - 1] ? 0 : 1));
+      previous = saved;
+    }
+  }
+  return row[b.length];
+}
+
+// A word spelled almost like its translation (croûton, crouton) says nothing about the learner:
+// anyone reading English gets it. The picker leaves it out.
+function isTransparent(item) {
+  const word = fold(item.word);
+  return item.sense.translations.slice(0, 2).some(t => {
+    const translation = normT(t);
+    return editDistance(word, translation) <= Math.max(1, Math.floor(Math.max(word.length, translation.length) / 4));
+  });
+}
+
+function candidates() {
+  return ITEMS.filter(item =>
+    S.decks.includes(item.deck) && !S.seen.has(key(item)) && !S.round.used.has(item.word) && !isTransparent(item));
+}
+
+function nextQuestion() {
+  const r = S.round;
+  if (r.questions.length >= S.length) {
+    return null;
+  }
+  const due = r.pending.findIndex(p => p.after <= r.questions.length);
+  if (due >= 0) {
+    return r.pending.splice(due, 1)[0].make();
+  }
+  const list = candidates();
+  if (list.length === 0) {
+    return r.pending.length ? r.pending.shift().make() : null;
+  }
+  const scored = list
+    .map(item => ({ item, p: expectedKnown(r.belief, item.rank) }))
+    .sort((a, b) => Math.abs(a.p - TARGET_CHANCE) - Math.abs(b.p - TARGET_CHANCE));
+  const pick = scored[Math.floor(Math.random() * Math.min(3, scored.length))];
+  r.used.add(pick.item.word);
+  return makeQuestion(pick.item, freshKind(pick.item), "fresh", pick.item.sense, { chance: pick.p });
+}
+
+function advance() {
+  const q = nextQuestion();
+  if (!q) {
+    finishRound();
+    return;
+  }
+  S.round.questions.push(q);
+  render();
+  if (q.kind !== "reverse") {
+    speak(q.item.word);
+  }
+}
+
+function current() {
+  const r = S.round;
+  return r && r.questions[r.questions.length - 1];
+}
+
+function choose(index) {
+  const q = current();
+  if (!q || q.answered || q.removed.has(index)) {
+    return;
+  }
+  q.chosen = index;
+  const right = q.options[index].correct;
+  settle(q, right ? (q.clueStep > 0 ? "almost" : "known") : "new");
+}
+
+function clue() {
+  const q = current();
+  if (!q || q.answered) {
+    return;
+  }
+  if (q.clueStep >= q.clues.length) {
+    settle(q, "new");
+    return;
+  }
+  const kind = q.clues[q.clueStep];
+  q.clueStep++;
+  if (kind === "fifty") {
+    const wrong = q.options.map((o, i) => i).filter(i => !q.options[i].correct);
+    shuffle(wrong).slice(0, 2).forEach(i => q.removed.add(i));
+  }
+  if (kind === "sentence") {
+    speak(q.item.word);
+  }
+  render();
+}
+
+function settle(q, outcome) {
+  const r = S.round;
+  q.answered = true;
+  q.outcome = outcome;
+  q.decision = outcome === "known" ? "know" : "learn";
+
+  if (q.role === "fresh") {
+    r.belief = updateBelief(r.belief, q.item.rank, outcome);
+    const room = r.questions.length + 1 < S.length;
+    if (outcome === "known" && room && q.chance < CONFIRM_BELOW && r.confirms < MAX_CONFIRMS) {
+      r.confirms++;
+      r.pending.push({
+        after: r.questions.length + 2,
+        make: () => makeQuestion(q.item, q.kind === "reverse" ? "recognise" : "reverse", "confirm", q.item.sense, { parent: q }),
+      });
+    } else if (outcome === "known" && room && q.item.others.length
+               && q.item.others[0].weight >= PROBE_MIN_WEIGHT && r.probes < MAX_PROBES) {
+      r.probes++;
+      q.probeQueued = true;
+      r.pending.push({
+        after: r.questions.length + 2,
+        make: () => makeQuestion(q.item, "context", "probe", q.item.others[0], { parent: q }),
+      });
+    }
+    const fresh = r.questions.filter(x => x.role === "fresh" && x.answered);
+    if (!r.keepQuizzing && fresh.length === NEW_TERRITORY_AFTER && fresh.every(x => x.outcome === "new")) {
+      r.territory = true;
+    }
+  }
+
+  if (q.role === "confirm") {
+    q.decision = null;
+    if (outcome !== "known") {
+      q.parent.outcome = "almost";
+      q.parent.decision = "learn";
+    }
+  }
+
+  if (q.kind === "reverse") {
+    speak(q.item.word);
+  }
+  render();
+  const reveal = document.querySelector(".reveal");
+  if (reveal) {
+    reveal.scrollIntoView({ block: "nearest" });
+  }
+}
+
+function next() {
+  const r = S.round;
+  if (r.territory) {
+    r.territory = false;
+    // Transparent words come back here: for a learner starting from nothing, la table is worth having.
+    const list = ITEMS
+      .filter(item => S.decks.includes(item.deck) && !S.seen.has(key(item)) && !r.used.has(item.word))
+      .sort((a, b) => a.rank - b.rank)
+      .slice(0, Math.max(6, S.length - r.questions.length));
+    r.previews = list.map(item => ({ item, sense: item.sense, role: "preview", outcome: "new", decision: "learn" }));
+    S.screen = "territory";
+    render();
+    return;
+  }
+  advance();
+}
+
+function finishRound() {
+  const r = S.round;
+  r.questions.filter(q => q.answered).forEach(q => S.seen.add(key(q.item)));
+  r.previews.filter(p => p.accepted).forEach(p => S.seen.add(key(p.item)));
+  S.screen = "end";
+  render();
+}
+
+function results() {
+  const r = S.round;
+  return r.questions.filter(q => q.answered && q.role !== "confirm")
+    .concat(r.previews.filter(p => p.accepted));
+}
+
+// ---------- rendering ----------
+
+function topbar(title, left = "←", right = true) {
+  return `<header class="phone-topbar">
+    <button class="icon-btn" data-action="back" title="Back">${left}</button>
+    <span class="title">${esc(title)}</span>
+    ${right ? `<button class="icon-btn" data-action="mute" title="Sound">${S.muted ? "🔇" : "🔊"}</button>` : ""}
+  </header>`;
+}
+
+function renderStart() {
+  const deckRows = Object.keys(DATA).map(deck => {
+    const on = S.decks.includes(deck);
+    const checked = [...S.seen].filter(k => ITEMS.some(i => i.deck === deck && key(i) === k)).length;
+    const pct = Math.min(100, (checked / DECK_TOTALS[deck]) * 100);
+    return `<div class="row" data-action="deck" data-deck="${deck}">
+      <div class="check ${on ? "on" : ""}">${on ? "✓" : ""}</div>
+      <div class="grow">
+        <div class="name">${esc(DECK_NAMES[deck])}</div>
+        <div class="line2">${DECK_TOTALS[deck]} words · ${checked} checked</div>
+        <div class="bar"><i style="width:${pct}%"></i></div>
+      </div>
+    </div>`;
+  }).join("");
+
+  const placement = PLACEMENTS.map(p =>
+    `<button class="chip ${S.placement === p.id ? "on" : ""}" data-action="placement" data-id="${p.id}">${p.label}</button>`).join("");
+
+  return topbar("Discover", "←", false) + `
+    <div class="scroll">
+      <div class="section-label">Categories</div>
+      ${deckRows}
+      <div class="section-label">Words per round</div>
+      <div class="stepper">
+        <button data-action="len" data-d="-1">−</button><span>${S.length}</span><button data-action="len" data-d="1">+</button>
+      </div>
+      <div class="proto">
+        <div>Prototype only: the placement result the round starts from</div>
+        <div class="chips">${placement}</div>
+      </div>
+      ${S.message ? `<div class="note">${esc(S.message)}</div>` : ""}
+    </div>
+    <div class="footer">
+      <button class="btn primary" data-action="start" ${S.decks.length ? "" : "disabled"}>Start</button>
+    </div>`;
+}
+
+function promptBlock(q) {
+  const item = q.item;
+  const tag = `<span class="tag">${esc(DECK_NAMES[item.deck])}</span>`;
+  if (q.kind === "recognise") {
+    return `${tag}
+      <div class="meta center">${posLabel(item)}</div>
+      <div class="word">${esc(withArticle(item))}</div>`;
+  }
+  if (q.kind === "reverse") {
+    const def = q.sense.definition ? `<div class="sub center">${esc(q.sense.definition)}</div>` : "";
+    return `${tag}
+      <div class="meta center">${posLabel(item)}</div>
+      <div class="prompt-native">${esc(clean(q.sense.translations[0]))}</div>${def}`;
+  }
+  const lead = q.role === "probe"
+    ? `<div class="sub">You know <b>${esc(withArticle(item))}</b> as “${esc(clean(item.sense.translations[0]))}”. Here?</div>`
+    : `<div class="meta">${esc(withArticle(item))} · ${posLabel(item)}</div>`;
+  return `${q.role === "probe" ? "" : tag}${lead}
+    <div class="sentence">${highlight(q.sense.example, item.word)}</div>`;
+}
+
+function clueBlock(q) {
+  const shown = q.clues.slice(0, q.clueStep);
+  let html = "";
+  if (shown.includes("sentence") && q.sense.example) {
+    html += `<div class="clue">${highlight(q.sense.example, q.item.word)}</div>`;
+  }
+  if (shown.includes("gap") && q.sense.example) {
+    html += `<div class="clue">${gap(q.sense.example, q.item.word)}</div>`;
+  }
+  return html;
+}
+
+function optionsBlock(q) {
+  return `<div class="options">${q.options.map((o, i) => {
+    const cls = ["opt"];
+    if (q.removed.has(i)) cls.push("gone");
+    if (q.answered && o.correct) cls.push("right");
+    if (q.answered && q.chosen === i && !o.correct) cls.push("picked");
+    const note = q.answered && q.chosen === i && !o.correct
+      ? `<small>${o.trap ? "another meaning" : "your answer"}</small>`
+      : "";
+    return `<button class="${cls.join(" ")}" data-action="choose" data-i="${i}" ${q.answered || q.removed.has(i) ? "disabled" : ""}>
+      <span>${esc(o.text)}</span>${note}</button>`;
+  }).join("")}</div>`;
+}
+
+function decisionControl(entry, index, small) {
+  const d = entry.decision;
+  return `<div class="seg3 ${small ? "small" : ""}">
+    <button class="learn ${d === "learn" ? "on" : ""}" data-action="decide" data-i="${index}" data-d="learn">Learn</button>
+    <button class="know ${d === "know" ? "on" : ""}" data-action="decide" data-i="${index}" data-d="know">Know</button>
+    <button class="skip ${d === "skip" ? "on" : ""}" data-action="decide" data-i="${index}" data-d="skip">Skip</button>
+  </div>`;
+}
+
+function revealBlock(q, index) {
+  const item = q.item;
+  const sense = q.sense;
+  const verdicts = {
+    known: "Known",
+    almost: "Almost: you got there with a clue",
+    new: "New",
+  };
+  const meaning = [...new Set(sense.translations.map(clean))].slice(0, 3).join(" · ");
+  let also = "";
+  if (q.role === "probe") {
+    also = `<div class="sub">Also: ${esc(clean(item.sense.translations[0]))}, the one you knew</div>`;
+  } else if (!q.probeQueued && item.others.length) {
+    also = `<div class="sub">Also: ${item.others.map(o => esc(clean(o.translations[0]))).join(" · ")}</div>`;
+  }
+  const example = sense.example
+    ? `<div class="clue">${highlight(sense.example, item.word)}<div class="sub">${esc(sense.exampleTranslation || "")}</div></div>`
+    : "";
+  const control = q.role === "confirm" ? "" : decisionControl(q, index, false);
+  const verdict = q.role === "confirm"
+    ? (q.outcome === "known" ? "Confirmed" : "Moved to Almost")
+    : verdicts[q.outcome];
+  return `<div class="reveal">
+    <div class="verdict ${q.outcome}">${verdict}</div>
+    <div class="headline"><b>${esc(withArticle(item))}</b>
+      ${item.phonetic ? `<span class="ph">${esc(item.phonetic)}</span>` : ""}
+      <button class="speak" data-action="speak">🔊</button></div>
+    <div>${esc(meaning)}</div>
+    ${sense.definition ? `<div class="sub">${esc(sense.definition)}</div>` : ""}
+    ${example}
+    ${also}
+    ${control}
+  </div>`;
+}
+
+function renderQuiz() {
+  const r = S.round;
+  const q = current();
+  const index = r.questions.length - 1;
+  const segments = Array.from({ length: S.length }, (_, i) =>
+    `<i class="${i < r.questions.filter(x => x.answered).length ? "done" : ""}"></i>`).join("");
+  const learn = results().filter(x => x.decision === "learn");
+  const tray = learn.length
+    ? learn.map(x => `<span class="mini">${esc(x.role === "probe" ? x.item.word + " · " + clean(x.sense.translations[0]) : withArticle(x.item))}</span>`).join("")
+    : "";
+  const title = "Discover · " + S.decks.map(d => DECK_NAMES[d]).join(", ");
+
+  let footer;
+  if (q.answered) {
+    footer = `<button class="btn primary" data-action="next">Next</button>`;
+  } else {
+    const label = q.clueStep >= q.clues.length ? "Show me" : q.clueStep === 0 ? "Not sure" : "Still not sure";
+    footer = `<button class="btn" data-action="clue">${label}</button>`;
+  }
+
+  return topbar(title) + `
+    <div class="scroll">
+      <div class="segments">${segments}</div>
+      <div class="tray">${tray}</div>
+      <div class="card">
+        ${promptBlock(q)}
+        ${clueBlock(q)}
+        ${optionsBlock(q)}
+        ${q.answered ? revealBlock(q, index) : ""}
+      </div>
+    </div>
+    <div class="footer">${footer}</div>`;
+}
+
+function renderTerritory() {
+  const r = S.round;
+  const deckNames = S.decks.map(d => DECK_NAMES[d]).join(", ");
+  const rows = r.previews.map((p, i) => `<div class="row" data-action="preview" data-i="${i}">
+      <div class="check ${p.decision === "learn" ? "on" : ""}">${p.decision === "learn" ? "✓" : ""}</div>
+      <div class="grow"><div class="name">${esc(withArticle(p.item))}</div>
+      <div class="line2">${esc(clean(p.sense.translations[0]))}</div></div>
+      <button class="speak" data-action="speakword" data-w="${esc(p.item.word)}">🔊</button>
+    </div>`).join("");
+  return topbar("Discover · " + deckNames) + `
+    <div class="scroll">
+      <div class="word" style="font-size:24px;text-align:left">New ground</div>
+      <div class="sub">The most common words in ${esc(deckNames)}:</div>
+      ${rows}
+    </div>
+    <div class="footer">
+      <button class="btn primary" data-action="takePreview">Collect ${r.previews.filter(p => p.decision === "learn").length}</button>
+      <button class="btn ghost" data-action="keepQuizzing">Keep quizzing</button>
+    </div>`;
+}
+
+function renderEnd() {
+  const list = results();
+  const groups = [
+    ["learn", "To learn"],
+    ["know", "Known"],
+    ["skip", "Skipped"],
+  ];
+  const tagFor = x => x.role === "probe" ? "2nd meaning" : x.role === "preview" ? "" : x.outcome === "almost" ? "almost" : "";
+  let body = "";
+  groups.forEach(([d, label]) => {
+    const entries = list.map((x, i) => ({ x, i })).filter(e => e.x.decision === d);
+    if (!entries.length) return;
+    body += `<div class="section-label">${label} · ${entries.length}</div>`;
+    body += entries.map(({ x, i }) => `<div class="result">
+      <div class="top"><b>${esc(withArticle(x.item))}</b><span>${esc(clean(x.sense.translations[0]))}</span><em>${tagFor(x)}</em></div>
+      ${decisionControl(x, i, true)}
+    </div>`).join("");
+  });
+  const learnCount = list.filter(x => x.decision === "learn").length;
+  const coverage = S.decks.map(deck => {
+    const checked = [...S.seen].filter(k => ITEMS.some(i => i.deck === deck && key(i) === k)).length;
+    return `<div><div class="sub">${esc(DECK_NAMES[deck])}: ${checked} of ${DECK_TOTALS[deck]} checked</div>
+      <div class="bar"><i style="width:${Math.max(1, Math.min(100, checked / DECK_TOTALS[deck] * 100))}%"></i></div></div>`;
+  }).join("");
+  return topbar("Discover · Results", "←", false) + `
+    <div class="scroll">
+      ${coverage}
+      ${body || `<div class="sub">Nothing answered.</div>`}
+      ${S.message ? `<div class="note">${esc(S.message)}</div>` : ""}
+    </div>
+    <div class="footer">
+      <button class="btn primary" data-action="learnNow" ${learnCount ? "" : "disabled"}>Learn ${learnCount} now</button>
+      <button class="btn" data-action="addPool" ${learnCount ? "" : "disabled"}>Add to My Vocabulary</button>
+      <button class="btn ghost" data-action="again">Another round</button>
+    </div>`;
+}
+
+function renderModel() {
+  const el = document.getElementById("model");
+  const r = S.round;
+  if (!r || S.screen === "start") {
+    const cutoff = PLACEMENTS.find(p => p.id === S.placement).cutoff;
+    el.innerHTML = `<h3>Model · prototype only</h3>
+      <div><span class="k">prior frontier</span> ${cutoff ? "rank " + cutoff.toLocaleString() : "none, centred on rank 400"}</div>
+      <div><span class="k">target</span> P(known) ≈ ${TARGET_CHANCE}</div>
+      <div><span class="k">sample</span> ${ITEMS.length} meanings from 2 decks</div>`;
+    return;
+  }
+  const q = current();
+  const frontier = frontierRank(r.belief);
+  const max = Math.max(...r.belief);
+  const curve = r.belief.filter((_, i) => i % 5 === 0).map(b => `<i style="height:${(b / max) * 100}%"></i>`).join("");
+  const history = r.questions.filter(x => x.answered).map(x =>
+    `<li>${esc(x.item.word)} <span class="k">#${x.item.rank} ${x.role === "fresh" ? x.kind : x.role}</span> ${x.outcome}</li>`).join("");
+  el.innerHTML = `<h3>Model · prototype only</h3>
+    <div><span class="k">frontier</span> rank ~${frontier.toLocaleString()} (${levelName(frontier)})</div>
+    <div class="curve">${curve}</div>
+    <div class="k" style="display:flex;justify-content:space-between"><span>rank 20</span><span>60,000</span></div>
+    ${q && S.screen === "quiz" ? `<div style="margin-top:8px"><span class="k">now</span> ${esc(q.item.word)} · #${q.item.rank}
+      · ${q.role}${q.chance !== undefined ? " · P(known) " + q.chance.toFixed(2) : ""}</div>
+      <div><span class="k">kind</span> ${q.kind} · <span class="k">clues</span> ${q.clues.join(" → ")} → show</div>` : ""}
+    <div><span class="k">probes</span> ${r.probes}/${MAX_PROBES} · <span class="k">confirms</span> ${r.confirms}/${MAX_CONFIRMS}</div>
+    <ol>${history}</ol>`;
+}
+
+function render() {
+  const phone = document.getElementById("phone");
+  const view = { start: renderStart, quiz: renderQuiz, territory: renderTerritory, end: renderEnd }[S.screen];
+  phone.innerHTML = view();
+  renderModel();
+}
+
+// ---------- events ----------
+
+document.addEventListener("click", event => {
+  const el = event.target.closest("[data-action]");
+  if (!el) return;
+  const action = el.dataset.action;
+  const r = S.round;
+
+  if (action === "deck") {
+    const deck = el.dataset.deck;
+    S.decks = S.decks.includes(deck) ? S.decks.filter(d => d !== deck) : S.decks.concat(deck);
+    render();
+  } else if (action === "placement") {
+    S.placement = el.dataset.id;
+    render();
+  } else if (action === "len") {
+    S.length = Math.min(15, Math.max(10, S.length + Number(el.dataset.d)));
+    render();
+  } else if (action === "start" || action === "again") {
+    if (S.decks.length) newRound();
+  } else if (action === "choose") {
+    choose(Number(el.dataset.i));
+  } else if (action === "clue") {
+    clue();
+  } else if (action === "next") {
+    next();
+  } else if (action === "decide") {
+    const list = S.screen === "end" ? results() : r.questions;
+    const entry = list[Number(el.dataset.i)];
+    if (entry) entry.decision = el.dataset.d;
+    render();
+  } else if (action === "speak") {
+    const q = current();
+    if (q) { const was = S.muted; S.muted = false; speak(q.item.word); S.muted = was; }
+  } else if (action === "speakword") {
+    event.stopPropagation();
+    const was = S.muted; S.muted = false; speak(el.dataset.w); S.muted = was;
+  } else if (action === "mute") {
+    S.muted = !S.muted;
+    render();
+  } else if (action === "preview") {
+    const p = r.previews[Number(el.dataset.i)];
+    p.decision = p.decision === "learn" ? "skip" : "learn";
+    render();
+  } else if (action === "takePreview") {
+    r.previews.forEach(p => { p.accepted = p.decision === "learn"; });
+    finishRound();
+  } else if (action === "keepQuizzing") {
+    r.previews = [];
+    r.keepQuizzing = true;
+    S.screen = "quiz";
+    advance();
+  } else if (action === "back") {
+    if (S.screen === "quiz" || S.screen === "territory") {
+      finishRound();
+    } else {
+      S.screen = "start";
+      S.message = "";
+      render();
+    }
+  } else if (action === "learnNow" || action === "addPool") {
+    const list = results();
+    const learn = list.filter(x => x.decision === "learn").length;
+    const know = list.filter(x => x.decision === "know").length;
+    S.message = action === "learnNow"
+      ? `Would start Intensive Training with these ${learn} meanings, and mark ${know} known.`
+      : `Would add ${learn} cards to the pool and mark ${know} known.`;
+    render();
+  }
+});
+
+render();
+</script>
+</body>
+</html>

@@ -34,7 +34,32 @@ static bool IsSpaceOnly(const QString& Text, qsizetype Start, qsizetype End)
     return true;
 }
 
-void FTVocabularyMarks::AddSpelling(const QString& Spelling, bool bKnown)
+FTVocabularyProgress MergeVocabularyProgress(const FTVocabularyProgress& Left, const FTVocabularyProgress& Right)
+{
+    if (Left.bKnown && Right.bKnown)
+    {
+        return Left;
+    }
+
+    if (Left.bKnown)
+    {
+        return Right;
+    }
+
+    if (Right.bKnown)
+    {
+        return Left;
+    }
+
+    return FTVocabularyProgress{false, std::min(Left.Stage, Right.Stage)};
+}
+
+FTVocabularyMark FTVocabularyMarks::MakeMark(qsizetype Start, qsizetype Length, const FTVocabularyProgress& Progress)
+{
+    return FTVocabularyMark{Start, Length, Progress.bKnown, Progress.Stage};
+}
+
+void FTVocabularyMarks::AddSpelling(const QString& Spelling, const FTVocabularyProgress& Progress)
 {
     const std::vector<FToken> Tokens{Tokenize(Spelling)};
 
@@ -49,12 +74,12 @@ void FTVocabularyMarks::AddSpelling(const QString& Spelling, bool bKnown)
 
         if (Existing == Words.end())
         {
-            Words.insert(Tokens.front().Key, bKnown);
+            Words.insert(Tokens.front().Key, Progress);
 
             return;
         }
 
-        Existing.value() = Existing.value() && bKnown;
+        Existing.value() = MergeVocabularyProgress(Existing.value(), Progress);
 
         return;
     }
@@ -75,12 +100,12 @@ void FTVocabularyMarks::AddSpelling(const QString& Spelling, bool bKnown)
 
     if (Existing != Candidates.end())
     {
-        Existing->bKnown = Existing->bKnown && bKnown;
+        Existing->Progress = MergeVocabularyProgress(Existing->Progress, Progress);
 
         return;
     }
 
-    Candidates.push_back(FPhrase{Keys, bKnown});
+    Candidates.push_back(FPhrase{Keys, Progress});
 
     std::stable_sort(Candidates.begin(), Candidates.end(), [](const FPhrase& Left, const FPhrase& Right)
     {
@@ -99,11 +124,11 @@ bool FTVocabularyMarks::IsEmpty() const
     return Words.isEmpty() && Phrases.isEmpty();
 }
 
-std::vector<FTVocabularyMark> FTVocabularyMarks::Find(const QString& Text) const
+std::vector<FTVocabularyMark> FTVocabularyMarks::Find(const QString& Text, bool bFindUnknown) const
 {
     std::vector<FTVocabularyMark> Marks;
 
-    if (IsEmpty())
+    if (!bFindUnknown && IsEmpty())
     {
         return Marks;
     }
@@ -112,16 +137,22 @@ std::vector<FTVocabularyMark> FTVocabularyMarks::Find(const QString& Text) const
 
     for (size_t Index = 0; Index < Tokens.size();)
     {
+        const size_t PreviousCount{Marks.size()};
         const size_t Consumed{MatchPhrase(Text, Tokens, Index, Marks)};
 
         if (Consumed > 0)
         {
+            if (bFindUnknown)
+            {
+                Marks.resize(PreviousCount);
+            }
+
             Index += Consumed;
 
             continue;
         }
 
-        MatchToken(Text, Tokens[Index], Marks);
+        MatchToken(Text, Tokens[Index], Marks, bFindUnknown);
 
         ++Index;
     }
@@ -218,7 +249,7 @@ size_t FTVocabularyMarks::MatchPhrase(const QString& Text, const std::vector<FTo
         {
             const qsizetype Start{Tokens[First].Start};
 
-            Marks.push_back(FTVocabularyMark{Start, Tokens[First + Count - 1].End - Start, Phrase.bKnown});
+            Marks.push_back(MakeMark(Start, Tokens[First + Count - 1].End - Start, Phrase.Progress));
 
             return Count;
         }
@@ -227,13 +258,17 @@ size_t FTVocabularyMarks::MatchPhrase(const QString& Text, const std::vector<FTo
     return 0;
 }
 
-void FTVocabularyMarks::MatchToken(const QString& Text, const FToken& Token, std::vector<FTVocabularyMark>& Marks) const
+void FTVocabularyMarks::MatchToken(const QString& Text, const FToken& Token, std::vector<FTVocabularyMark>& Marks,
+                                   bool bFindUnknown) const
 {
     const auto Whole = Words.constFind(Token.Key);
 
     if (Whole != Words.constEnd())
     {
-        Marks.push_back(FTVocabularyMark{Token.Start, Token.End - Token.Start, Whole.value()});
+        if (!bFindUnknown)
+        {
+            Marks.push_back(MakeMark(Token.Start, Token.End - Token.Start, Whole.value()));
+        }
 
         return;
     }
@@ -247,6 +282,7 @@ void FTVocabularyMarks::MatchToken(const QString& Text, const FToken& Token, std
             continue;
         }
 
+        const size_t PreviousCount{Marks.size()};
         const bool bWholeToken = PartStart == Token.Start && Index == Token.End;
 
         if (bWholeToken || !MatchPart(Text, PartStart, Index, Marks))
@@ -258,6 +294,23 @@ void FTVocabularyMarks::MatchToken(const QString& Text, const FToken& Token, std
                     MatchPart(Text, Elided + 1, Index, Marks);
 
                     break;
+                }
+            }
+        }
+
+        if (bFindUnknown)
+        {
+            if (Marks.size() > PreviousCount)
+            {
+                Marks.resize(PreviousCount);
+            }
+            else
+            {
+                const QStringView Part{QStringView{Text}.mid(PartStart, Index - PartStart)};
+
+                if (std::any_of(Part.begin(), Part.end(), [](QChar Character) { return Character.isLetter(); }))
+                {
+                    Marks.push_back(MakeMark(PartStart, Part.size(), FTVocabularyProgress{}));
                 }
             }
         }
@@ -281,7 +334,7 @@ bool FTVocabularyMarks::MatchPart(const QString& Text, qsizetype Start, qsizetyp
         return false;
     }
 
-    Marks.push_back(FTVocabularyMark{Start, End - Start, Found.value()});
+    Marks.push_back(MakeMark(Start, End - Start, Found.value()));
 
     return true;
 }

@@ -23,4 +23,8 @@ std::optional<FTNarrationSentence> FindNarrationSentenceAfter(const std::vector<
                                                               const FTNarrationSentence& Previous,
                                                               const std::string& LanguageCode);
 
+std::optional<FTNarrationSentence> FindNarrationSentenceBefore(const std::vector<std::string>& Paragraphs,
+                                                               const FTNarrationSentence& Next,
+                                                               const std::string& LanguageCode);
+
 double EstimateNarrationSeconds(const QString& Text, float Speed);

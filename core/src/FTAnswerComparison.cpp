@@ -331,14 +331,29 @@ namespace
         return {};
     }
 
-    /**
-     * Every ligature written out in full.
-     *
-     * Applied to both sides of a comparison and to neither side of anything shown to the learner:
-     * a card that spells the word "cœur" goes on saying so, and the correction the interface
-     * displays is the real spelling rather than the one that was easy to type.
-     */
-    std::string ExpandLigatures(std::string_view Text)
+    std::string_view ExpandedUmlaut(std::string_view Sequence)
+    {
+        if (Sequence.size() != 2 || static_cast<unsigned char>(Sequence[0]) != LatinLeadByte)
+        {
+            return {};
+        }
+
+        switch (static_cast<unsigned char>(Sequence[1]))
+        {
+            case 0xA4: case 0x84:
+                return "ae";
+            case 0xB6: case 0x96:
+                return "oe";
+            case 0xBC: case 0x9C:
+                return "ue";
+            case 0x9F:
+                return "ss";
+            default:
+                return {};
+        }
+    }
+
+    std::string ExpandSequences(std::string_view Text, std::string_view (*Expander)(std::string_view))
     {
         std::string Result;
         Result.reserve(Text.size());
@@ -351,12 +366,29 @@ namespace
 
             Index += Length;
 
-            const std::string_view Expanded = ExpandedLigature(Sequence);
+            const std::string_view Expanded = Expander(Sequence);
 
             Result.append(Expanded.empty() ? Sequence : Expanded);
         }
 
         return Result;
+    }
+
+    std::string ExpandUmlauts(std::string_view Text)
+    {
+        return ExpandSequences(Text, ExpandedUmlaut);
+    }
+
+    /**
+     * Every ligature written out in full.
+     *
+     * Applied to both sides of a comparison and to neither side of anything shown to the learner:
+     * a card that spells the word "cœur" goes on saying so, and the correction the interface
+     * displays is the real spelling rather than the one that was easy to type.
+     */
+    std::string ExpandLigatures(std::string_view Text)
+    {
+        return ExpandSequences(Text, ExpandedLigature);
     }
 
     /** Drops whitespace and hyphens per the rules. Accents are handled separately. */
@@ -498,6 +530,10 @@ std::vector<std::string> NormaliseTokenList(std::string_view Text,
         if (bFoldAccents)
         {
             Normalised = FoldAccents(Normalised);
+        }
+        else if (Rules.bSpellOutUmlauts)
+        {
+            Normalised = ExpandUmlauts(Normalised);
         }
 
         Result.push_back(std::move(Normalised));
@@ -783,6 +819,21 @@ EFTAnswerGrade CompareAnswer(std::string_view Given,
             Prepare(ExpectedWithoutArticle, Rules.bIgnoreCase), Rules));
 
         if (ComparableGiven == ComparableWithoutArticle)
+        {
+            return EFTAnswerGrade::ArticleOmitted;
+        }
+    }
+
+    if (Rules.bSpellOutUmlauts)
+    {
+        const std::string SpelledGiven = ExpandUmlauts(ComparableGiven);
+
+        if (SpelledGiven == ExpandUmlauts(ComparableExpected))
+        {
+            return EFTAnswerGrade::Exact;
+        }
+
+        if (bArticleMayBeOmitted && SpelledGiven == ExpandUmlauts(ComparableWithoutArticle))
         {
             return EFTAnswerGrade::ArticleOmitted;
         }

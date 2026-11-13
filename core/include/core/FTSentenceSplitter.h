@@ -13,4 +13,4 @@ struct FTSentenceRange
 
 std::vector<FTSentenceRange> SplitSentences(const QString& Text, const std::string& LanguageCode);
 
-QString FindSentenceAt(const QString& Text, qsizetype Position, const std::string& LanguageCode);
+QString FindHintAt(const QString& Text, qsizetype Position, const std::string& LanguageCode);

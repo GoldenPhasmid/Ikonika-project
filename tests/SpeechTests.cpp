@@ -1,6 +1,7 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
+#include "core/FTSentenceCards.h"
 #include "core/FTSpeech.h"
 
 #include <algorithm>
@@ -20,6 +21,51 @@ namespace
     {
         return {PiperDirectory, SupertonicDirectory};
     }
+
+    int LongestInnerSilenceMilliseconds(const std::vector<int16_t>& Samples, int SampleRate)
+    {
+        constexpr int WindowMilliseconds = 10;
+        constexpr double SilenceLevel = 300.0;
+
+        const size_t Window = static_cast<size_t>(SampleRate * WindowMilliseconds / 1000);
+
+        std::vector<bool> Loud;
+
+        for (size_t Start = 0; Start + Window <= Samples.size(); Start += Window)
+        {
+            double Sum = 0.0;
+
+            for (size_t Index = Start; Index < Start + Window; ++Index)
+            {
+                Sum += std::abs(static_cast<double>(Samples[Index]));
+            }
+
+            Loud.push_back(Sum / static_cast<double>(Window) >= SilenceLevel);
+        }
+
+        const auto First = std::find(Loud.begin(), Loud.end(), true);
+        const auto Last = std::find(Loud.rbegin(), Loud.rend(), true).base();
+
+        int Longest = 0;
+        int Current = 0;
+
+        for (auto Iterator = First; Iterator < Last; ++Iterator)
+        {
+            Current = *Iterator ? 0 : Current + WindowMilliseconds;
+            Longest = std::max(Longest, Current);
+        }
+
+        return Longest;
+    }
+}
+
+TEST_CASE("Capture Supertonic sentence audio", "[speech][.]")
+{
+    const auto Synthesizer = FTSpeechSynthesizer::Create(SupertonicDirectory, "fr");
+    REQUIRE(Synthesizer.has_value());
+    const std::string Sentence = "Les commerçants ont été indemnisés après les inondations.";
+    REQUIRE_FALSE(Synthesizer->Synthesize(Sentence, 0, 1.0f, "fr").empty());
+    REQUIRE_FALSE(Synthesizer->Synthesize(Sentence, 0, 0.75f, "fr").empty());
 }
 
 TEST_CASE("A Piper directory is detected as Piper", "[speech]")
@@ -531,6 +577,22 @@ TEST_CASE("The cache key folds case", "[speech]")
     // Same key as "Chien", so this is a cache hit rather than a second entry.
     Service.Prepare("chien");
     CHECK(Service.GetCachedCount() == 1);
+}
+
+TEST_CASE("Sentence speed defaults to one and is clamped", "[speechservice]")
+{
+    FTSpeechService Service;
+
+    CHECK(Service.GetSentenceSpeed() == 1.0f);
+
+    Service.SetSentenceSpeed(0.1f);
+    CHECK(Service.GetSentenceSpeed() == MinimumSpeechSpeed);
+
+    Service.SetSentenceSpeed(10.0f);
+    CHECK(Service.GetSentenceSpeed() == MaximumSpeechSpeed);
+
+    Service.SetSentenceSpeed(0.8f);
+    CHECK(Service.GetSentenceSpeed() == 0.8f);
 }
 
 TEST_CASE("Speed is clamped and reported back", "[speech]")
@@ -1111,6 +1173,23 @@ TEST_CASE("Stretching keeps the pitch", "[stretch]")
     }
 }
 
+TEST_CASE("The phase vocoder changes the length by the tempo and keeps the pitch", "[stretch]")
+{
+    constexpr int SampleRate = 16000;
+    const std::vector<float> Tone = MakeTone(SampleRate, 220.0, 1.5);
+
+    for (const float Tempo : {0.6f, 0.75f, 1.25f})
+    {
+        const std::vector<float> Stretched = StretchSpeechPhaseVocoder(Tone, SampleRate, Tempo);
+
+        CHECK(static_cast<double>(Stretched.size()) == Catch::Approx(Tone.size() / static_cast<double>(Tempo)).epsilon(0.01));
+        CHECK(MeasureFrequency(Stretched, SampleRate) == Catch::Approx(220.0).epsilon(0.02));
+    }
+
+    CHECK(StretchSpeechPhaseVocoder(Tone, SampleRate, 1.0f) == Tone);
+    CHECK(StretchSpeechPhaseVocoder({}, SampleRate, 0.8f).empty());
+}
+
 TEST_CASE("A tempo of one leaves the samples untouched", "[stretch]")
 {
     constexpr int SampleRate = 16000;
@@ -1120,14 +1199,14 @@ TEST_CASE("A tempo of one leaves the samples untouched", "[stretch]")
     CHECK(StretchSpeech({}, SampleRate, 0.8f).empty());
 }
 
-TEST_CASE("Synthesised speech starts without a long silence", "[speech]")
+TEST_CASE("Piper speech starts without a long silence", "[speech]")
 {
     const std::optional<FTSpeechSynthesizer> Synthesizer =
-        FTSpeechSynthesizer::Create(SupertonicDirectory, "fr");
+        FTSpeechSynthesizer::Create(PiperDirectory, "fr");
 
     if (!Synthesizer.has_value())
     {
-        WARN("the Supertonic model is absent, so it is untested here");
+        WARN("the Piper model is absent, so it is untested here");
 
         return;
     }
@@ -1180,4 +1259,27 @@ TEST_CASE("Synthesised speech lands at the target loudness", "[speech]")
 
         CHECK(Rms == Catch::Approx(TargetSpeechRms).epsilon(0.1));
     }
+}
+
+TEST_CASE("A gap sentence leaves an audible pause where the word was", "[speech]")
+{
+    const std::optional<FTSpeechSynthesizer> Synthesizer = FTSpeechSynthesizer::Create(SupertonicDirectory, "fr");
+
+    if (!Synthesizer.has_value())
+    {
+        WARN("the Supertonic model is absent, so it is untested here");
+
+        return;
+    }
+
+    FTTreeSentence Sentence;
+    Sentence.Text = "Je mange le pain tous les matins.";
+    Sentence.GapStart = 3;
+    Sentence.GapLength = 5;
+
+    const std::vector<int16_t> Whole = Synthesizer->Synthesize(Sentence.Text, 0, 1.0f, "fr");
+    const std::vector<int16_t> Gapped = Synthesizer->Synthesize(MakeGapSpeech(Sentence), 0, 1.0f, "fr");
+
+    CHECK(LongestInnerSilenceMilliseconds(Gapped, Synthesizer->GetSampleRate())
+          > LongestInnerSilenceMilliseconds(Whole, Synthesizer->GetSampleRate()) * 2);
 }

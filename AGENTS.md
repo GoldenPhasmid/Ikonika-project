@@ -35,7 +35,7 @@ again, which is what lets an update apply itself.
 Each foreign language is build from separate independent components that user can choose to download. 
 Those are packaged as separate releases in a github repository, and described in app manifest shipped with the Installer.
 * dictionary - mandatory - 50-80MB
-* TTS - Piper, one model per language, desktop only - 77MB. Android speaks through the platform's own TTS instead; nothing is downloaded there.
+* TTS - Supertonic, one model for every language, desktop only - 380MB unpacked. Android speaks through the platform's own TTS instead; nothing is downloaded there.
 * Machine sentence translation - Helsinki Opus-MT int8 - 230MB each language pair, desktop only. Android translates through Google ML Kit instead, 43MB per language.
 Initial package includes only core and app.
 
@@ -79,8 +79,8 @@ build\msvc-debug\tests\Debug\CoreTests.exe "[scoring]"
 Primary work environment is Mobile, your test bed is Emulator.
 Within emulator, you have full freedom of actions - screenshot, replace db, check logs, launch with params, etc.
 
-Any meaningful user-facing changes require additional manual confirmation on Emulator using mobile-mcp toolset.
-See Mobile Workflow below.
+Meaningful changes affecting mobile require manual confirmation on Emulator using mobile-mcp. 
+Desktop-only changes require desktop verification through Ghost.
 
 Desktop UI checks go through the Ghost MCP server. It launches the app on a hidden desktop, so a check
 never takes the user's focus. Never use mcp-windows: it brings the app window to the front for every action.
@@ -88,7 +88,7 @@ See [docs/desktop-ui.md](docs/desktop-ui.md) for the review steps.
 
 ## Mobile Workflow
 
-Applies to bug reports and user-facing features alike. Test bed is the `medium_phone` emulator, driven through mobile-mcp.
+Applies to bug reports and user-facing features that affect mobile. Test bed is the `medium_phone` emulator, driven through mobile-mcp.
 
 Setup:
 * Launch the adb emulator.
@@ -207,6 +207,8 @@ commits by related changes.
 
 ## Deep dive documents
 
+You should read [docs/releases.md](docs/releases.md) and [docs/google-play-release-checklist.md](docs/google-play-release-checklist.md) if you're preparing a new release.
+
 - [docs/architecture.md](docs/architecture.md) — feature-to-class map: which controller owns which
   feature, what core types it sits on, known oddities. Read before touching a feature you haven't
   worked in yet.
@@ -214,13 +216,16 @@ commits by related changes.
   exercises, scoring. Read before discussing behaviour.
 - [docs/grammar-forms.md](docs/grammar-forms.md) — verb conjugation, noun gender, adjective forms:
   three exercises pulling from the learner's own pool rather than a hand-picked ladder.
+- [docs/discovery-quiz.md](docs/discovery-quiz.md) — Discover: a short quiz over topic decks that finds
+  unknown words and unknown meanings of known words. Prototype in `design/mobile/fragment-discover.html`.
 - [docs/technology-stack.md](docs/technology-stack.md) — technology choices, rejected alternatives, licensing.
 - [docs/mobile.md](docs/mobile.md) — what stands between the desktop app and a phone release, in order.
 - [docs/ios.md](docs/ios.md) — the iOS port: licence blockers, platform services, the CI pipeline
   that builds and signs without a Mac, App Review risks.
 - [docs/desktop-ui.md](docs/desktop-ui.md) — the rules every redesigned desktop screen follows: shell,
   screen patterns, where mobile sheets go. Read before touching desktop QML.
-- [docs/releases.md](docs/releases.md) — what ships, how an install updates itself, where the downloadable data lives.
+- [docs/releases.md](docs/releases.md) — what ships, how an install updates itself, where the downloadable data lives. Read when preparing a new release, together with the Google Play checklist.
+- [docs/google-play-release-checklist.md](docs/google-play-release-checklist.md) — the steps to ship a new Android release to Play Console. Read when preparing a new release, together with releases.md.
 - [docs/trainer-schema.md](docs/trainer-schema.md) — the app's own database (cards and their progress).
 - [docs/book-reader.md](docs/book-reader.md) — the reader: two pipelines (PDF rendered, other
   formats reflowed), one add-word popup.
@@ -235,3 +240,6 @@ commits by related changes.
 - [docs/workspaces.md](docs/workspaces.md) — one closed workspace per account plus one signed-out, the account
   registry, and the sign-in, sign-out and switch flows. Read before touching sign-in or data paths.
 - [docs/profiling.md](docs/profiling.md) — which profiler to use: simpleperf on the emulator, Visual Studio's VSDiagnostics on desktop. Read before any performance work.
+- [docs/voice.md](docs/voice.md) — speech: what each engine costs on desktop and Android, Supertonic voices and speed, sentence slowdown. Read before touching speech.
+- [docs/privacy-policy.md](docs/privacy-policy.md) — where the published privacy policy lives and how to change it.
+- [docs/everest-extraction.md](docs/everest-extraction.md) — the Everest freeware dictionaries as a data source: what they hold and how they were extracted.

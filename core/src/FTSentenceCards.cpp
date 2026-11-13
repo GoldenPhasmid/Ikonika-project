@@ -17,6 +17,8 @@ namespace
 
     constexpr std::string_view GapMark{"___"};
 
+    constexpr std::string_view GapPause{"…"};
+
     constexpr std::array<std::string_view, 50> Determiners{
         "le", "la", "les", "l'", "un", "une", "des", "du", "d'", "au", "aux", "ce", "cet", "cette", "ces",
         "mon", "ma", "mes", "ton", "ta", "tes", "son", "sa", "ses", "notre", "nos", "votre", "vos", "leur", "leurs",
@@ -184,6 +186,18 @@ std::string MakeGapPrompt(const FTTreeSentence& Sentence)
     }
 
     return Parts.Before + std::string{GapMark} + Parts.After;
+}
+
+std::string MakeGapSpeech(const FTTreeSentence& Sentence)
+{
+    const FTGapParts Parts = SplitAtGap(Sentence);
+
+    if (Parts.Word.empty())
+    {
+        return Sentence.Text;
+    }
+
+    return Parts.Before + std::string{GapPause} + Parts.After;
 }
 
 FTTreeSentence MakeMeaningSentence(const FTDictionarySense& Meaning, const std::vector<std::string>& Spellings,

@@ -98,10 +98,13 @@ namespace
         return Text.mid(First, Last - First + 1);
     }
 
+    constexpr qsizetype MaximumCliticLength = 2;
+
     struct FLookupPart
     {
         QStringList Alternatives;
         bool bElided = false;
+        bool bClitic = false;
     };
 
     std::vector<FLookupPart> SplitLookupParts(const QString& Word, const FElisionRules& Rules)
@@ -134,7 +137,7 @@ namespace
                 Parts.push_back(FLookupPart{Restored != Rules.RestoredWords.constEnd()
                                                 ? *Restored
                                                 : QStringList{Segment + Rules.RestoredVowel},
-                                            true});
+                                            true, Segment.size() <= MaximumCliticLength});
             }
         }
 
@@ -263,6 +266,11 @@ namespace
         {
             for (const FLookupPart& Part : SplitLookupParts(Word, GetElisionRules(TargetLanguage)))
             {
+                if (Part.bClitic)
+                {
+                    continue;
+                }
+
                 for (const QString& Alternative : Part.Alternatives)
                 {
                     AppendLookupMatches(Repository, Alternative.toLower(), PartMatches);
@@ -383,6 +391,49 @@ namespace
         return Cues;
     }
 
+    constexpr int ImperativeMood = 4;
+
+    QString TrimSentenceEnding(QString Text)
+    {
+        Text = Text.trimmed();
+
+        while (Text.endsWith(QLatin1Char('.')) || Text.endsWith(QLatin1Char('!')))
+        {
+            Text.chop(1);
+        }
+
+        return Text;
+    }
+
+    void AppendMatchedForms(QVariantList& MatchedForms, const std::vector<std::string>& CellValues,
+                            const QString& SearchText, int Mood, int CellIndex, const QString& Reading)
+    {
+        const std::string& TargetLanguage = FTSettings::Get().GetLanguageRules().TargetLanguage;
+
+        for (const std::string& Value : CellValues)
+        {
+            if (QString::fromStdString(Value).compare(SearchText, Qt::CaseInsensitive) != 0)
+            {
+                continue;
+            }
+
+            QString Form = QString::fromStdString(
+                Mood == ImperativeMood ? Value : AttachFormsSubject(TargetLanguage, CellIndex, Value));
+
+            if (Form.isEmpty())
+            {
+                continue;
+            }
+
+            Form[0] = Form[0].toUpper();
+
+            QVariantMap Row;
+            Row[QStringLiteral("form")] = Form;
+            Row[QStringLiteral("reading")] = Reading;
+            MatchedForms.append(Row);
+        }
+    }
+
     QVariantMap BuildVerbForms(const std::vector<FTDictionaryForm>& Forms, const std::string& Headword, const QString& SearchText)
     {
         std::map<int, std::vector<std::string>> NonfiniteByTense;
@@ -419,6 +470,7 @@ namespace
             });
         };
         QStringList MatchedReadings;
+        QVariantList MatchedForms;
         const QStringList Cues = ListCues(FormsKindVerb);
         const QStringList TenseNames{QObject::tr("Present"), QObject::tr("Present"), QObject::tr("Imperfect"),
                                      QObject::tr("Simple past"), QObject::tr("Future")};
@@ -456,6 +508,11 @@ namespace
                 QVariantList MatchesByCell;
                 bool bTenseMatched = false;
 
+                const QString TenseName = Tense >= 0 && Tense < TenseNames.size() ? TenseNames[Tense] : QString{};
+                const QString Description = Mood == 3 ? QObject::tr("Present conditional")
+                    : Mood == 4 ? QObject::tr("Present imperative")
+                    : Mood == 2 ? TenseName + " " + QObject::tr("subjunctive") : TenseName;
+
                 for (int CellIndex = 0; CellIndex < static_cast<int>(Cells.size()); ++CellIndex)
                 {
                     const std::vector<std::string>& CellValues = Cells[static_cast<size_t>(CellIndex)];
@@ -465,6 +522,11 @@ namespace
                     MatchesByCell.append(bCellMatched);
                     bTenseMatched = bTenseMatched || bCellMatched;
                     MarkedTexts.append(MarkEndings(CellValues, Headword, Mood, Tense, CellIndex));
+
+                    if (bCellMatched && SearchText.compare(QString::fromStdString(Headword), Qt::CaseInsensitive) != 0)
+                    {
+                        AppendMatchedForms(MatchedForms, CellValues, SearchText, Mood, CellIndex, Description);
+                    }
                 }
 
                 if (bTenseMatched)
@@ -477,10 +539,6 @@ namespace
                             Subjects << Cues[Index];
                         }
                     }
-                    const QString TenseName = Tense >= 0 && Tense < TenseNames.size() ? TenseNames[Tense] : QString{};
-                    const QString Description = Mood == 3 ? QObject::tr("Present conditional")
-                        : Mood == 4 ? QObject::tr("Present imperative")
-                        : Mood == 2 ? TenseName + " " + QObject::tr("subjunctive") : TenseName;
                     MatchedReadings << Description + (Subjects.isEmpty() ? QString{} : " · " + Subjects.join(" / "));
                 }
                 if (bTenseMatched && MatchedKey.isEmpty())
@@ -506,6 +564,7 @@ namespace
         QVariantMap Result;
         Result[QStringLiteral("kind")] = QStringLiteral("verb");
         Result[QStringLiteral("matchedReadings")] = MatchedReadings;
+        Result[QStringLiteral("matchedForms")] = MatchedForms;
         Result[QStringLiteral("matchedKey")] = MatchedKey;
         Result[QStringLiteral("matchedText")] = bMatched ? SearchText : QString{};
         Result[QStringLiteral("cues")] = ListCues(FormsKindVerb);
@@ -581,7 +640,30 @@ namespace
             return Result;
         }
 
-        return IsVerbShaped(Entry.Forms) ? BuildVerbForms(Entry.Forms, Entry.Headword, SearchText) : BuildAgreementForms(Entry);
+        return IsVerbShaped(Entry.Forms)
+            ? BuildVerbForms(ListConjugationForms(Entry, FTSettings::Get().GetLanguageRules().TargetLanguage),
+                             Entry.Headword, SearchText)
+            : BuildAgreementForms(Entry);
+    }
+
+    QVariantList FindMatchedForms(const std::vector<FTDictionaryEntry>& Entries, const std::string& Headword,
+                                  const QString& SearchText)
+    {
+        for (const FTDictionaryEntry& Entry : Entries)
+        {
+            if (Entry.PartOfSpeech != FormsKindVerb || Entry.Headword != Headword || !IsVerbShaped(Entry.Forms))
+            {
+                continue;
+            }
+
+            const QVariantMap Forms = BuildVerbForms(
+                ListConjugationForms(Entry, FTSettings::Get().GetLanguageRules().TargetLanguage), Entry.Headword,
+                SearchText);
+
+            return Forms.value(QStringLiteral("matchedForms")).toList();
+        }
+
+        return {};
     }
 
     QVariantMap BuildSense(const FTDictionarySense& Sense)
@@ -612,6 +694,7 @@ namespace
 
         bool bMasculine{false};
         bool bFeminine{false};
+        bool bNeuter{false};
 
         for (const FTDictionarySense& Sense : Entry.Senses)
         {
@@ -622,9 +705,10 @@ namespace
 
             bMasculine = bMasculine || *Sense.Gender == GenderMasculine || *Sense.Gender == GenderCommon;
             bFeminine = bFeminine || *Sense.Gender == GenderFeminine || *Sense.Gender == GenderCommon;
+            bNeuter = bNeuter || *Sense.Gender == GenderNeuter;
         }
 
-        if (bMasculine && bFeminine)
+        if ((bMasculine && bFeminine) || (bNeuter && (bMasculine || bFeminine)))
         {
             return GenderCommon;
         }
@@ -637,6 +721,11 @@ namespace
         if (bFeminine)
         {
             return GenderFeminine;
+        }
+
+        if (bNeuter)
+        {
+            return GenderNeuter;
         }
 
         return std::nullopt;
@@ -659,6 +748,11 @@ namespace
         if (*Gender == GenderCommon)
         {
             return QCoreApplication::translate("DictionaryController", "mixed");
+        }
+
+        if (*Gender == GenderNeuter)
+        {
+            return QCoreApplication::translate("DictionaryController", "neuter");
         }
 
         return *Gender == GenderMasculine ? QCoreApplication::translate("DictionaryController", "masculine")
@@ -1172,6 +1266,7 @@ namespace
             Match.Headword, Match.PartOfSpeech, FTSettings::Get().GetLanguageRules().TargetLanguage));
         Row[QStringLiteral("verbGroup")] = AppCards::GetVerbGroup(Match.Headword, Match.PartOfSpeech);
         Row[QStringLiteral("partOfSpeech")] = QString::fromStdString(Match.PartOfSpeech);
+        Row[QStringLiteral("partOfSpeechLabel")] = PartOfSpeechName(QString::fromStdString(Match.PartOfSpeech));
         Row[QStringLiteral("translation")] = QString::fromStdString(Match.Translation);
         Row[QStringLiteral("cefrLevel")] = CefrLetter(Match.CefrLevel);
         Row[QStringLiteral("exact")] = Match.bExactMatch;
@@ -1293,7 +1388,7 @@ DictionaryController::DictionaryController(QObject* Parent)
                     return;
                 }
 
-                MachineTranslation = Text;
+                MachineTranslation = FormTerm.isEmpty() ? Text : TrimSentenceEnding(Text);
                 bTranslating = false;
 
                 emit translationChanged();
@@ -1302,7 +1397,7 @@ DictionaryController::DictionaryController(QObject* Parent)
     connect(&AppTranslator::Notifier(), &AppTranslatorNotifier::modelsChanged, this,
             [this]()
             {
-                if (Results.isEmpty() && MachineTranslation.isEmpty())
+                if ((Results.isEmpty() || !FormTerm.isEmpty()) && MachineTranslation.isEmpty())
                 {
                     RequestTranslation();
                 }
@@ -1313,11 +1408,13 @@ void DictionaryController::ResetTranslation(const QString& Text)
 {
     TranslationQuery = Text;
 
-    if (MachineTranslation.isEmpty() && !bTranslating)
+    if (MachineTranslation.isEmpty() && !bTranslating && FormTerm.isEmpty())
     {
         return;
     }
 
+    FormTerm.clear();
+    FormReading.clear();
     MachineTranslation.clear();
     bTranslating = false;
 
@@ -1349,6 +1446,16 @@ void DictionaryController::translate(const QString& Text)
 QString DictionaryController::GetMachineTranslation() const
 {
     return MachineTranslation;
+}
+
+QString DictionaryController::GetFormTerm() const
+{
+    return FormTerm;
+}
+
+QString DictionaryController::GetFormReading() const
+{
+    return FormReading;
 }
 
 bool DictionaryController::IsTranslating() const
@@ -1404,6 +1511,7 @@ void DictionaryController::search(const QString& Text)
             RepositoryTimer.start();
 
             std::vector<FTDictionarySearchMatch> Matches;
+            QVariantList MatchedForms;
 
             std::optional<FTDatabase> Connection = FTDatabase::OpenReadOnly(DictionaryPath);
 
@@ -1411,6 +1519,36 @@ void DictionaryController::search(const QString& Text)
             {
                 FTDictionaryRepository Repository(*Connection, NativeLanguage);
                 Matches = SearchWord(Repository, Trimmed, TargetLanguage, Limit, bNativeQuery);
+
+                const auto VerbMatch = std::find_if(Matches.begin(), Matches.end(), [](const FTDictionarySearchMatch& Match)
+                {
+                    return Match.bExactMatch && Match.PartOfSpeech == FormsKindVerb;
+                });
+
+                if (!bNativeQuery && VerbMatch != Matches.end())
+                {
+                    QStringList FormCandidates{Trimmed};
+
+                    for (const FLookupPart& Part : SplitLookupParts(Trimmed, GetElisionRules(TargetLanguage)))
+                    {
+                        if (!Part.bClitic)
+                        {
+                            FormCandidates.append(Part.Alternatives);
+                        }
+                    }
+
+                    const std::vector<FTDictionaryEntry> VerbEntries = Repository.LookUp(VerbMatch->Headword);
+
+                    for (const QString& Candidate : FormCandidates)
+                    {
+                        MatchedForms = FindMatchedForms(VerbEntries, VerbMatch->Headword, Candidate.toLower());
+
+                        if (!MatchedForms.isEmpty())
+                        {
+                            break;
+                        }
+                    }
+                }
             }
 
             const qint64 RepositoryMicroseconds = RepositoryTimer.nsecsElapsed() / 1000;
@@ -1422,7 +1560,7 @@ void DictionaryController::search(const QString& Text)
 
             QMetaObject::invokeMethod(Guard.data(),
                 [Guard, Generation, SearchText, Limit, Matches = std::move(Matches),
-                 RepositoryMicroseconds]()
+                 MatchedForms = std::move(MatchedForms), RepositoryMicroseconds]()
                 {
                     if (!Guard || Generation != Guard->PendingGeneration)
                     {
@@ -1453,12 +1591,30 @@ void DictionaryController::search(const QString& Text)
                                     << "| total" << (RepositoryMicroseconds + RowMicroseconds)
                                     << "us";
 
-                    emit Guard->resultsChanged();
-
                     if (Guard->Results.isEmpty())
                     {
+                        emit Guard->resultsChanged();
+
+                        Guard->RequestTranslation();
+
+                        return;
+                    }
+
+                    if (!MatchedForms.isEmpty() && AppTranslator::IsEnabled()
+                        && (AppTranslator::IsSupportedPair() || AppTranslator::IsPairOffered()))
+                    {
+                        const QVariantMap FirstForm = MatchedForms.front().toMap();
+
+                        Guard->FormTerm = FirstForm.value(QStringLiteral("form")).toString();
+                        Guard->FormReading = FirstForm.value(QStringLiteral("reading")).toString();
+                        Guard->TranslationQuery = Guard->FormTerm;
+
+                        emit Guard->translationChanged();
+
                         Guard->RequestTranslation();
                     }
+
+                    emit Guard->resultsChanged();
                 }, Qt::QueuedConnection);
         });
 }
@@ -1598,6 +1754,7 @@ void DictionaryController::openEntry(const QString& Headword, const QString& Par
     PartsOfSpeech = BuildPartsOfSpeech(Readings, bInDictionary, PartOfSpeech);
 
     emit entryChanged();
+
 }
 
 void DictionaryController::speak(const QString& Word) const
@@ -1628,7 +1785,7 @@ void DictionaryController::openWebSearch(const QString& Headword) const
 
 QString DictionaryController::sentenceAt(const QString& Text, int Position) const
 {
-    return FindSentenceAt(Text, Position, FTSettings::Get().GetLanguageRules().TargetLanguage);
+    return FindHintAt(Text, Position, FTSettings::Get().GetLanguageRules().TargetLanguage);
 }
 
 QString DictionaryController::cardHint(const QString& CardId) const

@@ -70,6 +70,14 @@ ApplicationWindow
 
         if (window.screen === "onboarding")
         {
+            const placementIntro = window.onboardingStep !== "placement"
+                || (onboardingPlacement.item && onboardingPlacement.item.phase === "intro")
+
+            if (AppOnboarding.canGoBack && placementIntro)
+            {
+                AppOnboarding.back()
+            }
+
             return true
         }
 
@@ -86,6 +94,12 @@ ApplicationWindow
         }
 
         if (window.screen === "settings" && settingsMobile.item && settingsMobile.item.closeCategory())
+        {
+            return true
+        }
+
+        if (window.screen === "dictionaryword" && dictionaryWordMobile.item
+            && dictionaryWordMobile.item.closeConjugation())
         {
             return true
         }
@@ -343,6 +357,13 @@ ApplicationWindow
         screenWalk.start()
         navigationWalk.start()
 
+        const snapshotDirectory = snapshotProbe.environmentVariable("IKONIKA_SNAPSHOT_DIR")
+
+        if (snapshotDirectory.length > 0)
+        {
+            snapshotProbe.serveSnapshots(window.contentItem, snapshotDirectory)
+        }
+
         if (window.screen === "today" && window.walksRequested === 0)
         {
             welcome.shown = true
@@ -366,11 +387,6 @@ ApplicationWindow
         window.resetTo("dictionary")
     }
 
-    property bool signInStepDone: false
-
-    property bool setupStepDone: false
-
-    property bool placementStepDone: false
     property bool placementRetake: false
 
     function startTraining()
@@ -381,14 +397,10 @@ ApplicationWindow
             return
         }
 
-        const missing = dailyCounts.shortfall()
-
-        if (missing > 0)
+        if (dailyCounts.shortfall() > 0)
         {
-            if (triageMobile.start(missing))
-            {
-                window.pushScreen("triage")
-            }
+            console.info("Train: not enough words in My Vocabulary, opening Discover")
+            window.startDiscovery()
 
             return
         }
@@ -532,9 +544,6 @@ ApplicationWindow
                 return
             }
 
-            window.signInStepDone = false
-            window.setupStepDone = false
-            window.placementStepDone = false
             window.resetTo("onboarding")
         }
     }
@@ -602,7 +611,7 @@ ApplicationWindow
             repetitionCount === undefined ? -1 : repetitionCount,
             filterKeys === undefined ? [] : filterKeys))
         {
-            window.pushScreen(exercise)
+            window.pushScreen(exercise === "gap" ? "written" : exercise)
         }
     }
 
@@ -617,16 +626,10 @@ ApplicationWindow
         repetition: repetitionMobile
         intensive: intensiveMobile
         sentences: sentenceTraining
+        discovery: discovery
 
         onIntensiveRequested: window.startTraining()
-
-        onTriageRequested: function(wantedCount)
-        {
-            if (triageMobile.start(wantedCount))
-            {
-                window.pushScreen("triage")
-            }
-        }
+        onDiscoverRequested: window.startDiscovery()
 
         onRepetitionRequested:
         {
@@ -710,6 +713,11 @@ ApplicationWindow
         }
     }
 
+    TriageController
+    {
+        id: settingsTriage
+    }
+
     Component
     {
         id: settingsMobileComponent
@@ -719,6 +727,7 @@ ApplicationWindow
             anchors.fill: parent
 
             store: window.store
+            triageController: settingsTriage
 
             onDone: window.popScreen()
 
@@ -1161,13 +1170,7 @@ ApplicationWindow
             window.pushScreen("deck")
         }
 
-        onTrainRequested: function(deckId)
-        {
-            if (triageMobile.startDeck(deckId))
-            {
-                window.pushScreen("triage")
-            }
-        }
+        onTrainRequested: function(deckId) { window.startDeckDiscovery(deckId) }
 
         onSearchRequested: window.lookUpWord("")
         onTabSelected: function(key) { window.resetTo(key) }
@@ -1183,13 +1186,7 @@ ApplicationWindow
 
             store: window.store
 
-            onLearnRequested: function(deckId)
-            {
-                if (triageMobile.startDeck(deckId))
-                {
-                    window.pushScreen("triage")
-                }
-            }
+            onLearnRequested: function(deckId) { window.startDeckDiscovery(deckId) }
 
             onBackRequested: window.popScreen()
             onSearchRequested: window.lookUpWord("")
@@ -1692,6 +1689,129 @@ ApplicationWindow
         id: sentenceTraining
     }
 
+    DiscoveryController
+    {
+        id: discovery
+    }
+
+    function startDiscovery()
+    {
+        if (discovery.hasActiveSession)
+        {
+            console.info("Discover: continuing the unfinished round")
+            window.pushScreen("discovery")
+
+            return
+        }
+
+        window.pushScreen("discoverpick")
+    }
+
+    function startDiscoveryDecks(deckIds)
+    {
+        discovery.saveDecks(deckIds)
+
+        if (!discovery.startDecks(deckIds))
+        {
+            toast.show(qsTr("Every word of these decks is already in My Vocabulary or known."))
+
+            return
+        }
+
+        window.replaceScreen("discovery")
+    }
+
+    function startDeckDiscovery(deckId)
+    {
+        if (!discovery.startDeck(deckId))
+        {
+            toast.show(qsTr("Every word of this deck is already in My Vocabulary or known."))
+
+            return
+        }
+
+        window.pushScreen("discovery")
+    }
+
+    Component
+    {
+        id: discoverPickMobileComponent
+
+        MobileDiscoverPickScreen
+        {
+            anchors.fill: parent
+
+            controller: discovery
+
+            onStartRequested: function(deckIds) { window.startDiscoveryDecks(deckIds) }
+            onDone: window.popScreen()
+        }
+    }
+
+    Loader
+    {
+        id: discoverPickMobile
+
+        anchors.fill: parent
+        visible: false
+        active: false
+        asynchronous: false
+        sourceComponent: discoverPickMobileComponent
+
+        onVisibleChanged:
+        {
+            if (!visible)
+            {
+                return
+            }
+
+            active = true
+            discoverPickMobile.item.restoreSaved()
+        }
+    }
+
+    Component
+    {
+        id: discoveryMobileComponent
+
+        MobileDiscoveryScreen
+        {
+            anchors.fill: parent
+
+            controller: discovery
+            store: window.store
+
+            onWordTapped: function(word, sentence) { window.openLookup(word, sentence) }
+
+            onEditRequested: function(card)
+            {
+                dictionaryAddWordDialogMobile.openForCard(discovery, card.id, card.targetWord, card.translation,
+                                                          card.gender, card.partOfSpeech, card.box)
+                window.pushScreen("dictionaryaddword")
+            }
+
+            onDone:
+            {
+                todayMobile.refresh()
+                decksMobile.refresh()
+                window.popScreen()
+            }
+        }
+    }
+
+    Loader
+    {
+        id: discoveryMobile
+
+        anchors.fill: parent
+        visible: false
+        active: false
+        asynchronous: false
+        sourceComponent: discoveryMobileComponent
+
+        onVisibleChanged: if (visible) active = true
+    }
+
     Component
     {
         id: sentenceTrainingMobileComponent
@@ -1779,6 +1899,8 @@ ApplicationWindow
     MobileScreenMotion { target: decksMobile; screenName: "decks"; router: window }
     MobileScreenMotion { target: deckMobile; screenName: "deck"; router: window }
     MobileScreenMotion { target: triageMobile; screenName: "triage"; router: window }
+    MobileScreenMotion { target: discoverPickMobile; screenName: "discoverpick"; router: window }
+    MobileScreenMotion { target: discoveryMobile; screenName: "discovery"; router: window }
     MobileScreenMotion { target: repetitionMobile; screenName: "repetition"; router: window }
     MobileScreenMotion { target: addWordDialogMobile; screenName: "addword"; router: window }
     MobileScreenMotion { target: dictionaryAddWordDialogMobile; screenName: "dictionaryaddword"; router: window }
@@ -1797,6 +1919,11 @@ ApplicationWindow
     PlacementTestController
     {
         id: placementTest
+    }
+
+    UiProbe
+    {
+        id: snapshotProbe
     }
 
     Component
@@ -1839,6 +1966,26 @@ ApplicationWindow
     }
 
     readonly property bool onboardingActive: window.screen === "onboarding"
+    readonly property string onboardingStep: AppSyncController.restoring ? "restore" : AppOnboarding.step
+
+    Component
+    {
+        id: onboardingSpeakComponent
+
+        MobileOnboardingSpeakScreen {}
+    }
+
+    Loader
+    {
+        anchors.fill: parent
+        z: 60
+        active: false
+        visible: window.onboardingActive && window.onboardingStep === "speak"
+        sourceComponent: onboardingSpeakComponent
+
+        onVisibleChanged: if (visible) active = true
+        Component.onCompleted: if (visible) active = true
+    }
 
     Component
     {
@@ -1846,12 +1993,7 @@ ApplicationWindow
 
         MobileOnboardingSignInScreen
         {
-            anchors.fill: parent
-
-            visible: AppSyncController.configured && !window.signInStepDone && !AppOnboarding.resumingLanguage
-                     && !AppSyncController.restoring
-
-            onContinued: window.signInStepDone = true
+            onContinued: AppOnboarding.next()
         }
     }
 
@@ -1860,7 +2002,7 @@ ApplicationWindow
         anchors.fill: parent
         z: 60
         active: false
-        visible: window.onboardingActive
+        visible: window.onboardingActive && window.onboardingStep === "signin"
         sourceComponent: onboardingSignInComponent
 
         onVisibleChanged: if (visible) active = true
@@ -1869,41 +2011,30 @@ ApplicationWindow
 
     Component
     {
-        id: onboardingSetupComponent
+        id: onboardingLearnComponent
 
-        MobileOnboardingSetupScreen
-        {
-            anchors.fill: parent
+        MobileOnboardingLearnScreen {}
+    }
 
-            store: window.store
+    Loader
+    {
+        anchors.fill: parent
+        z: 60
+        active: false
+        visible: window.onboardingActive && window.onboardingStep === "learn"
+        sourceComponent: onboardingLearnComponent
 
-            visible: !window.setupStepDone && !AppOnboarding.resumingLanguage && !AppSyncController.restoring
-                     && (window.signInStepDone || !AppSyncController.configured)
-
-            onContinued:
-            {
-                window.placementStepDone = !placementTest.isOffered(AppOnboarding.chosenLanguage, AppOnboarding.chosenNative)
-                window.setupStepDone = true
-            }
-        }
+        onVisibleChanged: if (visible) active = true
+        Component.onCompleted: if (visible) active = true
     }
 
     Component
     {
-        id: onboardingPlacementComponent
+        id: onboardingDailyComponent
 
-        MobileOnboardingPlacementScreen
+        MobileOnboardingDailyScreen
         {
-            anchors.fill: parent
-
-            visible: window.setupStepDone && !window.placementStepDone && !AppOnboarding.resumingLanguage
-                     && !AppSyncController.restoring
-
-            controller: placementTest
-            targetLanguage: AppOnboarding.chosenLanguage
-            nativeLanguage: AppOnboarding.chosenNative
-
-            onFinished: window.placementStepDone = true
+            store: window.store
         }
     }
 
@@ -1912,7 +2043,37 @@ ApplicationWindow
         anchors.fill: parent
         z: 60
         active: false
-        visible: window.onboardingActive
+        visible: window.onboardingActive && window.onboardingStep === "daily"
+        sourceComponent: onboardingDailyComponent
+
+        onVisibleChanged: if (visible) active = true
+        Component.onCompleted: if (visible) active = true
+    }
+
+    Component
+    {
+        id: onboardingPlacementComponent
+
+        MobileOnboardingPlacementScreen
+        {
+            controller: placementTest
+            targetLanguage: AppOnboarding.chosenLanguage
+            nativeLanguage: AppOnboarding.chosenNative
+            showsBack: AppOnboarding.canGoBack
+
+            onFinished: AppOnboarding.next()
+            onBackRequested: AppOnboarding.back()
+        }
+    }
+
+    Loader
+    {
+        id: onboardingPlacement
+
+        anchors.fill: parent
+        z: 60
+        active: false
+        visible: window.onboardingActive && window.onboardingStep === "placement"
         sourceComponent: onboardingPlacementComponent
 
         onVisibleChanged: if (visible) active = true
@@ -1923,20 +2084,8 @@ ApplicationWindow
     {
         anchors.fill: parent
         z: 60
-        active: false
-        visible: window.onboardingActive
-        sourceComponent: onboardingSetupComponent
-
-        onVisibleChanged: if (visible) active = true
-        Component.onCompleted: if (visible) active = true
-    }
-
-    Loader
-    {
-        anchors.fill: parent
-        z: 60
         active: visible
-        visible: window.onboardingActive && AppSyncController.restoring
+        visible: window.onboardingActive && window.onboardingStep === "restore"
 
         sourceComponent: MobileOnboardingRestoreScreen {}
     }
@@ -1947,11 +2096,6 @@ ApplicationWindow
 
         MobileOnboardingDownloadScreen
         {
-            anchors.fill: parent
-
-            visible: !AppSyncController.restoring
-                     && (AppOnboarding.resumingLanguage || (window.setupStepDone && window.placementStepDone))
-
             store: window.store
 
             onDone:
@@ -1967,7 +2111,7 @@ ApplicationWindow
         anchors.fill: parent
         z: 60
         active: false
-        visible: window.onboardingActive
+        visible: window.onboardingActive && window.onboardingStep === "download"
         sourceComponent: onboardingDownloadComponent
 
         onVisibleChanged: if (visible) active = true

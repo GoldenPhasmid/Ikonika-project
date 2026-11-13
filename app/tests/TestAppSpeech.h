@@ -44,6 +44,11 @@ namespace
             return ActiveVoice;
         }
 
+        float GetSentenceSpeed() const override
+        {
+            return SentenceSpeed;
+        }
+
         std::vector<FTVoiceInfo> Voices;
         int ActiveVoice = 0;
         bool bEnabled = true;
@@ -51,6 +56,7 @@ namespace
         QString LastText;
         QString LastLanguage;
         float LastRateScale = 0.0f;
+        float SentenceSpeed = 1.0f;
     };
 
     struct FAppSpeechGuard

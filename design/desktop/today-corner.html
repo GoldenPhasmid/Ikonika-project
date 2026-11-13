@@ -1,0 +1,238 @@
+<title>Ikonika Desktop Today Corner</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+:root {
+  --page: #e4e1d7; --page-ink: #2e2a25; --page-muted: #75716a; --page-line: #d6d2c5; --page-panel: #efede5;
+  --font: "Inter", "Segoe UI", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --page: #1d1d1b; --page-ink: #f2f0e9; --page-muted: #9c9a8f; --page-line: #3a3937; --page-panel: #262624; color-scheme: dark } }
+
+.frame {
+  --text: #f2f0e9; --muted: #9c9a8f; --accent: #5b9cf8; --panel: #262624; --faint: #30302e; --sunken: #2b2b29;
+  --subtle: #c2c0b6; --outline: #8a887e; --border: #3a3937; --correct: #4caf7d;
+}
+.frame[data-t="light"] {
+  --text: #2e2a25; --muted: #75716a; --accent: #3d63b0; --panel: #efede5; --faint: #e4e1d7; --sunken: #e9e6dd;
+  --subtle: #57534b; --outline: #857f72; --border: #d6d2c5; --correct: #3b7a53;
+}
+
+* { box-sizing: border-box }
+body {
+  background: var(--page); color: var(--page-ink); font-family: var(--font); margin: 0;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 28px 48px;
+}
+.wrap { max-width: 1320px; margin: 0 auto; display: grid; gap: 18px }
+.controls { display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: center }
+.seg { display: inline-flex; border: 1px solid var(--page-line); border-radius: 8px; overflow: hidden; background: var(--page-panel) }
+.seg button { font: 500 13px var(--font); color: var(--page-muted); background: none; border: 0; padding: 8px 13px; cursor: pointer }
+.seg button + button { border-left: 1px solid var(--page-line) }
+.seg button[aria-pressed="true"] { color: var(--page-ink); background: var(--page-line) }
+.seg button:focus-visible { outline: 2px solid #5b9cf8; outline-offset: -2px }
+.ctl-label { font: 600 11px var(--font); letter-spacing: .08em; text-transform: uppercase; color: var(--page-muted); margin-right: 8px }
+
+.stage { position: relative; width: 100%; overflow: hidden }
+.frame {
+  position: absolute; top: 0; left: 0; transform-origin: 0 0; display: flex; flex-direction: column;
+  background: var(--sunken); color: var(--text); border-radius: 10px; overflow: hidden;
+  box-shadow: 0 0 0 1px var(--border), 0 24px 60px -20px rgba(0,0,0,.45);
+  font-family: var(--font); font-variant-numeric: tabular-nums;
+  --ease: cubic-bezier(.22, .8, .24, 1);
+}
+.topbar { height: 64px; flex: none; background: var(--panel); border-bottom: 1px solid var(--border) }
+.content { flex: 1; position: relative; padding: 14px 18px }
+
+.top-row {
+  --today: 124px; --mark: 28px; --gap: 18px; --head: 14px; --head-gap: 10px; --name: 14px; --name-gap: 6px; --link: 22px;
+  --mark-centre: calc(var(--today) / 2);
+  --lead: calc(var(--mark-centre) - var(--head) - var(--head-gap) - var(--name) - var(--name-gap) - var(--mark) / 2);
+  display: flex; justify-content: space-between; align-items: flex-start; gap: 32px;
+}
+.corner { display: flex; align-items: flex-start; gap: var(--link) }
+
+.ring { width: var(--today); height: var(--today); position: relative; flex: none }
+.ring svg { width: 100%; height: 100%; transform: rotate(-90deg) }
+.ring-centre { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; animation: settle 520ms var(--ease) 260ms both }
+.ring-num { font-size: 38px; font-weight: 700; line-height: 38px; letter-spacing: -.02em }
+.ring-of { font-size: 13px; line-height: 16px; font-weight: 500; color: var(--muted); margin-top: 2px }
+
+svg circle { fill: none }
+svg .arc { animation: draw 1000ms var(--ease) var(--delay, 0ms) both }
+
+.block { position: relative; padding-top: var(--lead); display: grid; row-gap: var(--head-gap) }
+.head { height: var(--head); display: flex; align-items: center; gap: 10px }
+.label { font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); white-space: nowrap; line-height: 1 }
+.rule { flex: 1; height: 1px; background: var(--border) }
+.total { font-size: 12px; font-weight: 600; color: var(--subtle); line-height: 1 }
+
+.days { position: relative; display: flex; gap: var(--gap) }
+.day { width: var(--mark); display: grid; justify-items: center; row-gap: var(--name-gap); position: relative; animation: rise 460ms var(--ease) calc(160ms + var(--i) * 45ms) both }
+.name { height: var(--name); line-height: var(--name); font-size: 12px; font-weight: 500; color: var(--muted); white-space: nowrap }
+
+.coming .days::before {
+  content: ""; position: absolute; height: 1px; left: calc(-1 * var(--link)); right: -36px;
+  top: calc(var(--name) + var(--name-gap) + var(--mark) / 2);
+  background: linear-gradient(90deg, var(--outline) 0, var(--border) 48px, var(--border) calc(100% - 36px), transparent);
+  transform-origin: left; animation: reach 700ms var(--ease) 120ms both;
+}
+
+.due {
+  --heat: 0;
+  width: var(--mark); height: var(--mark); border-radius: 50%; display: grid; place-items: center; position: relative;
+  border: 1.5px solid color-mix(in srgb, var(--accent) 75%, transparent);
+  background: color-mix(in srgb, var(--accent) calc(6% + var(--heat) * 34%), var(--sunken));
+  font-size: 10px; font-weight: 700; color: var(--text); cursor: default;
+  transition: transform 160ms var(--ease), background-color 160ms;
+}
+.due:hover { transform: scale(1.12); background: color-mix(in srgb, var(--accent) 46%, var(--sunken)) }
+.due.zero { border: 1.5px dashed var(--border); background: var(--sunken); color: var(--muted); font-weight: 500 }
+.due.zero:hover { transform: none; background: var(--sunken) }
+
+.week .day.today .name { color: var(--text); font-weight: 700 }
+.mark { width: var(--mark); height: var(--mark); display: grid; place-items: center; position: relative }
+.mark svg { width: 100%; height: 100%; transform: rotate(-90deg); position: relative }
+.week .day.today .mark::before { content: ""; position: absolute; inset: -5px; border-radius: 50%; background: var(--faint); box-shadow: inset 0 0 0 1px var(--border) }
+.future { width: 100%; height: 100%; border-radius: 50%; border: 1.5px dashed var(--border) }
+
+@keyframes draw { from { stroke-dashoffset: var(--length) } }
+@keyframes rise { from { opacity: 0; transform: translateY(5px) } }
+@keyframes reach { from { transform: scaleX(0) } }
+@keyframes settle { from { opacity: 0; transform: scale(.92) } }
+
+@media (prefers-reduced-motion: reduce) {
+  svg .arc, .day, .ring-centre, .coming .days::before { animation: none }
+  .due { transition: none }
+}
+</style>
+
+<div class="wrap">
+  <div class="controls">
+    <div><span class="ctl-label">State</span><span class="seg" id="seg-state">
+      <button data-v="morning">Morning</button><button data-v="done">Goal reached</button>
+    </span></div>
+    <div><span class="ctl-label">Window</span><span class="seg" id="seg-size">
+      <button data-v="min">960 &times; 640</button><button data-v="target">1280 &times; 800</button><button data-v="full">1920 &times; 1080</button>
+    </span></div>
+    <div><span class="ctl-label">Theme</span><span class="seg" id="seg-theme">
+      <button data-v="dark">Dark</button><button data-v="light">Light</button>
+    </span></div>
+  </div>
+
+  <div class="stage" id="stage">
+    <div class="frame" id="frame" data-t="dark">
+      <div class="topbar"></div>
+      <div class="content">
+        <div class="top-row">
+          <div class="corner">
+            <div class="ring" id="ring"></div>
+            <div class="block coming">
+              <div class="head"><span class="label">Coming up</span><span class="rule"></span></div>
+              <div class="days" id="days"></div>
+            </div>
+          </div>
+          <div class="block week">
+            <div class="head"><span class="label">This week</span><span class="rule"></span><span class="total" id="week-total"></span></div>
+            <div class="days" id="week"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const GOAL = 30;
+const TODAY = new Date(2026, 10, 11);
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const COMING = [63, 20, 29, 0, 41];
+const WEEK_PAST = [{ review: 1, learned: 30 }, { review: 1, learned: 18 }];
+
+const STATES = {
+  morning: { learned: 0, reviewDue: 63, reviewed: 0 },
+  done: { learned: 30, reviewDue: 0, reviewed: 63 }
+};
+
+const SIZES = {
+  min: { w: 960, h: 640 },
+  target: { w: 1280, h: 800 },
+  full: { w: 1920, h: 1080 }
+};
+
+let view = { state: 'done', size: 'target', theme: (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') };
+try { Object.assign(view, JSON.parse(localStorage.getItem('today-corner-mock') || '{}')) } catch (e) {}
+
+const $ = id => document.getElementById(id);
+
+function ringSvg(size, stroke, gap, outer, inner, delay) {
+  const rOuter = (size - stroke) / 2;
+  const rInner = rOuter - stroke - gap;
+  const arc = (r, p, colour, offset) => {
+    const length = 2 * Math.PI * r;
+    const ratio = Math.min(Math.max(p, 0), 1);
+    return `<circle cx="${size / 2}" cy="${size / 2}" r="${r}" stroke="var(--faint)" stroke-width="${stroke}"/>` +
+      (ratio > 0 ? `<circle class="arc" style="--length:${length};--delay:${delay + offset}ms" cx="${size / 2}" cy="${size / 2}" r="${r}" stroke="${colour}" stroke-width="${stroke}" stroke-linecap="round"
+        stroke-dasharray="${length}" stroke-dashoffset="${length * (1 - ratio)}"/>` : '');
+  };
+  return `<svg viewBox="0 0 ${size} ${size}">${arc(rOuter, outer, 'var(--accent)', 0)}${arc(rInner, inner, 'var(--correct)', 140)}</svg>`;
+}
+
+function render() {
+  const s = STATES[view.state];
+  const z = SIZES[view.size];
+  const frame = $('frame');
+  frame.dataset.t = view.theme;
+  frame.style.width = z.w + 'px';
+  frame.style.height = z.h + 'px';
+
+  const reviewTotal = s.reviewed + s.reviewDue;
+  const reviewRatio = reviewTotal > 0 ? s.reviewed / reviewTotal : 1;
+  const goalRatio = Math.min(s.learned / GOAL, 1);
+
+  $('ring').innerHTML = ringSvg(124, 10, 4, reviewRatio, goalRatio, 80) +
+    `<div class="ring-centre"><div class="ring-num">${s.learned}</div><div class="ring-of">of ${GOAL}</div></div>`;
+
+  const busiest = Math.max(...COMING, 1);
+  $('days').innerHTML = COMING.map((count, index) => {
+    const date = new Date(TODAY);
+    date.setDate(date.getDate() + index + 1);
+    return `<div class="day" style="--i:${index}"><div class="name">${WEEKDAYS[date.getDay()]}</div>
+      <div class="due ${count > 0 ? '' : 'zero'}" style="--heat:${count / busiest}">${count}</div></div>`;
+  }).join('');
+
+  const todayIndex = (TODAY.getDay() + 6) % 7;
+  $('week').innerHTML = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((name, index) => {
+    let mark = '<span class="future"></span>';
+    if (index === todayIndex) mark = ringSvg(28, 3, 2, reviewRatio, goalRatio, 300 + index * 45);
+    else if (index < todayIndex) mark = ringSvg(28, 3, 2, WEEK_PAST[index].review, WEEK_PAST[index].learned / GOAL, 300 + index * 45);
+    return `<div class="day ${index === todayIndex ? 'today' : ''}" style="--i:${index}"><div class="name">${name}</div>
+      <div class="mark">${mark}</div></div>`;
+  }).join('');
+  $('week-total').textContent = WEEK_PAST.reduce((sum, day) => sum + day.learned, 0) + s.learned;
+
+  for (const [segId, key] of [['seg-state', 'state'], ['seg-size', 'size'], ['seg-theme', 'theme']])
+    for (const button of $(segId).querySelectorAll('button')) button.setAttribute('aria-pressed', button.dataset.v === view[key]);
+
+  try { localStorage.setItem('today-corner-mock', JSON.stringify(view)) } catch (e) {}
+  fit();
+}
+
+function fit() {
+  const z = SIZES[view.size];
+  const scale = Math.min(1, $('stage').clientWidth / z.w);
+  $('frame').style.transform = `scale(${scale})`;
+  $('stage').style.height = (z.h * scale) + 'px';
+}
+
+for (const [segId, key] of [['seg-state', 'state'], ['seg-size', 'size'], ['seg-theme', 'theme']])
+  $(segId).addEventListener('click', event => {
+    const button = event.target.closest('button');
+    if (!button) return;
+    view[key] = button.dataset.v;
+    render();
+  });
+addEventListener('resize', fit);
+document.fonts && document.fonts.ready.then(render);
+render();
+</script>

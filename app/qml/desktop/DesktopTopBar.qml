@@ -42,7 +42,7 @@ Rectangle
         vocabulary: { key: "vocabulary", label: qsTr("Vocabulary"), icon: "nav_vocabulary" }
     })
 
-    readonly property var order: (AppViewLayouts.revision, AppViewLayouts.navigationOrder())
+    readonly property var order: AppViewLayouts.revision >= 0 ? AppViewLayouts.navigationOrder() : []
 
     readonly property var destinations: root.order
         .filter(Key => Key !== "decks" || DecksController.available)

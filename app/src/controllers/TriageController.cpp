@@ -855,6 +855,11 @@ QString TriageController::GetGender() const
         return {};
     }
 
+    if (*Current.Gender == GenderNeuter)
+    {
+        return tr("neuter");
+    }
+
     return *Current.Gender == GenderMasculine ? tr("masculine") : tr("feminine");
 }
 

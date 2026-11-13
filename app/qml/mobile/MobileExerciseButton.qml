@@ -7,7 +7,6 @@ Rectangle
 
     required property string label
     property string subtitle: ""
-    property string icon: ""
     property string iconSvg: ""
 
     signal activated()
@@ -26,19 +25,11 @@ Rectangle
 
         Rectangle
         {
-            visible: root.icon.length > 0 || root.iconSvg.length > 0
+            visible: root.iconSvg.length > 0
             Layout.preferredWidth: 32
             Layout.preferredHeight: 32
             radius: AppMetrics.radiusSmall
             color: AppTheme.colourPanel
-
-            Text
-            {
-                anchors.centerIn: parent
-                visible: root.iconSvg.length === 0
-                text: root.icon
-                font.pixelSize: 16
-            }
 
             MobileVectorIcon
             {

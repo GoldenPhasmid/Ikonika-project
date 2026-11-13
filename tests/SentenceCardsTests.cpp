@@ -93,6 +93,7 @@ TEST_CASE("The gap blanks one word of the sentence", "[sentencecards]")
     CHECK(HasGap(Sentence));
     CHECK(GetGapWord(Sentence) == "mange");
     CHECK(MakeGapPrompt(Sentence) == "Je ___ une pomme.");
+    CHECK(MakeGapSpeech(Sentence) == "Je … une pomme.");
 
     const FTGapParts Parts = SplitAtGap(Sentence);
 
@@ -128,6 +129,7 @@ TEST_CASE("A sentence without a usable gap is left whole", "[sentencecards]")
     CHECK(SplitAtGap(MakeSentence(1, "Je mange.", 3, 50)).Before == "Je mange.");
     CHECK(SplitAtGap(MakeSentence(1, "Je mange.", 3, 50)).After.empty());
     CHECK(MakeGapPrompt(MakeSentence(1, "Je mange.", 3, 50)) == "Je mange.");
+    CHECK(MakeGapSpeech(MakeSentence(1, "Je mange.", 3, 50)) == "Je mange.");
 }
 
 TEST_CASE("A typed sentence is compared without its punctuation and capitals", "[sentencecards]")

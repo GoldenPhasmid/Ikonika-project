@@ -1,14 +1,13 @@
 import QtQuick
 import QtQuick.Layouts
 
-DesktopPage
+DesktopFormPage
 {
     id: root
 
     signal continued()
 
     maximumWidth: AppMetrics.dialogWidth
-    centred: true
 
     DesktopLabel
     {
@@ -69,4 +68,17 @@ DesktopPage
         horizontalAlignment: Text.AlignHCenter
         wrapMode: Text.WordWrap
     }
+
+    footer: [
+        DesktopFormButton
+        {
+            objectName: "onboarding_back"
+
+            text: qsTr("Back")
+            keyHint: qsTr("Backspace")
+            shortcutKeys: ["Backspace"]
+
+            onClicked: AppOnboarding.back()
+        }
+    ]
 }

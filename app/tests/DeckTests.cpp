@@ -3,6 +3,7 @@
 #include "CatchQtTypes.h"
 
 #include "DecksController.h"
+#include "DiscoveryController.h"
 #include "TriageController.h"
 #include "VocabularyController.h"
 
@@ -377,4 +378,58 @@ TEST_CASE("Learning a deck word that names a meaning adds a card for that meanin
 
     CHECK(RowAt(Deck, 0).value("inVocabulary").toBool());
     CHECK(Deck.GetDeckNewCount() == 1);
+}
+
+TEST_CASE("Discover adds a card for Learn and marks the meaning known for Know", "[decks][discovery]")
+{
+    FDeckFixture Fixture;
+
+    if (!Fixture.HasDeck())
+    {
+        SKIP("The built dictionary has no decks");
+    }
+
+    FTCardRepository& Cards = AppDatabase::Get().GetCardRepository();
+    REQUIRE(Cards.SetPlacementCutoff("en", FTDiscoveryPlanner::BeginnerWordCount));
+
+    DiscoveryController Controller;
+    REQUIRE(Controller.startDeck(Fixture.Deck.Id));
+    REQUIRE_FALSE(Controller.IsRoundOver());
+
+    const std::string KnownWord = Controller.GetWord().toStdString();
+
+    Controller.choose(Controller.GetCorrectOptionIndex());
+    REQUIRE(Controller.GetOutcome() == QStringLiteral("known"));
+    CHECK_FALSE(Controller.IsLearn());
+
+    Controller.commit(false);
+
+    const std::vector<FTKnownWord> Known = Cards.ListKnownWords();
+    CHECK(std::any_of(Known.begin(), Known.end(), [&KnownWord](const FTKnownWord& Word) { return Word.TargetWord == KnownWord; }));
+    CHECK(Cards.FindCardsByHeadword(KnownWord, 10).empty());
+
+    REQUIRE_FALSE(Controller.IsRoundOver());
+
+    const std::string NewWord = Controller.GetWord().toStdString();
+
+    while (!Controller.IsAnswered())
+    {
+        Controller.askClue();
+    }
+
+    CHECK(Controller.GetOutcome() == QStringLiteral("new"));
+    CHECK(Controller.IsLearn());
+
+    Controller.commit(true);
+
+    CHECK_FALSE(Cards.FindCardsByHeadword(NewWord, 10).empty());
+
+    while (!Controller.IsRoundOver())
+    {
+        Controller.choose(Controller.GetCorrectOptionIndex());
+        Controller.commit(Controller.IsLearn());
+    }
+
+    CHECK(Controller.GetAskedCount() <= Controller.GetQuestionCount());
+    CHECK(Controller.GetResults().size() >= 2);
 }

@@ -15,11 +15,10 @@ Item
     readonly property string gapMark: "___"
     readonly property bool editable: !root.sentenceText
 
-    signal wordClicked(string word, string sentence)
+    signal wordClicked(string word, string sentence, rect wordRect)
 
     readonly property bool listening: root.controller instanceof AudioTranscriptionController
 
-    readonly property string title: root.listening ? qsTr("Write what you hear") : qsTr("Write the translation")
     readonly property bool voiceSupported: false
     readonly property bool voiceOn: false
 
@@ -32,6 +31,10 @@ Item
     readonly property bool sentenceMode: root.sentenceText || (!!root.controller && !!root.controller.sentencePrompt)
     readonly property bool hasMarkup: !!root.controller && root.controller.lastWordMarkup.length > 0
     readonly property bool hasHeading: !root.sentenceText && !root.listening && !!root.controller && root.controller.promptHeading.length > 0
+    readonly property string instruction: root.listening ? qsTr("Listen and type")
+        : root.sentenceMode ? qsTr("Type the word")
+        : root.hasHeading ? qsTr("Type the form")
+        : qsTr("Type translation")
     readonly property bool answerInPrompt: root.hasHeading && !root.sentenceMode && root.revealed && root.hasMarkup
     readonly property bool answerOnLine: !root.listening && !root.sentenceMode && !root.hasHeading
     readonly property bool answerIsTarget: root.answerOnLine && root.revealed && !root.hasMarkup && !root.controller.showsTargetLanguage
@@ -213,7 +216,8 @@ Item
         anchors.fill: parent
 
         fillSecondary: true
-        primarySpeaks: !root.listening && ((promptLabel.visible && promptLabel.speakable) || revealedLabel.visible)
+        primarySpeaks: !root.listening && ((promptLabel.visible && promptLabel.speakable) || revealedLabel.visible
+                                           || (root.sentenceMode && !!root.controller && !!root.controller.canReplay))
         onPrimaryClicked: root.playVoice()
         tags: root.sentenceMode ? [] : card.wordTags(root.controller)
         counterText: root.controller ? qsTr("%1 / %2").arg(root.controller.currentSessionCount).arg(root.controller.maxSessionCount) : ""
@@ -314,7 +318,7 @@ Item
                         ? root.controller.lastRevealedAnswer.length - (root.controller.prompt.length - root.gapMark.length) : 0
                 }
 
-                onWordClicked: function(word, sentence) { root.wordClicked(word, sentence) }
+                onWordClicked: function(word, sentence, wordRect) { root.wordClicked(word, sentence, wordRect) }
             },
             DesktopLabel
             {
@@ -390,10 +394,7 @@ Item
             {
                 id: exampleBlock
 
-                readonly property string sentence: root.revealed && !root.sentenceMode ? root.controller.example : ""
-                property bool expanded: false
-
-                onSentenceChanged: expanded = false
+                readonly property string sentence: root.revealed && !root.controller.lastAnswerCorrect && !root.sentenceMode ? root.controller.example : ""
 
                 visible: sentence.length > 0
                 Layout.fillWidth: true
@@ -402,21 +403,9 @@ Item
                 Rectangle
                 {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: exampleBlock.expanded ? exampleDetails.implicitHeight + AppMetrics.gapLarge * 2 : 0
-                    opacity: exampleBlock.expanded ? 1 : 0
-                    clip: true
+                    Layout.preferredHeight: exampleDetails.implicitHeight + AppMetrics.gapMedium * 2
                     radius: AppMetrics.radiusMedium
                     color: AppTheme.colourWell
-
-                    Behavior on Layout.preferredHeight
-                    {
-                        NumberAnimation { duration: AppMetrics.motionSlow; easing.type: AppMetrics.motionEasing }
-                    }
-
-                    Behavior on opacity
-                    {
-                        NumberAnimation { duration: AppMetrics.motionSlow; easing.type: AppMetrics.motionEasing }
-                    }
 
                     DesktopRevealDetails
                     {
@@ -425,26 +414,10 @@ Item
                         anchors.left: parent.left
                         anchors.right: parent.right
                         anchors.top: parent.top
-                        anchors.margins: AppMetrics.gapLarge
+                        anchors.margins: AppMetrics.gapMedium
                         controller: exampleBlock.sentence.length > 0 ? root.controller : null
 
-                        onWordClicked: function(word, sentence) { root.wordClicked(word, sentence) }
-                    }
-                }
-
-                DesktopIconButton
-                {
-                    objectName: "exercise_example_toggle"
-
-                    Layout.alignment: Qt.AlignHCenter
-                    iconName: exampleBlock.expanded ? "chevron_down" : "chevron_up"
-                    iconColour: AppTheme.colourMuted
-                    text: exampleBlock.expanded ? qsTr("Hide example") : qsTr("Show example")
-
-                    onClicked:
-                    {
-                        exampleBlock.expanded = !exampleBlock.expanded
-                        console.info("Example block", exampleBlock.expanded ? "expanded" : "collapsed")
+                        onWordClicked: function(word, sentence, wordRect) { root.wordClicked(word, sentence, wordRect) }
                     }
                 }
             }

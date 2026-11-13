@@ -4,7 +4,6 @@ Rectangle
 {
     id: root
 
-    property string icon: ""
     property string iconSvg: ""
     property real iconMinX: 0
     property real iconMinY: 0
@@ -32,16 +31,6 @@ Rectangle
         width: parent.width * root.fillProgress
         color: Qt.rgba(1, 1, 1, 0.28)
         visible: root.holdToConfirm
-    }
-
-    Text
-    {
-        anchors.centerIn: parent
-        visible: root.iconSvg.length === 0
-        text: root.icon
-        font.pixelSize: AppMetrics.fontLabel
-        font.family: AppMetrics.fontFamily
-        color: root.iconColor
     }
 
     MobileVectorIcon

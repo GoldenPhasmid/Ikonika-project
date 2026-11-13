@@ -13,14 +13,15 @@ Item
     readonly property Item surface: card.surface
     readonly property bool editable: false
 
-    signal wordClicked(string word, string sentence)
+    signal wordClicked(string word, string sentence, rect wordRect)
 
     readonly property bool sessionStage: !!root.controller && root.controller.typingAllowed
     readonly property bool typing: root.sessionStage && root.controller.typing
 
-    readonly property string title: root.typing
-        ? qsTr("Write the sentence")
-        : (root.controller && root.controller.buildsTranslation ? qsTr("Listen and translate") : qsTr("Word tiles"))
+    readonly property bool buildsTranslation: !!root.controller && root.controller.buildsTranslation
+    readonly property string instruction: root.typing
+        ? (root.buildsTranslation ? qsTr("Type the translation") : qsTr("Listen and type"))
+        : (root.buildsTranslation ? qsTr("Build the translation") : qsTr("Listen and build"))
     readonly property bool voiceSupported: false
     readonly property bool voiceOn: false
     readonly property bool typingSupported: root.sessionStage
@@ -264,7 +265,7 @@ Item
                 visible: root.revealed
                 sentence: root.controller ? root.controller.lastRevealedAnswer : ""
 
-                onWordClicked: function(word, sentence) { root.wordClicked(word, sentence) }
+                onWordClicked: function(word, sentence, wordRect) { root.wordClicked(word, sentence, wordRect) }
             },
             DesktopLabel
             {

@@ -83,6 +83,20 @@ bool FTDictionaryPackage::SupportsNative(const std::string& LanguageCode) const
         != NativeLanguages.end();
 }
 
+bool FTDictionaryPackage::SharesPairWith(const FTDictionaryPackage& Other) const
+{
+    if (TargetLanguage != Other.TargetLanguage)
+    {
+        return false;
+    }
+
+    return std::any_of(NativeLanguages.begin(), NativeLanguages.end(),
+                       [&Other](const std::string& Native)
+                       {
+                           return Other.SupportsNative(Native);
+                       });
+}
+
 bool IsReadableDictionarySchema(int SchemaVersion)
 {
     return SchemaVersion >= OldestDictionarySchemaVersion && SchemaVersion <= DictionarySchemaVersion;
@@ -239,7 +253,7 @@ std::vector<FTDictionaryPackage> FindDictionaryPackages(const std::string& Direc
             const auto Existing = std::find_if(Found.begin(), Found.end(),
                 [&Package](const FTDictionaryPackage& Other)
                 {
-                    return Other.TargetLanguage == Package->TargetLanguage;
+                    return Other.SharesPairWith(*Package);
                 });
 
             if (Existing != Found.end())

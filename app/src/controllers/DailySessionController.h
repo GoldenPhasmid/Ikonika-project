@@ -7,8 +7,10 @@
 #include <QVariantList>
 #include <QtQml/qqmlregistration.h>
 
+#include <optional>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 
 class DailySessionController : public QObject
 {
@@ -72,6 +74,14 @@ public:
     /** Re-reads the counts. Called when the screen appears and after a session finishes. */
     Q_INVOKABLE void refresh();
 
+    /** What formsWordCount returns while the count is still being worked out in the background. */
+    static constexpr int PendingFormsWordCount = -1;
+
+    bool AreFormsCountsPending() const;
+
+    /** Returns once every background count has been delivered. */
+    void WaitForFormsCounts();
+
     Q_INVOKABLE QStringList collectSessionCards() const;
 
     Q_INVOKABLE int shortfall() const;
@@ -110,12 +120,17 @@ public:
 
 signals:
     void countsChanged();
+    void formsCountsChanged();
 
 private:
     void DropStaleFormsCache() const;
+    void FinishFormsCount(const std::string& Id, int Count, const std::optional<QVariantList>& Tenses,
+                          quint64 Serial);
 
     mutable std::string FormsCacheRevision;
     mutable std::unordered_map<std::string, int> FormsWordCounts;
+    mutable std::unordered_set<std::string> FormsPending;
+    mutable quint64 FormsSerial = 0;
     mutable std::unordered_map<std::string, QVariantList> FormsTenses;
 
     int DueCount = 0;

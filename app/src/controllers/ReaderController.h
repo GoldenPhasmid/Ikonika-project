@@ -187,6 +187,9 @@ private:
 
     void SaveCloudPlace();
 
+    void LoadReadAloudPlace();
+    void SaveReadAloudPlace();
+
     void UpdateVolumeKeys();
 
     void StartReflowLoad(quint64 Generation, const QString& FilePath, EFTDocumentFormat Format,

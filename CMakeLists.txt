@@ -5,7 +5,7 @@ project(Ikonika VERSION 0.8.3 LANGUAGES C CXX)
 
 # Play Store requires this to strictly increase on every upload, independent of PROJECT_VERSION.
 # Bump it by hand for each Android release.
-set(IKONIKA_ANDROID_VERSION_CODE 20)
+set(IKONIKA_ANDROID_VERSION_CODE 21)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -59,6 +59,7 @@ enable_testing()
 set(CMAKE_FOLDER "Third party")
 add_subdirectory(third_party/miniaudio)
 add_subdirectory(third_party/miniz)
+add_subdirectory(third_party/signalsmith-stretch)
 add_subdirectory(third_party/sqlite)
 
 if (IKONIKA_DESKTOP)

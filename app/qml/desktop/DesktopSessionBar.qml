@@ -10,6 +10,7 @@ Rectangle
     property bool muted: false
     property bool soundAvailable: true
     property bool showOptions: true
+    property bool showSlowSpeech: false
     property bool divided: true
 
     property alias optionsButton: optionsButton
@@ -17,9 +18,27 @@ Rectangle
 
     signal exitRequested()
     signal soundToggled()
+    signal slowSpeechRequested()
     signal optionsRequested()
 
     implicitHeight: AppMetrics.topBarHeight
+
+    onTitleChanged: titleSwap.restart()
+
+    SequentialAnimation
+    {
+        id: titleSwap
+
+        NumberAnimation { target: titleLabel; property: "opacity"; to: 0; duration: AppMetrics.motionFast }
+        ScriptAction { script: titleLabel.shownTitle = root.title }
+        PropertyAction { target: titleShift; property: "y"; value: AppMetrics.gapSmall }
+
+        ParallelAnimation
+        {
+            NumberAnimation { target: titleLabel; property: "opacity"; to: 1; duration: AppMetrics.motionSlow; easing.type: AppMetrics.motionEasing }
+            NumberAnimation { target: titleShift; property: "y"; to: 0; duration: AppMetrics.motionSlow; easing.type: AppMetrics.motionEasing }
+        }
+    }
     color: AppTheme.colourPanel
 
     DesktopDivider
@@ -49,11 +68,19 @@ Rectangle
 
         DesktopLabel
         {
+            id: titleLabel
+
+            property string shownTitle: root.title
+
+            objectName: "session_title"
+
             Layout.fillWidth: true
-            text: root.title
+            text: titleLabel.shownTitle
             font.pixelSize: AppMetrics.fontLabel
             font.weight: Font.DemiBold
             elide: Text.ElideRight
+
+            transform: Translate { id: titleShift }
 
             Accessible.role: Accessible.Heading
             Accessible.name: text
@@ -65,6 +92,18 @@ Rectangle
 
             Layout.fillWidth: false
             spacing: AppMetrics.gapSmall
+        }
+
+        DesktopIconButton
+        {
+            objectName: "session_slow_speech"
+
+            visible: root.showSlowSpeech
+            enabled: root.soundAvailable
+            iconName: "turtle"
+            text: qsTr("Say it slowly")
+
+            onClicked: root.slowSpeechRequested()
         }
 
         DesktopIconButton

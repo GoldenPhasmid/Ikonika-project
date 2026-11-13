@@ -26,6 +26,7 @@ constexpr int FirstLadderStage = 1;
 
 constexpr int GenderMasculine = 0;
 constexpr int GenderFeminine = 1;
+constexpr int GenderNeuter = 3;
 
 /**
  * One spelling that takes either gender.

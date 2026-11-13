@@ -13,7 +13,7 @@ Item
     readonly property Item surface: card.surface
     readonly property bool editable: false
 
-    readonly property string title: qsTr("Match the pairs")
+    readonly property string instruction: qsTr("Match pairs")
     readonly property bool voiceSupported: !!root.controller && root.controller.voiceSupported
     readonly property bool voiceOn: !!root.controller && root.controller.voiceRequested
 

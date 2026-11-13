@@ -75,6 +75,8 @@ DesktopCard
         id: actionRow
 
         Layout.fillWidth: true
+        Layout.preferredHeight: implicitHeight
+        visible: implicitHeight > 0
         spacing: AppMetrics.gapSmall
     }
 

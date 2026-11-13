@@ -20,6 +20,7 @@ DesktopStartDialog
         { key: "choice", iconName: "exercise_choice", label: qsTr("Multiple choice") },
         { key: "correctincorrect", iconName: "check", label: qsTr("Do you remember?") },
         { key: "written", iconName: "exercise_written", label: qsTr("Write the translation") },
+        { key: "gap", iconName: "edit", label: qsTr("Fill the gap") },
         { key: "audio", iconName: "speaker_on", label: qsTr("Write what you hear") },
         { key: "speedmatch", iconName: "exercise_speedmatch", label: qsTr("Match pairs") }
     ]

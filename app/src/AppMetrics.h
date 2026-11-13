@@ -135,6 +135,7 @@ class AppMetrics : public QObject
     Q_PROPERTY(int playButtonGlyphSize READ GetPlayButtonGlyphSize CONSTANT)
 
     Q_PROPERTY(int exerciseAdvanceDelayCorrect READ GetExerciseAdvanceDelayCorrect CONSTANT)
+    Q_PROPERTY(int exerciseAdvanceDelayWrong READ GetExerciseAdvanceDelayWrong CONSTANT)
 
     Q_PROPERTY(int motionFast READ GetMotionFast NOTIFY transitionsEnabledChanged)
     Q_PROPERTY(int motionBase READ GetMotionBase NOTIFY transitionsEnabledChanged)
@@ -174,30 +175,52 @@ class AppMetrics : public QObject
     Q_PROPERTY(int dialogWidth READ GetDialogWidth CONSTANT)
     Q_PROPERTY(int popoverWidth READ GetPopoverWidth CONSTANT)
     Q_PROPERTY(int textAreaHeight READ GetTextAreaHeight CONSTANT)
+    Q_PROPERTY(int quickAddWidth READ GetQuickAddWidth CONSTANT)
+    Q_PROPERTY(int quickAddHeight READ GetQuickAddHeight CONSTANT)
+    Q_PROPERTY(int quickAddMinimumWidth READ GetQuickAddMinimumWidth CONSTANT)
+    Q_PROPERTY(int quickAddMinimumHeight READ GetQuickAddMinimumHeight CONSTANT)
+    Q_PROPERTY(int quickAddSearchDelay READ GetQuickAddSearchDelay CONSTANT)
+    Q_PROPERTY(qreal quickAddInputShare READ GetQuickAddInputShare CONSTANT)
+    Q_PROPERTY(int quickAddFocusGrace READ GetQuickAddFocusGrace CONSTANT)
 
     Q_PROPERTY(int heroFigureSize READ GetHeroFigureSize CONSTANT)
 
     Q_PROPERTY(int sessionTileHeight READ GetSessionTileHeight CONSTANT)
     Q_PROPERTY(int sessionTileHeightCompact READ GetSessionTileHeightCompact CONSTANT)
 
-    Q_PROPERTY(int dayTileHeight READ GetDayTileHeight CONSTANT)
 
     Q_PROPERTY(int goalRingSize READ GetGoalRingSize CONSTANT)
     Q_PROPERTY(int goalRingStroke READ GetGoalRingStroke CONSTANT)
     Q_PROPERTY(int goalRingGap READ GetGoalRingGap CONSTANT)
     Q_PROPERTY(int welcomeRingSize READ GetWelcomeRingSize CONSTANT)
     Q_PROPERTY(int welcomeGreetingSize READ GetWelcomeGreetingSize CONSTANT)
-    Q_PROPERTY(int pathNodeSize READ GetPathNodeSize CONSTANT)
-    Q_PROPERTY(int pathLineWidth READ GetPathLineWidth CONSTANT)
-    Q_PROPERTY(int todayRingColumnWidth READ GetTodayRingColumnWidth CONSTANT)
-    Q_PROPERTY(int todayRingOverhang READ GetTodayRingOverhang CONSTANT)
-    Q_PROPERTY(int todayBracketOffset READ GetTodayBracketOffset CONSTANT)
-    Q_PROPERTY(int todayPracticeGap READ GetTodayPracticeGap CONSTANT)
+    Q_PROPERTY(int todayRingSize READ GetTodayRingSize CONSTANT)
+    Q_PROPERTY(int todayRingStroke READ GetTodayRingStroke CONSTANT)
+    Q_PROPERTY(int todayRingGap READ GetTodayRingGap CONSTANT)
+    Q_PROPERTY(int todayRingFigure READ GetTodayRingFigure CONSTANT)
+    Q_PROPERTY(int todayInsetX READ GetTodayInsetX CONSTANT)
+    Q_PROPERTY(int todayInsetY READ GetTodayInsetY CONSTANT)
+    Q_PROPERTY(int todayLabelHeight READ GetTodayLabelHeight CONSTANT)
+    Q_PROPERTY(int todayDayGap READ GetTodayDayGap CONSTANT)
+    Q_PROPERTY(int todayNameGap READ GetTodayNameGap CONSTANT)
+    Q_PROPERTY(int todayLinkGap READ GetTodayLinkGap CONSTANT)
+    Q_PROPERTY(int todayLinkReach READ GetTodayLinkReach CONSTANT)
+    Q_PROPERTY(int todayLinkGlow READ GetTodayLinkGlow CONSTANT)
+    Q_PROPERTY(int todayColumnGap READ GetTodayColumnGap CONSTANT)
+    Q_PROPERTY(int todayPrimaryWidth READ GetTodayPrimaryWidth CONSTANT)
+    Q_PROPERTY(int todaySessionsWidth READ GetTodaySessionsWidth CONSTANT)
+    Q_PROPERTY(int todayTileGap READ GetTodayTileGap CONSTANT)
+    Q_PROPERTY(int todaySessionGap READ GetTodaySessionGap CONSTANT)
+    Q_PROPERTY(qreal todayMarkHoverScale READ GetTodayMarkHoverScale CONSTANT)
+    Q_PROPERTY(qreal todayCatAspect READ GetTodayCatAspect CONSTANT)
+    Q_PROPERTY(qreal todayBookAspect READ GetTodayBookAspect CONSTANT)
+    Q_PROPERTY(qreal todayMaximumZoom READ GetTodayMaximumZoom CONSTANT)
+    Q_PROPERTY(int todayMaximumWidth READ GetTodayMaximumWidth CONSTANT)
+    Q_PROPERTY(int todayMaximumHeight READ GetTodayMaximumHeight CONSTANT)
     Q_PROPERTY(int weekDayCellSize READ GetWeekDayCellSize CONSTANT)
     Q_PROPERTY(int weekRingSize READ GetWeekRingSize CONSTANT)
     Q_PROPERTY(int weekRingStroke READ GetWeekRingStroke CONSTANT)
     Q_PROPERTY(int weekRingGap READ GetWeekRingGap CONSTANT)
-    Q_PROPERTY(int weekFutureDotSize READ GetWeekFutureDotSize CONSTANT)
 
     Q_PROPERTY(int focusRingWidth READ GetFocusRingWidth CONSTANT)
     Q_PROPERTY(int scrollBarWidth READ GetScrollBarWidth CONSTANT)
@@ -224,10 +247,9 @@ class AppMetrics : public QObject
     Q_PROPERTY(qreal coverStripeBottomEnd READ GetCoverStripeBottomEnd CONSTANT)
     Q_PROPERTY(qreal coverStripeRightStart READ GetCoverStripeRightStart CONSTANT)
     Q_PROPERTY(qreal coverStripeRightEnd READ GetCoverStripeRightEnd CONSTANT)
-    Q_PROPERTY(qreal sessionTileBandWidth READ GetSessionTileBandWidth CONSTANT)
-    Q_PROPERTY(qreal sessionTileBandTop READ GetSessionTileBandTop CONSTANT)
-    Q_PROPERTY(qreal todayTopFill READ GetTodayTopFill CONSTANT)
-    Q_PROPERTY(qreal todaySideShare READ GetTodaySideShare CONSTANT)
+    Q_PROPERTY(qreal pickTopFill READ GetPickTopFill CONSTANT)
+    Q_PROPERTY(int resultTileMinimumWidth READ GetResultTileMinimumWidth CONSTANT)
+    Q_PROPERTY(int fontPickTitle READ GetFontPickTitle CONSTANT)
     Q_PROPERTY(int readerRowHeight READ GetReaderRowHeight CONSTANT)
     Q_PROPERTY(int readerRowCoverWidth READ GetReaderRowCoverWidth CONSTANT)
     Q_PROPERTY(int readerContentsWidth READ GetReaderContentsWidth CONSTANT)
@@ -275,6 +297,11 @@ class AppMetrics : public QObject
     Q_PROPERTY(int stageSegmentWidth READ GetStageSegmentWidth CONSTANT)
     Q_PROPERTY(qreal triagePaneShare READ GetTriagePaneShare CONSTANT)
     Q_PROPERTY(int actionButtonWidth READ GetActionButtonWidth CONSTANT)
+    Q_PROPERTY(int flagWidth READ GetFlagWidth CONSTANT)
+    Q_PROPERTY(int flagWidthSmall READ GetFlagWidthSmall CONSTANT)
+    Q_PROPERTY(int tourCardWidth READ GetTourCardWidth CONSTANT)
+    Q_PROPERTY(int selectedBorderWidth READ GetSelectedBorderWidth CONSTANT)
+    Q_PROPERTY(int languageChoiceWidth READ GetLanguageChoiceWidth CONSTANT)
     Q_PROPERTY(int triageWordSize READ GetTriageWordSize CONSTANT)
     Q_PROPERTY(int rankTrackWidth READ GetRankTrackWidth CONSTANT)
     Q_PROPERTY(int rankHandleSize READ GetRankHandleSize CONSTANT)
@@ -381,6 +408,7 @@ public:
     int GetPlayButtonGlyphSize() const;
 
     int GetExerciseAdvanceDelayCorrect() const;
+    int GetExerciseAdvanceDelayWrong() const;
 
     int GetMotion(int Milliseconds) const;
     int GetMotionFast() const;
@@ -416,26 +444,48 @@ public:
     int GetDialogWidth() const;
     int GetPopoverWidth() const;
     int GetTextAreaHeight() const;
+    int GetQuickAddWidth() const;
+    int GetQuickAddHeight() const;
+    int GetQuickAddMinimumWidth() const;
+    int GetQuickAddMinimumHeight() const;
+    int GetQuickAddSearchDelay() const;
+    qreal GetQuickAddInputShare() const;
+    int GetQuickAddFocusGrace() const;
     int GetHeroFigureSize() const;
     int GetSessionTileHeight() const;
     int GetSessionTileHeightCompact() const;
-    int GetDayTileHeight() const;
     int GetGoalRingSize() const;
     int GetGoalRingStroke() const;
     int GetGoalRingGap() const;
     int GetWelcomeRingSize() const;
     int GetWelcomeGreetingSize() const;
-    int GetPathNodeSize() const;
-    int GetPathLineWidth() const;
-    int GetTodayRingColumnWidth() const;
-    int GetTodayRingOverhang() const;
-    int GetTodayBracketOffset() const;
-    int GetTodayPracticeGap() const;
+    int GetTodayRingSize() const;
+    int GetTodayRingStroke() const;
+    int GetTodayRingGap() const;
+    int GetTodayRingFigure() const;
+    int GetTodayInsetX() const;
+    int GetTodayInsetY() const;
+    int GetTodayLabelHeight() const;
+    int GetTodayDayGap() const;
+    int GetTodayNameGap() const;
+    int GetTodayLinkGap() const;
+    int GetTodayLinkReach() const;
+    int GetTodayLinkGlow() const;
+    int GetTodayColumnGap() const;
+    int GetTodayPrimaryWidth() const;
+    int GetTodaySessionsWidth() const;
+    int GetTodayTileGap() const;
+    int GetTodaySessionGap() const;
+    qreal GetTodayMarkHoverScale() const;
+    qreal GetTodayCatAspect() const;
+    qreal GetTodayBookAspect() const;
+    qreal GetTodayMaximumZoom() const;
+    int GetTodayMaximumWidth() const;
+    int GetTodayMaximumHeight() const;
     int GetWeekDayCellSize() const;
     int GetWeekRingSize() const;
     int GetWeekRingStroke() const;
     int GetWeekRingGap() const;
-    int GetWeekFutureDotSize() const;
     int GetFocusRingWidth() const;
     int GetScrollBarWidth() const;
     int GetKeyHintSize() const;
@@ -460,10 +510,9 @@ public:
     qreal GetCoverStripeBottomEnd() const;
     qreal GetCoverStripeRightStart() const;
     qreal GetCoverStripeRightEnd() const;
-    qreal GetSessionTileBandWidth() const;
-    qreal GetSessionTileBandTop() const;
-    qreal GetTodayTopFill() const;
-    qreal GetTodaySideShare() const;
+    qreal GetPickTopFill() const;
+    int GetResultTileMinimumWidth() const;
+    int GetFontPickTitle() const;
     int GetReaderRowHeight() const;
     int GetReaderRowCoverWidth() const;
     int GetReaderContentsWidth() const;
@@ -508,6 +557,11 @@ public:
     int GetStageSegmentWidth() const;
     qreal GetTriagePaneShare() const;
     int GetActionButtonWidth() const;
+    int GetFlagWidth() const;
+    int GetFlagWidthSmall() const;
+    int GetTourCardWidth() const;
+    int GetSelectedBorderWidth() const;
+    int GetLanguageChoiceWidth() const;
     int GetTriageWordSize() const;
     int GetRankTrackWidth() const;
     int GetRankHandleSize() const;

@@ -16,8 +16,6 @@ Item
 
     readonly property var categories: Decks.categories(DecksController.decks)
     readonly property bool listLayout: AppViewLayouts.revision >= 0 && AppViewLayouts.isList("decks")
-    readonly property real tileWidth: root.listLayout ? sectionColumn.width
-                                                      : Math.floor((sectionColumn.width - AppMetrics.gapCompact) / 2)
 
     readonly property var shownCategories: root.category.length > 0 ? [root.category] : root.categories
 
@@ -199,10 +197,11 @@ Item
                             }
                         }
 
-                        Flow
+                        MobileCoverGrid
                         {
-                            Layout.fillWidth: true
-                            spacing: root.listLayout ? 0 : AppMetrics.gapCompact
+                            id: coverGrid
+
+                            listLayout: root.listLayout
 
                             Accessible.role: Accessible.List
                             Accessible.name: section.modelData.length > 0 ? section.modelData : qsTr("Decks")
@@ -217,7 +216,7 @@ Item
 
                                     objectName: "deck_" + modelData.id
 
-                                    width: root.tileWidth
+                                    width: coverGrid.tileWidth
                                     compact: root.listLayout
 
                                     title: modelData.name

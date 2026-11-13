@@ -6,24 +6,15 @@ ColumnLayout
     id: root
 
     required property var store
+    property var triage: null
 
     signal languageOpened(string code)
     signal placementRequested()
 
-    readonly property real actionWidth: Math.max(actionMetrics.advanceWidth(qsTr("Download")),
-        actionMetrics.advanceWidth(qsTr("Manage")), actionMetrics.advanceWidth(qsTr("Retake"))) + AppMetrics.gapMedium * 2
-
-    FontMetrics
-    {
-        id: actionMetrics
-        font.family: AppMetrics.fontFamily
-        font.pixelSize: AppMetrics.fontLabel
-        font.weight: Font.DemiBold
-    }
-
     property var wordCounts: ({})
 
     readonly property var languagesWithWords: AppCatalog.languages.filter(Entry => (root.wordCounts[Entry.code] || 0) > 0)
+    readonly property var otherLanguages: AppCatalog.languages.filter(entry => entry.code !== root.store.targetLanguageCode)
 
     function refresh()
     {
@@ -83,6 +74,7 @@ ColumnLayout
     MobileSettingsGroup
     {
         title: qsTr("Learning %1").arg(root.store.targetLanguageName)
+        flagCode: root.store.targetLanguageCode
 
         MobileSettingsRow
         {
@@ -91,48 +83,51 @@ ColumnLayout
             description: qsTr("%n words in My Vocabulary", "", root.wordCount(root.store.targetLanguageCode))
             onClicked: root.languageOpened(root.store.targetLanguageCode)
 
-            DesktopButton
-            {
-                large: true
-                implicitWidth: root.actionWidth
-                text: qsTr("Manage")
-                onClicked: root.languageOpened(root.store.targetLanguageCode)
-            }
-        }
-
-        MobileSettingsRow
-        {
-            title: qsTr("Device voice")
-            description: qsTr("Pronunciation is managed by Android")
+            MobileSettingsChevron {}
         }
 
         MobileSettingsRow
         {
             objectName: "account_translation"
             title: qsTr("Offline translation")
-            description: qsTr("%1 → %2").arg(root.store.targetLanguageName).arg(root.store.nativeLanguageName)
+            description: AppMachineTranslation.downloading
+                ? qsTr("Downloading, %1%").arg(Math.round(AppMachineTranslation.progress * 100))
+                : qsTr("%1 → %2").arg(root.store.targetLanguageName).arg(root.store.nativeLanguageName)
             onClicked: if (AppMachineTranslation.offered && !AppMachineTranslation.downloading) AppMachineTranslation.download()
 
-            DesktopButton
+            DesktopIcon
             {
                 objectName: "account_translation_download"
-                large: true
-                implicitWidth: root.actionWidth
                 visible: AppMachineTranslation.offered && !AppMachineTranslation.downloading
-                text: qsTr("Download")
+                name: "arrow_down"
+                width: AppMetrics.iconSizeSmall
+                height: width
+                color: AppTheme.colourSubtle
                 Accessible.name: qsTr("Download %1 translation").arg(AppMachineTranslation.pairLabel)
-                onClicked: AppMachineTranslation.download()
             }
 
             Text
             {
-                visible: !AppMachineTranslation.offered || AppMachineTranslation.downloading
-                text: AppMachineTranslation.installed ? qsTr("Installed")
-                    : AppMachineTranslation.downloading ? qsTr("Downloading…") : qsTr("Unavailable")
+                visible: !AppMachineTranslation.offered && !AppMachineTranslation.downloading
+                text: AppMachineTranslation.installed ? qsTr("Installed") : qsTr("Unavailable")
                 font.family: AppMetrics.fontFamily
                 font.pixelSize: AppMetrics.fontSmall
                 color: AppTheme.colourMuted
             }
+        }
+
+        MobileRankBar
+        {
+            objectName: "account_word_range"
+
+            visible: !!root.triage && root.triage.maximumRank > 0
+            title: qsTr("Training offers new words after this rank")
+            rank: root.triage ? root.triage.startRank : 0
+            maximumRank: root.triage ? root.triage.maximumRank : 0
+            levelMarks: root.triage ? root.triage.levelMarks : []
+
+            onVisibleChanged: if (visible && root.triage) root.triage.refreshStartRank()
+            onRankChosen: function(rank) { root.triage.startRank = rank }
         }
 
         MobileSettingsRow
@@ -142,54 +137,64 @@ ColumnLayout
             lastRow: true
             onClicked: root.placementRequested()
 
-            DesktopButton
-            {
-                large: true
-                implicitWidth: root.actionWidth
-                text: qsTr("Retake")
-                onClicked: root.placementRequested()
-            }
+            MobileSettingsChevron {}
         }
     }
 
-    ColumnLayout
+    Text
     {
         Layout.fillWidth: true
-        spacing: AppMetrics.gapSmall
+        visible: AppCatalog.languages.length === 0
+        text: AppCatalog.busy ? qsTr("Looking for languages…") : qsTr("Ikonika cannot reach the language list.")
+        color: AppTheme.colourMuted
+        font.pixelSize: AppMetrics.fontSmall
+        font.family: AppMetrics.fontFamily
+        wrapMode: Text.WordWrap
+    }
 
-        MobileSectionLabel { text: qsTr("Other languages") }
+    MobileSettingsGroup
+    {
+        visible: root.otherLanguages.length > 0
+        title: qsTr("Other languages")
 
-        Text
+        Repeater
         {
-            Layout.fillWidth: true
-            visible: AppCatalog.languages.length === 0
-            text: AppCatalog.busy ? qsTr("Looking for languages…") : qsTr("Ikonika cannot reach the language list.")
-            color: AppTheme.colourMuted
-            font.pixelSize: AppMetrics.fontSmall
-            font.family: AppMetrics.fontFamily
-            wrapMode: Text.WordWrap
-        }
+            model: root.otherLanguages
 
-        GridLayout
-        {
-            Layout.fillWidth: true
-            columns: 2
-            columnSpacing: AppMetrics.gapSmall
-            rowSpacing: AppMetrics.gapSmall
-
-            Repeater
+            delegate: MobileSettingsRow
             {
-                model: AppCatalog.languages.filter(entry => entry.code !== root.store.targetLanguageCode)
+                id: languageRow
 
-                delegate: DesktopLanguageTile
+                required property var modelData
+                required property int index
+
+                readonly property DesktopLanguageEntry language: DesktopLanguageEntry
                 {
-                    required property var modelData
-                    objectName: "account_language_" + modelData.code
-                    Layout.fillWidth: true
-                    Layout.preferredWidth: 1
-                    entry: modelData
+                    entry: languageRow.modelData
                     store: root.store
-                    words: root.wordCount(modelData.code)
+                }
+
+                objectName: "account_language_" + languageRow.modelData.code
+                title: languageRow.modelData.name
+                description: languageRow.language.status.length > 0
+                    ? languageRow.language.status
+                    : qsTr("Switch · %n words", "", root.wordCount(languageRow.modelData.code))
+                lastRow: languageRow.index === root.otherLanguages.length - 1
+
+                onClicked: if (languageRow.language.actionable) languageRow.language.act()
+
+                leading: LanguageFlag
+                {
+                    code: languageRow.modelData.code
+                }
+
+                DesktopIcon
+                {
+                    visible: languageRow.language.actionable
+                    name: languageRow.modelData.installed ? "chevron_right" : "arrow_down"
+                    width: AppMetrics.iconSizeSmall
+                    height: width
+                    color: AppTheme.colourSubtle
                 }
             }
         }

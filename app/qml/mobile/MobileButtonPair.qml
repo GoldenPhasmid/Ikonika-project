@@ -16,6 +16,9 @@ RowLayout
 
     property bool rightDestructive: false
 
+    property color leftMarkColour: "transparent"
+    property color rightMarkColour: "transparent"
+
     signal leftClicked()
     signal rightClicked()
 
@@ -26,6 +29,7 @@ RowLayout
     {
         label: root.leftLabel
         leadingArrow: root.leftArrow
+        markColour: root.leftMarkColour
         filled: false
         interactive: root.leftEnabled
 
@@ -36,6 +40,7 @@ RowLayout
     {
         label: root.rightLabel
         trailingArrow: root.rightArrow
+        markColour: root.rightMarkColour
         interactive: root.rightEnabled
         destructive: root.rightDestructive
 

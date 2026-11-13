@@ -7,6 +7,7 @@ ColumnLayout
     id: root
 
     required property var store
+    property var triage: null
 
     signal placementRequested()
 
@@ -76,7 +77,9 @@ ColumnLayout
     {
         store: root.store
         words: root.wordCount(root.store.targetLanguageCode)
+        triage: root.triage
         onPlacementRequested: root.placementRequested()
+        onDeleteRequested: root.askToDelete({code: root.store.targetLanguageCode, name: root.store.targetLanguageName})
     }
 
     ColumnLayout
@@ -155,21 +158,6 @@ ColumnLayout
     DesktopSettingsGroup
     {
         title: qsTr("Remove")
-
-        DesktopSettingsRow
-        {
-            visible: root.wordCount(root.store.targetLanguageCode) > 0
-            text: qsTr("Delete %1 words").arg(root.store.targetLanguageName)
-            description: qsTr("Words and learning progress")
-
-            DesktopButton
-            {
-                objectName: "account_delete_" + root.store.targetLanguageCode
-                tone: "dangerOutline"
-                text: qsTr("Delete")
-                onClicked: root.askToDelete({code: root.store.targetLanguageCode, name: root.store.targetLanguageName})
-            }
-        }
 
         DesktopSettingsRow
         {

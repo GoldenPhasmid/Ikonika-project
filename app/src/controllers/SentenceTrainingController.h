@@ -2,6 +2,8 @@
 
 #include "StageSessionControllerBase.h"
 
+#include "SentenceSelection.h"
+
 #include "core/FTSentenceTree.h"
 
 #include <QByteArray>
@@ -23,6 +25,7 @@ class SentenceTrainingController : public StageSessionControllerBase
     QML_ELEMENT
 
     Q_PROPERTY(bool available READ IsAvailable NOTIFY availabilityChanged)
+    Q_PROPERTY(bool refreshing READ IsRefreshing NOTIFY availabilityChanged)
     Q_PROPERTY(int readyCount READ GetReadyCount NOTIFY availabilityChanged)
     Q_PROPERTY(int sentenceCount READ GetSentenceCount WRITE SetSentenceCount NOTIFY availabilityChanged)
     Q_PROPERTY(int minimumSentenceCount READ GetMinimumSentenceCount CONSTANT)
@@ -48,18 +51,21 @@ public:
     static constexpr int NormalDifficulty = 2;
     static constexpr int HardDifficulty = 4;
     static constexpr int EveryDifficulty = EasyDifficulty | NormalDifficulty | HardDifficulty;
-    static constexpr float SentenceSpeechRateScale = 0.75f;
     static constexpr int MinimumSentenceWords = 3;
     static constexpr int MaximumSentenceCharacters = 80;
 
     explicit SentenceTrainingController(QObject* Parent = nullptr);
 
     Q_INVOKABLE void refresh();
+
+    /** Returns once a refresh that runs in the background has delivered its result. */
+    void WaitForRefresh();
     Q_INVOKABLE bool start(const QString& Exercise);
     Q_INVOKABLE void endSession();
     Q_INVOKABLE void forgetSessions();
 
     bool IsAvailable() const;
+    bool IsRefreshing() const;
     int GetReadyCount() const;
     bool CanStart() const;
     bool IsUnlocked() const;
@@ -75,6 +81,7 @@ public:
     void SetDifficultyMask(int InDifficultyMask);
 
     static uint32_t MakeGrammarLevelMask(int DifficultyMask);
+    static int ResolveDifficultyMask(int InDifficultyMask, int InUnlockedDifficultyMask);
 
     int GetElapsedSeconds() const;
     int GetSessionSentenceCount() const;
@@ -90,7 +97,25 @@ protected:
     void DiscardSession() override;
 
 private:
+    struct FAvailability
+    {
+        bool bAvailable = false;
+        int UnlockedDifficultyMask = 0;
+        int ReadyCount = 0;
+    };
+
     std::vector<FTTreeSentence> FindCandidates(int InDifficultyMask, int InSentenceCount) const;
+
+    static std::vector<FTTreeSentence> FindCandidatesFor(const FTSentenceTree& Tree, const FSentenceSources& Sources,
+                                                         int InDifficultyMask, int InSentenceCount);
+
+    static FAvailability ComputeAvailability(const FTSentenceTree& Tree, const FSentenceSources& Sources,
+                                             int InDifficultyMask, int InSentenceCount);
+
+    void ApplyAvailability(const FAvailability& Result, const std::string& Revision);
+
+    void FinishRefresh(quint64 Serial, uint64_t Generation, bool bOpened, const FAvailability& Result,
+                       const std::shared_ptr<const FTSentenceTree>& Tree);
 
     void AdoptController(ExerciseControllerBase* Controller);
     void AddFlashcardStage(const FTSessionStartParams& Params);
@@ -116,6 +141,9 @@ private:
     int UnlockedDifficultyMask = 0;
     int ReadyCount = 0;
     std::string RefreshedRevision;
+    std::string PendingRevision;
+    quint64 RefreshSerial = 0;
+    bool bRefreshing = false;
     int DifficultyMask = EasyDifficulty;
     int SentenceCount = DefaultSentenceCount;
 

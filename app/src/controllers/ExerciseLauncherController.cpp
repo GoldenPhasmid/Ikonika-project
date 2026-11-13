@@ -4,8 +4,10 @@
 #include "AppDatabase.h"
 #include "AudioTranscriptionController.h"
 #include "CorrectIncorrectController.h"
+#include "ExerciseFlowStages.h"
 #include "FlashcardController.h"
 #include "FlipRecallController.h"
+#include "GapProductionController.h"
 #include "MultipleChoiceController.h"
 #include "SpeedMatchController.h"
 #include "VocabularyController.h"
@@ -60,6 +62,11 @@ ExerciseControllerBase* ExerciseLauncherController::CreateController(const QStri
         return new WrittenProductionController(this);
     }
 
+    if (Exercise == QStringLiteral("gap"))
+    {
+        return new WordGapController(this);
+    }
+
     return nullptr;
 }
 
@@ -83,22 +90,45 @@ bool ExerciseLauncherController::startExercise(const QString& Exercise, bool bRe
     std::mt19937 Generator{MakeRandomSeed()};
     std::shuffle(Cards.begin(), Cards.end(), Generator);
 
+    const int DesiredCardCount = CardCount >= 0
+        ? std::clamp(CardCount, 1, (int)Cards.size())
+        : (int)Cards.size();
+
+    Cards.resize(DesiredCardCount);
+
+    std::shared_ptr<const FGapSentences> GapSentences;
+
+    if (Exercise == QStringLiteral("gap"))
+    {
+        GapSentences = std::make_shared<const FGapSentences>(PickGapSentences(FCardState{Cards}));
+
+        Cards.erase(std::remove_if(Cards.begin(), Cards.end(), [&GapSentences](const FTCardHandle& Card)
+        {
+            return !GapSentences->contains(Card->Id);
+        }), Cards.end());
+
+        if (Cards.empty())
+        {
+            qCInfo(LogApp) << "Practice gap has no sentences for the chosen cards";
+
+            return false;
+        }
+    }
+
     ExerciseControllerBase* NewController = CreateController(Exercise);
     if (NewController == nullptr)
     {
         return false;
     }
 
-    if (auto* Written = qobject_cast<WrittenProductionController*>(NewController))
+    if (auto* Gap = qobject_cast<WordGapController*>(NewController))
+    {
+        Gap->SetSentenceLookup(MakeGapSentenceLookup(GapSentences));
+    }
+    else if (auto* Written = qobject_cast<WrittenProductionController*>(NewController))
     {
         Written->SetAskWord(!bReverse);
     }
-
-    const int DesiredCardCount = CardCount >= 0
-        ? std::clamp(CardCount, 1, (int)Cards.size())
-        : (int)Cards.size();
-
-    Cards.resize(DesiredCardCount);
 
     const int DesiredRepetitionCount = RepetitionCount >= 0 ? RepetitionCount
         : FTSettings::Get().GetIntensiveLearningRules().CardsPerExercise;

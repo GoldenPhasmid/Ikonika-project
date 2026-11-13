@@ -159,6 +159,28 @@ QStringList AppLocalization::GetLanguageNames() const
     return {tr("English"), tr("Українська")};
 }
 
+QStringList AppLocalization::GetLanguageCodes() const
+{
+    QStringList Codes;
+
+    for (const QString& Locale : LanguageLocales)
+    {
+        Codes.append(QLocale{Locale}.name().section(QLatin1Char('_'), 0, 0));
+    }
+
+    return Codes;
+}
+
+QString AppLocalization::GetLanguageCode() const
+{
+    return GetLanguageCodes().value(CurrentLanguage);
+}
+
+int AppLocalization::FindLanguageIndex(const QString& Code) const
+{
+    return static_cast<int>(GetLanguageCodes().indexOf(Code));
+}
+
 void AppLocalization::SetLanguageIndex(int NewLanguage)
 {
     if (NewLanguage == CurrentLanguage)

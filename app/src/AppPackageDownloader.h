@@ -33,6 +33,13 @@ public:
     Q_INVOKABLE void forget(const QString& Id);
     Q_INVOKABLE bool isPending(const QString& Id) const;
 
+    void RestoreQueue();
+
+    static bool InstallArchive(const QString& ArchivePath, const QString& DestinationDirectory,
+                               const QString& StagingRoot);
+    static void RecoverInterruptedInstalls(const QStringList& Roots, const QString& StagingRoot);
+    static void RecoverInterruptedInstalls();
+
     /**
      * Installs a package from an archive the user already has, skipping the transfer. The file is
      * identified by its checksum rather than by its name, so a renamed copy still installs and a
@@ -41,6 +48,7 @@ public:
     Q_INVOKABLE void installFromFile(const QUrl& FileUrl);
 
     bool IsBusy() const;
+    bool HasPendingWork() const;
     QString GetActiveId() const;
     qint64 GetReceivedBytes() const;
     qint64 GetTotalBytes() const;
@@ -63,8 +71,10 @@ private:
     void OnDownloaded(const QString& ArchivePath);
     void Fail(const QString& Message);
     void Clear();
+    void PersistQueue() const;
 
     QStringList Queue;
+    QStringList PendingRestore;
 
     std::unique_ptr<AppFileTransfer> Transfer;
 

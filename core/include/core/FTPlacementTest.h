@@ -1,5 +1,7 @@
 #pragma once
 
+#include "core/FTLevelBelief.h"
+
 #include <cstdint>
 #include <optional>
 #include <random>
@@ -30,16 +32,25 @@ std::vector<FTPlacementWord> ParsePlacementWords(const std::string& Text);
 
 int GetPlacementCefrLevel(int KnownWordCount);
 
-double GetPlacementKnownChance(int TeachingRank, double Level);
+constexpr int BeginnerPlacementLevel = 1;
+constexpr int CoreCardsCutoffLimit = 500;
+
+bool PlacementWantsCoreCards(int PickedLevel, int CutoffRank);
 
 class FTPlacementTest
 {
 public:
     static constexpr int MaximumQuestions = 30;
 
+    static constexpr int BeginnerStartingRank = 400;
+
+    static constexpr int IntermediateStartingRank = 2000;
+
+    static constexpr int AdvancedStartingRank = 6000;
+
     FTPlacementTest() = default;
 
-    FTPlacementTest(std::vector<FTPlacementWord> InWords, uint32_t Seed);
+    FTPlacementTest(std::vector<FTPlacementWord> InWords, uint32_t Seed, int StartingRank);
 
     const FTPlacementWord* GetCurrentWord() const;
 
@@ -58,10 +69,6 @@ public:
 private:
     void PickNextWord();
 
-    double GetLevelMean() const;
-
-    double GetLevelDeviation() const;
-
     int GetHighestRank() const;
 
     std::vector<FTPlacementWord> Words;
@@ -70,7 +77,7 @@ private:
 
     std::vector<FTPlacementAnswer> Answers;
 
-    std::vector<double> Belief;
+    FTLevelBelief Belief;
 
     std::mt19937 Random;
 

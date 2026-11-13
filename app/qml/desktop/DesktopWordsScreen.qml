@@ -296,7 +296,8 @@ Item
 
         DesktopMachineTranslation
         {
-            visible: AppMachineTranslation.enabled && root.searching && dictionary.results.length === 0
+            visible: AppMachineTranslation.enabled && root.searching
+                && (dictionary.results.length === 0 || dictionary.formTerm.length > 0)
             lookup: dictionary
             term: searchField.term
 

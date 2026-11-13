@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Layouts
+import "../MeaningPicks.js" as MeaningPicks
 
 FocusScope
 {
@@ -27,9 +28,7 @@ FocusScope
     readonly property string enteredTranslation: translationField.text.trim()
     readonly property var entry: dictionary.entry.headword ? dictionary.entry : null
 
-    readonly property var pickedTranslations: root.meaningTranslation.split(",")
-        .map(Part => Part.trim().toLowerCase())
-        .filter(Part => Part.length > 0)
+    readonly property var pickedTranslations: MeaningPicks.parts(root.meaningTranslation)
 
     readonly property int defaultOpenIndex: Math.max(0, root.meanings.findIndex(Meaning => Meaning.learnedStage < 0 && Meaning.translations.length > 0))
     readonly property int pickedOpenIndex: root.meanings.findIndex(Meaning => Meaning.gist === root.openGist)
@@ -67,30 +66,10 @@ FocusScope
 
     function pickTranslation(gist, text)
     {
-        if (root.pickedGist !== gist)
-        {
-            root.pickedGist = gist
-            root.meaningTranslation = text
+        const picks = MeaningPicks.toggle(root.pickedGist, root.meaningTranslation, gist, text)
 
-            return
-        }
-
-        const wanted = text.trim().toLowerCase()
-        const kept = root.meaningTranslation.split(",")
-            .map(Part => Part.trim())
-            .filter(Part => Part.length > 0 && Part.toLowerCase() !== wanted)
-
-        if (kept.length === root.pickedTranslations.length)
-        {
-            kept.push(text)
-        }
-
-        root.meaningTranslation = kept.join(", ")
-
-        if (kept.length === 0)
-        {
-            root.pickedGist = ""
-        }
+        root.pickedGist = picks.gist
+        root.meaningTranslation = picks.text
     }
 
     function expandMeaning(index)
@@ -235,19 +214,6 @@ FocusScope
         tools: [
             DesktopIconButton
             {
-                objectName: "triage_range_toggle"
-
-                visible: !!root.controller && !root.controller.deckMode && root.controller.maximumRank > 0
-                iconName: "arrow_down"
-                text: root.controller && root.controller.startRank > 0
-                    ? qsTr("From #%1").arg(Qt.locale().toString(root.controller.startRank, "f", 0)) : qsTr("From the top")
-                active: !!root.controller && root.controller.rangePaneOpen
-                focusPolicy: Qt.NoFocus
-
-                onClicked: root.controller.rangePaneOpen = !root.controller.rangePaneOpen
-            },
-            DesktopIconButton
-            {
                 objectName: "triage_added_toggle"
 
                 iconName: "check"
@@ -346,39 +312,6 @@ FocusScope
             {
                 Layout.fillHeight: true
                 visible: addedList.count === 0
-            }
-        }
-
-        DesktopSidePane
-        {
-            id: rangePane
-
-            readonly property bool open: !!root.controller && !root.controller.deckMode && root.controller.rangePaneOpen
-                                         && root.controller.maximumRank > 0
-
-            z: 1
-            x: rangePane.open ? 0 : -width
-            anchors.top: parent.top
-            anchors.bottom: actionBar.top
-            width: rangeSlider.implicitWidth + AppMetrics.contentPadding * 2
-            visible: x > -width
-
-            Behavior on x { NumberAnimation { duration: AppMetrics.motionBase; easing.type: AppMetrics.motionEasing } }
-
-            DesktopRankSlider
-            {
-                id: rangeSlider
-
-                Layout.alignment: Qt.AlignHCenter
-                Layout.fillHeight: true
-                Layout.topMargin: AppMetrics.gapSmall
-                Layout.bottomMargin: AppMetrics.gapSmall
-
-                rank: root.controller ? root.controller.startRank : 0
-                maximumRank: root.controller ? root.controller.maximumRank : 0
-                levelMarks: root.controller ? root.controller.levelMarks : []
-
-                onRankChosen: function(rank) { root.controller.startRank = rank }
             }
         }
 

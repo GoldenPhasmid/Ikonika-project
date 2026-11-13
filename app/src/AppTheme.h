@@ -69,6 +69,7 @@ class AppTheme : public QObject
     
     Q_PROPERTY(QVariantMap cefrColours READ GetCefrColours CONSTANT)
 
+    Q_PROPERTY(QColor colourReaderMarkDark READ GetColourReaderMarkDark CONSTANT)
     Q_PROPERTY(qreal alphaFaint READ GetAlphaFaint CONSTANT)
     Q_PROPERTY(qreal alphaSoft READ GetAlphaSoft CONSTANT)
     Q_PROPERTY(qreal alphaMedium READ GetAlphaMedium CONSTANT)
@@ -129,6 +130,7 @@ public:
     QVariantMap GetFrequencyColours() const;
     QVariantMap GetCefrColours() const;
 
+    QColor GetColourReaderMarkDark() const;
     qreal GetAlphaFaint() const;
     qreal GetAlphaSoft() const;
     qreal GetAlphaMedium() const;

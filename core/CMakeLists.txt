@@ -25,6 +25,7 @@ add_library(core STATIC
     src/FTDeckProgress.cpp
     src/FTCardStore.cpp
     src/FTWordForms.cpp
+    src/FTFormsFlags.cpp
     src/FTBookCatalog.cpp
     src/FTCatalog.cpp
     src/FTWebSearch.cpp
@@ -40,6 +41,10 @@ add_library(core STATIC
     src/FTLanguagePairScope.cpp
     src/FTLog.cpp
     src/FTPlacementTest.cpp
+    src/FTCoreCards.cpp
+    src/FTTsv.cpp
+    src/FTLevelBelief.cpp
+    src/FTDiscoveryPlanner.cpp
     src/FTReaderDocument.cpp
     src/FTReaderRepository.cpp
     src/FTCloudBookRepository.cpp
@@ -73,6 +78,7 @@ add_library(core STATIC
     include/core/FTCardMeaning.h
     include/core/FTDeckProgress.h
     include/core/FTWordForms.h
+    include/core/FTFormsFlags.h
     include/core/sessions/FCardState.h
     include/core/FTCssStyle.h
     include/core/FTCsvExporter.h
@@ -89,6 +95,10 @@ add_library(core STATIC
     include/core/FTReaderRepository.h
     include/core/FTCloudBookRepository.h
     include/core/FTPlacementTest.h
+    include/core/FTCoreCards.h
+    include/core/FTTsv.h
+    include/core/FTLevelBelief.h
+    include/core/FTDiscoveryPlanner.h
     include/core/FTRepetitionBatch.h
     include/core/FTErasure.h
     include/core/FTEnglishForms.h
@@ -131,10 +141,16 @@ target_link_libraries(core
     PRIVATE
         miniaudio
         miniz
+        signalsmith-stretch
 )
 
 if (IOS)
     target_include_directories(core PRIVATE "${CMAKE_SOURCE_DIR}/third_party/sqlite")
 else()
     target_link_libraries(core PRIVATE sqlite3)
+endif()
+
+if (IKONIKA_DESKTOP)
+    add_executable(FormsFlagsTool tools/FormsFlagsTool.cpp)
+    target_link_libraries(FormsFlagsTool PRIVATE core Qt6::Core Qt6::Sql)
 endif()

@@ -23,7 +23,7 @@ FocusScope
 
     readonly property int holdDuration: 1500
     readonly property string greeting: Greeting.forHour(new Date().getHours(), root.name)
-    readonly property real ringScale: AppMetrics.welcomeRingSize / AppMetrics.goalRingSize
+    readonly property real ringScale: AppMetrics.welcomeRingSize / AppMetrics.todayRingSize
     readonly property real textGap: AppMetrics.gapLarge * root.ringScale
     readonly property real compositionLeft: (root.width - AppMetrics.welcomeRingSize - root.textGap - lines.width) / 2
 
@@ -57,11 +57,12 @@ FocusScope
 
         if (root.landing)
         {
-            const place = root.target.mapToItem(root, 0, 0)
+            const place = root.target.mapToItem(root, 0, 0, root.target.width, root.target.height)
+            const landingScale = place.width / ring.width
 
-            ringFlightX.to = place.x
-            ringFlightY.to = place.y
-            ringFlightScale.to = 1
+            ringFlightX.to = place.x - ring.width * (1 - landingScale) / 2
+            ringFlightY.to = place.y - ring.height * (1 - landingScale) / 2
+            ringFlightScale.to = landingScale
         }
         else
         {
@@ -111,8 +112,8 @@ FocusScope
 
         x: root.compositionLeft + (AppMetrics.welcomeRingSize - width) / 2
         y: (root.height - height) / 2
-        width: AppMetrics.goalRingSize
-        height: AppMetrics.goalRingSize
+        width: AppMetrics.todayRingSize
+        height: AppMetrics.todayRingSize
         scale: root.ringScale
         opacity: root.phase(0)
 

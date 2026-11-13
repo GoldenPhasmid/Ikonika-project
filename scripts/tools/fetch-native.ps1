@@ -34,7 +34,6 @@ $OpenSslCommit = "b71f1470962019bd89534a2919f5925f93bc5779"
 $OpenSslBaseUrl = "https://raw.githubusercontent.com/KDAB/android_openssl/$OpenSslCommit/ssl_3"
 
 $Models = @(
-    @{ Name = "supertonic-3"; Archive = "sherpa-onnx-supertonic-3-tts-int8-2026-05-11" },
     @{ Name = "piper-fr-siwis-medium"; Archive = "vits-piper-fr_FR-siwis-medium" },
     @{ Name = "piper-es-claude-high"; Archive = "vits-piper-es_MX-claude-high" },
     @{ Name = "piper-en-amy-medium"; Archive = "vits-piper-en_US-amy-medium" }
@@ -269,6 +268,29 @@ else
         }
 
         Write-Output ("  {0}  {1:N0} KB" -f $Name, ((Get-Item $Destination).Length / 1KB))
+    }
+}
+
+$SupertonicRoot = Join-Path $ModelsRoot "supertonic-3"
+New-Item -ItemType Directory -Force -Path $SupertonicRoot | Out-Null
+$SupertonicFiles = @(
+    @{ Name = "duration_predictor.onnx"; Base = "https://huggingface.co/Supertone/supertonic-3/resolve/main/onnx" },
+    @{ Name = "text_encoder.onnx"; Base = "https://huggingface.co/Supertone/supertonic-3/resolve/main/onnx" },
+    @{ Name = "vector_estimator.onnx"; Base = "https://huggingface.co/Supertone/supertonic-3/resolve/main/onnx" },
+    @{ Name = "vocoder.onnx"; Base = "https://huggingface.co/Supertone/supertonic-3/resolve/main/onnx" },
+    @{ Name = "tts.json"; Base = "https://huggingface.co/Supertone/supertonic-3/resolve/main/onnx" },
+    @{ Name = "unicode_indexer.bin"; Base = "https://huggingface.co/csukuangfj2/sherpa-onnx-supertonic-3-tts-int8-2026-05-11/resolve/main" },
+    @{ Name = "voice.bin"; Base = "https://huggingface.co/csukuangfj2/sherpa-onnx-supertonic-3-tts-int8-2026-05-11/resolve/main" }
+)
+
+foreach ($File in $SupertonicFiles)
+{
+    $Destination = Join-Path $SupertonicRoot $File.Name
+
+    if ($Force -or -not (Test-Path $Destination))
+    {
+        Invoke-WebRequest -Uri "$($File.Base)/$($File.Name)" -OutFile "$Destination.download"
+        Move-Item -LiteralPath "$Destination.download" -Destination $Destination -Force
     }
 }
 

@@ -14,7 +14,12 @@ Rectangle
         anchors.fill: parent
         spacing: 0
 
-        MobileHeader {}
+        MobileHeader
+        {
+            showBack: AppOnboarding.canGoBack
+
+            onBackRequested: AppOnboarding.back()
+        }
 
         ColumnLayout
         {

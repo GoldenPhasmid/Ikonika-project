@@ -24,6 +24,8 @@ class DictionaryController : public QObject
 
     Q_PROPERTY(QString machineTranslation READ GetMachineTranslation NOTIFY translationChanged)
     Q_PROPERTY(bool translating READ IsTranslating NOTIFY translationChanged)
+    Q_PROPERTY(QString formTerm READ GetFormTerm NOTIFY translationChanged)
+    Q_PROPERTY(QString formReading READ GetFormReading NOTIFY translationChanged)
 
 public:
     explicit DictionaryController(QObject* Parent = nullptr);
@@ -58,6 +60,8 @@ public:
 
     QString GetMachineTranslation() const;
     bool IsTranslating() const;
+    QString GetFormTerm() const;
+    QString GetFormReading() const;
 
 signals:
     void resultsChanged();
@@ -69,6 +73,9 @@ signals:
 private:
     void ResetTranslation(const QString& Text);
     void RequestTranslation();
+
+    QString FormTerm;
+    QString FormReading;
 
     QString TranslationQuery;
     QString MachineTranslation;

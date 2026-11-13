@@ -60,6 +60,11 @@ Rectangle
                 continue
             }
 
+            if (entry.natives.length > 0 && entry.natives.indexOf(AppOnboarding.chosenNative) < 0)
+            {
+                continue
+            }
+
             const active = AppPackageDownloader.activeId === entry.id
             const queued = AppPackageDownloader.queue.indexOf(entry.id) >= 0
 

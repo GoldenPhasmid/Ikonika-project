@@ -8,29 +8,27 @@ Steps to ship a new Android release to Play Console. For the one-time setup this
 
 | | |
 | --- | --- |
-| Git tag | `0.7.3` |
-| Version name | `0.7.3` |
-| Version code | `16` |
-| Built | 2026-11-01 |
+| Git tag | `0.8.3` |
+| Version name | `0.8.3` |
+| Version code | `21` |
+| Built | 2026-11-08 |
 
-The next upload needs a version code above 16.
+The next upload needs a version code above 21.
 
 ## Prepared release
 
-Version `0.8.2`, version code `20`, was built on 2026-11-06. The signed arm64 bundle passed
-`jarsigner` verification with the Ikonika upload certificate. It is ready for the Internal testing
-upload in step 7; Play Console upload and rollout are pending. Version code 19 belonged to the
-unuploaded 0.8.1 build and is skipped.
+Version `0.8.3`, version code `21`, was built on 2026-11-08 from tag `0.8.3`. The signed arm64
+bundle passed `jarsigner` verification with the Ikonika upload certificate and was uploaded to
+Play Console.
 
 Release notes for Google Play (under 500 characters):
 
 ```text
 New Features
-The Reader can highlight the words from the learner's vocabulary in text books.
-Sentence tiles exercise is submitted manually.
-Training mastery stage opens with one audio batch and speaks only the missing word after a gap answer.
-Practice sheet gets filter chips and correct card counts.
-Dictionary and app update offers download only after an explicit tap.
+Books are read aloud a sentence at a time, and reading continues in the background.
+First-launch setup is split into language, daily goal and placement steps.
+Selected text in any Android app can be looked up in the dictionary.
+Navigation and action icons match the desktop app.
 ```
 
 ## Prerequisites (one-time, not per release)

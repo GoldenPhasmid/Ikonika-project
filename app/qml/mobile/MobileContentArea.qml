@@ -21,6 +21,8 @@ Rectangle
     property bool primaryFitsContent: false
     property bool secondaryFillsArea: false
     property bool reserveActionsSpace: false
+    property color swipeColour: "transparent"
+    property real swipeStrength: 0
 
     readonly property real secondaryHeight: secondaryArea.height
     readonly property real stretchHeight: layout.height - meta.height - AppMetrics.borderWidth - layout.spacing * 3
@@ -78,8 +80,10 @@ Rectangle
     Layout.fillHeight: true
     radius: AppMetrics.radiusMedium
     color: AppTheme.colourPanel
-    border.color: AppTheme.colourBorder
-    border.width: AppMetrics.borderWidth
+    border.color: root.swipeStrength > 0
+        ? Qt.tint(AppTheme.colourBorder, Qt.rgba(root.swipeColour.r, root.swipeColour.g, root.swipeColour.b, root.swipeStrength))
+        : AppTheme.colourBorder
+    border.width: root.swipeStrength > 0 ? AppMetrics.borderWidth * 3 : AppMetrics.borderWidth
 
     ColumnLayout
     {

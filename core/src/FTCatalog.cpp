@@ -233,14 +233,15 @@ bool FTCatalogPackage::IsCompatible() const
     return IsReadableDictionarySchema(DictionarySchema);
 }
 
-const FTCatalogPackage* FTCatalog::FindCompatibleDictionary(const std::string& TargetLanguage) const
+const FTCatalogPackage* FTCatalog::FindCompatibleDictionary(const std::string& TargetLanguage,
+                                                            const std::string& NativeLanguage) const
 {
     const FTCatalogPackage* Best = nullptr;
 
     for (const FTCatalogPackage& Package : Packages)
     {
         if (Package.Kind != CatalogKindDictionary || Package.TargetLanguage != TargetLanguage
-            || !Package.IsCompatible())
+            || !Package.SupportsNative(NativeLanguage) || !Package.IsCompatible())
         {
             continue;
         }
@@ -273,6 +274,20 @@ bool FTCatalogPackage::SupportsNative(const std::string& LanguageCode) const
 
     return std::find(NativeLanguages.begin(), NativeLanguages.end(), LanguageCode) !=
            NativeLanguages.end();
+}
+
+bool FTCatalogPackage::Replaces(const FTDictionaryPackage& Installed) const
+{
+    if (Kind != CatalogKindDictionary || TargetLanguage != Installed.TargetLanguage)
+    {
+        return false;
+    }
+
+    return std::any_of(Installed.NativeLanguages.begin(), Installed.NativeLanguages.end(),
+                       [this](const std::string& Native)
+                       {
+                           return SupportsNative(Native);
+                       });
 }
 
 std::optional<FTCatalog> ParseCatalog(const std::string& Json)

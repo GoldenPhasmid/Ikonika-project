@@ -2,6 +2,7 @@
 
 #include "AppCatalog.h"
 #include "AppFileTransfer.h"
+#include "AppPackageDownloader.h"
 #include "AppPaths.h"
 
 #include "core/FTCatalog.h"
@@ -285,6 +286,13 @@ void AppUpdater::ApplyAndRestart()
     if (!IsReady())
     {
         qCWarning(LogUpdate) << "Asked to apply an update with nothing downloaded.";
+
+        return;
+    }
+
+    if (AppPackageDownloader::Get().HasPendingWork())
+    {
+        qCWarning(LogUpdate) << "Asked to apply an update while packages are still downloading or installing.";
 
         return;
     }

@@ -17,13 +17,6 @@ void WrittenProductionController::SetAskWord(bool bInAskWord)
     bAskWord = bInAskWord;
 }
 
-void WrittenProductionController::SetContentBuilder(FWrittenContentBuilder InContentBuilder,
-                                                    const QString& InAnswerHint)
-{
-    ContentBuilder = std::move(InContentBuilder);
-    AnswerHint = InAnswerHint;
-}
-
 QString WrittenProductionController::GetAnswerHint() const
 {
     return BuildContent().has_value() ? AnswerHint : QString();
@@ -53,33 +46,33 @@ void WrittenProductionController::InitializeSession()
 
     qCDebug(LogSession) << metaObject()->className() << "direction:" << GetDirectionLabel();
 
-    SpeakNewPrompt();
+    SpeakStateAutomatically();
+}
+
+std::optional<FWrittenContent> WrittenProductionController::BuildCardContent(const FTCard& Card) const
+{
+    Q_UNUSED(Card);
+
+    return std::nullopt;
 }
 
 std::optional<FWrittenContent> WrittenProductionController::BuildContent() const
 {
     const FTCard* Current = Session.has_value() ? Session->GetCurrentCard() : nullptr;
 
-    if (!ContentBuilder || Current == nullptr)
+    if (Current == nullptr)
     {
         return std::nullopt;
     }
 
-    FWrittenContent Content = ContentBuilder(*Current);
+    std::optional<FWrittenContent> Content = BuildCardContent(*Current);
 
-    if (Content.Prompt.empty())
+    if (!Content.has_value() || Content->Prompt.empty())
     {
         return std::nullopt;
     }
 
     return Content;
-}
-
-std::string WrittenProductionController::GetPromptSpeech() const
-{
-    const std::optional<FWrittenContent> Content = BuildContent();
-
-    return Content.has_value() ? Content->PromptSpeech : std::string();
 }
 
 QJsonObject WrittenProductionController::SaveExtraState() const
@@ -119,55 +112,78 @@ bool WrittenProductionController::IsSentencePrompt() const
     return Content.has_value() && Content->bSentence;
 }
 
-bool WrittenProductionController::HasPromptSpeech() const
+bool WrittenProductionController::CanReplay() const
 {
-    return !GetPromptSpeech().empty();
+    return !GetStateSpeech().Text.isEmpty();
 }
 
-void WrittenProductionController::SpeakPrompt() const
+FExerciseSpeech WrittenProductionController::GetHiddenSpeech() const
 {
-    const std::string Speech = GetPromptSpeech();
-
-    if (!Speech.empty())
+    if (!bAskWord)
     {
-        Speak(QString::fromStdString(Speech));
+        return {};
+    }
+
+    return FExerciseSpeech{GetPrompt()};
+}
+
+FExerciseSpeech WrittenProductionController::GetRevealSpeech() const
+{
+    if (bAskWord)
+    {
+        return {};
+    }
+
+    return FExerciseSpeech{LastRevealedAnswer};
+}
+
+FExerciseSpeech WrittenProductionController::GetStateSpeech() const
+{
+    if (!Session.has_value() || Session->IsFinished())
+    {
+        return {};
+    }
+
+    return bAnswered ? GetRevealSpeech() : GetHiddenSpeech();
+}
+
+void WrittenProductionController::SpeakState(float RateScale) const
+{
+    const FExerciseSpeech Speech = GetStateSpeech();
+
+    if (Speech.Text.isEmpty())
+    {
+        qCInfo(LogSpeech) << metaObject()->className() << "has nothing to say while"
+                          << (bAnswered ? "revealed" : "hidden");
 
         return;
     }
 
-    SpeakPromptIfTargetLanguage();
+    const float SentenceScale = Speech.bSentence ? AppSpeech::Get().GetSentenceSpeed() : 1.0f;
+
+    SpeakAtScale(Speech.Text, SentenceScale * RateScale);
 }
 
-void WrittenProductionController::SpeakNewPrompt() const
+void WrittenProductionController::SpeakStateAutomatically() const
 {
-    if (HasPromptSpeech() || AppSpeech::Get().AllowsAutomaticSpeech())
+    if (GetStateSpeech().Text.isEmpty() || !AppSpeech::Get().AllowsAutomaticSpeech())
     {
-        SpeakPrompt();
+        return;
     }
+
+    SpeakState(1.0f);
 }
 
 void WrittenProductionController::replay()
 {
-    SpeakPrompt();
+    SpeakState(1.0f);
 }
 
-void WrittenProductionController::SpeakAnswerIfTargetWord()
+void WrittenProductionController::speakSlowly()
 {
-    if (ShowsTargetLanguage() || !GetPromptSpeech().empty())
-    {
-        return;
-    }
+    qCInfo(LogSpeech) << metaObject()->className() << "slow speech requested";
 
-    const std::optional<FWrittenContent> Content = BuildContent();
-
-    if (Content.has_value() && !Content->RevealedSpeech.empty())
-    {
-        SpeakAutomatically(QString::fromStdString(Content->RevealedSpeech));
-
-        return;
-    }
-
-    SpeakAutomatically(LastRevealedAnswer);
+    SpeakState(AppSpeech::SlowRateScale);
 }
 
 QString WrittenProductionController::GetPromptHeading() const
@@ -236,7 +252,7 @@ void WrittenProductionController::submitAnswer(const QString& Given)
     qCDebug(LogSession) << metaObject()->className() << "answer:" << (WasLastAnswerCorrect() ? "correct" : "wrong")
                         << "- given" << Given << ", expected" << LastRevealedAnswer;
 
-    SpeakAnswerIfTargetWord();
+    SpeakStateAutomatically();
 
     emit stateChanged();
 }
@@ -287,7 +303,7 @@ void WrittenProductionController::skip()
 
     qCDebug(LogSession) << metaObject()->className() << "answer: skipped (don't remember)";
 
-    SpeakAnswerIfTargetWord();
+    SpeakStateAutomatically();
 
     emit stateChanged();
 }
@@ -304,7 +320,7 @@ void WrittenProductionController::advance()
 
     LogIfSessionFinished();
 
-    SpeakNewPrompt();
+    SpeakStateAutomatically();
 
     emit stateChanged();
 }

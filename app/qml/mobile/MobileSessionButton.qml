@@ -12,6 +12,7 @@ Rectangle
     property bool filled: true
     property bool interactive: true
     property bool destructive: false
+    property color markColour: "transparent"
 
     signal clicked()
 
@@ -32,6 +33,15 @@ Rectangle
     {
         anchors.centerIn: parent
         spacing: AppMetrics.gapSmall
+
+        Rectangle
+        {
+            visible: root.markColour.a > 0
+            Layout.preferredWidth: AppMetrics.gapSmall + 2
+            Layout.preferredHeight: AppMetrics.gapSmall + 2
+            radius: 2
+            color: root.markColour
+        }
 
         MobileArrowIcon
         {

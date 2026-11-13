@@ -108,9 +108,9 @@ TEST_CASE("English dictionary displays retain the bare headword for navigation",
     FAppDatabaseGuard DatabaseGuard;
     FDictionaryLanguageGuard LanguageGuard;
     FAppDictionaryGuard DictionaryGuard;
-    FTSettings::Get().SetTargetLanguage("en");
-    FTSettings::Get().SetNativeLanguage("uk");
-    REQUIRE(AppDictionary::Get().Initialise());
+    AppDictionary::Get().Discover();
+    REQUIRE(FTSettings::Get().SetLanguagePair("en", "uk"));
+    REQUIRE(AppDictionary::Get().OpenSettingsPair());
 
     DictionaryController Controller;
     Controller.openEntry("learn", "verb");
@@ -208,6 +208,14 @@ TEST_CASE("An inflected lookup identifies every matching person and clears on an
     CHECK_FALSE(Forms.value("matchedReadings").toStringList().isEmpty());
     CHECK(Controller.GetEntry().value("verbGroup").toString() == "third");
     CHECK(Forms.value("matchedKey").toString() == "3-0");
+
+    QStringList MatchedForms;
+    for (const QVariant& Row : Forms.value("matchedForms").toList())
+    {
+        MatchedForms << Row.toMap().value("form").toString();
+    }
+    CHECK(MatchedForms == QStringList{"Je voudrais", "Tu voudrais"});
+
     for (const QVariant& Mood : Forms.value("moods").toList())
     {
         if (Mood.toMap().value("mood").toInt() != 3)
@@ -221,6 +229,37 @@ TEST_CASE("An inflected lookup identifies every matching person and clears on an
     CHECK(Controller.GetEntry().value("forms").toMap().value("matchedKey").toString() == "3-0");
     Controller.openEntry("parler", "verb");
     CHECK(Controller.GetEntry().value("forms").toMap().value("matchedText").toString().isEmpty());
+    CHECK(Controller.GetEntry().value("forms").toMap().value("matchedForms").toList().isEmpty());
+}
+
+TEST_CASE("An inflected lookup builds the pronoun and form pairs sent to translation", "[dictionarycontroller][conjugationlookup]")
+{
+    FAppDatabaseGuard DatabaseGuard;
+    FAppDictionaryGuard DictionaryGuard;
+    FTSettings::Get().SetTargetLanguage("fr");
+    FTSettings::Get().SetNativeLanguage("en");
+    REQUIRE(AppDictionary::Get().Initialise());
+
+    DictionaryController Controller;
+    Controller.openEntry("être", "verb", "était");
+
+    QStringList Pairs;
+    for (const QVariant& Row : Controller.GetEntry().value("forms").toMap().value("matchedForms").toList())
+    {
+        Pairs << Row.toMap().value("form").toString();
+    }
+    CHECK(Pairs == QStringList{"Il était"});
+
+    Controller.openEntry("être", "verb", "étais");
+    Pairs.clear();
+    for (const QVariant& Row : Controller.GetEntry().value("forms").toMap().value("matchedForms").toList())
+    {
+        Pairs << Row.toMap().value("form").toString();
+    }
+    CHECK(Pairs == QStringList{"J'étais", "Tu étais"});
+
+    Controller.openEntry("être", "verb", "être");
+    CHECK(Controller.GetEntry().value("forms").toMap().value("matchedForms").toList().isEmpty());
 }
 
 TEST_CASE("Verb labels distinguish endings from irregularity", "[dictionarycontroller][conjugationlookup]")
@@ -488,7 +527,7 @@ TEST_CASE("A verb's forms carry the persons and mark the endings where training 
     const QVariantMap Forms = Controller.GetEntry().value("forms").toMap();
 
     REQUIRE(Forms.value("kind").toString() == "verb");
-    CHECK(Forms.value("cues").toStringList() == QStringList{"je", "tu", "il/elle", "nous", "vous", "ils/elles"});
+    CHECK(Forms.value("cues").toStringList() == QStringList{"je", "tu", "il/elle/on", "nous", "vous", "ils/elles"});
 
     QVariantList Present;
     QVariantList Subjunctive;
@@ -603,13 +642,13 @@ TEST_CASE("An elided or hyphenated word is searched part by part", "[dictionaryc
 
     REQUIRE_FALSE(Words.isEmpty());
     CHECK(Words.front() == "heure");
-    CHECK(Words.contains("le"));
+    CHECK_FALSE(Words.contains("le"));
 
     CHECK(ResultWords(SearchFor(QString::fromUtf8("l\xE2\x80\x99heure"))).contains("heure"));
 
     Words = ResultWords(SearchFor("n'est"));
 
-    CHECK(Words.contains("ne"));
+    CHECK_FALSE(Words.contains("ne"));
     CHECK(Words.contains(QString::fromUtf8("\xC3\xAAtre")));
 
     Words = ResultWords(SearchFor("Parlez-vous"));
@@ -687,7 +726,7 @@ TEST_CASE("French t'aime restores te and finds aimer", "[dictionarycontroller][l
         const QStringList Words = ResultWords(SearchFor(Text));
         REQUIRE_FALSE(Words.isEmpty());
         CHECK(Words.front() == "aimer");
-        CHECK(Words.contains("te"));
+        CHECK_FALSE(Words.contains("te"));
         CHECK_FALSE(Words.contains("t"));
     }
 }
@@ -751,4 +790,37 @@ TEST_CASE("A word offers the parts of speech the dictionary has for it", "[dicti
 
     CHECK(Values(Controller).contains("verb"));
     CHECK(Values(Controller).size() > 3);
+}
+
+TEST_CASE("Searching an inflected verb form translates it with its pronoun by the offline model", "[dictionarycontroller][conjugationlookup][slow]")
+{
+    FAppDatabaseGuard DatabaseGuard;
+    FAppDictionaryGuard DictionaryGuard;
+    FDictionaryLanguageGuard LanguageGuard;
+    FTSettings::Get().SetTargetLanguage("it");
+    FTSettings::Get().SetNativeLanguage("en");
+    REQUIRE(AppDictionary::Get().Initialise());
+
+    DictionaryController Controller;
+    Controller.search("ero");
+    WaitForResults(Controller);
+    REQUIRE_FALSE(Controller.GetResults().isEmpty());
+
+    QElapsedTimer Timer;
+    Timer.start();
+
+    while ((Controller.GetFormTerm().isEmpty() || Controller.IsTranslating() || Controller.GetMachineTranslation().isEmpty())
+           && Timer.elapsed() < 60000)
+    {
+        QCoreApplication::processEvents();
+        QThread::msleep(5);
+    }
+
+    CHECK(Controller.GetFormTerm() == "Io ero");
+    CHECK_FALSE(Controller.GetFormReading().isEmpty());
+    CHECK(Controller.GetMachineTranslation() == "I was");
+
+    Controller.search("essere");
+    WaitForResults(Controller);
+    CHECK(Controller.GetFormTerm().isEmpty());
 }

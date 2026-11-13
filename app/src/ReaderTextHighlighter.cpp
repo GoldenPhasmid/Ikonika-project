@@ -2,10 +2,16 @@
 
 #include "ReaderVocabulary.h"
 
+#include "core/FTSchedule.h"
+
 #include <QTextBlock>
 #include <QTextCharFormat>
 
 #include <algorithm>
+
+static constexpr double LightPaperShade = 0.26;
+static constexpr double DarkPaperShade = 0.32;
+static constexpr double LastStageShare = 0.3;
 
 ReaderTextHighlighter::ReaderTextHighlighter(QObject* Parent)
     : QSyntaxHighlighter(Parent)
@@ -74,6 +80,37 @@ void ReaderTextHighlighter::SetLearningColour(const QColor& Value)
     rehighlight();
 
     emit learningColourChanged();
+}
+
+bool ReaderTextHighlighter::IsDarkPaper() const
+{
+    return bDarkPaper;
+}
+
+void ReaderTextHighlighter::SetDarkPaper(bool bValue)
+{
+    if (bDarkPaper == bValue)
+    {
+        return;
+    }
+
+    bDarkPaper = bValue;
+
+    rehighlight();
+
+    emit darkPaperChanged();
+}
+
+QColor ReaderTextHighlighter::ShadeForStage(int Stage) const
+{
+    const int LastStage{std::max(GetLastStage(), 1)};
+    const double Progress{static_cast<double>(std::clamp(Stage, 0, LastStage)) / LastStage};
+    const double Share{1.0 - (1.0 - LastStageShare) * Progress};
+
+    QColor Shade{LearningColour};
+    Shade.setAlphaF(static_cast<float>((bDarkPaper ? DarkPaperShade : LightPaperShade) * Share));
+
+    return Shade;
 }
 
 int ReaderTextHighlighter::GetSentenceStart() const
@@ -171,7 +208,7 @@ void ReaderTextHighlighter::highlightBlock(const QString& Text)
         }
         else
         {
-            Format.setBackground(LearningColour);
+            Format.setBackground(ShadeForStage(Mark.Stage));
         }
 
         setFormat(MarkStart, static_cast<int>(Mark.Length), Format);

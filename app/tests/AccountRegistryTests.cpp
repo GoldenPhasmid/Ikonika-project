@@ -228,6 +228,31 @@ TEST_CASE("A refused credential keeps the workspace open until the user signs in
     CHECK_FALSE(Relaunched.GetActiveAccount()->bNeedsReconnect);
 }
 
+TEST_CASE("A missing Drive permission survives a relaunch and clears on the next sign-in", "[accounts]")
+{
+    QTemporaryDir Root;
+    AppMemoryCredentialStore Credentials;
+
+    {
+        AppAccountRegistry Registry(Root.path(), Credentials);
+        REQUIRE(Registry.SignIn(Alice, "alice-token"));
+
+        Registry.MarkNeedsReconnect("1001", true);
+
+        CHECK(Registry.GetActiveAccount()->bMissingDriveAccess);
+    }
+
+    AppAccountRegistry Relaunched(Root.path(), Credentials);
+
+    CHECK(Relaunched.GetActiveAccount()->bNeedsReconnect);
+    CHECK(Relaunched.GetActiveAccount()->bMissingDriveAccess);
+
+    REQUIRE(Relaunched.SignIn(Alice, "alice-token-2"));
+
+    CHECK_FALSE(Relaunched.GetActiveAccount()->bNeedsReconnect);
+    CHECK_FALSE(Relaunched.GetActiveAccount()->bMissingDriveAccess);
+}
+
 TEST_CASE("The credential goes to the credential store and never into a file", "[accounts]")
 {
     QTemporaryDir Root;

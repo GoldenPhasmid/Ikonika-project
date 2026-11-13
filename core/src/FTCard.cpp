@@ -158,5 +158,10 @@ std::string GetGenderCode(const std::optional<int>& Gender)
         return "m/f";
     }
 
+    if (*Gender == GenderNeuter)
+    {
+        return "n";
+    }
+
     return *Gender == GenderMasculine ? "m" : "f";
 }

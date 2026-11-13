@@ -116,7 +116,7 @@ Rectangle
 
         DesktopMachineTranslation
         {
-            visible: AppMachineTranslation.enabled && root.missing
+            visible: AppMachineTranslation.enabled && (root.missing || root.lookup.formTerm.length > 0)
             lookup: root.lookup
             term: root.term
 

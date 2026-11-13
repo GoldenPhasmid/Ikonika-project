@@ -1,5 +1,7 @@
 #pragma once
 
+#include "AppCloudStore.h"
+
 #include <QObject>
 #include <QString>
 #include <QTimer>
@@ -10,11 +12,8 @@
 #include <vector>
 
 class AppAccountRegistry;
-class AppCloudStore;
 class AppSyncMerger;
 class AppWorkspace;
-struct AppCloudCopy;
-struct AppCloudFailure;
 
 struct AppSyncTimings
 {
@@ -47,6 +46,8 @@ public:
     bool IsRunning() const;
     bool IsRestoring() const;
     bool HasUnsentWrites() const;
+    bool IsRetryScheduled() const;
+    AppCloudFailureKind GetLastFailureKind() const;
 
 signals:
     void cycleStarted();
@@ -120,6 +121,7 @@ private:
     int WriteCount = 0;
     int SentWriteCount = 0;
     int RetryAttempt = 0;
+    AppCloudFailureKind LastFailureKind = AppCloudFailureKind::Transient;
     bool bIgnoreWrites = false;
     bool bUnsentMarked = false;
     bool bAnotherCycleRequested = false;

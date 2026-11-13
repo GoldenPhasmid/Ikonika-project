@@ -10,6 +10,8 @@ Rectangle
     property var picked: []
     property bool expanded: false
     property int stageCount: 1
+    property int chipRows: 0
+    property bool animated: true
 
     signal translationPicked(string text)
     signal expandRequested()
@@ -31,7 +33,12 @@ Rectangle
     opacity: root.learned ? AppTheme.opacitySecondary : 1.0
 
     Behavior on border.color { ColorAnimation { duration: AppMetrics.motionFast } }
-    Behavior on implicitHeight { NumberAnimation { duration: AppMetrics.motionBase; easing.type: AppMetrics.motionEasing } }
+    Behavior on implicitHeight
+    {
+        enabled: root.animated
+
+        NumberAnimation { duration: AppMetrics.motionBase; easing.type: AppMetrics.motionEasing }
+    }
 
     TapHandler
     {
@@ -126,85 +133,109 @@ Rectangle
             onWordTapped: function(word, sentence) { root.wordTapped(word, sentence) }
         }
 
-        GridLayout
+        Flickable
         {
-            id: translationGrid
+            id: chipArea
 
-            readonly property real halfWidth: (translationGrid.width - translationGrid.columnSpacing) / 2
-
-            function arrange()
-            {
-                let nextRow = 0
-                let openRow = -1
-                let openChip = null
-
-                for (let index = 0; index < translationRepeater.count; ++index)
-                {
-                    const chip = translationRepeater.itemAt(index)
-
-                    if (!chip)
-                    {
-                        continue
-                    }
-
-                    if (chip.naturalWidth > translationGrid.halfWidth)
-                    {
-                        chip.Layout.row = nextRow
-                        chip.Layout.column = 0
-                        chip.Layout.columnSpan = 2
-                        nextRow += 1
-                    }
-                    else if (openRow >= 0)
-                    {
-                        chip.Layout.row = openRow
-                        chip.Layout.column = 1
-                        chip.Layout.columnSpan = 1
-                        openChip.Layout.columnSpan = 1
-                        openRow = -1
-                        openChip = null
-                    }
-                    else
-                    {
-                        chip.Layout.row = nextRow
-                        chip.Layout.column = 0
-                        chip.Layout.columnSpan = 2
-                        openRow = nextRow
-                        openChip = chip
-                        nextRow += 1
-                    }
-                }
-            }
+            readonly property real rowsHeight: translationGrid.chipHeight * root.chipRows
+                                               + translationGrid.rowSpacing * (root.chipRows - 1)
 
             Layout.fillWidth: true
             Layout.topMargin: AppMetrics.gapTight
-            columns: 2
-            columnSpacing: AppMetrics.chipListSpacing
-            rowSpacing: AppMetrics.chipListSpacing
+            Layout.preferredHeight: root.chipRows > 0 && translationGrid.chipHeight > 0
+                                    ? Math.min(translationGrid.implicitHeight, chipArea.rowsHeight)
+                                    : translationGrid.implicitHeight
+            contentWidth: width
+            contentHeight: translationGrid.implicitHeight
+            interactive: contentHeight > height
+            boundsBehavior: Flickable.StopAtBounds
+            clip: root.chipRows > 0
 
-            onHalfWidthChanged: translationGrid.arrange()
-
-            Repeater
+            GridLayout
             {
-                id: translationRepeater
+                id: translationGrid
 
-                model: root.translations
+                readonly property real halfWidth: (translationGrid.width - translationGrid.columnSpacing) / 2
+                property real chipHeight: 0
 
-                onItemAdded: Qt.callLater(translationGrid.arrange)
-
-                delegate: MobileTranslationChip
+                function arrange()
                 {
-                    required property var modelData
+                    let nextRow = 0
+                    let tallest = 0
+                    let openRow = -1
+                    let openChip = null
 
-                    Layout.preferredWidth: 1
-                    text: modelData.text
-                    relative: modelData.relative
-                    hasProbability: modelData.hasProbability
-                    learnedStage: modelData.learnedStage
-                    inUse: root.picked.indexOf(modelData.text.trim().toLowerCase()) >= 0
-                    enabled: !root.learned
+                    for (let index = 0; index < translationRepeater.count; ++index)
+                    {
+                        const chip = translationRepeater.itemAt(index)
 
-                    onNaturalWidthChanged: Qt.callLater(translationGrid.arrange)
-                    onPicked: root.translationPicked(modelData.text)
+                        if (!chip)
+                        {
+                            continue
+                        }
+
+                        tallest = Math.max(tallest, chip.implicitHeight, chip.Layout.preferredHeight)
+
+                        if (chip.naturalWidth > translationGrid.halfWidth)
+                        {
+                            chip.Layout.row = nextRow
+                            chip.Layout.column = 0
+                            chip.Layout.columnSpan = 2
+                            nextRow += 1
+                        }
+                        else if (openRow >= 0)
+                        {
+                            chip.Layout.row = openRow
+                            chip.Layout.column = 1
+                            chip.Layout.columnSpan = 1
+                            openChip.Layout.columnSpan = 1
+                            openRow = -1
+                            openChip = null
+                        }
+                        else
+                        {
+                            chip.Layout.row = nextRow
+                            chip.Layout.column = 0
+                            chip.Layout.columnSpan = 2
+                            openRow = nextRow
+                            openChip = chip
+                            nextRow += 1
+                        }
+                    }
+
+                    translationGrid.chipHeight = tallest
+                }
+
+                width: chipArea.width
+                columns: 2
+                columnSpacing: AppMetrics.chipListSpacing
+                rowSpacing: AppMetrics.chipListSpacing
+
+                onHalfWidthChanged: translationGrid.arrange()
+
+                Repeater
+                {
+                    id: translationRepeater
+
+                    model: root.translations
+
+                    onItemAdded: Qt.callLater(translationGrid.arrange)
+
+                    delegate: MobileTranslationChip
+                    {
+                        required property var modelData
+
+                        Layout.preferredWidth: 1
+                        text: modelData.text
+                        relative: modelData.relative
+                        hasProbability: modelData.hasProbability
+                        learnedStage: modelData.learnedStage
+                        inUse: root.picked.indexOf(modelData.text.trim().toLowerCase()) >= 0
+                        enabled: !root.learned
+
+                        onNaturalWidthChanged: Qt.callLater(translationGrid.arrange)
+                        onPicked: root.translationPicked(modelData.text)
+                    }
                 }
             }
         }

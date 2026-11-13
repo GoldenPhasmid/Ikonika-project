@@ -70,7 +70,7 @@ The level is stored per sentence and again per reference inside the tree, so the
 
 `SentenceTrainingController::FindCandidates` runs on every session start and on every change of difficulty or sentence count.
 
-1. Known words: headwords of cards on the ladder or completed, plus words answered as known in Training, resolved to dictionary word ids. Known verb tenses from conjugation cards become tense keys.
+1. Known words: headwords of cards on the ladder or completed, plus words answered as known in Training, resolved to dictionary word ids. Known verb tenses from conjugation cards become tense keys. Essential words always count: every pronoun, preposition, conjunction, determiner, article and contraction, and the essential verbs in the present tense. The verbs are listed per language under `[essentialVerbs]` in `app/defaults.ini`; a language without a list takes its ten best-ranked verbs. A learner with no cards can therefore start sentence training on sentences such as "Qui est-il ?".
 2. Tree walk: a sentence qualifies when every key on one of its paths is known. There is no limit on how many word keys the path holds.
 3. Level mask: Easy keeps level 1, Normal keeps level 2, Hard keeps levels 3 and 4. The picker is a set, so the levels combine.
 4. Sampling: the walk keeps a random sample of at most 15 times the session length, so it never builds the full match list.

@@ -37,4 +37,5 @@ private:
     FTVocabularyMarks Marks;
     std::string BuiltRevision;
     bool bEnabled = false;
+    bool bHighlightUnknown = false;
 };

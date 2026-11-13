@@ -56,6 +56,8 @@ std::string GetFormsKind(const std::string& CardId);
 std::string GetFormsCardIdPrefix(const std::string& Kind);
 
 std::vector<std::string> ListFormsTenses(const std::string& TargetLanguage);
+std::vector<FTDictionaryForm> ListConjugationForms(const FTDictionaryEntry& Entry,
+                                                 const std::string& TargetLanguage);
 
 std::string GetFormsTenseLabel(const std::string& TargetLanguage, const std::string& Tense);
 
@@ -120,6 +122,12 @@ std::optional<FTCard> MakeFormsCard(const std::string& Kind, const FTDictionaryE
                                     const std::string& TargetLanguage, const std::string& Translation,
                                     const std::string& Tense = FormsTensePresent);
 
+bool IsFormsEligible(const FTDictionaryEntry& Entry, const std::string& TargetLanguage);
+
+std::optional<FTCard> MakeEligibleFormsCard(const std::string& Kind, const std::string& Headword,
+                                            const std::string& TargetLanguage,
+                                            const std::string& Tense = FormsTensePresent);
+
 std::vector<FTCard> ExpandFormsCard(const FTCard& Stored, const FTDictionaryEntry& Entry,
                                     const std::string& TargetLanguage);
 
@@ -128,6 +136,8 @@ std::vector<std::vector<int>> GroupCardsByWord(const std::vector<FTCardHandle>& 
 std::vector<FTCardHandle> TakeFormsSession(const std::string& Training, const std::vector<FTCardHandle>& Cards);
 
 std::vector<std::string> ListFormsCues(const std::string& Kind, const std::string& TargetLanguage);
+
+std::string AttachFormsSubject(const std::string& TargetLanguage, int CellIndex, const std::string& Form);
 
 std::string FindFormEnding(const std::string& TargetLanguage, const std::string& Headword, int Mood, int Tense,
                            int CellIndex, const std::string& Form);

@@ -458,6 +458,10 @@ Item
         {
             id: conjugation
             conjugationUrl: root.entry ? root.entry.conjugationUrl || "" : ""
+            synonymsUrl: root.entry && root.entry.forms.language && root.entry.headword
+                ? "https://synonyms.reverso.net/synonyme/" + encodeURIComponent(root.entry.forms.language)
+                    + "/" + encodeURIComponent(root.entry.headword)
+                : ""
             forms: root.entry ? root.entry.forms : ({ kind: "none" })
         }
 

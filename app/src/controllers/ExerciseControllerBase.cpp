@@ -191,6 +191,11 @@ QString ExerciseControllerBase::GetGender() const
         return tr("any");
     }
 
+    if (*Current->Gender == GenderNeuter)
+    {
+        return tr("neuter");
+    }
+
     return *Current->Gender == GenderMasculine ? tr("masculine") : tr("feminine");
 }
 
@@ -237,16 +242,19 @@ void ExerciseControllerBase::CacheCardMeaning() const
     PhoneticCache = QString::fromStdString(
         AppDictionary::Get().GetRepository().FindPhonetic(Current->TargetWord, Current->PartOfSpeech));
 
-    if (Current->MeaningGist.empty())
-    {
-        return;
-    }
+    std::vector<FTDictionarySense> Meanings;
+    const FTDictionarySense* Meaning{nullptr};
 
-    const std::vector<FTDictionarySense> Meanings = AppDictionary::Get().GetRepository().LoadMeanings(Current->TargetWord, Current->PartOfSpeech);
-    const FTDictionarySense* Meaning = FindCardMeaning(*Current, Meanings);
+    if (!Current->MeaningGist.empty())
+    {
+        Meanings = AppDictionary::Get().GetRepository().LoadMeanings(Current->TargetWord, Current->PartOfSpeech);
+        Meaning = FindCardMeaning(*Current, Meanings);
+    }
 
     if (Meaning == nullptr)
     {
+        ExampleCache = QString::fromStdString(Current->Hint);
+
         return;
     }
 
@@ -564,7 +572,34 @@ bool ExerciseControllerBase::IsSpeaking() const
     return AppSpeech::Get().IsSpeaking();
 }
 
+float ExerciseControllerBase::GetSpeechRateScale() const
+{
+    return bSpeaksSentences ? AppSpeech::Get().GetSentenceSpeed() : 1.0f;
+}
+
 void ExerciseControllerBase::Speak(const QString& Text) const
+{
+    SpeakAtScale(Text, GetSpeechRateScale());
+}
+
+void ExerciseControllerBase::speakSlowly()
+{
+    const FTCard* Current = GetCurrentCard();
+
+    if (Current == nullptr)
+    {
+        return;
+    }
+
+    const bool bSpokeCurrentCard = !LastSpokenText.isEmpty() && LastSpokenCardId == Current->Id;
+    const QString Text = bSpokeCurrentCard ? LastSpokenText : QString::fromStdString(Current->TargetWord);
+
+    qCInfo(LogSpeech) << metaObject()->className() << "slow speech requested for" << Text;
+
+    SpeakAtScale(Text, GetSpeechRateScale() * AppSpeech::SlowRateScale);
+}
+
+void ExerciseControllerBase::SpeakAtScale(const QString& Text, float RateScale) const
 {
     if (!Session.has_value() || IsFinished())
     {
@@ -589,9 +624,14 @@ void ExerciseControllerBase::Speak(const QString& Text) const
 
     const QString Voiced = GetVoicedText(Text);
 
-    qCInfo(LogSpeech) << metaObject()->className() << "speaks:" << Voiced;
+    qCInfo(LogSpeech) << metaObject()->className() << "speaks:" << Voiced << "at" << RateScale;
 
-    AppSpeech::Get().SpeakAtRate(Voiced, TargetLanguage, SpeechRateScale);
+    const FTCard* Current = GetCurrentCard();
+
+    LastSpokenText = Text;
+    LastSpokenCardId = Current != nullptr ? Current->Id : std::string();
+
+    AppSpeech::Get().SpeakAtRate(Voiced, TargetLanguage, RateScale);
 }
 
 void ExerciseControllerBase::SpeakAutomatically(const QString& Text) const

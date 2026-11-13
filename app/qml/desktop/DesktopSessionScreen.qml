@@ -20,6 +20,7 @@ FocusScope
     signal endRequested()
     signal finishedClicked()
     signal editCardRequested(var controller)
+    signal resultEditRequested(var controller, var card)
     signal addWordRequested(string word, string translation, string partOfSpeech, string hint)
 
     readonly property var active: root.session ? root.session.activeController : null
@@ -80,6 +81,11 @@ FocusScope
             return "tiles"
         }
 
+        if (controller instanceof DiscoveryController)
+        {
+            return "discovery"
+        }
+
         return ""
     }
 
@@ -93,7 +99,11 @@ FocusScope
         }
     }
 
-    onActiveChanged: root.bindExercise()
+    onActiveChanged:
+    {
+        translationPopup.dismiss()
+        root.bindExercise()
+    }
 
     readonly property var components: ({
         "flashcards": flashcardComponent,
@@ -103,17 +113,30 @@ FocusScope
         "typed": typedComponent,
         "match": matchComponent,
         "review": reviewComponent,
-        "tiles": tilesComponent
+        "tiles": tilesComponent,
+        "discovery": discoveryComponent
     })
 
-    function explainWord(word, sentence)
+    function explainWord(word, sentence, wordRect)
     {
+        const bounds = translationPopup.mapFromItem(null, wordRect)
+        translationPopup.geometry = { left: bounds.x, top: bounds.y, bottom: bounds.y + bounds.height,
+                                      endY: bounds.y + bounds.height / 2, width: bounds.width }
+        translationPopup.sentence = sentence
+        translationPopup.text = word
+        translationPopup.show()
+    }
+
+    function lookUpWord(word, sentence)
+    {
+        translationPopup.dismiss()
         lookupPane.show(word, false, sentence)
         root.explainOpen = true
     }
 
     function openLookup()
     {
+        translationPopup.dismiss()
         lookupPane.show("", true)
         root.explainOpen = true
     }
@@ -152,6 +175,10 @@ FocusScope
 
     readonly property bool overlayOpen: root.suspended || optionsPopover.visible || formsPopover.visible
                                         || endDialog.visible
+
+    onOverlayOpenChanged: if (root.overlayOpen) translationPopup.dismiss()
+    onWidthChanged: translationPopup.dismiss()
+    onHeightChanged: translationPopup.dismiss()
 
     readonly property var sessionKeys: [
         { sequence: "1", key: Qt.Key_1, text: "1" },
@@ -214,6 +241,7 @@ FocusScope
 
     onVisibleChanged:
     {
+        translationPopup.dismiss()
         root.explainOpen = false
 
         if (root.visible)
@@ -230,10 +258,12 @@ FocusScope
         anchors.right: parent.right
         anchors.top: parent.top
 
-        title: root.sessionTitle
+        title: !root.finished && exerciseLoader.item && exerciseLoader.item.instruction.length > 0
+            ? exerciseLoader.item.instruction : root.sessionTitle
         muted: root.muted
         soundAvailable: root.speechOn
         showOptions: !root.finished
+        showSlowSpeech: !root.finished
         divided: false
         color: AppTheme.colourPage
         opacity: screenMorph.barShown
@@ -241,6 +271,13 @@ FocusScope
 
         onExitRequested: root.askToLeave()
         onSoundToggled: root.store.autoSpeak = !root.store.autoSpeak
+        onSlowSpeechRequested:
+        {
+            if (exerciseLoader.item && exerciseLoader.item.controller)
+            {
+                exerciseLoader.item.controller.speakSlowly()
+            }
+        }
         onOptionsRequested: optionsPopover.open()
 
         tools: [
@@ -334,7 +371,7 @@ FocusScope
 
         parent: bar
         anchors.centerIn: parent
-        visible: !!root.session && !root.finished
+        visible: !!root.session && !root.finished && root.kind !== "discovery"
 
         stage: root.session ? root.session.stage : 0
         stageCount: root.session ? root.session.stageCount : 0
@@ -428,7 +465,7 @@ FocusScope
     Shortcut
     {
         sequence: "Escape"
-        enabled: root.visible && !root.overlayOpen && !root.explainOpen
+        enabled: root.visible && !root.overlayOpen && !root.explainOpen && !translationPopup.open
         context: Qt.WindowShortcut
 
         onActivated: root.askToLeave()
@@ -437,10 +474,16 @@ FocusScope
     Shortcut
     {
         sequence: "Escape"
-        enabled: root.visible && root.explainOpen && !root.suspended
+        enabled: root.visible && (translationPopup.open || root.explainOpen) && !root.suspended
         context: Qt.WindowShortcut
 
-        onActivated: root.closeExplanation()
+        onActivated:
+        {
+            if (!translationPopup.dismiss())
+            {
+                root.closeExplanation()
+            }
+        }
     }
 
     DictionaryController
@@ -463,6 +506,53 @@ FocusScope
         onAddWordRequested: function(word, translation, partOfSpeech, hint) { root.addWordRequested(word, translation, partOfSpeech, hint) }
     }
 
+    DictionaryController
+    {
+        id: translationLookup
+    }
+
+    DesktopReaderTranslation
+    {
+        id: translationPopup
+
+        anchors.fill: parent
+        lookup: translationLookup
+        maxStage: root.store ? root.store.stageCount : 1
+        showTrigger: false
+
+        onAddWordRequested: function(word, translation, partOfSpeech, hint)
+        {
+            root.addWordRequested(word, translation, partOfSpeech, hint)
+        }
+        onDictionaryRequested: function(word)
+        {
+            translationPopup.dismiss()
+            lookupPane.show(word, false, translationPopup.sentence)
+            root.explainOpen = true
+        }
+    }
+
+    PointHandler
+    {
+        onActiveChanged:
+        {
+            if (active && translationPopup.open && !translationPopup.containsPopup(point.position))
+            {
+                translationPopup.dismiss()
+            }
+        }
+    }
+
+    Connections
+    {
+        target: root.active
+
+        function onStateChanged()
+        {
+            translationPopup.dismiss()
+        }
+    }
+
     Component
     {
         id: flashcardComponent
@@ -472,12 +562,12 @@ FocusScope
             store: root.store
             sentenceText: root.sentenceMode
 
-            onWordClicked: function(word, sentence) { root.explainWord(word, sentence) }
+            onWordClicked: function(word, sentence, wordRect) { root.explainWord(word, sentence, wordRect) }
         }
     }
 
     Component { id: formsComponent; DesktopFormsStudyExercise { store: root.store } }
-    Component { id: flipComponent; DesktopFlipExercise { store: root.store; onWordClicked: function(word, sentence) { root.explainWord(word, sentence) } } }
+    Component { id: flipComponent; DesktopFlipExercise { store: root.store; onWordClicked: function(word, sentence, wordRect) { root.explainWord(word, sentence, wordRect) } } }
     Component { id: choiceComponent; DesktopChoiceExercise { store: root.store } }
 
     Component
@@ -489,13 +579,28 @@ FocusScope
             store: root.store
             sentenceText: root.sentenceMode
 
-            onWordClicked: function(word, sentence) { root.explainWord(word, sentence) }
+            onWordClicked: function(word, sentence, wordRect) { root.explainWord(word, sentence, wordRect) }
         }
     }
 
     Component { id: matchComponent; DesktopMatchExercise { store: root.store } }
-    Component { id: reviewComponent; DesktopReviewExercise { store: root.store; onWordClicked: function(word, sentence) { root.explainWord(word, sentence) } } }
-    Component { id: tilesComponent; DesktopTilesExercise { store: root.store; onWordClicked: function(word, sentence) { root.explainWord(word, sentence) } } }
+    Component { id: reviewComponent; DesktopReviewExercise { store: root.store; onWordClicked: function(word, sentence, wordRect) { root.explainWord(word, sentence, wordRect) } } }
+    Component { id: tilesComponent; DesktopTilesExercise { store: root.store; onWordClicked: function(word, sentence, wordRect) { root.explainWord(word, sentence, wordRect) } } }
+
+    Component
+    {
+        id: discoveryComponent
+
+        DesktopDiscoveryExercise
+        {
+            store: root.store
+
+            onWordClicked: function(word, sentence, wordRect) { root.explainWord(word, sentence, wordRect) }
+            onLookupRequested: function(word, sentence) { root.lookUpWord(word, sentence) }
+            onDoneRequested: root.leaveRequested()
+            onEditRequested: function(card) { root.resultEditRequested(root.active, card) }
+        }
+    }
 
     DesktopPopover
     {
@@ -535,7 +640,7 @@ FocusScope
         {
             objectName: "session_restart_stage"
 
-            text: qsTr("Restart this stage")
+            text: root.kind === "discovery" ? qsTr("Start a new round") : qsTr("Restart this stage")
             iconName: "undo"
 
             onClicked:
@@ -608,7 +713,8 @@ FocusScope
         id: endDialog
 
         title: qsTr("End this session?")
-        message: qsTr("Progress in this session is lost and its words go back to the pool.")
+        message: root.kind === "discovery" ? qsTr("The round ends. Answers already given are kept.")
+                                           : qsTr("Progress in this session is lost and its words go back to the pool.")
         confirmLabel: qsTr("End session")
         action: function() { root.endRequested() }
 

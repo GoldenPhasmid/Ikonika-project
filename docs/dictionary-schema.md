@@ -72,6 +72,10 @@ Read-only word decks, written by `build_decks.py`. Both tables are optional: a d
 - `decks`: `id` and a unique `name`. The id order is the order decks are listed in.
 - `deck_words`: `deck_id`, `headword`, `part_of_speech` (the `parts_of_speech.code`), an optional `gist` and an optional `context`. `id` is the order within the deck. A row names a reading by text, not by `words.id`, the same key a card uses, and `gist` names one meaning of that reading the way a card's `MeaningGist` does. The build leaves out a row whose reading or meaning the dictionary lacks.
 
+## words.has_forms
+
+Whether a forms card can be made from the word, written by step 9b of the [pipeline](dictionary-pipeline.md). `1` means the word's own forms table is irregular and the forms trainings offer it, `0` means they do not. `NULL` means no answer: the word's part of speech is not read by a forms training, or its forms lookup resolves to a different word, or the dictionary was built before the step. The `forms_flags` metadata row names the target language the flags were computed for, and the app trusts the column only where that row exists. The covering index `idx_words_forms_flag` serves the app's batch lookup of the studied headwords. Adding the column did not change `schema_version`.
+
 ## learnable_readings
 
 The words a new words run offers, written by step 9 of the [pipeline](dictionary-pipeline.md) from `scripts/dictionary/learnable_readings.sql`. The table is optional: on a dictionary without it, the app works the same words out with its own queries, which read most of the word table each time a run starts. Adding it did not change `schema_version`.

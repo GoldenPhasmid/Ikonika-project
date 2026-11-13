@@ -4,6 +4,9 @@
 #include "core/FTSettings.h"
 
 #include <QMetaObject>
+#include <QSettings>
+
+#include <algorithm>
 
 AppSpeech* AppSpeech::CurrentInstance = nullptr;
 
@@ -22,6 +25,31 @@ AppSpeech& AppSpeech::Get()
 void AppSpeech::SetInstance(AppSpeech* NewInstance)
 {
     CurrentInstance = NewInstance;
+}
+
+bool AppSpeech::IsSentence(const QString& Text)
+{
+    return Text.split(QChar::Space, Qt::SkipEmptyParts).size() >= MinimumSentenceWords;
+}
+
+void AppSpeech::Speak(const QString& Text, const QString& LanguageCode)
+{
+    SpeakAtRate(Text, LanguageCode, IsSentence(Text) ? GetSentenceSpeed() : 1.0f);
+}
+
+float AppSpeech::GetSentenceSpeed() const
+{
+    const QSettings Settings(FTSettings::Get().OpenStore());
+
+    return std::clamp(Settings.value(SentenceSpeedKey, 1.0).toFloat(), MinimumSpeechSpeed, MaximumSpeechSpeed);
+}
+
+void AppSpeech::SetSentenceSpeed(float Value)
+{
+    QSettings Settings(FTSettings::Get().OpenStore());
+    Settings.setValue(SentenceSpeedKey, std::clamp(Value, MinimumSpeechSpeed, MaximumSpeechSpeed));
+
+    emit sentenceSpeedChanged();
 }
 
 void AppSpeech::SpeakAtRate(const QString& Text, const QString& LanguageCode, float RateScale)

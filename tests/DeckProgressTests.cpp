@@ -54,21 +54,53 @@ TEST_CASE("A deck word without a gist takes the furthest card of its reading", "
     CHECK_FALSE(Progress[0].bKnown);
 }
 
-TEST_CASE("A deck word with a gist takes a card of any meaning of its reading", "[decks]")
+TEST_CASE("A deck word with a gist takes only a card of its own meaning", "[decks]")
 {
     const std::vector<FTCardHandle> Cards{MakeCard("light", "noun", "lamp", 2)};
 
     const std::vector<FTDeckWordProgress> Progress = MatchDeckWords(
         {MakeDeckWord("light", "noun", "lamp"), MakeDeckWord("light", "noun", "brightness"),
          MakeDeckWord("light", "verb", "ignite")},
-        Cards, {{"light", "noun"}});
+        Cards, {});
 
     REQUIRE(Progress.size() == 3);
     CHECK(Progress[0].Card);
-    REQUIRE(Progress[1].Card);
-    CHECK(Progress[1].Card->MeaningGist == "lamp");
+    CHECK_FALSE(Progress[1].Card);
     CHECK_FALSE(Progress[1].bKnown);
     CHECK_FALSE(Progress[2].Card);
+}
+
+TEST_CASE("A card with no meaning counts under every meaning of its reading", "[decks]")
+{
+    const std::vector<FTCardHandle> Cards{MakeCard("light", "noun", "", 1)};
+
+    const std::vector<FTDeckWordProgress> Progress = MatchDeckWords(
+        {MakeDeckWord("light", "noun", "lamp"), MakeDeckWord("light", "noun", "brightness")}, Cards, {});
+
+    CHECK(Progress[0].Card);
+    CHECK(Progress[1].Card);
+}
+
+TEST_CASE("A known mark on one meaning leaves the reading's other meanings new", "[decks]")
+{
+    const std::vector<FTDeckWordProgress> Progress = MatchDeckWords(
+        {MakeDeckWord("pêche", "noun", "fruit"), MakeDeckWord("pêche", "noun", "activité"),
+         MakeDeckWord("pêche", "noun")},
+        {}, {{"pêche", "noun", "fruit"}});
+
+    CHECK(Progress[0].bKnown);
+    CHECK_FALSE(Progress[1].bKnown);
+    CHECK(Progress[2].bKnown);
+}
+
+TEST_CASE("A known mark on the whole reading covers every meaning", "[decks]")
+{
+    const std::vector<FTDeckWordProgress> Progress = MatchDeckWords(
+        {MakeDeckWord("pêche", "noun", "fruit"), MakeDeckWord("pêche", "noun", "activité")},
+        {}, {{"pêche", "noun", ""}});
+
+    CHECK(Progress[0].bKnown);
+    CHECK(Progress[1].bKnown);
 }
 
 TEST_CASE("A card with no part of speech counts under every reading", "[decks]")

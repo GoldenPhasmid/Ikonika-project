@@ -27,13 +27,53 @@ namespace
     constexpr int HttpUnauthorized{401};
     constexpr int HttpFirstError{400};
 
-    AppCloudFailure MakeFailure(const QString& Message, bool bCredentialRefused = false)
+    constexpr int HttpForbidden{403};
+
+    AppCloudFailure MakeFailure(const QString& Message, AppCloudFailureKind Kind = AppCloudFailureKind::Transient)
     {
         AppCloudFailure Failure;
         Failure.Message = Message;
-        Failure.bCredentialRefused = bCredentialRefused;
+        Failure.Kind = Kind;
 
         return Failure;
+    }
+
+    QString ReadFailureReason(const QByteArray& Body)
+    {
+        const QJsonObject Error{QJsonDocument::fromJson(Body).object().value(QStringLiteral("error")).toObject()};
+        const QJsonArray Details{Error.value(QStringLiteral("errors")).toArray()};
+
+        if (!Details.isEmpty())
+        {
+            return Details.first().toObject().value(QStringLiteral("reason")).toString();
+        }
+
+        return Error.value(QStringLiteral("status")).toString();
+    }
+
+    AppCloudFailureKind ClassifyFailure(int Status, const QString& Reason)
+    {
+        if (Status != HttpForbidden)
+        {
+            return AppCloudFailureKind::Transient;
+        }
+
+        static const QStringList RateLimitReasons{QStringLiteral("rateLimitExceeded"),
+                                                  QStringLiteral("userRateLimitExceeded"),
+                                                  QStringLiteral("dailyLimitExceeded"),
+                                                  QStringLiteral("sharingRateLimitExceeded")};
+
+        if (RateLimitReasons.contains(Reason))
+        {
+            return AppCloudFailureKind::Transient;
+        }
+
+        if (Reason == QStringLiteral("storageQuotaExceeded"))
+        {
+            return AppCloudFailureKind::Quota;
+        }
+
+        return AppCloudFailureKind::Permission;
     }
 
     AppCloudFailure MakeCancelled()
@@ -50,7 +90,11 @@ namespace
 
         if (Status >= HttpFirstError)
         {
-            AppCloudFailure Failure{MakeFailure(QStringLiteral("Drive answered %1").arg(Status))};
+            const QString Reason{ReadFailureReason(Reply.readAll())};
+
+            AppCloudFailure Failure{MakeFailure(Reason.isEmpty() ? QStringLiteral("Drive answered %1").arg(Status)
+                                                                 : QStringLiteral("Drive answered %1 %2").arg(Status).arg(Reason),
+                                                ClassifyFailure(Status, Reason))};
             Failure.Status = Status;
 
             return Failure;

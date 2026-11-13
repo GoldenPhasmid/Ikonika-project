@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QObject>
+#include <QSize>
 #include <QTimer>
 #include <memory>
 
@@ -21,10 +22,15 @@ public:
 
     Q_INVOKABLE void present(QWindow* Window);
     Q_INVOKABLE void dismiss(QWindow* Window, bool bRestoreFocus);
+    Q_INVOKABLE void keepOnScreen(QWindow* Window);
+    Q_INVOKABLE int availableHeight(QWindow* Window) const;
+    Q_INVOKABLE QSize savedSize() const;
+    Q_INVOKABLE void saveSize(int Width, int Height);
 
 signals:
     void enabledChanged();
     void lookupRequested(const QString& Text);
+    void typedLookupRequested();
 
 private:
     struct FKeyboardCapture;

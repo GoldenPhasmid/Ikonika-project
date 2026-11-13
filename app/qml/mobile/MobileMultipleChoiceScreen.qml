@@ -78,6 +78,7 @@ Item
 
         exerciseName: root.controller.title.length > 0 ? root.controller.title : qsTr("Choose a translation")
         store: root.store
+        controller: root.controller
         hasActions: true
 
         progress: root.controller.exerciseProgress

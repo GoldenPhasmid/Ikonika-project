@@ -41,7 +41,7 @@ App code:
 * The trained tenses and verb groups in `FTWordForms.cpp`. See [grammar-forms.md](grammar-forms.md).
 
 Speech and translation, desktop only:
-* A Piper voice. Android speaks through the phone's own voice.
+* Nothing for speech. Supertonic is one package for every language, and Android speaks through the phone's own voice.
 * An OPUS-MT model pair, added to `scripts/tools/fetch-native.ps1`. Android translates through ML Kit.
 
 Release, in ikonika-releases. See [releases.md](releases.md):
@@ -238,6 +238,29 @@ Two things explain why "native, persisted" (34.4%) looks much smaller than "nati
 
 Corpus's `verified` rate is computed independently of this step and unaffected by it: it only checks a candidate against the same word's own gloss text, run at corpus's own step (5), after this one. This step's flips and corpus's own gloss-agreement check are two separate, non-overlapping ways a translation ends up corroborated.
 
+## 3a. Native transcriptions
+
+`fill_native_phonetics.py` runs right after step 3 in the French, Spanish, Italian, Portuguese and German drivers. It fills `words.phonetic` where the import left it empty, from the native extract step 3 already reads.
+
+```
+python fill_native_phonetics.py <dictionary.db> <native.jsonl>
+```
+
+**Problem.** The English edition carries an IPA string for far fewer entries than the native one. On the French build 13,087 of 54,055 words had no transcription, and the native extract has one for 11,935 of the 12,612 headwords concerned. Wiktionary was not the gap: the import never read the native `sounds`.
+
+**Decision.** A native record fills the row with the same headword and part of speech, and an existing transcription is never replaced. A row still empty then takes the transcription of another reading of the same headword, from the database or from a native record of another part of speech, only when every transcription of that headword agrees. `douze` the adjective is said as `douze` the numeral, while `boxer` the noun and `boxer` the verb are not said alike and stay empty.
+
+The French edition writes IPA between backslashes, which becomes the slashes every other source uses. A string with a missing or doubled slash is repaired. A string that is not delimited IPA is skipped: an ellipsis placeholder, or the ASCII notation some Portuguese entries use. The German and Spanish editions write narrow transcriptions between square brackets, and those stay as written.
+
+| Dictionary | Words without a transcription, before | After |
+| --- | --- | --- |
+| French | 13,087 of 54,055 (24.2%) | 678 (1.3%) |
+| Spanish | 8,547 of 44,739 (19.1%) | 3,823 (8.5%) |
+| German | 14,320 of 51,407 (27.9%) | 3,019 (5.9%) |
+| Italian | 10,468 of 35,914 (29.1%) | 6,650 (18.5%) |
+
+**Trade-offs.** Most of what is left in Spanish and Italian has no record in the native extract at all, so no source here can fill it. A word without a transcription still gets a card, and the screens reserve the line so the layout does not move. The sharing rule leaves 6 French headwords with differing readings empty on purpose, which costs a few cards a transcription and avoids teaching a wrong one.
+
 ## 3c. Additional sources
 
 `import_additional_translations.py` adds English translations from the Everest volumes
@@ -398,6 +421,8 @@ Each row is one word, one sentence, one translation — there is no sense column
 ## 6. LLM merge (optional)
 
 If an LLM artifact exists at `--llm-artifact` (default `<lang>/<lang>-dictionary.db.llm.jsonl` in the `ikonika-llm` checkout beside this repository), `merge_llm_results.py` replaces the matched word's senses and translations with the artifact's own, gives every new meaning all the categories of the senses it replaced, and sets `words.llm_complete = 1`. The artifact is generated separately and offline by `llm_generate_definitions.py`, through a local OpenAI-compatible server, the claude command or the codex command (`--backend server|claude|codex`); the driver only merges an existing file, it never generates one. Skipped with a warning if missing, in which case every sense keeps its gloss and no definition.
+
+The German driver reads the two-pass layout instead. `generate_definitions_foreign.py` writes `<lang>/<lang>-dictionary.db.meanings.jsonl`, the gist and the target-language definition of each meaning, once per language. `map_translations_native.py` writes `<lang>/<lang>-dictionary.db.<native>.mapping.jsonl` once per language pair: it attaches the translations to the meanings and writes the native definition and the example with its translation. `--meanings` and `--mapping` hand them to `merge_llm_results.py`, which joins a meaning to its mapping by gist. A meaning the mapping gives no translation is not written, a reading the mapping lacks keeps its source senses, and a translation the mapping dropped or left unmatched is deleted. With `--meanings` alone the driver writes the meanings with no translation bound to them, builds the decks and stops, which is the database `llm_deck_gists.py` needs before the mapping exists. The flow is: build, meanings pass, meanings-only build, deck gists, mapping pass, full build. `split_artifact.py` in `ikonika-llm` turns a legacy artifact into the two files without a model call.
 
 A reading the LLM found no meaning for, because none of its translations fit the headword, has those translations deleted, and so has every meaning of the reading left with none. Step 4b's second run then removes the reading when nothing else translates it. In the French build the LLM found no meaning for 1,027 readings, and 1,013 of them are dropped, mostly junk readings such as `tous` as a noun.
 
@@ -612,6 +637,21 @@ Every language pair shares one list of 32 topic decks in 7 groups, such as Body,
 
 Spanish reuses the French review too, through English, since the Spanish dictionary translates into English and the French one has no Spanish. `translate_topic_decks.py --via en` takes the English words of the kept French meaning and finds the Spanish meaning that has one of them among its first three translations, or as its gloss; among several, the lowest translation rank plus the tenth logarithm of the teaching rank wins, so husband gives marido and not hombre, and child gives niño and not retoño. Every other English word of the French meaning that the Spanish meaning also translates takes half a rank off, so tarte, pie and tart, gives tarta and not pizza. A Spanish translation past the third, or one the corpus never ranked and no gloss gave, is tried only when nothing else matches; without it pectoral, sida and resfriado found nothing. The Spanish meaning found becomes the row's gist. The English exclusions also apply to the pivot, and `overrides/es-topic-exclude.tsv` lists the Spanish pairs read and rejected by hand, with `*` dropping a French word none of whose translations fits. The French words the pivot still left without a Spanish word were translated by hand, read against the English of the kept meaning, and the 302 that the Spanish dictionary has as a learnable reading are listed in `overrides/es-topic-extra.tsv` with the gist of the meaning that fits, such as agujetas for courbature and tumbona for chaise longue. No Spanish row is reviewed again: `review_translated_decks.py` keeps every translated and extra candidate as core with the gist its list gives. Spanish ends with 5,396 words. About 380 French words have a Spanish word the dictionary lacks: compounds like hermano mayor and zumo de naranja, and single words like sobrina, sorprendido and dron. Spanish also loses words where several French words collapse into one common Spanish word, and French dishes like cassoulet have no Spanish name.
 European Portuguese is carried over from the French review the same way, through English, with `overrides/topic-names.pt.tsv` for its names. Every one of the 4,940 rows the pivot first gave was read by hand: 422 wrong picks went into `overrides/pt-topic-exclude.tsv` as pairs, such as espetacular for méchant and foguete for roquette, and the 179 whose next pick was wrong too were dropped with `*`. The French words still without a row were translated by hand, and the 339 the Portuguese dictionary has are listed in `overrides/pt-topic-extra.tsv`. Portuguese ends with 5,068 topic words. It loses more than Spanish because its dictionary is smaller: about 670 hand translations, such as sobrinha, namorada, brócolos and sumo de laranja, have no entry. Portuguese has no exam decks.
+Italian follows the same French-to-English-to-Italian route, with names in `overrides/topic-names.it.tsv`. The translation review excludes wrong English-pivot matches in `overrides/it-topic-exclude.tsv`; `*` drops the French source word rather than trying another unreviewed translation. Correct Italian replacements and additional everyday words are kept in `overrides/it-topic-extra.tsv`. The assembled file, `overrides/it-topic-decks.tsv`, has 4,957 entries across the 32 topics, followed by 250 hand-selected Espressioni under Basi. Expressions include common reflexive verbs, verb phrases, greetings and adverbial phrases, matched to exact dictionary readings and ordered by teaching rank. Italian currently has no definition or gist artifact, so its deck rows teach whole readings. The Italian driver imports these decks after the sentence tree and before learnable readings and compaction. It adds no exam decks.
+
+To regenerate the Italian topic rows against the current dictionaries, run from the repository root. The assembler preserves the existing Espressioni rows in the output file:
+
+```
+python scripts/dictionary/translate_topic_decks.py data/built/fr/fr-dictionary.db data/built/it/it-dictionary.db local/it-topic-reviewed.tsv --names scripts/dictionary/overrides/topic-names.fr.tsv --via en --via-exclude scripts/dictionary/overrides/en-topic-exclude.tsv --exclude scripts/dictionary/overrides/it-topic-exclude.tsv --report local/it-topic-unmatched-reviewed.tsv
+python scripts/dictionary/collect_topic_candidates.py data/built/it/it-dictionary.db local/it-topic-candidates --language it --translated local/it-topic-reviewed.tsv --extra scripts/dictionary/overrides/it-topic-extra.tsv --gloss-column gloss
+python scripts/dictionary/review_translated_decks.py local/it-topic-candidates local/it-topic-review --translated local/it-topic-reviewed.tsv --extra scripts/dictionary/overrides/it-topic-extra.tsv
+python scripts/dictionary/assemble_topic_decks.py data/built/it/it-dictionary.db local/it-topic-candidates local/it-topic-review scripts/dictionary/overrides/it-topic-decks.tsv --names scripts/dictionary/overrides/topic-names.it.tsv --report local/it-topic-assembly-report.tsv
+```
+
+A changed dictionary or French source deck can produce new Italian choices. Review those choices and the unmatched report before replacing the checked-in deck file; the translated-review tool accepts its inputs without judging them again.
+
+German uses this same English-pivot workflow against the local German-to-English dictionary. Substitute `de` for `it` in the Italian commands and use `overrides/topic-names.de.tsv` for the assembly names. The reviewed inputs are `overrides/de-topic-exclude.tsv` and `overrides/de-topic-extra.tsv`; the former drops unsuitable source matches, and the latter supplies exact German readings for corrections and additional everyday vocabulary. The resulting `overrides/de-topic-decks.tsv` contains 5,034 entries across the 32 topics and 250 Redewendungen under Grundlagen. The Expressions deck includes fixed phrases, greetings, adverbial phrases and common separable verbs, ordered by teaching rank; the assembler preserves its existing rows. The German driver imports the decks before learnable readings and compaction, and accepts the optional `ikonika-llm/de/de-dictionary.db.deck-gists.jsonl` artifact. With no German definitions or gists yet, the initial decks teach whole readings. A replacement absent from the local dictionary is omitted rather than replaced by another unreviewed translation. No exam decks are generated.
+
 3. `assemble_topic_decks.py` turns the kept numbers into the deck TSV, `overrides/<lang>-topic-decks.tsv`, which is in git because a review made it and no later step can remake it without one. Each deck lists its core words first, then its useful ones, each by teaching rank, so the deck view opens on the words a learner expects. A kept word whose headword does not match its candidate is dropped, and a gist the reading lacks is cleared; both are reported.
 
 ```
@@ -651,6 +691,20 @@ python build_learnable_readings.py <dictionary.db>
 **Decision.** The step works the same answers out once at build time. The table holds one row per learnable reading with its best translation, so a run's count and candidates are indexed lookups, and the slider reads two stored values. The app keeps its queries for a dictionary built before this step.
 
 **Trade-offs.** The table repeats data the dictionary already has: about 3 MB on French, 2% of the file. It is only right while it matches the app's own definition of a learnable reading and of the best translation. The core tests run `learnable_readings.sql` against a generated dictionary and compare the app's answers with and without the table, so a change on either side that breaks the match fails there. The slider's upper end is stored for 1,000 words, the count the app asks for; an app asking for another count queries it.
+
+## 9b. Forms flags
+
+`build_forms_flags.py` runs `FormsFlagsTool`, a console target of `core`, after step 9 and before compaction, in all six drivers. It writes `words.has_forms` and the `forms_flags` metadata row.
+
+```
+python build_forms_flags.py <dictionary.db> --target fr [--native en] [--tool PATH]
+```
+
+**Problem.** The Today screen shows how many studied words each forms training can use. The app answered that by looking up the full entry of every studied noun, adjective and verb, to learn whether a forms card can be made from it. On a phone that cost about 0.9 s on the UI thread for a learner with a few thousand studied words.
+
+**Decision.** The answer depends only on dictionary data, so the build computes it once. The tool runs the app's own rules (`IsFormsEligible`, which is `MakeFormsCard` for the word's kind) against the entry the app would look up, so the rules live in one place. The app reads the flags of its studied headwords with one indexed query. A headword without a flag still goes through the full lookup.
+
+**Trade-offs.** The column adds one integer per word. The step needs `FormsFlagsTool` built, so `build-msvc.ps1` has to run first, and a change to the forms rules means rebuilding the dictionary. The core tests compare the written flags with the lookup the app falls back to.
 
 ## Scoring a build
 
@@ -701,6 +755,16 @@ count is the coverage.
 | words with an example | higher | Words with a Tatoeba sentence. |
 | sentences | higher | Sentences the writing exercise can use. A sentence is dropped when one of its words is not in the dictionary. |
 
+**Is the text clean?** These catch text a source wrote for a machine and a screen cannot show as it is.
+
+| Metric | Better | What it tells |
+| --- | --- | --- |
+| words with a transcription | higher | Words with an IPA string. The flip, flashcard and review screens show it under the word. |
+| top 1,000 / 5,000 words with no transcription | lower | The same gap for the words a learner meets first, where a blank line is seen most. |
+| translations with an underscore | zero | A source that joins the words of a translation with `_`, as `dead_man`. The import writes spaces, so a non-zero count means a source bypassed it. |
+| meanings with an underscore in a native text | zero | The same in a native definition or an example translation of a meaning. |
+| example translations with an underscore | zero | The same in a Tatoeba sentence translation. |
+
 The comparison counts words lost and gained, and translations lost and gained on the words both
 builds have. Translations are compared folded the way the merge folds them, so `to eat` and `eat`
 are one translation.
@@ -718,7 +782,7 @@ Restamp keeps the reviewed words and rewrites their ranks. A word is the main re
 ## Flags
 
 - `--native-jsonl PATH`: overrides step 3's input. Step 3 itself is not optional — there is no flag to skip it.
-- `--llm-artifact PATH`: overrides step 6's input.
+- `--llm-artifact PATH`: overrides step 6's input. The German driver takes `--meanings PATH` and `--mapping PATH` instead.
 - `--mwe-frequency-file PATH`: fixed at `data/raw/<lang>/opus/<lang>-mwe-frequency.tsv` by both drivers; threaded through `build_dictionary.py` → `build_fr_master_wordset.py`/`build_es_master_wordset.py` → `generate_word_set.py --extra-frequency-file`. Optional at every layer; omitting it just means no multi-word candidates reach the word set.
 - `--lemmatizer PATH` (`build_dictionary.py`): the native lemmatizer, fixed at `data/raw/<lang>/wiktextract/<lang>-lemmatizer.tsv` by both drivers; threaded to step 1's `--lemmatizer-file`. Optional; omitting it just means no inflected-form filtering happens, so a form like "leurs" gets its own row same as before this existed.
 

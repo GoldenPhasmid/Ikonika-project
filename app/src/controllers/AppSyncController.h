@@ -18,6 +18,7 @@ class AppSyncController : public QObject
 
     Q_PROPERTY(bool signedIn READ IsSignedIn NOTIFY signedInChanged)
     Q_PROPERTY(bool needsReconnect READ NeedsReconnect NOTIFY accountChanged)
+    Q_PROPERTY(QString reconnectDetail READ GetReconnectDetail NOTIFY accountChanged)
     Q_PROPERTY(bool busy READ IsBusy NOTIFY busyChanged)
     Q_PROPERTY(bool syncing READ IsSyncing NOTIFY statusChanged)
     Q_PROPERTY(bool restoring READ IsRestoring NOTIFY statusChanged)
@@ -50,6 +51,8 @@ public:
 
     bool IsSignedIn() const;
     bool NeedsReconnect() const;
+    bool IsMissingDriveAccess() const;
+    QString GetReconnectDetail() const;
     bool IsBusy() const;
     bool IsSyncing() const;
     bool IsRestoring() const;

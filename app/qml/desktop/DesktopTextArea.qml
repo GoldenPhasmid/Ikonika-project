@@ -10,9 +10,28 @@ ScrollView
     property alias placeholderText: area.placeholderText
     property string accessibleName: ""
     property Item nextItem: null
+    property bool growing: false
+    property bool submitOnReturn: false
+    property int fontSize: AppMetrics.fontBody
+
+    readonly property alias input: area
+
+    signal accepted()
+
+    function submit(event)
+    {
+        if (!root.submitOnReturn || (event.modifiers & Qt.ShiftModifier))
+        {
+            event.accepted = false
+
+            return
+        }
+
+        root.accepted()
+    }
 
     Layout.fillWidth: true
-    Layout.preferredHeight: AppMetrics.textAreaHeight
+    Layout.preferredHeight: root.growing ? area.implicitHeight : AppMetrics.textAreaHeight
 
     TextArea
     {
@@ -23,7 +42,7 @@ ScrollView
         selectionColor: AppTheme.colourAccent
         selectedTextColor: AppTheme.colourAccentText
         font.family: AppMetrics.fontFamily
-        font.pixelSize: AppMetrics.fontBody
+        font.pixelSize: root.fontSize
         wrapMode: TextEdit.Wrap
         selectByMouse: true
         hoverEnabled: true
@@ -33,6 +52,9 @@ ScrollView
 
         KeyNavigation.priority: KeyNavigation.BeforeItem
         KeyNavigation.tab: root.nextItem
+
+        Keys.onReturnPressed: function(event) { root.submit(event) }
+        Keys.onEnterPressed: function(event) { root.submit(event) }
 
         background: Rectangle
         {

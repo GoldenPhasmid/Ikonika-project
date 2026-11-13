@@ -11,8 +11,10 @@ Rectangle
     property string nativeLanguage: ""
     property string phase: "intro"
     property bool retake: false
+    property bool showsBack: false
 
     signal finished()
+    signal backRequested()
 
     readonly property string languageName:
     {
@@ -35,25 +37,27 @@ Rectangle
         { value: qsTr("%1 / %2").arg(root.controller.knownAnswerCount).arg(root.controller.answeredCount), label: qsTr("words you knew here") }
     ]
 
-    function begin()
+    readonly property var levels: [
+        { name: "placement_beginner", label: qsTr("I'm a beginner") },
+        { name: "placement_intermediate", label: qsTr("I'm intermediate") },
+        { name: "placement_advanced", label: qsTr("I'm advanced") }
+    ]
+
+    function begin(level)
     {
-        if (root.controller.start(root.targetLanguage, root.nativeLanguage))
+        if (root.controller.start(root.targetLanguage, root.nativeLanguage, level))
         {
             root.phase = "test"
 
             return
         }
 
-        root.skip()
+        root.chooseNew()
     }
 
-    function skip()
+    function chooseNew()
     {
-        if (!root.retake)
-        {
-            root.controller.skip(root.targetLanguage)
-        }
-
+        root.controller.markNew(root.targetLanguage)
         root.leave()
     }
 
@@ -84,7 +88,12 @@ Rectangle
         visible: root.phase !== "test"
         spacing: 0
 
-        MobileHeader {}
+        MobileHeader
+        {
+            showBack: root.showsBack && root.phase === "intro"
+
+            onBackRequested: root.backRequested()
+        }
 
         ColumnLayout
         {
@@ -122,7 +131,7 @@ Rectangle
                 Layout.fillWidth: true
 
                 text: root.showsResult ? qsTr("Your %1 level is %2").arg(root.languageName).arg(root.controller.cefrLevel)
-                                       : qsTr("Let's determine your %1 level").arg(root.languageName)
+                                       : qsTr("How well do you know %1?").arg(root.languageName)
                 font.pixelSize: AppMetrics.fontHeadline
                 font.weight: Font.Medium
                 font.family: AppMetrics.fontFamily
@@ -247,22 +256,51 @@ Rectangle
 
             MobileWideButton
             {
-                objectName: "placement_skip"
+                objectName: "placement_new"
 
                 visible: root.phase === "intro"
-                label: root.retake ? qsTr("Cancel") : qsTr("Skip the test")
+                label: qsTr("I'm new to %1").arg(root.languageName)
                 filled: false
 
-                onClicked: root.skip()
+                onClicked: root.chooseNew()
+            }
+
+            Repeater
+            {
+                model: root.phase === "intro" ? root.levels : []
+
+                delegate: MobileWideButton
+                {
+                    required property var modelData
+                    required property int index
+
+                    objectName: modelData.name
+                    label: modelData.label
+                    filled: false
+
+                    onClicked: root.begin(index + 1)
+                }
             }
 
             MobileWideButton
             {
-                objectName: "placement_start"
+                objectName: "placement_cancel"
 
-                label: root.showsResult ? qsTr("Continue") : qsTr("Start the test")
+                visible: root.phase === "intro" && root.retake
+                label: qsTr("Cancel")
+                filled: false
 
-                onClicked: root.showsResult ? root.leave() : root.begin()
+                onClicked: root.leave()
+            }
+
+            MobileWideButton
+            {
+                objectName: "placement_continue"
+
+                visible: root.showsResult
+                label: qsTr("Continue")
+
+                onClicked: root.leave()
             }
         }
     }

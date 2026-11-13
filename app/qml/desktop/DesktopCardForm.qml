@@ -61,12 +61,13 @@ ColumnLayout
         .map(Part => Part.trim().toLowerCase())
         .filter(Part => Part.length > 0)
 
-    readonly property var genderOptions: [
+    readonly property var genderOptions: (dictionary.targetLanguageCode === "DE"
+        ? [{ label: qsTr("Neuter"), value: 3 }] : []).concat([
         { label: qsTr("Masculine"), value: 0 },
         { label: qsTr("Feminine"), value: 1 },
         { label: qsTr("Either (m/f)"), value: 2 },
         { label: qsTr("None (no article)"), value: -1 }
-    ]
+    ])
 
     Layout.fillWidth: true
     spacing: AppMetrics.gapMedium

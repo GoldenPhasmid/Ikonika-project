@@ -1,0 +1,59 @@
+word	part_of_speech	translation	meaning_gist
+io	pron	I	parlante
+tu	pron	you (informal)	interlocutore
+lui	pron	he	uomo
+lei	pron	she	femminile
+noi	pron	we	gruppo
+voi	pron	you all	interlocutori
+loro	pron	they	soggetto
+questo	pron	this	dimostrativo
+quello	pron	that	dimostrativo
+il	article	the	determinazione
+uno	article	a, an	indeterminazione
+mio	det	my	possesso
+tuo	det	your (informal)	possesso
+suo	det	his, her, its	possesso
+nostro	det	our	possesso
+vostro	det	your (plural)	possesso
+loro	det	their	possesso
+per	prep	for	scopo
+con	prep	with	compagnia
+su	prep	on	appoggio
+senza	prep	without	assenza
+sotto	prep	under	inferiorità
+dopo	prep	after	successivamente
+verso	prep	towards	direzione
+tra	prep	between	intervallo
+prima	adv	before	precedenza
+e	conj	and	aggiunta
+ma	conj	but	contrasto
+o	conj	or	alternativa
+quindi	conj	so, therefore	conseguenza
+perché	conj	because	causa
+come	conj	like, as	analogia
+quando	conj	when	momento
+non	adv	not	negazione
+più	adv	more	quantità
+bene	adv	well	qualità
+no	adv	no	negazione
+sì	adv	yes	consenso
+qui	adv	here	luogo
+là	adv	there	luogo
+molto	adv	very, a lot	quantità
+anche	adv	also, too	aggiunta
+mai	adv	never	assenza
+sempre	adv	always	continuità
+ora	adv	now	presente
+essere	verb	to be	identità
+avere	verb	to have	possesso
+stare	verb	to be (state), to stay	condizione
+andare	verb	to go	spostarsi
+fare	verb	to do, to make	azione
+dire	verb	to say	pronunciare
+potere	verb	can, to be able to	capacità
+volere	verb	to want	desiderare
+dovere	verb	must, to have to	obbligo
+sapere	verb	to know	conoscenza
+vedere	verb	to see	percezione
+venire	verb	to come	arrivo
+prendere	verb	to take	afferrare

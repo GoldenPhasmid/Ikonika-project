@@ -9,6 +9,8 @@ ColumnLayout
     required property var lookup
     required property string term
 
+    property int rowInset: -AppMetrics.gapSmall
+
     signal addRequested(string word, string translation)
 
     readonly property bool translated: root.lookup.machineTranslation.length > 0
@@ -19,19 +21,41 @@ ColumnLayout
     DesktopLabel
     {
         Layout.fillWidth: true
-        visible: AppMachineTranslation.offered
-        text: qsTr("Offline translation · %1").arg(AppMachineTranslation.pairLabel)
+        visible: root.lookup.formTerm.length === 0 && AppMachineTranslation.offered
+        text: qsTr("Machine translation · %1").arg(AppMachineTranslation.pairLabel)
         font.weight: Font.DemiBold
         wrapMode: Text.WordWrap
     }
 
-    DesktopLabel
+    DesktopWordRow
     {
+        objectName: "machine_translation_form"
+
         Layout.fillWidth: true
-        visible: AppMachineTranslation.offered
-        text: qsTr("Download the language package to translate words and phrases here and in books.")
-        color: AppTheme.colourMuted
-        wrapMode: Text.WordWrap
+        Layout.leftMargin: root.rowInset
+        Layout.rightMargin: root.rowInset
+        visible: root.lookup.formTerm.length > 0
+        enabled: !root.lookup.translating && (root.translated || (AppMachineTranslation.offered && !AppMachineTranslation.downloading))
+        word: root.lookup.formTerm
+        translation: root.lookup.translating ? qsTr("Translating...")
+            : root.translated ? root.lookup.machineTranslation
+            : AppMachineTranslation.downloading ? qsTr("Downloading translation, %1%").arg(Math.round(AppMachineTranslation.progress * 100))
+            : AppMachineTranslation.bytes > 0 ? qsTr("Download translation · %1 MB").arg(Math.round(AppMachineTranslation.bytes / (1024 * 1024)))
+            : qsTr("Download translation")
+        partOfSpeech: root.translated ? root.lookup.formReading : ""
+        italicPartOfSpeech: false
+
+        onClicked:
+        {
+            if (root.translated)
+            {
+                root.addRequested(root.lookup.formTerm, root.lookup.machineTranslation)
+
+                return
+            }
+
+            AppMachineTranslation.download()
+        }
     }
 
     Button
@@ -43,7 +67,7 @@ ColumnLayout
         Layout.fillWidth: true
         implicitHeight: Math.max(56, contentItem.implicitHeight + topPadding + bottomPadding)
         padding: AppMetrics.gapMedium
-        visible: root.lookup.translating || root.translated
+        visible: (root.lookup.translating || root.translated) && root.lookup.formTerm.length === 0
         enabled: root.translated && !root.lookup.translating
         hoverEnabled: true
         focusPolicy: Qt.StrongFocus
@@ -84,7 +108,7 @@ ColumnLayout
         objectName: "machine_translation_download"
 
         Layout.maximumWidth: root.width
-        visible: AppMachineTranslation.offered && !AppMachineTranslation.downloading
+        visible: root.lookup.formTerm.length === 0 && AppMachineTranslation.offered && !AppMachineTranslation.downloading
         tone: "primary"
         text: AppMachineTranslation.bytes > 0
             ? qsTr("Download translation · %1 MB").arg(Math.round(AppMachineTranslation.bytes / (1024 * 1024)))
@@ -96,14 +120,14 @@ ColumnLayout
     DesktopProgressBar
     {
         Layout.fillWidth: true
-        visible: AppMachineTranslation.offered && AppMachineTranslation.downloading
+        visible: root.lookup.formTerm.length === 0 && AppMachineTranslation.offered && AppMachineTranslation.downloading
         fill: AppTheme.colourAccent
         progress: AppMachineTranslation.progress
     }
 
     DesktopLabel
     {
-        visible: AppMachineTranslation.offered && AppMachineTranslation.downloading
+        visible: root.lookup.formTerm.length === 0 && AppMachineTranslation.offered && AppMachineTranslation.downloading
         text: qsTr("Downloading translation, %1%").arg(Math.round(AppMachineTranslation.progress * 100))
         color: AppTheme.colourMuted
     }

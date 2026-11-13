@@ -31,17 +31,22 @@ prompt speech. Concrete types:
 | Class | Exercise |
 | --- | --- |
 | `MultipleChoiceController` | Pick from options; builds distractors. |
-| `WrittenProductionController` | Type the answer; graded via `core/FTAnswerComparison`. |
+| `WrittenProductionController` | Type the answer; graded via `core/FTAnswerComparison`. Speech follows two screen states, hidden and revealed: `GetHiddenSpeech` and `GetRevealSpeech` each return what to say, or nothing, and whether it is a sentence, which plays at the sentence speed. The state's speech plays on its own when auto-speak is on, and `replay()` and `speakSlowly()` say the same thing. |
+| `GapProductionController` | `app/src/controllers/GapProductionController.h/.cpp`. Fill the gap, a `WrittenProductionController` that finds a card's sentence through `SetSentenceLookup` and falls back to plain typing for a card without one. `WordGapController` serves Train, Review and Practice: hidden it says the sentence with a pause in place of the word (`MakeGapSpeech`), revealed it says the word. `SentenceGapController` serves Sentences training: hidden it says the whole sentence, revealed nothing. `FormGapController` serves grammar forms: hidden nothing, revealed the whole sentence. |
 | `FlipRecallController` | Flip/reveal flashcard; question side can be forced by the owning stage. |
 | `AudioTranscriptionController` | Listen and type; graded via `core/FTAnswerComparison`. |
 | `SpeedMatchController` | Timed pair-matching, 5 pairs. |
 | `CorrectIncorrectController` | Binary self-graded recall (`answerYes/No`); **used only by `RepetitionController`**. |
 | `FlashcardController` | Plain flip/browse with next/previous history; pulled in by `IntensiveLearningController` but otherwise not part of the mastery loop set above. |
 
-Two more controllers live beside this hierarchy but are **not** `ExerciseControllerBase`:
+Three more controllers live beside this hierarchy but are **not** `ExerciseControllerBase`:
 
 - `TriageController` (`TriageController.h/.cpp`) — vocabulary triage screen (mark known/unknown,
   add to My Vocabulary). Plain `QObject`, reads `core/FTDictionaryRepository` directly.
+- `DiscoveryController` (`DiscoveryController.h/.cpp`) — Discover, the multiple-choice round over a
+  deck ([discovery-quiz.md](discovery-quiz.md)). Plain `QObject` over `core/FTDiscoveryPlanner`,
+  which picks words and builds options. Writes a card per Learn and a meaning mark per Know as the
+  learner moves on. It runs in `DesktopSessionScreen` as `DesktopDiscoveryExercise`, acting as its own session; a deck cover click opens it.
 - `ExerciseLauncherController` (`ExerciseLauncherController.h/.cpp`) — a third, ad-hoc entry point
   that constructs one `ExerciseControllerBase` by name outside the stage-session machinery
   (practice-mode style, single exercise, not a full session).
@@ -88,7 +93,7 @@ forms cards and checkpointed ids into session cards.
 
 The session takes its stages from `BuildFormsStages` (`app/src/controllers/FormsStages.h/.cpp`):
 a `FlashcardController` over the words with `SetFormsTable`, then a `SpeedMatchController` with
-`SetPairText` and a `WrittenProductionController` with `SetContentBuilder` over the expanded
+`SetPairText` and a `FormGapController` over the expanded
 forms. Forms are not reviewed. See [grammar-forms.md](grammar-forms.md).
 
 The last stage is missing word. Each asked form becomes two round cards, `MakeFormsRoundId` adding
@@ -99,7 +104,7 @@ tense `ReadFormsSentenceKey` reads from the card id. It matches the rows to the 
 person or gender and number, and places the gap with `PlaceFormGap` (`core/FTWordForms.h`). A dictionary
 without the `form_sentences` table takes the old path: `FTSentenceTree::FindSentencesWithWords`
 finds every sentence of the word, each is filed under every form `LocateFormGap` fits it to, and
-the forms with the fewest candidates pick first. The content builder returns the gapped
+the forms with the fewest candidates pick first. `FormGapController` builds the gapped
 sentence with `bSentence` set, which `WrittenProductionController::sentencePrompt` exposes so the
 typing screens switch to sentence layout per card; a round with no sentence gets the bare form
 prompt. The stage is an `FMasteryLoopStage` with `RepeatsToMaster = 1`. `MakeFormRounds` orders the
@@ -117,7 +122,7 @@ Sentence exercises over dictionary sentences built only from words the learner s
 | `SentenceTrainingController` | `app/src/controllers/SentenceTrainingController.h/.cpp` | Session driver, a `StageSessionControllerBase`. Picks the sentences and builds the stages. |
 | `SentenceTilesController` | `app/src/controllers/SentenceTilesController.h/.cpp` | Word tiles exercise, an `ExerciseControllerBase`. |
 | `FTSentenceTree` | `core/include/core/FTSentenceTree.h` | The loaded prefix tree and its query, `FindWritableSentences(FTWordIdSet, FTSentenceQuery)`. |
-| `FTSentenceCards.h` | `core/include/core/` | Free functions: `MakeSentenceCard`, `SplitSentenceWords`, `SplitAtGap`, `MakeGapPrompt`, `CompareSentence`, `PickBalancedSentences`. |
+| `FTSentenceCards.h` | `core/include/core/` | Free functions: `MakeSentenceCard`, `SplitSentenceWords`, `SplitAtGap`, `MakeGapPrompt`, `MakeGapSpeech`, `CompareSentence`, `PickBalancedSentences`. |
 | `AppDictionary::GetSentenceTree` | `app/src/AppDictionary.h` | Loads the tree on first use, drops it when the dictionary closes or changes. |
 
 **Picking sentences.** `SentenceTrainingController::FindCandidates`:
@@ -138,7 +143,7 @@ Sentence exercises over dictionary sentences built only from words the learner s
 | Flashcards | `FlashcardController` | Training only. The sentence card has the sentence as its word and the translation as its answer, so the controller runs unchanged: it speaks the sentence and steps with `next` and `previous`. |
 | Word tiles | `SentenceTilesController` | Speaks the sentence, deals its words shuffled, grades when `submit` is called with every answer tile placed (`canSubmit`); `placeTile` never grades and takes no more tiles than the answer holds. `tiles`, `placed`, `lastTranslation`, `canSubmit`; `placeTile`, `removeTile`, `submit`, `replay`, `skip`, `advance`. With `SetTypingAllowed(true)`, as in the Train and Review sentence stage, `typing` switches to a typed answer graded by `submitTyped`; the choice is stored in `QSettings` under `sessions/sentenceTyping`. |
 | Listen and translate | `SentenceTilesController` | `SetBuildsTranslation(true)`. Speaks the sentence and deals the words of its translation plus `DistractorCount` (3) words taken from other sentences' translations, none equal to a translation word ignoring case. It grades once as many tiles are placed as the translation has words: the answer is right when the placed words are the translation's words in any order, since the order of a free translation cannot be checked. The distractors are saved with the checkpoint. |
-| Missing word | `WrittenProductionController` | `SetAskWord(false)`, and `SetContentBuilder` returns the gapped prompt, the gap word as the one accepted answer, and the full sentence as `PromptSpeech`. The screen marks the gap word in the revealed sentence from the position of `___` in the prompt. `replay()` speaks the sentence again. |
+| Missing word | `SentenceGapController` | Shows the gapped prompt and accepts the gap word. Says the whole sentence while hidden and nothing once revealed. The screen marks the gap word in the revealed sentence from the position of `___` in the prompt. |
 | Dictation | `AudioTranscriptionController` | `SetAnswerCheck` replaces `CompareAgainstAny`, which would split the sentence at its commas, with `CompareSentence`, which compares word by word without punctuation. |
 
 Every stage controller gets `SetSpeechRateScale(0.75)`; see [voice.md](voice.md#sentence-rate).

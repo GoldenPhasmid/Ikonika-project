@@ -209,6 +209,8 @@ public:
     void SetExamplesPerSense(int Value);
 
     const std::string& GetWebSearchSource() const;
+
+    std::vector<std::string> GetEssentialVerbs(const std::string& Language) const;
     void SetWebSearchSource(const std::string& Id);
 
     const FTSpeechRules& GetSpeechRules() const;

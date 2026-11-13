@@ -2,6 +2,7 @@
 
 #include "AppDatabase.h"
 #include "AppDictionary.h"
+#include "AppReadSources.h"
 #include "AppSessionCheckpoints.h"
 #include "AppState.h"
 #include "AudioTranscriptionController.h"
@@ -9,7 +10,7 @@
 #include "FlashcardController.h"
 #include "SentenceSelection.h"
 #include "SentenceTilesController.h"
-#include "WrittenProductionController.h"
+#include "GapProductionController.h"
 
 #include "core/FCardSelectorBase.h"
 #include "core/FTLog.h"
@@ -19,11 +20,15 @@
 
 #include <QJsonArray>
 #include <QJsonDocument>
+#include <QCoreApplication>
 #include <QJsonObject>
+#include <QPointer>
 #include <QSettings>
 
 #include <cstdint>
 #include <QStringList>
+#include <QThread>
+#include <QThreadPool>
 #include <QTimer>
 
 #include <algorithm>
@@ -124,9 +129,9 @@ uint32_t SentenceTrainingController::MakeGrammarLevelMask(int InDifficultyMask)
     return Levels;
 }
 
-int SentenceTrainingController::GetDifficultyMask() const
+int SentenceTrainingController::ResolveDifficultyMask(int InDifficultyMask, int InUnlockedDifficultyMask)
 {
-    const int Unlocked = DifficultyMask & UnlockedDifficultyMask;
+    const int Unlocked = InDifficultyMask & InUnlockedDifficultyMask;
 
     if (Unlocked != 0)
     {
@@ -135,13 +140,18 @@ int SentenceTrainingController::GetDifficultyMask() const
 
     for (const int Difficulty : {EasyDifficulty, NormalDifficulty, HardDifficulty})
     {
-        if ((UnlockedDifficultyMask & Difficulty) != 0)
+        if ((InUnlockedDifficultyMask & Difficulty) != 0)
         {
             return Difficulty;
         }
     }
 
-    return DifficultyMask;
+    return InDifficultyMask;
+}
+
+int SentenceTrainingController::GetDifficultyMask() const
+{
+    return ResolveDifficultyMask(DifficultyMask, UnlockedDifficultyMask);
 }
 
 int SentenceTrainingController::GetUnlockedDifficultyMask() const
@@ -222,9 +232,14 @@ std::vector<FTTreeSentence> SentenceTrainingController::FindCandidates(int InDif
         return {};
     }
 
-    const FTDictionaryRepository& Dictionary = AppDictionary::Get().GetRepository();
+    return FindCandidatesFor(*Tree, MakeSentenceSources(), InDifficultyMask, InSentenceCount);
+}
 
-    const FTWordIdSet Known = BuildKnownSentenceWords(*Tree);
+std::vector<FTTreeSentence> SentenceTrainingController::FindCandidatesFor(const FTSentenceTree& Tree,
+                                                                           const FSentenceSources& Sources,
+                                                                           int InDifficultyMask, int InSentenceCount)
+{
+    const FTWordIdSet Known = BuildKnownSentenceWords(Tree, Sources);
 
     FTSentenceQuery Query;
     Query.MaxCount = static_cast<uint32_t>(InSentenceCount * CandidatesPerSentence);
@@ -232,7 +247,7 @@ std::vector<FTTreeSentence> SentenceTrainingController::FindCandidates(int InDif
     Query.Seed = MakeRandomSeed();
 
     std::vector<FTTreeSentence> Candidates =
-        Dictionary.LoadTreeSentences(Tree->FindWritableSentences(Known, Query));
+        Sources.Dictionary->LoadTreeSentences(Tree.FindWritableSentences(Known, Query));
 
     const size_t SampledCount = Candidates.size();
 
@@ -269,37 +284,20 @@ std::vector<FTTreeSentence> SentenceTrainingController::FindCandidates(int InDif
     return Candidates;
 }
 
-void SentenceTrainingController::refresh()
+SentenceTrainingController::FAvailability SentenceTrainingController::ComputeAvailability(
+    const FTSentenceTree& Tree, const FSentenceSources& Sources, int InDifficultyMask, int InSentenceCount)
 {
-    bAvailable = AppDictionary::Get().IsReady() && AppDictionary::Get().GetSentenceTree() != nullptr;
-
-    const std::string Revision = bAvailable
-        ? AppDatabase::Get().GetDataRevision() + "|"
-          + std::to_string(reinterpret_cast<std::uintptr_t>(AppDictionary::Get().GetSentenceTree())) + "|"
-          + std::to_string(DifficultyMask) + "|" + std::to_string(SentenceCount)
-        : std::string();
-
-    if (!Revision.empty() && Revision == RefreshedRevision)
-    {
-        return;
-    }
-
-    RefreshedRevision = Revision;
-
-    UnlockedDifficultyMask = 0;
+    FAvailability Result;
+    Result.bAvailable = true;
 
     for (const int Difficulty : {EasyDifficulty, NormalDifficulty, HardDifficulty})
     {
-        if (!bAvailable)
-        {
-            break;
-        }
-
-        const int DifficultyReadyCount = static_cast<int>(FindCandidates(Difficulty, UnlockSentenceCount).size());
+        const int DifficultyReadyCount =
+            static_cast<int>(FindCandidatesFor(Tree, Sources, Difficulty, UnlockSentenceCount).size());
 
         if (DifficultyReadyCount >= UnlockSentenceCount)
         {
-            UnlockedDifficultyMask |= Difficulty;
+            Result.UnlockedDifficultyMask |= Difficulty;
 
             continue;
         }
@@ -308,10 +306,160 @@ void SentenceTrainingController::refresh()
                            << DifficultyReadyCount << "sentences, needs" << UnlockSentenceCount;
     }
 
+    const int Effective = ResolveDifficultyMask(InDifficultyMask, Result.UnlockedDifficultyMask);
+
+    Result.ReadyCount = std::min(static_cast<int>(FindCandidatesFor(Tree, Sources, Effective, InSentenceCount).size()),
+                                 InSentenceCount);
+
+    return Result;
+}
+
+void SentenceTrainingController::ApplyAvailability(const FAvailability& Result, const std::string& Revision)
+{
+    bAvailable = Result.bAvailable;
+    UnlockedDifficultyMask = Result.UnlockedDifficultyMask;
     bUnlocked = UnlockedDifficultyMask != 0;
-    ReadyCount = std::min(static_cast<int>(FindCandidates(GetDifficultyMask(), SentenceCount).size()), SentenceCount);
+    ReadyCount = Result.ReadyCount;
+    RefreshedRevision = Revision;
+    PendingRevision.clear();
+    bRefreshing = false;
 
     emit availabilityChanged();
+}
+
+void SentenceTrainingController::refresh()
+{
+    const bool bReady = AppDictionary::Get().IsReady();
+
+    const std::string Revision = bReady
+        ? AppDatabase::Get().GetDataRevision() + "|"
+          + std::to_string(AppDictionary::Get().GetGeneration()) + "|"
+          + std::to_string(DifficultyMask) + "|" + std::to_string(SentenceCount)
+        : std::string();
+
+    if (!Revision.empty() && (Revision == RefreshedRevision || Revision == PendingRevision))
+    {
+        return;
+    }
+
+    ++RefreshSerial;
+
+    if (!bReady)
+    {
+        ApplyAvailability({}, Revision);
+
+        return;
+    }
+
+    const std::optional<FReadSourcesRequest> Request = AppReadSources::Capture();
+
+    if (!Request.has_value())
+    {
+        const FTSentenceTree* Tree = AppDictionary::Get().GetSentenceTree();
+
+        ApplyAvailability(Tree != nullptr ? ComputeAvailability(*Tree, MakeSentenceSources(), DifficultyMask, SentenceCount)
+                                          : FAvailability{},
+                          Revision);
+
+        return;
+    }
+
+    PendingRevision = Revision;
+    bRefreshing = true;
+
+    qCInfo(LogSession) << "Sentence training: working out availability in the background";
+
+    emit availabilityChanged();
+
+    const quint64 Serial = RefreshSerial;
+    const uint64_t Generation = AppDictionary::Get().GetGeneration();
+    const std::shared_ptr<const FTSentenceTree> LoadedTree = AppDictionary::Get().GetLoadedSentenceTree();
+    const std::vector<std::string> EssentialVerbs = FTSettings::Get().GetEssentialVerbs(Request->TargetLanguage);
+    const int Mask = DifficultyMask;
+    const int Count = SentenceCount;
+    const QPointer<SentenceTrainingController> Self{this};
+
+    QThreadPool::globalInstance()->start([Request = *Request, LoadedTree, EssentialVerbs, Mask, Count, Serial, Generation,
+                                          Self]()
+    {
+        FAvailability Result;
+        std::shared_ptr<const FTSentenceTree> Tree = LoadedTree;
+
+        const std::unique_ptr<AppReadSources> Sources = AppReadSources::Open(Request);
+
+        if (Sources != nullptr)
+        {
+            if (Tree == nullptr)
+            {
+                std::optional<FTSentenceTree> Loaded = FTSentenceTree::Load(Sources->GetDictionaryConnection());
+
+                if (Loaded.has_value())
+                {
+                    Tree = std::make_shared<const FTSentenceTree>(std::move(*Loaded));
+                }
+            }
+
+            if (Tree != nullptr)
+            {
+                const FSentenceSources Read{&Sources->GetDictionary(), &Sources->GetCards(), Request.TargetLanguage,
+                                            EssentialVerbs};
+
+                Result = ComputeAvailability(*Tree, Read, Mask, Count);
+            }
+        }
+
+        const bool bOpened = Sources != nullptr;
+
+        QMetaObject::invokeMethod(QCoreApplication::instance(),
+                                  [Self, Result, Tree, Serial, Generation, bOpened]()
+                                  {
+                                      if (Self != nullptr)
+                                      {
+                                          Self->FinishRefresh(Serial, Generation, bOpened, Result, Tree);
+                                      }
+                                  },
+                                  Qt::QueuedConnection);
+    });
+}
+
+void SentenceTrainingController::FinishRefresh(quint64 Serial, uint64_t Generation, bool bOpened,
+                                               const FAvailability& Result,
+                                               const std::shared_ptr<const FTSentenceTree>& Tree)
+{
+    if (Serial != RefreshSerial)
+    {
+        return;
+    }
+
+    if (!bOpened)
+    {
+        qCWarning(LogSession) << "Sentence training: the background refresh could not open its connections";
+
+        PendingRevision.clear();
+        bRefreshing = false;
+
+        emit availabilityChanged();
+
+        return;
+    }
+
+    AppDictionary::Get().AdoptSentenceTree(Tree, Generation);
+
+    ApplyAvailability(Result, PendingRevision);
+}
+
+bool SentenceTrainingController::IsRefreshing() const
+{
+    return bRefreshing;
+}
+
+void SentenceTrainingController::WaitForRefresh()
+{
+    while (bRefreshing)
+    {
+        QCoreApplication::processEvents(QEventLoop::AllEvents, 20);
+        QThread::msleep(1);
+    }
 }
 
 bool SentenceTrainingController::start(const QString& InExercise)
@@ -483,7 +631,7 @@ void SentenceTrainingController::AdoptController(ExerciseControllerBase* Control
 {
     OwnedControllers.push_back(Controller);
 
-    Controller->SetSpeechRateScale(SentenceSpeechRateScale);
+    Controller->SetSpeaksSentences(true);
 
     connect(Controller, &ExerciseControllerBase::stateChanged, this,
             &SentenceTrainingController::OnActiveControllerStateChanged);
@@ -552,28 +700,14 @@ void SentenceTrainingController::BuildStages()
 
     if (bWholeSession || Exercise == GapExercise)
     {
-        auto* Gap = new WrittenProductionController(this);
-        Gap->SetAskWord(false);
-        Gap->SetContentBuilder(
-            [this](const FTCard& Card)
+        auto* Gap = new SentenceGapController(this);
+        Gap->SetSentenceLookup(
+            [this](const FTCard& Card) -> const FTTreeSentence*
             {
-                FWrittenContent Content;
-
                 const auto Found = Sentences.find(Card.Id);
 
-                if (Found == Sentences.end())
-                {
-                    return Content;
-                }
-
-                Content.Prompt = MakeGapPrompt(Found->second);
-                Content.AcceptedAnswers = {GetGapWord(Found->second)};
-                Content.PromptSpeech = Found->second.Text;
-                Content.bSentence = true;
-
-                return Content;
-            },
-            tr("Type the missing word..."));
+                return Found != Sentences.end() ? &Found->second : nullptr;
+            });
 
         AddStage(Gap, Params);
     }

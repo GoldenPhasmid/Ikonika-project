@@ -204,6 +204,23 @@ bool AppSyncController::NeedsReconnect() const
     return Active.has_value() && Active->bNeedsReconnect;
 }
 
+bool AppSyncController::IsMissingDriveAccess() const
+{
+    const std::optional<AppAccount> Active{Host->GetRegistry().GetActiveAccount()};
+
+    return Active.has_value() && Active->bNeedsReconnect && Active->bMissingDriveAccess;
+}
+
+QString AppSyncController::GetReconnectDetail() const
+{
+    if (IsMissingDriveAccess())
+    {
+        return tr("Google did not give Ikonika permission to store your data in Google Drive. Sign in again and tick every permission box. Your progress stays on this device until you reconnect.");
+    }
+
+    return tr("Google asked you to sign in again. Your progress stays on this device until you reconnect.");
+}
+
 bool AppSyncController::IsBusy() const
 {
     return Account->IsBusy();
@@ -235,6 +252,11 @@ QString AppSyncController::GetStatusText() const
         return Account->GetLastError().isEmpty() ? tr("Not signed in") : Account->GetLastError();
     }
 
+    if (IsMissingDriveAccess())
+    {
+        return tr("Google Drive permission is missing. Sign in again to sync.");
+    }
+
     if (NeedsReconnect())
     {
         return tr("Google asked you to sign in again. Sync is paused.");
@@ -255,7 +277,17 @@ QString AppSyncController::GetStatusText() const
         return tr("Signed in");
     }
 
-    return bLastCycleSucceeded ? tr("Synced") : tr("Not synced yet, will retry");
+    if (bLastCycleSucceeded)
+    {
+        return tr("Synced");
+    }
+
+    if (Host->GetSync()->GetLastFailureKind() == AppCloudFailureKind::Quota)
+    {
+        return tr("Your Google Drive is full. Free some space to sync.");
+    }
+
+    return Host->GetSync()->IsRetryScheduled() ? tr("Not synced yet, will retry") : tr("Not synced");
 }
 
 QString AppSyncController::GetAccountEmail() const

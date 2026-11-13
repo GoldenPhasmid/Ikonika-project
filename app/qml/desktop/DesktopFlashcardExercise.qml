@@ -14,9 +14,9 @@ Item
     readonly property Item surface: card.surface
     readonly property bool editable: !root.sentenceText
 
-    signal wordClicked(string word, string sentence)
+    signal wordClicked(string word, string sentence, rect wordRect)
 
-    readonly property string title: qsTr("Flashcards")
+    readonly property string instruction: qsTr("Study cards")
     readonly property bool voiceSupported: false
     readonly property bool voiceOn: false
 
@@ -98,7 +98,7 @@ Item
                 visible: root.sentenceText
                 sentence: root.controller && root.sentenceText ? root.controller.prompt : ""
 
-                onWordClicked: function(word, sentence) { root.wordClicked(word, sentence) }
+                onWordClicked: function(word, sentence, wordRect) { root.wordClicked(word, sentence, wordRect) }
             },
             DesktopPromptLabel
             {
@@ -122,8 +122,8 @@ Item
             {
                 objectName: "flashcard_phonetic"
 
-                visible: !root.sentenceText && text.length > 0
-                text: root.controller ? root.controller.phonetic : ""
+                visible: !root.sentenceText
+                text: root.controller && root.controller.phonetic.length > 0 ? root.controller.phonetic : " "
                 font.pixelSize: AppMetrics.fontTitle
                 color: AppTheme.colourMuted
                 Layout.fillWidth: true
@@ -137,7 +137,7 @@ Item
             controller: root.controller
             answer: root.controller ? root.controller.answer : ""
 
-            onWordClicked: function(word, sentence) { root.wordClicked(word, sentence) }
+            onWordClicked: function(word, sentence, wordRect) { root.wordClicked(word, sentence, wordRect) }
         }
 
         overlay: MouseArea

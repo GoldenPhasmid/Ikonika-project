@@ -11,7 +11,7 @@ namespace
 {
     constexpr const char* DocumentColumns =
         "Id, FilePath, Title, Format, AddedDate, LastOpenedDate, LastPosition, LastZoom, LastScrollX, "
-        "LastScrollY, CloudId, PositionCount";
+        "LastScrollY, CloudId, PositionCount, ReadAloudParagraph, ReadAloudCharacter";
 
     FTReaderDocumentRow ReadRow(const FTStatement& Query)
     {
@@ -28,6 +28,8 @@ namespace
         Row.LastScrollY = Query.GetDouble(9);
         Row.CloudId = Query.GetText(10);
         Row.PositionCount = Query.GetInt64(11);
+        Row.ReadAloudParagraph = Query.GetInt64(12);
+        Row.ReadAloudCharacter = Query.GetInt64(13);
 
         Row.bExists = QFileInfo::exists(QString::fromStdString(Row.FilePath));
 
@@ -286,6 +288,24 @@ bool FTReaderRepository::SetPositionCount(const std::string& Id, int64_t Positio
         "UPDATE ReaderDocuments SET PositionCount = ?1 WHERE Id = ?2");
     Update.BindInt64(1, PositionCount);
     Update.BindText(2, Id);
+
+    if (!Update.Run())
+    {
+        LastError = Target.GetLastError();
+
+        return false;
+    }
+
+    return true;
+}
+
+bool FTReaderRepository::SetReadAloudPlace(const std::string& Id, int64_t Paragraph, int64_t Character)
+{
+    FTStatement Update = Target.Prepare(
+        "UPDATE ReaderDocuments SET ReadAloudParagraph = ?1, ReadAloudCharacter = ?2 WHERE Id = ?3");
+    Update.BindInt64(1, Paragraph);
+    Update.BindInt64(2, Character);
+    Update.BindText(3, Id);
 
     if (!Update.Run())
     {

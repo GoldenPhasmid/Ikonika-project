@@ -13,8 +13,10 @@ Item
     readonly property Item surface: card.surface
     readonly property bool editable: true
 
-    readonly property string title: root.controller && root.controller.title.length > 0
-        ? root.controller.title : qsTr("Choose a translation")
+    readonly property string instruction: !root.controller ? ""
+        : root.controller.voicePrompt ? qsTr("Listen and pick")
+        : root.controller.showsTargetLanguage ? qsTr("Pick translation")
+        : qsTr("Pick the word")
     readonly property bool voiceSupported: !!root.controller && root.controller.voiceSupported
     readonly property bool voiceOn: !!root.controller && root.controller.voiceRequested
     readonly property bool voiceHidden: !!root.controller && root.controller.voicePrompt && !root.controller.answered

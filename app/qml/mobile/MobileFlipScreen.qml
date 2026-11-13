@@ -42,6 +42,7 @@ Item
 
         exerciseName: qsTr("Flip")
         store: root.store
+        controller: root.controller
 
         progress: root.controller.exerciseProgress
 
@@ -52,6 +53,7 @@ Item
         onExitRequested: root.done()
 
         swipeEnabled: !root.finished && root.controller.answered
+        swipeHints: true
         onSwiped: function(direction)
         {
             shell.swipeOut(direction > 0 ? function() { root.controller.answerYes() } : function() { root.controller.answerNo() },
@@ -78,19 +80,37 @@ Item
 
         MobileContentArea
         {
+            swipeColour: shell.swipeFrameColour
+            swipeStrength: shell.swipeHintStrength
+
             posText: root.controller.cardMeta
             posVisible: root.controller.cardMeta.length > 0
             counterText: qsTr("%1 / %2")
                 .arg(root.controller.currentSessionCount)
                 .arg(root.controller.maxSessionCount)
 
-            primaryContent: MobilePromptText
-            {
-                text: root.wordShown ? root.controller.prompt : root.hiddenSideText
-                gender: root.wordShown ? root.controller.headwordGender : -1
-                verbGroup: root.wordShown ? root.controller.headwordVerbGroup : ""
-                baseColour: root.wordShown || root.hiddenSideOpen ? AppTheme.colourText : AppTheme.colourMuted
-            }
+            primaryContent: [
+                MobilePromptText
+                {
+                    text: root.wordShown ? root.controller.prompt : root.hiddenSideText
+                    gender: root.wordShown ? root.controller.headwordGender : -1
+                    verbGroup: root.wordShown ? root.controller.headwordVerbGroup : ""
+                    baseColour: root.wordShown || root.hiddenSideOpen ? AppTheme.colourText : AppTheme.colourMuted
+                },
+                Text
+                {
+                    objectName: "flip_phonetic"
+
+                    text: (root.wordShown || root.hiddenSideOpen) && root.controller.phonetic.length > 0
+                        ? root.controller.phonetic : " "
+                    font.pixelSize: AppMetrics.fontTitle
+                    font.family: AppMetrics.fontFamily
+                    color: AppTheme.colourMuted
+                    Layout.fillWidth: true
+                    Layout.topMargin: -13
+                    horizontalAlignment: Text.AlignHCenter
+                }
+            ]
 
             secondaryContent: [
                 Text
@@ -144,6 +164,8 @@ Item
 
                 leftLabel: qsTr("I forgot")
                 rightLabel: qsTr("I knew it")
+                leftMarkColour: AppTheme.colourWrong
+                rightMarkColour: AppTheme.colourCorrect
 
                 onLeftClicked: shell.swap(function() { root.controller.answerNo() })
                 onRightClicked: shell.swap(function() { root.controller.answerYes() })

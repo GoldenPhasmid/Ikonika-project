@@ -9,6 +9,7 @@ DesktopDropdownButton
     property var options: []
     property var descriptions: []
     property var trailingTexts: []
+    property var flagCodes: []
     property int visibleRows: 0
     property int currentIndex: 0
     property string heading: ""
@@ -64,6 +65,7 @@ DesktopDropdownButton
                         text: modelData
                         description: root.descriptions[index] || ""
                         trailingText: root.trailingTexts[index] || ""
+                        flagCode: root.flagCodes[index] || ""
                         showsCheck: true
                         selected: index === root.currentIndex
 

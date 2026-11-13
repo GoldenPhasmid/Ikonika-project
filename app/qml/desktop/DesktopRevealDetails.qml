@@ -7,7 +7,7 @@ Item
 
     property var controller: null
 
-    signal wordClicked(string word, string sentence)
+    signal wordClicked(string word, string sentence, rect wordRect)
 
     readonly property bool hasExample: root.controller !== null && root.controller.example.length > 0
     readonly property bool hasTranslation: root.hasExample && root.controller.exampleTranslation.length > 0
@@ -49,14 +49,6 @@ Item
             implicitHeight: Math.min(foreignExample.implicitHeight, foreignLines.lineSpacing * AppMetrics.definitionLineCount)
             clip: true
 
-            TextMetrics
-            {
-                id: foreignMetrics
-
-                text: foreignExample.sentence
-                font: foreignExample.font
-            }
-
             FontMetrics
             {
                 id: foreignLines
@@ -68,14 +60,14 @@ Item
             {
                 id: foreignExample
 
+                anchors.left: parent.left
                 anchors.right: parent.right
-                width: root.hasTranslation ? Math.min(Math.ceil(foreignMetrics.advanceWidth), parent.width) : parent.width
                 sentence: root.hasExample ? root.controller.example : ""
                 maximumSize: AppMetrics.sessionDefinitionSize
-                horizontalAlignment: root.hasTranslation ? Text.AlignLeft : Text.AlignHCenter
-                verticalAlignment: Text.AlignTop
+                horizontalAlignment: Text.AlignHCenter
+                verticalAlignment: Text.AlignVCenter
 
-                onWordClicked: function(word, sentence) { root.wordClicked(word, sentence) }
+                onWordClicked: function(word, sentence, wordRect) { root.wordClicked(word, sentence, wordRect) }
             }
         }
 
@@ -95,7 +87,8 @@ Item
             text: root.hasTranslation ? root.controller.exampleTranslation : ""
             font.pixelSize: AppMetrics.sessionDefinitionSize
             color: AppTheme.colourMuted
-            horizontalAlignment: Text.AlignLeft
+            horizontalAlignment: Text.AlignHCenter
+            verticalAlignment: Text.AlignVCenter
             wrapMode: Text.WordWrap
             maximumLineCount: AppMetrics.definitionLineCount
             elide: Text.ElideRight

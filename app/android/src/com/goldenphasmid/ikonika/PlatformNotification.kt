@@ -8,6 +8,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.drawable.Icon
 import android.media.AudioAttributes
 import android.net.Uri
 import android.os.Build
@@ -60,7 +61,8 @@ object PlatformNotification {
         ensureChannel(context)
 
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_notification)
+            .setSmallIcon(R.drawable.ic_reminder)
+            .setLargeIcon(Icon.createWithResource(context, R.mipmap.ic_launcher_round))
             .setColor(ACCENT_COLOR)
             .setContentTitle(title)
             .setContentText(text)

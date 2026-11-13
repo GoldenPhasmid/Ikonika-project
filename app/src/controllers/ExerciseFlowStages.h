@@ -3,6 +3,7 @@
 #include "ExerciseControllerBase.h"
 #include "IExerciseFlowStage.h"
 #include "SessionSentenceStage.h"
+#include "WrittenProductionController.h"
 
 #include "core/FTCardStore.h"
 

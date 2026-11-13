@@ -128,8 +128,25 @@ namespace
     const FTItalianArticleRules ItalianRules;
 }
 
+class FTGermanArticleRules : public FTArticleRules
+{
+public:
+    std::string GetDisplayWord(const FTCard& Subject) const override
+    {
+        const char* Article = *Subject.Gender == GenderNeuter ? "das "
+            : *Subject.Gender == GenderFeminine ? "die " : "der ";
+        return Article + Subject.TargetWord;
+    }
+};
+
 const FTArticleRules* FindArticleRules(const std::string& TargetLanguage)
 {
+    if (TargetLanguage == "de")
+    {
+        static const FTGermanArticleRules GermanRules;
+        return &GermanRules;
+    }
+
     if (TargetLanguage == "fr")
     {
         return &FrenchRules;

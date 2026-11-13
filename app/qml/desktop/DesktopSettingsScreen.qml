@@ -161,6 +161,7 @@ Item
 
             visible: root.category === "account"
             store: root.store
+            triage: root.triageController
 
             onVisibleChanged: if (visible) accountPage.refresh()
             onPlacementRequested: root.placementRequested()
@@ -177,10 +178,6 @@ Item
             visible: root.category === "training"
             store: root.store
             session: root.store.training
-            triage: root.triageController
-            wordRangeInline: !wordRange.visible
-
-            onPlacementRequested: root.placementRequested()
         }
 
         DesktopSettingsSessionStages
@@ -210,25 +207,5 @@ Item
         {
             visible: root.category === "about"
         }
-    }
-
-    DesktopWordRangePanel
-    {
-        id: wordRange
-
-        readonly property real margin: (page.width - page.columnWidth) / 2
-
-        anchors.top: parent.top
-        anchors.bottom: parent.bottom
-        anchors.right: parent.right
-        anchors.topMargin: AppMetrics.contentPadding
-        anchors.bottomMargin: AppMetrics.contentPadding
-        anchors.rightMargin: Math.max(0, (wordRange.margin - wordRange.implicitWidth) / 2)
-        visible: root.category === "training" && root.triageController !== null
-                 && wordRange.margin >= wordRange.implicitWidth + AppMetrics.gapLarge * 2
-
-        triage: root.triageController
-
-        onPlacementRequested: root.placementRequested()
     }
 }

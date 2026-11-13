@@ -7,12 +7,31 @@ ColumnLayout
 
     required property string title
 
+    property string flagCode: ""
+
     default property alias rows: card.data
 
     Layout.fillWidth: true
     spacing: AppMetrics.gapSmall
 
-    MobileSectionLabel { text: root.title }
+    RowLayout
+    {
+        visible: root.title.length > 0
+        spacing: AppMetrics.gapSmall
+
+        LanguageFlag
+        {
+            visible: root.flagCode.length > 0
+            code: root.flagCode
+            implicitWidth: AppMetrics.flagWidth / 2
+            implicitHeight: AppMetrics.flagWidth * 3 / 8
+        }
+
+        MobileSectionLabel
+        {
+            text: root.title
+        }
+    }
 
     Rectangle
     {

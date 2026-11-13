@@ -533,7 +533,7 @@ FSessionSentenceStage BuildSessionSentenceStage(QObject* Parent, const FTSession
         Tiles->SetTypingAllowed(!bBuildsTranslation);
         Tiles->SetBuildsTranslation(bBuildsTranslation);
         Tiles->SetSessionSettings(&Options);
-        Tiles->SetSpeechRateScale(SentenceTrainingController::SentenceSpeechRateScale);
+        Tiles->SetSpeaksSentences(true);
         Tiles->SetSentenceSource(
             [Sentences](const FTCard& Card)
             {

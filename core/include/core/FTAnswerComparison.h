@@ -30,6 +30,7 @@ struct FTAnswerComparisonRules
     bool bAllowMissingArticle = false;
 
     bool bRequireExactAccents = false;
+    bool bSpellOutUmlauts = false;
 };
 
 /** Everything except Wrong and Skipped scores as a correct answer. */

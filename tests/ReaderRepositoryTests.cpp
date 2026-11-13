@@ -184,6 +184,27 @@ TEST_CASE("A document keeps where its page was scrolled", "[reader][repository]"
     CHECK(List[0].LastScrollY == 0.5);
 }
 
+TEST_CASE("A document keeps the sentence read aloud last", "[reader][repository]")
+{
+    Fixture Test;
+    QTemporaryDir Dir;
+
+    const std::string Path = MakeExistingFile(Dir, "book.epub");
+    REQUIRE_FALSE(Path.empty());
+
+    const std::optional<std::string> Id = Test.Repository->AddDocument(Path, "My Book", "EPUB");
+    REQUIRE(Id.has_value());
+
+    CHECK(Test.Repository->FindDocument(*Id)->ReadAloudParagraph == -1);
+
+    REQUIRE(Test.Repository->SetReadAloudPlace(*Id, 12, 40));
+
+    const std::optional<FTReaderDocumentRow> Row = Test.Repository->FindDocument(*Id);
+    REQUIRE(Row.has_value());
+    CHECK(Row->ReadAloudParagraph == 12);
+    CHECK(Row->ReadAloudCharacter == 40);
+}
+
 TEST_CASE("Removing every document empties the library", "[reader][repository]")
 {
     Fixture Test;

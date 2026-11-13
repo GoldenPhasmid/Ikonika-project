@@ -124,6 +124,12 @@ array, and an optional `books` object.
 | `sha256` | Of the archive, lowercase hex |
 | `desktopOnly` | Hides the package from mobile onboarding and language pickers; set on voice packages |
 
+A dictionary package serves one language pair. A second native language for the same target is a
+separate package with its own id and its own file: `dictionary-en` unpacks `en-dictionary.db` for
+English to Ukrainian, and `dictionary-en-fr` would unpack `en-fr-dictionary.db` for English to
+French. Two packages that unpack the same file name overwrite each other. The app picks a package
+by target and native language together, so each pair is listed, downloaded and updated on its own.
+
 An unrecognised `schema` refuses the whole file. A single entry is dropped when it lacks an id, url
 or version, names an unknown kind, or carries a checksum that is not 64 lowercase hex characters.
 
@@ -183,6 +189,11 @@ Spanish is published with eleven: two beginner readers by Harrison and Wilkins/L
 botas in Teodoro Baró's 1883 translation, Ratón Pérez, La Edad de Oro, fables by Iriarte and Samaniego,
 Cuentos y diálogos and Cuentos de la Alhambra. The shelf starts with the beginner readers and moves
 toward the intermediate classics. These older editions retain their historical spelling.
+Italian is published with thirty: six beginner readers (Baccini, Thouar, Collodi's Pinocchio, Colombi,
+De Amicis's Cuore and Capuana's fables), fifteen intermediate books from Goldoni to De Roberto, and nine
+advanced ones including Manzoni, Boccaccio, Machiavelli, Svevo, Leopardi, Ariosto and Dante. Fourteen editions are
+Wikisource transcriptions that keep their CC BY-SA attribution in the EPUB; the rest are Project Gutenberg
+editions with the Gutenberg text removed. The release is `books-it`.
 
 The shared classics collection starts with six works. Each translation has its own reading level;
 matching a title does not imply matching language difficulty or identical editorial content.
@@ -298,6 +309,23 @@ catalog.
 
 Free space is checked against `bytes` plus `unpackedBytes`, since both are on disk at once.
 
+A package unpacks into a `staging-*` folder beside the archive and only then moves into place, one
+top-level entry at a time. The entry it replaces is renamed to `<name>.ikonika-old` first and deleted
+once every entry has moved, so a failed or interrupted install never leaves a half-written file where
+a working one stood. A failure inside the process puts every replaced entry back. At launch, before
+the dictionary opens, a leftover staging folder is deleted, an `.ikonika-old` entry whose replacement
+never arrived is renamed back, and one whose replacement did arrive is deleted. The version is
+recorded only after the last entry has moved, so an install that stopped halfway is treated as not
+installed. While replacing, the old and the new copy of a package are both on disk.
+
+The active and queued package ids are saved in settings on every change and started again at launch,
+once the catalog has been read. The partial file lets a transfer continue where it stopped, and a
+package whose installed version is already current is skipped. A package the catalog no longer lists
+is dropped. Nothing is resumed that the user cancelled or that failed.
+
+"Restart and update" stays disabled while any package is downloading, installing or queued, and the
+restart itself refuses in that state, so the installer never closes the app in the middle of an unpack.
+
 Voices are found by scanning the model directories rather than from a list in the source, so a newly
 published voice needs no app change. A directory that is not a voice model is skipped quietly.
 
@@ -353,7 +381,13 @@ models compress at roughly 1.2:1.
 Built zips, published or not, sit in `D:\Projects\ikonika-releases\archives`, alongside the catalog
 repository. That directory is not source controlled.
 
-Supertonic is the default desktop voice: one package with no language target, listed first among the voice packages, so first-launch setup downloads it for every language. Piper is one model per language, so a second language's Piper voice needs its own catalog entry and its own download; it stays in the catalog as an alternative. Android speaks through the platform's own TTS and downloads no voice. See [docs/voice.md](docs/voice.md) for the performance case.
+Supertonic is the only desktop voice: one package with no language target, so first-launch setup downloads it for every language. Piper packages were removed from the catalog. Android speaks through the platform's own TTS and downloads no voice. See [docs/voice.md](docs/voice.md) for the performance case.
+
+The catalog still lists the INT8 package, `supertonic-3` version 1, 124 MB. The app in this repository loads only the original full-precision weights, so it cannot use that package. The full package is already uploaded as release `voice-supertonic-3-2`, 370637370 bytes zipped, 398883426 unpacked, sha256 `484b5a20a3a6cbfeba5c9d132cf3cf40c5b381c13620dc8060af7c51920af4f0`. The released 0.8.3 app loads only INT8 file names, and the catalog has no minimum app version, so listing version 2 before the next app release would leave new 0.8.3 installs and voice updates without a voice.
+
+With the next app release, in the same catalog push as the new `app` entry, set `supertonic-3` to version 2 with the numbers above and the url of `voice-supertonic-3-2`.
+
+REMOVE ME AFTER NEXT RELEASE
 
 ## Status
 

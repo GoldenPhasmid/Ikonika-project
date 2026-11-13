@@ -231,6 +231,16 @@ void AppReaderSettings::SetVolumeKeysTurnPages(bool bValue)
     Write(VolumeKeysKey, bValue);
 }
 
+bool AppReaderSettings::IsHighlightingUnknownWords() const
+{
+    return FTSettings::Get().OpenStore().value(QStringLiteral("reader/highlightUnknownWords"), false).toBool();
+}
+
+void AppReaderSettings::SetHighlightUnknownWords(bool bValue)
+{
+    Write(QStringLiteral("reader/highlightUnknownWords"), bValue);
+}
+
 bool AppReaderSettings::IsHighlightingVocabulary() const
 {
     return FTSettings::Get().OpenStore().value(HighlightVocabularyKey,

@@ -186,7 +186,7 @@ namespace
             {
                 AppCloudFailure Failure;
                 Failure.Message = QStringLiteral("invalid_grant");
-                Failure.bCredentialRefused = true;
+                Failure.Kind = AppCloudFailureKind::Credential;
 
                 Done(Failure, QString());
 
@@ -235,7 +235,27 @@ namespace
     {
         AppCloudFailure Failure;
         Failure.Message = QStringLiteral("invalid_grant");
-        Failure.bCredentialRefused = true;
+        Failure.Kind = AppCloudFailureKind::Credential;
+
+        return Failure;
+    }
+
+    AppCloudFailure MakeForbidden()
+    {
+        AppCloudFailure Failure;
+        Failure.Message = QStringLiteral("Drive answered 403 insufficientPermissions");
+        Failure.Status = 403;
+        Failure.Kind = AppCloudFailureKind::Permission;
+
+        return Failure;
+    }
+
+    AppCloudFailure MakeStorageFull()
+    {
+        AppCloudFailure Failure;
+        Failure.Message = QStringLiteral("Drive answered 403 storageQuotaExceeded");
+        Failure.Status = 403;
+        Failure.Kind = AppCloudFailureKind::Quota;
 
         return Failure;
     }

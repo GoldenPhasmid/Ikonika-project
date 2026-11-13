@@ -26,13 +26,12 @@ class SettingsStore : public QObject
     Q_PROPERTY(bool audioAvailable READ IsAudioAvailable NOTIFY audioSettingsChanged)
     Q_PROPERTY(bool audioEnabled READ IsAudioEnabled WRITE SetAudioEnabled NOTIFY audioSettingsChanged)
 
-    Q_PROPERTY(QVariantList voiceChoices READ GetVoiceChoices NOTIFY audioSettingsChanged)
-
     Q_PROPERTY(int speakerCount READ GetSpeakerCount NOTIFY audioSettingsChanged)
     Q_PROPERTY(bool supertonicActive READ IsSupertonicActive NOTIFY audioSettingsChanged)
     Q_PROPERTY(int speakerId READ GetSpeakerId WRITE SetSpeakerId NOTIFY audioSettingsChanged)
 
     Q_PROPERTY(qreal speechSpeed READ GetSpeechSpeed WRITE SetSpeechSpeed NOTIFY audioSettingsChanged)
+    Q_PROPERTY(qreal sentenceSpeechSpeed READ GetSentenceSpeechSpeed WRITE SetSentenceSpeechSpeed NOTIFY audioSettingsChanged)
 
     Q_PROPERTY(int cachedLineCount READ GetCachedLineCount WRITE SetCachedLineCount
                NOTIFY audioSettingsChanged)
@@ -98,6 +97,7 @@ class SettingsStore : public QObject
                NOTIFY languageNamesChanged)
     Q_PROPERTY(int nativeLanguageIndex READ GetNativeLanguageIndex WRITE SetNativeLanguageIndex
                NOTIFY languagesChanged)
+    Q_PROPERTY(QStringList nativeLanguageCodes READ GetNativeLanguageCodes NOTIFY languagesChanged)
 
     Q_PROPERTY(QString targetLanguageName READ GetTargetLanguageName NOTIFY languageNamesChanged)
     Q_PROPERTY(QString nativeLanguageName READ GetNativeLanguageName NOTIFY languageNamesChanged)
@@ -122,11 +122,9 @@ public:
 
     Q_INVOKABLE bool nukeDatabase();
 
-    Q_INVOKABLE void selectVoice(int Index);
-
-    Q_INVOKABLE void fetchVoice(const QString& PackageId);
-
     Q_INVOKABLE void playVoiceSample();
+
+    Q_INVOKABLE void playSentenceVoiceSample();
 
     Q_INVOKABLE void playVoiceSampleNow();
 
@@ -148,8 +146,6 @@ public:
     bool IsAudioEnabled() const;
     void SetAudioEnabled(bool bValue);
 
-    QVariantList GetVoiceChoices() const;
-
     int GetSpeakerCount() const;
     bool IsSupertonicActive() const;
     int GetSpeakerId() const;
@@ -157,6 +153,8 @@ public:
 
     qreal GetSpeechSpeed() const;
     void SetSpeechSpeed(qreal Value);
+    qreal GetSentenceSpeechSpeed() const;
+    void SetSentenceSpeechSpeed(qreal Value);
     qreal GetMinimumSpeechSpeed() const;
     qreal GetMaximumSpeechSpeed() const;
 
@@ -232,6 +230,7 @@ public:
     Q_INVOKABLE void selectLanguagePair(const QString& TargetCode, const QString& NativeCode);
 
     QStringList GetNativeLanguageNames() const;
+    QStringList GetNativeLanguageCodes() const;
     int GetNativeLanguageIndex() const;
     void SetNativeLanguageIndex(int Index);
 
@@ -281,13 +280,10 @@ private:
 
     void PlaySampleNow();
 
-    void SelectPendingVoice();
-
     void OnSettingsApplied();
-
-    QString PendingVoiceDirectory;
 
     QString LastError;
 
     QTimer SampleDelay;
+    bool bSampleIsSentence = false;
 };

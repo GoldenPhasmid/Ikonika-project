@@ -18,7 +18,15 @@ Item
 
         objectName: "progress_segments"
 
-        anchors.centerIn: parent
+        x: Math.round((root.width - segments.width) / 2)
+        y:
+        {
+            const centred = (root.height - segments.height) / 2
+            const sceneY = root.parent ? root.parent.mapToItem(null, 0, root.y + centred).y : root.y + centred
+            const ratio = Screen.devicePixelRatio
+
+            return centred + Math.round(sceneY * ratio) / ratio - sceneY
+        }
         width: Math.min(root.implicitWidth, root.width)
         spacing: AppMetrics.gapSmall
         visible: root.stageCount > 0
@@ -41,14 +49,14 @@ Item
                 Layout.preferredWidth: 1
                 implicitHeight: AppMetrics.progressBarHeight
                 radius: height / 2
-                color: current ? AppTheme.colourText : (done ? AppTheme.colourAccent : AppTheme.colourBorder)
+                color: current ? AppTheme.colourOutline : (done ? AppTheme.colourAccent : AppTheme.colourBorder)
 
                 Rectangle
                 {
                     objectName: "stage_fill"
 
                     visible: parent.current
-                    width: parent.width * (parent.current ? Math.max(0, Math.min(1, root.stageProgress)) : 0)
+                    width: parent.height + (parent.width - parent.height) * Math.max(0, Math.min(1, root.stageProgress))
                     height: parent.height
                     radius: parent.radius
                     color: AppTheme.colourAccent

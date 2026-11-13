@@ -1379,6 +1379,67 @@ TEST_CASE("A word whose card was deleted after triage is not known", "[repositor
     REQUIRE(Test.Repository->ListKnownWords().size() == 1);
 }
 
+TEST_CASE("A known mark can name one meaning of a reading", "[repository][triage][decks]")
+{
+    Fixture Test;
+
+    REQUIRE(Test.Repository->MarkWordTriaged("pêche", "noun", 1, "fruit"));
+    REQUIRE(Test.Repository->MarkWordTriaged("pêche", "noun", 1, "activité"));
+
+    std::vector<FTKnownWord> Known = Test.Repository->ListKnownWords();
+
+    REQUIRE(Known.size() == 2);
+    CHECK(Test.Repository->CountTriagedWords() == 2);
+
+    REQUIRE(Test.Repository->UnmarkWordTriaged("pêche", "noun", 1, "activité"));
+
+    Known = Test.Repository->ListKnownWords();
+
+    REQUIRE(Known.size() == 1);
+    CHECK(Known.front().MeaningGist == "fruit");
+}
+
+TEST_CASE("A card swapped for a known mark leaves the mark known", "[repository][triage][decks]")
+{
+    Fixture Test;
+
+    FTCard Card = MakeCard("pêche", "peach");
+    Card.PartOfSpeech = "noun";
+    Card.Gender = 1;
+    Card.MeaningGist = "fruit";
+
+    const std::optional<std::string> CardId = Test.Repository->AddCard(Card);
+    REQUIRE(CardId.has_value());
+
+    Test.FakeNow = 2000;
+    REQUIRE(Test.Repository->DeleteCards({*CardId}));
+    REQUIRE(Test.Repository->MarkWordTriaged("pêche", "noun", 1, "fruit"));
+
+    const std::vector<FTKnownWord> Known = Test.Repository->ListKnownWords();
+
+    REQUIRE(Known.size() == 1);
+    CHECK(Known.front().MeaningGist == "fruit");
+}
+
+TEST_CASE("Deleting a card of another meaning keeps a meaning's known mark", "[repository][triage][decks]")
+{
+    Fixture Test;
+
+    FTCard Card = MakeCard("pêche", "fishing");
+    Card.PartOfSpeech = "noun";
+    Card.Gender = 1;
+    Card.MeaningGist = "activité";
+
+    const std::optional<std::string> CardId = Test.Repository->AddCard(Card);
+    REQUIRE(CardId.has_value());
+    REQUIRE(Test.Repository->MarkWordTriaged("pêche", "noun", 1, "fruit"));
+
+    Test.FakeNow = 2000;
+    REQUIRE(Test.Repository->DeleteCards({*CardId}));
+
+    CHECK(Test.Repository->ListKnownWords().size() == 1);
+}
+
 TEST_CASE("Triage matches a word whatever its case", "[repository][triage]")
 {
     Fixture Test;
@@ -2250,12 +2311,30 @@ TEST_CASE("Card hint survives loading editing and clearing", "[repository][hint]
 TEST_CASE("Sentence context uses the selected occurrence and preserves punctuation", "[hint]")
 {
     const QString Text{QString::fromUtf8("Le chat dort. Le chat joue ! Ensuite il mange.")};
-    CHECK(FindSentenceAt(Text, 3, "fr") == QString::fromUtf8("Le chat dort."));
-    CHECK(FindSentenceAt(Text, 16, "fr") == QString::fromUtf8("Le chat joue !"));
-    CHECK(FindSentenceAt(Text, 34, "fr") == QString::fromUtf8("Ensuite il mange."));
-    CHECK(FindSentenceAt(QString::fromUtf8("Le chat\ndort sans bruit"), 3, "fr") == QString::fromUtf8("Le chat dort sans bruit"));
-    CHECK(FindSentenceAt(Text, -1, "fr").isEmpty());
-    CHECK(FindSentenceAt(QString(), 0, "fr").isEmpty());
+    CHECK(FindHintAt(Text, 3, "fr") == QString::fromUtf8("Le chat dort."));
+    CHECK(FindHintAt(Text, 16, "fr") == QString::fromUtf8("Le chat joue !"));
+    CHECK(FindHintAt(Text, 34, "fr") == QString::fromUtf8("Ensuite il mange."));
+    CHECK(FindHintAt(QString::fromUtf8("Le chat\ndort sans bruit"), 3, "fr") == QString::fromUtf8("Le chat dort sans bruit"));
+    CHECK(FindHintAt(Text, -1, "fr").isEmpty());
+    CHECK(FindHintAt(QString(), 0, "fr").isEmpty());
+}
+
+TEST_CASE("Hint stops at commas semicolons and colons", "[hint]")
+{
+    const QString Text{QString::fromUtf8("Il entra, posa son chapeau; puis il dit : bonjour à tous. Fin.")};
+    CHECK(FindHintAt(Text, 0, "fr") == QString::fromUtf8("Il entra"));
+    CHECK(FindHintAt(Text, 10, "fr") == QString::fromUtf8("posa son chapeau"));
+    CHECK(FindHintAt(Text, 30, "fr") == QString::fromUtf8("puis il dit"));
+    CHECK(FindHintAt(Text, 46, "fr") == QString::fromUtf8("bonjour à tous."));
+    CHECK(FindHintAt(Text, 58, "fr") == QString::fromUtf8("Fin."));
+    CHECK(FindHintAt(QString::fromUtf8("Il paya 3,50 euros, puis partit."), 8, "fr") == QString::fromUtf8("Il paya 3,50 euros"));
+}
+
+TEST_CASE("Hint in capital letters becomes sentence case", "[hint]")
+{
+    CHECK(FindHintAt(QString::fromUtf8("CHAPITRE PREMIER"), 3, "fr") == QString::fromUtf8("Chapitre premier"));
+    CHECK(FindHintAt(QString::fromUtf8("LE CHAT, DORT. Fin."), 1, "fr") == QString::fromUtf8("Le chat"));
+    CHECK(FindHintAt(QString::fromUtf8("Le chat dort chez SNCF."), 3, "fr") == QString::fromUtf8("Le chat dort chez SNCF."));
 }
 
 static QStringList SplitSentenceTexts(const char* Text, const std::string& LanguageCode)

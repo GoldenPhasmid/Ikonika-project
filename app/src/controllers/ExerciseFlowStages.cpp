@@ -1,6 +1,5 @@
 #include "ExerciseFlowStages.h"
 
-#include <QCoreApplication>
 
 #include <algorithm>
 #include <iterator>
@@ -10,26 +9,12 @@
 #include "SentenceTilesController.h"
 #include "SessionSentenceStage.h"
 #include "SessionSettings.h"
+#include "GapProductionController.h"
 #include "WrittenProductionController.h"
 #include "core/FTLog.h"
 #include "core/FTSentenceCards.h"
 #include "core/FTSettings.h"
 #include "core/sessions/FCardState.h"
-
-static FWrittenContent MakeSentenceGapContent(const FTCard& Card, const FTTreeSentence& Sentence,
-                                              const std::string& NativeLanguage)
-{
-    FWrittenContent Content;
-    Content.Heading = Sentence.Translation;
-    Content.Prompt = MakeGapPrompt(Sentence);
-    Content.AcceptedAnswers = {GetGapWord(Sentence)};
-    Content.Translation = GetDisplayTranslation(Card, NativeLanguage);
-    Content.RevealedAnswer = Sentence.Text;
-    Content.RevealedSpeech = GetGapWord(Sentence);
-    Content.bSentence = true;
-
-    return Content;
-}
 
 FProxyStage::FProxyStage(ExerciseControllerBase* InController, const FTSessionStartParams& InParams)
     : Controller(InController)
@@ -581,7 +566,7 @@ namespace
 
         auto* AudioInstance = new AudioTranscriptionController(Parent);
         AudioInstance->SetSessionSettings(&Options);
-        Parts.Candidates.push_back(FMasteryStageSessionController{AudioInstance, 35.0, [&Options]
+        Parts.Candidates.push_back(FMasteryStageSessionController{AudioInstance, 40.0, [&Options]
         {
             return Options.GetRules().bAudioExercise;
         }});
@@ -589,7 +574,7 @@ namespace
         auto* TypeWordInstance = new WrittenProductionController(Parent);
         TypeWordInstance->SetAskWord(false);
         TypeWordInstance->SetSessionSettings(&Options);
-        Parts.Candidates.push_back(FMasteryStageSessionController{TypeWordInstance, 30.0, [&Options]
+        Parts.Candidates.push_back(FMasteryStageSessionController{TypeWordInstance, 20.0, [&Options]
         {
             return Options.GetRules().bTypeWordExercise;
         }});
@@ -601,19 +586,10 @@ namespace
 
         Parts.GapSentences = std::make_shared<const FGapSentences>(std::move(SavedGapSentences).value_or(FGapSentences{}));
 
-        auto* GapInstance = new WrittenProductionController(Parent);
-        GapInstance->SetAskWord(false);
+        auto* GapInstance = new WordGapController(Parent);
         GapInstance->SetSessionSettings(&Options);
-        GapInstance->SetContentBuilder(
-            [GapSentences = Parts.GapSentences, NativeLanguage = Params.NativeLanguage](const FTCard& Card)
-            {
-                const auto Found = GapSentences->find(Card.Id);
-
-                return Found != GapSentences->end() ? MakeSentenceGapContent(Card, Found->second, NativeLanguage)
-                                                    : FWrittenContent{};
-            },
-            QCoreApplication::translate("FMasteryLoopStage", "Type the missing word..."));
-        Parts.Candidates.push_back(FMasteryStageSessionController{GapInstance, 35.0, [&Options]
+        GapInstance->SetSentenceLookup(MakeGapSentenceLookup(Parts.GapSentences));
+        Parts.Candidates.push_back(FMasteryStageSessionController{GapInstance, 40.0, [&Options]
         {
             return Options.GetRules().bGapExercise;
         }});

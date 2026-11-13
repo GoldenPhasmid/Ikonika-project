@@ -2,6 +2,8 @@
 
 #include "core/FTLog.h"
 
+#include <signalsmith-stretch.h>
+
 #include <sherpa-onnx/c-api/c-api.h>
 
 #include <QElapsedTimer>
@@ -30,7 +32,6 @@ namespace
     constexpr float MaximumSpeechGain = 16.0f;
     constexpr float SilenceRmsThreshold = 1.0e-4f;
 
-    constexpr float SupertonicPace = 1.05f;
     constexpr int SupertonicSteps = 8;
     constexpr int SupertonicSeed = 42;
 
@@ -182,7 +183,11 @@ namespace
 
     std::string MakeLanguageExtra(const std::string& LanguageCode)
     {
-        return "{\"lang\": \"" + LanguageCode + "\", \"seed\": " + std::to_string(SupertonicSeed) + "}";
+        bool HasCaptureSeed{false};
+        const int CaptureSeed = qEnvironmentVariableIntValue("IKONIKA_SPEECH_CAPTURE_SEED", &HasCaptureSeed);
+        const int Seed = !qgetenv("IKONIKA_SPEECH_CAPTURE").isEmpty() && HasCaptureSeed
+            ? CaptureSeed : SupertonicSeed;
+        return "{\"lang\": \"" + LanguageCode + "\", \"seed\": " + std::to_string(Seed) + "}";
     }
 
     std::vector<float> MakeHannWindow(size_t Length)
@@ -354,6 +359,56 @@ std::vector<float> StretchSpeech(std::span<const float> Samples, int SampleRate,
     return Output;
 }
 
+namespace
+{
+    constexpr long StretchSeed = 42;
+
+    std::vector<float> StretchToLength(std::span<const float> Samples, int SampleRate, size_t OutputLength)
+    {
+        if (Samples.empty() || OutputLength == 0)
+        {
+            return {};
+        }
+
+        if (OutputLength == Samples.size())
+        {
+            return {Samples.begin(), Samples.end()};
+        }
+
+        signalsmith::stretch::SignalsmithStretch<float> Stretcher{StretchSeed};
+        Stretcher.presetDefault(1, static_cast<float>(SampleRate));
+
+        std::vector<float> Output(OutputLength, 0.0f);
+        const float* Inputs[1]{Samples.data()};
+        float* Outputs[1]{Output.data()};
+
+        if (Stretcher.exact(Inputs, static_cast<int>(Samples.size()), Outputs, static_cast<int>(OutputLength)))
+        {
+            return Output;
+        }
+
+        const float Tempo = static_cast<float>(Samples.size()) / static_cast<float>(OutputLength);
+        std::vector<float> Fallback = StretchSpeech(Samples, SampleRate, Tempo);
+        Fallback.resize(OutputLength, 0.0f);
+
+        return Fallback;
+    }
+}
+
+std::vector<float> StretchSpeechPhaseVocoder(std::span<const float> Samples, int SampleRate, float Tempo)
+{
+    const float Clamped = std::clamp(Tempo, MinimumSpeechSpeed, MaximumSpeechSpeed);
+
+    if (Samples.empty() || std::abs(Clamped - 1.0f) < UnstretchedTempoTolerance)
+    {
+        return {Samples.begin(), Samples.end()};
+    }
+
+    const size_t OutputLength = static_cast<size_t>(std::llround(static_cast<double>(Samples.size()) / Clamped));
+
+    return StretchToLength(Samples, SampleRate, OutputLength);
+}
+
 bool IsVoiceModelDirectory(const std::string& ModelDirectory)
 {
     if (ModelDirectory.empty())
@@ -362,10 +417,8 @@ bool IsVoiceModelDirectory(const std::string& ModelDirectory)
     }
 
     const bool bIsSupertonic = AllExist(ModelDirectory, {
-        "duration_predictor.int8.onnx",
-        "text_encoder.int8.onnx",
-        "vector_estimator.int8.onnx",
-        "vocoder.int8.onnx",
+        "duration_predictor.onnx", "text_encoder.onnx", "vector_estimator.onnx", "vocoder.onnx"
+    }) && AllExist(ModelDirectory, {
         "tts.json",
         "unicode_indexer.bin",
         "voice.bin"
@@ -390,10 +443,8 @@ std::optional<FTSpeechSynthesizer> FTSpeechSynthesizer::Create(const std::string
     }
 
     const bool bIsSupertonic = AllExist(ModelDirectory, {
-        "duration_predictor.int8.onnx",
-        "text_encoder.int8.onnx",
-        "vector_estimator.int8.onnx",
-        "vocoder.int8.onnx",
+        "duration_predictor.onnx", "text_encoder.onnx", "vector_estimator.onnx", "vocoder.onnx"
+    }) && AllExist(ModelDirectory, {
         "tts.json",
         "unicode_indexer.bin",
         "voice.bin"
@@ -411,10 +462,10 @@ std::optional<FTSpeechSynthesizer> FTSpeechSynthesizer::Create(const std::string
 
     // Held as locals for the whole call, because the config stores raw pointers and sherpa-onnx
     // reads them during construction.
-    const std::string DurationPredictor = Join(ModelDirectory, "duration_predictor.int8.onnx");
-    const std::string TextEncoder = Join(ModelDirectory, "text_encoder.int8.onnx");
-    const std::string VectorEstimator = Join(ModelDirectory, "vector_estimator.int8.onnx");
-    const std::string Vocoder = Join(ModelDirectory, "vocoder.int8.onnx");
+    const std::string DurationPredictor = Join(ModelDirectory, "duration_predictor.onnx");
+    const std::string TextEncoder = Join(ModelDirectory, "text_encoder.onnx");
+    const std::string VectorEstimator = Join(ModelDirectory, "vector_estimator.onnx");
+    const std::string Vocoder = Join(ModelDirectory, "vocoder.onnx");
     const std::string TtsJson = Join(ModelDirectory, "tts.json");
     const std::string UnicodeIndexer = Join(ModelDirectory, "unicode_indexer.bin");
     const std::string VoiceStyle = Join(ModelDirectory, "voice.bin");
@@ -533,8 +584,14 @@ std::vector<int16_t> FTSpeechSynthesizer::Synthesize(std::string_view Text,
 
     SherpaOnnxGenerationConfig Generation{};
     Generation.sid = SpeakerId;
-    Generation.speed = bIsSupertonic ? SupertonicPace : Tempo;
+    Generation.speed = Tempo;
     Generation.num_steps = bIsSupertonic ? SupertonicSteps : 0;
+    const int CaptureSteps = qEnvironmentVariableIntValue("IKONIKA_SPEECH_CAPTURE_STEPS");
+
+    if (bIsSupertonic && !qgetenv("IKONIKA_SPEECH_CAPTURE").isEmpty() && CaptureSteps > 0)
+    {
+        Generation.num_steps = CaptureSteps;
+    }
     Generation.extra = Extra.empty() ? nullptr : Extra.c_str();
 
     const SherpaOnnxGeneratedAudio* Audio =
@@ -549,17 +606,18 @@ std::vector<int16_t> FTSpeechSynthesizer::Synthesize(std::string_view Text,
         return Result;
     }
 
-    std::vector<float> Stretched;
-    std::span<const float> Generated(Audio->samples, static_cast<size_t>(Audio->n));
+    const QByteArray CaptureDirectory = qgetenv("IKONIKA_SPEECH_CAPTURE");
+    const std::string CapturePrefix = CaptureDirectory.toStdString() + "/supertonic-" + std::to_string(Tempo);
 
-    if (bIsSupertonic)
+    if (bIsSupertonic && !CaptureDirectory.isEmpty())
     {
-        Stretched = StretchSpeech(Generated, Audio->sample_rate, Tempo);
-        Generated = Stretched;
+        SherpaOnnxWriteWave(Audio->samples, Audio->n, Audio->sample_rate, (CapturePrefix + "-raw.wav").c_str());
     }
 
-    const std::span<const float> Speech = Generated.subspan(FindSpeechStart(Generated, Audio->sample_rate));
-    const float Gain = ComputeSpeechGain(Speech);
+    const std::span<const float> Generated(Audio->samples, static_cast<size_t>(Audio->n));
+
+    const std::span<const float> Speech = bIsSupertonic ? Generated : Generated.subspan(FindSpeechStart(Generated, Audio->sample_rate));
+    const float Gain = bIsSupertonic ? 1.0f : ComputeSpeechGain(Speech);
 
     Result.reserve(Speech.size());
 
@@ -567,6 +625,17 @@ std::vector<int16_t> FTSpeechSynthesizer::Synthesize(std::string_view Text,
     {
         const float Clamped = std::clamp(Sample * Gain, -1.0f, 1.0f);
         Result.push_back(static_cast<int16_t>(Clamped * 32767.0f));
+    }
+
+    if (bIsSupertonic && !CaptureDirectory.isEmpty())
+    {
+        std::vector<float> Captured(Result.size());
+        std::transform(Result.begin(), Result.end(), Captured.begin(),
+                       [](int16_t Sample) { return static_cast<float>(Sample) / 32768.0f; });
+        SherpaOnnxWriteWave(Captured.data(), static_cast<int32_t>(Captured.size()), Audio->sample_rate,
+                           (CapturePrefix + "-processed.wav").c_str());
+        qCInfo(LogSpeech) << "Supertonic capture" << QString::fromStdString(CapturePrefix)
+                         << "gain" << Gain << "speaker" << SpeakerId << "text" << QString::fromStdString(Terminated);
     }
 
     SherpaOnnxDestroyOfflineTtsGeneratedAudio(Audio);
@@ -966,7 +1035,9 @@ std::vector<int16_t> FTSpeechService::RenderNarration(int VoiceIndex, std::strin
     QElapsedTimer Timer;
     Timer.start();
 
-    std::vector<int16_t> Samples{Chosen.Synthesizer.Synthesize(Text, Chosen.SpeakerId, Speed, LanguageCode)};
+    const float NarrationSpeed{std::clamp(Speed * SentenceSpeed, MinimumSpeechSpeed, MaximumSpeechSpeed)};
+
+    std::vector<int16_t> Samples{Chosen.Synthesizer.Synthesize(Text, Chosen.SpeakerId, NarrationSpeed, LanguageCode)};
 
     qCDebug(LogSpeech) << "narration synthesis took" << Timer.elapsed() << "ms for"
                        << static_cast<int>(Text.size()) << "characters";
@@ -1080,6 +1151,16 @@ void FTSpeechService::SetSpeed(float Value)
 
     // Everything cached was rendered at the old speed.
     ClearCaches();
+}
+
+float FTSpeechService::GetSentenceSpeed() const
+{
+    return SentenceSpeed;
+}
+
+void FTSpeechService::SetSentenceSpeed(float Value)
+{
+    SentenceSpeed = std::clamp(Value, MinimumSpeechSpeed, MaximumSpeechSpeed);
 }
 
 int FTSpeechService::GetSpeakerId() const

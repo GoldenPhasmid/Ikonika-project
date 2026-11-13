@@ -25,42 +25,48 @@ static std::string MakeReadingKey(const std::string& Headword, const std::string
     return MakeHeadwordKey(Headword) + '\x1F' + PartOfSpeech;
 }
 
-static void MergeKnown(std::unordered_map<std::string, bool>& Known, const std::string& Key, bool bKnown)
+static void MergeProgress(std::unordered_map<std::string, FTVocabularyProgress>& Progress, const std::string& Key,
+                          const FTVocabularyProgress& Added)
 {
-    const auto [Entry, bInserted] = Known.try_emplace(Key, bKnown);
+    const auto [Entry, bInserted] = Progress.try_emplace(Key, Added);
 
     if (!bInserted)
     {
-        Entry->second = Entry->second && bKnown;
+        Entry->second = MergeVocabularyProgress(Entry->second, Added);
     }
 }
 
-static std::optional<bool> FindKnown(const std::unordered_map<std::string, bool>& Known, const std::string& Key)
+static std::optional<FTVocabularyProgress> FindProgress(const std::unordered_map<std::string, FTVocabularyProgress>& Progress,
+                                                        const std::string& Key)
 {
-    const auto Entry = Known.find(Key);
+    const auto Entry = Progress.find(Key);
 
-    return Entry == Known.end() ? std::nullopt : std::optional<bool>{Entry->second};
+    return Entry == Progress.end() ? std::nullopt : std::optional<FTVocabularyProgress>{Entry->second};
 }
 
 ReaderVocabulary::ReaderVocabulary(QObject* Parent)
     : QObject(Parent)
     , bEnabled{AppReaderSettings::Get().IsHighlightingVocabulary()}
+    , bHighlightUnknown{AppReaderSettings::Get().IsHighlightingUnknownWords()}
 {
     connect(&AppReaderSettings::Get(), &AppReaderSettings::changed, this, [this]()
     {
         const bool bNowEnabled{AppReaderSettings::Get().IsHighlightingVocabulary()};
 
-        if (bNowEnabled == bEnabled)
+        const bool bNowHighlightUnknown{AppReaderSettings::Get().IsHighlightingUnknownWords()};
+
+        if (bNowEnabled == bEnabled && bNowHighlightUnknown == bHighlightUnknown)
         {
             return;
         }
 
         bEnabled = bNowEnabled;
+        bHighlightUnknown = bNowHighlightUnknown;
+        BuiltRevision.clear();
 
         if (!bEnabled)
         {
             Marks.Clear();
-            BuiltRevision.clear();
 
             qCInfo(LogApp) << "Reader: vocabulary highlighting turned off";
 
@@ -110,7 +116,7 @@ bool ReaderVocabulary::IsEnabled() const
 
 std::vector<FTVocabularyMark> ReaderVocabulary::Find(const QString& Text) const
 {
-    return bEnabled ? Marks.Find(Text) : std::vector<FTVocabularyMark>{};
+    return bEnabled ? Marks.Find(Text, bHighlightUnknown) : std::vector<FTVocabularyMark>{};
 }
 
 std::string ReaderVocabulary::MakeRevision() const
@@ -132,42 +138,59 @@ void ReaderVocabulary::Rebuild()
 
     Marks.Clear();
 
-    std::unordered_map<std::string, bool> Readings;
-    std::unordered_map<std::string, bool> AnyReadings;
+    std::unordered_map<std::string, FTVocabularyProgress> Readings;
+    std::unordered_map<std::string, FTVocabularyProgress> AnyReadings;
     std::unordered_set<std::string> Seen;
     std::vector<std::string> Headwords;
     int CardCount{0};
 
     for (const FTCardHandle& Card : AppCards::LoadCards())
     {
-        if (Card == nullptr || IsFormsCard(*Card) || IsInPool(*Card))
+        if (Card == nullptr || IsFormsCard(*Card))
         {
             continue;
         }
 
-        const bool bKnown{IsCompleted(*Card)};
+        const FTVocabularyProgress Progress{IsCompleted(*Card), std::max(Card->LeitnerStage, PoolStage)};
 
         ++CardCount;
 
-        Marks.AddSpelling(QString::fromStdString(Card->TargetWord), bKnown);
+        Marks.AddSpelling(QString::fromStdString(Card->TargetWord), Progress);
 
         for (const std::string& Spelling : Card->AlternativeSpellings)
         {
-            Marks.AddSpelling(QString::fromStdString(Spelling), bKnown);
+            Marks.AddSpelling(QString::fromStdString(Spelling), Progress);
         }
 
         if (Card->PartOfSpeech.empty())
         {
-            MergeKnown(AnyReadings, MakeHeadwordKey(Card->TargetWord), bKnown);
+            MergeProgress(AnyReadings, MakeHeadwordKey(Card->TargetWord), Progress);
         }
         else
         {
-            MergeKnown(Readings, MakeReadingKey(Card->TargetWord, Card->PartOfSpeech), bKnown);
+            MergeProgress(Readings, MakeReadingKey(Card->TargetWord, Card->PartOfSpeech), Progress);
         }
 
         if (Seen.insert(Card->TargetWord).second)
         {
             Headwords.push_back(Card->TargetWord);
+        }
+    }
+
+    if (bHighlightUnknown && AppDictionary::Get().IsReady())
+    {
+        const int Cutoff{AppDatabase::Get().GetCardRepository().GetPlacementCutoff()};
+        const FTVocabularyProgress Known{true};
+
+        for (const FTRankedWord& Word : AppDictionary::Get().GetRepository().ListWordsUpToTeachingRank(Cutoff))
+        {
+            Marks.AddSpelling(QString::fromStdString(Word.Headword), Known);
+            MergeProgress(Readings, MakeReadingKey(Word.Headword, Word.PartOfSpeech), Known);
+
+            if (Seen.insert(Word.Headword).second)
+            {
+                Headwords.push_back(Word.Headword);
+            }
         }
     }
 
@@ -177,15 +200,20 @@ void ReaderVocabulary::Rebuild()
     {
         for (const FTHeadwordForm& Row : AppDictionary::Get().GetRepository().ListHeadwordForms(Headwords))
         {
-            const std::optional<bool> ByReading{FindKnown(Readings, MakeReadingKey(Row.Headword, Row.PartOfSpeech))};
-            const std::optional<bool> ByHeadword{FindKnown(AnyReadings, MakeHeadwordKey(Row.Headword))};
+            const std::optional<FTVocabularyProgress> ByReading{
+                FindProgress(Readings, MakeReadingKey(Row.Headword, Row.PartOfSpeech))};
+            const std::optional<FTVocabularyProgress> ByHeadword{FindProgress(AnyReadings, MakeHeadwordKey(Row.Headword))};
 
             if (!ByReading.has_value() && !ByHeadword.has_value())
             {
                 continue;
             }
 
-            Marks.AddSpelling(QString::fromStdString(Row.Form), ByReading.value_or(true) && ByHeadword.value_or(true));
+            const FTVocabularyProgress Progress{ByReading.has_value() && ByHeadword.has_value()
+                ? MergeVocabularyProgress(*ByReading, *ByHeadword)
+                : ByReading.value_or(ByHeadword.value_or(FTVocabularyProgress{}))};
+
+            Marks.AddSpelling(QString::fromStdString(Row.Form), Progress);
 
             ++FormCount;
         }

@@ -854,11 +854,11 @@ TEST_CASE("Disabling both written directions removes WrittenProductionController
     }
 }
 
-TEST_CASE("The flip recall stage shows the word, then random sides, then the translation whatever QuestionSide is",
+TEST_CASE("The flip recall stage shows each card's word first and its translation second whatever QuestionSide is",
          "[intensivelearning]")
 {
     FQuestionSideGuard SideGuard;
-    FTSettings::Get().SetQuestionSide(SHOW_WORD);
+    FTSettings::Get().SetQuestionSide(SHOW_TRANSLATION);
 
     FAppDatabaseGuard DatabaseGuard;
     FAppSpeechGuard SpeechGuard;
@@ -871,30 +871,28 @@ TEST_CASE("The flip recall stage shows the word, then random sides, then the tra
     CompleteFlashcardStage(Controller);
     REQUIRE(Controller.GetStage() == 2);
 
-    int Step = 0;
     int Iterations = 0;
-    int Max = 0;
+    int WordFirst = 0;
+    int TranslationSecond = 0;
 
     while (Controller.GetStage() == 2)
     {
         auto* Flip = qobject_cast<FlipRecallController*>(Controller.GetActiveController());
         REQUIRE(Flip != nullptr);
 
-        Max = Flip->GetMaxSessionCount();
-
         if (!Flip->IsAnswered())
         {
-            ++Step;
+            const int KnownCount = Flip->GetCardMasteryCount();
 
-            const int Third = (Flip->GetCurrentSessionCount() * 3) / Max;
-
-            if (Third == 0)
+            if (KnownCount == 0)
             {
                 CHECK(Flip->ShowsTargetLanguage());
+                ++WordFirst;
             }
-            else if (Third >= 2)
+            else if (KnownCount == 1)
             {
                 CHECK_FALSE(Flip->ShowsTargetLanguage());
+                ++TranslationSecond;
             }
         }
 
@@ -903,7 +901,8 @@ TEST_CASE("The flip recall stage shows the word, then random sides, then the tra
         REQUIRE(++Iterations < 1000);
     }
 
-    CHECK(Step == Max);
+    CHECK(WordFirst == 3);
+    CHECK(TranslationSecond == 3);
 }
 
 TEST_CASE("The choice stage always shows the translation when QuestionSide is SHOW_TRANSLATION",

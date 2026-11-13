@@ -6,15 +6,17 @@ MobileBottomSheet
     id: root
 
     property string exerciseKey: ""
-    property string exerciseIcon: ""
     property string exerciseIconSvg: ""
     property string exerciseLabel: ""
     property string exerciseSubtitle: ""
     property var vocabulary: null
 
+    readonly property int cardStep: 5
+
     readonly property PracticeSelection selection: PracticeSelection
     {
         vocabulary: root.vocabulary
+        cardLimit: 50
     }
 
     readonly property var directionOptions: [
@@ -39,14 +41,6 @@ MobileBottomSheet
             Layout.preferredHeight: 40
             radius: AppMetrics.radiusMedium
             color: AppTheme.colourFaint
-
-            Text
-            {
-                anchors.centerIn: parent
-                visible: root.exerciseIconSvg.length === 0
-                text: root.exerciseIcon
-                font.pixelSize: AppMetrics.fontSubtitle
-            }
 
             MobileVectorIcon
             {
@@ -75,6 +69,8 @@ MobileBottomSheet
         MobileFilterChipRow
         {
             title: qsTr("Words")
+            fillWidth: true
+            showCounts: false
 
             options: root.selection.filters.map(function(filter)
             {
@@ -104,11 +100,11 @@ MobileBottomSheet
         {
             title: qsTr("Cards")
 
-            interactive: root.selection.canChooseCards
+            interactive: root.selection.maximumCards > root.cardStep
             value: root.selection.cardCount
-            from: root.selection.minimumCards
+            from: Math.min(root.cardStep, root.selection.maximumCards)
             to: root.selection.maximumCards
-            step: 1
+            step: root.cardStep
 
             onEdited: function(newValue) { root.selection.cardCount = newValue }
         }

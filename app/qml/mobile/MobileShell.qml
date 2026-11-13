@@ -16,6 +16,7 @@ Rectangle
     property bool showSearchField: false
     property bool showTabBar: true
     property bool showHeader: true
+    property real contentMaximumWidth: Number.POSITIVE_INFINITY
 
     property alias headerStatus: header.status
     property alias searchFieldText: header.searchFieldText
@@ -59,6 +60,7 @@ Rectangle
             showSettings: root.showSettings
             showSearchField: root.showSearchField
             titleTappable: root.headerTitleTappable
+            contentMaximumWidth: root.contentMaximumWidth
 
             onBackRequested: root.backRequested()
             onTrailingActivated: root.trailingActivated()
@@ -74,6 +76,8 @@ Rectangle
             id: contentArea
             Layout.fillWidth: true
             Layout.fillHeight: true
+            Layout.maximumWidth: root.contentMaximumWidth
+            Layout.alignment: Qt.AlignHCenter
         }
 
         MobileBottomTabBar

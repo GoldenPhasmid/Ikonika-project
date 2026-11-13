@@ -41,6 +41,11 @@ DesktopFormPage
                 continue
             }
 
+            if (entry.natives.length > 0 && entry.natives.indexOf(AppOnboarding.chosenNative) < 0)
+            {
+                continue
+            }
+
             const active = AppPackageDownloader.activeId === entry.id
             const queued = AppPackageDownloader.queue.indexOf(entry.id) >= 0
 
@@ -194,22 +199,21 @@ DesktopFormPage
     }
 
     footer: [
-        DesktopButton
+        DesktopFormButton
         {
             visible: root.stalled
-            large: true
             text: qsTr("Try again")
 
             onClicked: AppOnboarding.retry()
         },
-        DesktopButton
+        DesktopFormButton
         {
             objectName: "onboarding_start"
 
-            large: true
             tone: "primary"
             text: qsTr("Start learning")
-            trailingIconName: "arrow_right"
+            keyHint: qsTr("Enter")
+            shortcutKeys: ["Return", "Enter"]
             enabled: AppOnboarding.dictionaryReady
 
             onClicked:

@@ -4,6 +4,7 @@
 #include "core/FTCardStore.h"
 #include "core/FTDictionaryRepository.h"
 
+#include <map>
 #include <set>
 #include <string>
 #include <unordered_map>
@@ -27,7 +28,7 @@ public:
 private:
     std::unordered_map<std::string, std::vector<FTCardHandle>> CardsByHeadword;
 
-    std::set<std::pair<std::string, std::string>> KnownReadings;
+    std::map<std::pair<std::string, std::string>, std::set<std::string>> KnownMeanings;
 };
 
 std::vector<FTDeckWordProgress> MatchDeckWords(const std::vector<FTDeckWord>& Words,

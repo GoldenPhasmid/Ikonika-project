@@ -12,9 +12,15 @@
 
 #include <QString>
 
-void AddPresentTenseKeys(const FTSentenceTree& Tree, const std::vector<uint32_t>& VerbWordIds, FTWordIdSet& Known)
+namespace
 {
-    const int PresentTense = GetFormsTenseCode(FTSettings::Get().GetLanguageRules().TargetLanguage, FormsTensePresent);
+    constexpr int GrammarVerbCount = 10;
+}
+
+void AddPresentTenseKeys(const FTSentenceTree& Tree, const std::vector<uint32_t>& VerbWordIds, FTWordIdSet& Known,
+                         const std::string& TargetLanguage)
+{
+    const int PresentTense = GetFormsTenseCode(TargetLanguage, FormsTensePresent);
 
     if (PresentTense <= 0 || Tree.GetWordSpan() == 0)
     {
@@ -27,17 +33,34 @@ void AddPresentTenseKeys(const FTSentenceTree& Tree, const std::vector<uint32_t>
     }
 }
 
-FTWordIdSet BuildKnownSentenceWords(const FTSentenceTree& Tree)
+void AddPresentTenseKeys(const FTSentenceTree& Tree, const std::vector<uint32_t>& VerbWordIds, FTWordIdSet& Known)
 {
-    const FTDictionaryRepository& Dictionary = AppDictionary::Get().GetRepository();
-    const FTCardRepository& CardRepository = AppDatabase::Get().GetCardRepository();
+    AddPresentTenseKeys(Tree, VerbWordIds, Known, FTSettings::Get().GetLanguageRules().TargetLanguage);
+}
+
+FSentenceSources MakeSentenceSources()
+{
     const std::string& TargetLanguage = FTSettings::Get().GetLanguageRules().TargetLanguage;
+
+    return FSentenceSources{&AppDictionary::Get().GetRepository(), &AppDatabase::Get().GetCardRepository(),
+                            TargetLanguage, FTSettings::Get().GetEssentialVerbs(TargetLanguage)};
+}
+
+FTWordIdSet BuildKnownSentenceWords(const FTSentenceTree& Tree, const FSentenceSources& Sources)
+{
+    const FTDictionaryRepository& Dictionary = *Sources.Dictionary;
+    const FTCardRepository& CardRepository = *Sources.Cards;
+    const std::string& TargetLanguage = Sources.TargetLanguage;
 
     FTWordIdSet Known = Dictionary.ResolveWordIds(CardRepository.ListKnownHeadwords());
 
     std::vector<uint32_t> PlacedVerbs;
 
-    for (const FTRankedWord& Placed : Dictionary.ListWordsUpToTeachingRank(CardRepository.GetPlacementCutoff()))
+    std::vector<FTRankedWord> Given = Dictionary.ListWordsUpToTeachingRank(CardRepository.GetPlacementCutoff());
+    const std::vector<FTRankedWord> Grammar = Dictionary.ListGrammarWords(Sources.EssentialVerbs, GrammarVerbCount);
+    Given.insert(Given.end(), Grammar.begin(), Grammar.end());
+
+    for (const FTRankedWord& Placed : Given)
     {
         Known.Add(Placed.WordId);
 
@@ -47,7 +70,7 @@ FTWordIdSet BuildKnownSentenceWords(const FTSentenceTree& Tree)
         }
     }
 
-    AddPresentTenseKeys(Tree, PlacedVerbs, Known);
+    AddPresentTenseKeys(Tree, PlacedVerbs, Known, TargetLanguage);
 
     for (const FTKnownVerbTense& Verb : CardRepository.ListKnownVerbTenses())
     {
@@ -65,6 +88,11 @@ FTWordIdSet BuildKnownSentenceWords(const FTSentenceTree& Tree)
     }
 
     return Known;
+}
+
+FTWordIdSet BuildKnownSentenceWords(const FTSentenceTree& Tree)
+{
+    return BuildKnownSentenceWords(Tree, MakeSentenceSources());
 }
 
 const char* FindUnusableSentenceReason(const FTTreeSentence& Sentence)
