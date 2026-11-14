@@ -1,11 +1,11 @@
 ﻿cmake_minimum_required(VERSION 3.21)
 
 # C is enabled for one reason: the vendored SQLite amalgamation.
-project(Ikonika VERSION 0.8.3 LANGUAGES C CXX)
+project(Ikonika VERSION 0.9.0 LANGUAGES C CXX)
 
 # Play Store requires this to strictly increase on every upload, independent of PROJECT_VERSION.
 # Bump it by hand for each Android release.
-set(IKONIKA_ANDROID_VERSION_CODE 21)
+set(IKONIKA_ANDROID_VERSION_CODE 22)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)

@@ -321,6 +321,20 @@ Item
         textView.playReadAloud()
     }
 
+    function readFromPicked()
+    {
+        const place = textView.pickedPlace
+
+        translation.dismiss()
+        root.voiceNoticeShown = false
+        textView.readFrom(place)
+    }
+
+    function focusReading()
+    {
+        keys.forceActiveFocus()
+    }
+
     function handleReadAloudKey(event)
     {
         if (reader.isPdf || !reader.readAloud.started)
@@ -981,6 +995,7 @@ Item
                         translation.expect()
                         Qt.callLater(translation.show)
                     }
+                    onReadAloudJumpRequested: root.readFromPicked()
                     onContentYChanged: positionSaveTimer.restart()
                     onZoomRequested: function(closer) { root.zoom(closer) }
                 }
@@ -1006,14 +1021,7 @@ Item
                         root.addWordRequested(word, translation, partOfSpeech, hint)
                     }
                     onDictionaryRequested: function(word) { root.lookUpRequested(word) }
-                    onReadAloudRequested:
-                    {
-                        const place = textView.pickedPlace
-
-                        translation.dismiss()
-                        root.voiceNoticeShown = false
-                        textView.readFrom(place)
-                    }
+                    onReadAloudRequested: root.readFromPicked()
                 }
 
                 Rectangle

@@ -8,6 +8,8 @@ Button
     property bool pdf: true
     property ReaderReadAloud readAloud: null
 
+    signal dismissed()
+
     implicitWidth: AppMetrics.headerIconTapWidth
     implicitHeight: AppMetrics.headerIconTapWidth
 
@@ -64,6 +66,8 @@ Button
         y: root.height + AppMetrics.gapTight
         width: AppMetrics.readerSettingsWidth
         heading: qsTr("Appearance")
+
+        onClosed: Qt.callLater(root.dismissed)
 
         DesktopReaderSettingsRows
         {

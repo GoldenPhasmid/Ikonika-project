@@ -17,7 +17,7 @@ static constexpr double NarrationLookaheadSeconds = 15.0;
 static constexpr size_t MinimumQueuedSentences = 2;
 static constexpr qint64 ReplayWindowMilliseconds = 2000;
 static constexpr int SpeedRestartMilliseconds = 400;
-static constexpr std::array<float, 5> SpeedSteps{0.5f, 0.75f, 1.0f, 1.25f, 1.5f};
+static constexpr std::array<float, 2> SpeedSteps{1.0f, 1.25f};
 
 ReaderReadAloud::ReaderReadAloud(const FTParagraphModel& InParagraphs, QObject* Parent)
     : QObject(Parent)

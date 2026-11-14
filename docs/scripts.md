@@ -55,6 +55,7 @@ input/output at every stage.
 | `build_fr_dictionary_v2.py` | French, from the English-Wiktionary extract. |
 | `build_es_dictionary_v2.py` | Spanish, from the English-Wiktionary extract. |
 | `build_it_dictionary_v2.py` | Italian, from the English-Wiktionary extract. No decks. |
+| `build_de_dictionary_v2.py` | German, from the English-Wiktionary extract. Reads the two-pass LLM artifacts through `--meanings` and `--mapping`, the phrase list through `--mwe-frequency` and the alignment counts through `--corpus-counts`. `--skip-sentence-tree` leaves out the step that needs `de_core_news_md`. |
 | `build_en_uk_dictionary_v2.py` | English, translated for a Ukrainian reader — same headword and definition language, unlike the fr/es builds. `--word-set-only` imports the word set's headwords alone. It reads Lingea beside Balla and Busel, lets every source give all it has, and prunes after the corpus step; `--every-translation` turns that off. |
 | `build_dictionary.py` | The lower-level driver the three scripts above call for steps 1–2; also directly runnable, see its own `--help`. |
 

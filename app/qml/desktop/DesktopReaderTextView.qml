@@ -23,6 +23,7 @@ ListView
 
     signal wordPicked(string word, string sentence)
     signal translationWanted()
+    signal readAloudJumpRequested()
     signal zoomRequested(bool closer)
 
     DictionaryController { id: contextLookup }
@@ -637,6 +638,7 @@ ListView
                 acceptedButtons: Qt.LeftButton
 
                 property point releasedAt
+                property bool doubleTapped: false
 
                 onPointChanged: if (pointer.active) pointer.releasedAt = pointer.point.position
 
@@ -655,18 +657,44 @@ ListView
                     Qt.callLater(pointer.pick)
                 }
 
-                function pick()
+                function pauseReading()
                 {
-                    const readAloud = root.readAloud
-                    const wasReading = readAloud !== null && readAloud.playing
+                    const wasReading = root.readAloud !== null && root.readAloud.playing
 
                     if (wasReading)
                     {
-                        readAloud.pause()
+                        root.readAloud.pause()
+                    }
+
+                    return wasReading
+                }
+
+                function pick()
+                {
+                    if (pointer.doubleTapped)
+                    {
+                        pointer.doubleTapped = false
+
+                        if (root.readAloud !== null && root.readAloud.available)
+                        {
+                            const place = paragraph.display.substring(paragraphText.selectionStart, paragraphText.selectionEnd).trim().length > 0
+                                ? paragraphText.selectionStart
+                                : (root.wordRange(paragraph.display, hitTest.characterAt(pointer.releasedAt.x, pointer.releasedAt.y)) || { start: -1 }).start
+
+                            if (place >= 0)
+                            {
+                                root.pickedPlace = { paragraph: paragraph.index, character: place }
+                                root.readAloudJumpRequested()
+
+                                return
+                            }
+                        }
                     }
 
                     if (paragraph.display.substring(paragraphText.selectionStart, paragraphText.selectionEnd).trim().length > 0)
                     {
+                        const wasReading = pointer.pauseReading()
+
                         root.pickedPlace = { paragraph: paragraph.index, character: paragraphText.selectionStart }
 
                         const first = root.wordRange(paragraph.display, paragraphText.selectionStart)
@@ -703,11 +731,22 @@ ListView
                         return
                     }
 
+                    pointer.pauseReading()
+
                     root.pickedPlace = { paragraph: paragraph.index, character: range.start }
                     paragraphText.select(range.start, range.end)
                     root.wordPicked(paragraph.display.substring(range.start, range.end), contextLookup.sentenceAt(paragraph.display, range.start))
                     root.translationWanted()
                 }
+            }
+
+            TapHandler
+            {
+                enabled: !root.autoscrolling
+                acceptedDevices: PointerDevice.Mouse | PointerDevice.Stylus
+                acceptedButtons: Qt.LeftButton
+
+                onDoubleTapped: pointer.doubleTapped = true
             }
 
             ReaderTextHitTest

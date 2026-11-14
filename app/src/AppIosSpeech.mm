@@ -367,7 +367,7 @@ bool AppIosSpeech::CanNarrate() const
 
 void AppIosSpeech::QueueNarration(int Id, const QString& Text, const QString& LanguageCode)
 {
-    if (!Native->Narrate(Id, Text, LanguageCode, Speed))
+    if (!Native->Narrate(Id, Text, LanguageCode, Speed * GetSentenceSpeed()))
     {
         ReportNarrationFailed();
     }

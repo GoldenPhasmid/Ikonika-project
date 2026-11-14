@@ -1079,6 +1079,8 @@ ApplicationWindow
                     opacity: readerScreen.chromeShown
                     pdf: readerScreen.isPdf
                     readAloud: readerScreen.readAloud
+
+                    onDismissed: readerScreen.focusReading()
                 }
 
                 DesktopIconButton

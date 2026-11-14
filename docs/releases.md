@@ -10,7 +10,7 @@ the first two: the store replaces the app there. The asset download is shared by
 | Generator | CPack `INNOSETUP`, compiled by Inno Setup 7 |
 | Compiler | `%LOCALAPPDATA%\Programs\Inno Setup 7\ISCC.exe`, found via `IKONIKA_ISCC` |
 | Output | `build\msvc-release\Ikonika-Setup-<version>.exe` |
-| Size | 39.1 MB compressed, 148.6 MB installed |
+| Size | 44.6 MB compressed |
 | Install root | `{autopf}\Ikonika` → `%LOCALAPPDATA%\Programs\Ikonika` |
 | Architecture | x64 only |
 | Build | `.\tools\build-msvc.ps1 -Release -Package` |
@@ -179,13 +179,11 @@ not a zip, since an EPUB is a zip already.
 
 Each language's books are assets of one release, tagged `books-<lang>` and never replaced, so adding a
 book uploads one file and adds one entry. The catalog itself, `books-<lang>.json`, sits next to
-`catalog.json` at the root of the releases repository. French is published with twelve books: three by
-the Comtesse de Ségur for beginners; Daudet, Leblanc and Leroux for intermediate readers; and
-Maupassant and Mérimée for advanced readers, plus the shared classics below. English is published with twenty: Potter, Williams, Wilde, Baum and Sewell for
+`catalog.json` at the root of the releases repository. French is published with thirty books: Ségur, La Fontaine, Molière and Daudet for beginners; Voltaire, Verne, Sand, Hugo and Leblanc among the intermediate readers; and Balzac, Flaubert, Dumas, Proust and Zola among the advanced ones, plus the shared classics below. English is published with thirty: ten later classics (Austen, Defoe, Dickens, Melville, Shakespeare, Shelley, Stoker, Swift, Verne and Wells) join the twenty below. The first twenty are Potter, Williams, Wilde, Baum and Sewell for
 beginners; Carroll, Burnett, Kipling, Stevenson and Doyle for intermediate readers; and Jane Eyre,
 The Fall of the House of Usher, The Phantom of the Opera, Twelve Years a Slave, The Adventures of
 Tom Sawyer, Wuthering Heights, White Fang, Little Women and The Secret of Chimneys.
-Spanish is published with eleven: two beginner readers by Harrison and Wilkins/Luria, El gato con
+Spanish is published with thirty: nineteen more free books from Gutenberg, among them Platero y yo, Corazón, Don Quijote, La Regenta and Niebla, join the eleven below. The first eleven are two beginner readers by Harrison and Wilkins/Luria, El gato con
 botas in Teodoro Baró's 1883 translation, Ratón Pérez, La Edad de Oro, fables by Iriarte and Samaniego,
 Cuentos y diálogos and Cuentos de la Alhambra. The shelf starts with the beginner readers and moves
 toward the intermediate classics. These older editions retain their historical spelling.
@@ -194,6 +192,7 @@ De Amicis's Cuore and Capuana's fables), fifteen intermediate books from Goldoni
 advanced ones including Manzoni, Boccaccio, Machiavelli, Svevo, Leopardi, Ariosto and Dante. Fourteen editions are
 Wikisource transcriptions that keep their CC BY-SA attribution in the EPUB; the rest are Project Gutenberg
 editions with the Gutenberg text removed. The release is `books-it`.
+German is published with thirty books, from Der Struwwelpeter and Max und Moritz for beginners to Buddenbrooks and Die Traumdeutung for advanced readers. The release is `books-de`.
 
 The shared classics collection starts with six works. Each translation has its own reading level;
 matching a title does not imply matching language difficulty or identical editorial content.
@@ -383,11 +382,7 @@ repository. That directory is not source controlled.
 
 Supertonic is the only desktop voice: one package with no language target, so first-launch setup downloads it for every language. Piper packages were removed from the catalog. Android speaks through the platform's own TTS and downloads no voice. See [docs/voice.md](docs/voice.md) for the performance case.
 
-The catalog still lists the INT8 package, `supertonic-3` version 1, 124 MB. The app in this repository loads only the original full-precision weights, so it cannot use that package. The full package is already uploaded as release `voice-supertonic-3-2`, 370637370 bytes zipped, 398883426 unpacked, sha256 `484b5a20a3a6cbfeba5c9d132cf3cf40c5b381c13620dc8060af7c51920af4f0`. The released 0.8.3 app loads only INT8 file names, and the catalog has no minimum app version, so listing version 2 before the next app release would leave new 0.8.3 installs and voice updates without a voice.
-
-With the next app release, in the same catalog push as the new `app` entry, set `supertonic-3` to version 2 with the numbers above and the url of `voice-supertonic-3-2`.
-
-REMOVE ME AFTER NEXT RELEASE
+The catalog lists the full-precision package, `supertonic-3` version 2, 370 MB zipped, from release `voice-supertonic-3-2`. It replaced the INT8 package of version 1 with the 0.9.0 release. The 0.8.3 app loads only INT8 file names, and the catalog has no minimum app version, so a new voice package has to ship in the same catalog push as the app that loads it.
 
 ## Status
 
@@ -407,6 +402,7 @@ Done:
 
 Outstanding:
 
+- The German dictionary is built but not published: its LLM passes are about 20% done, so it has no definitions. The German book catalog is published and unreachable until the dictionary ships
 - Not every built package is published; see `catalog.json`
 - No code signing, so SmartScreen warns on every download of the installer
 - The Store package has not been submitted, and its start at sign-in has not been watched across a

@@ -17,18 +17,26 @@ The next upload needs a version code above 21.
 
 ## Prepared release
 
-Version `0.8.3`, version code `21`, was built on 2026-11-08 from tag `0.8.3`. The signed arm64
-bundle passed `jarsigner` verification with the Ikonika upload certificate and was uploaded to
-Play Console.
+Version `0.9.0`, version code `22`, was built on 2026-11-14 from tag `0.9.0`. The signed arm64
+bundle passed `jarsigner` verification with the Ikonika upload certificate. It is not uploaded to
+Play Console yet.
 
 Release notes for Google Play (under 500 characters):
 
 ```text
 New Features
-Books are read aloud a sentence at a time, and reading continues in the background.
-First-launch setup is split into language, daily goal and placement steps.
-Selected text in any Android app can be looked up in the dictionary.
-Navigation and action icons match the desktop app.
+Discover quiz over topic decks finds unknown words and meanings.
+Read aloud starts with one press and moves by sentence, with a slow-repeat button.
+Redesigned conjugation tables for every language.
+Fill the gap exercise in Practice.
+Placement test asks the level first and adds core cards.
+
+Content
+All dictionaries rebuilt, and thirty free books in four languages.
+
+Fixes
+Speech recovers when the voice engine stalls.
+Interrupted dictionary downloads no longer corrupt data.
 ```
 
 ## Prerequisites (one-time, not per release)
