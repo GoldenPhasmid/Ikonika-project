@@ -829,6 +829,76 @@ int AppMetrics::GetCoverTileMinimumWidth() const
     return IsMobileLayout() ? 170 : 260;
 }
 
+int AppMetrics::GetBookTileMinimumWidth() const
+{
+    return IsMobileLayout() ? 110 : 170;
+}
+
+qreal AppMetrics::GetBookCoverAspect() const
+{
+    return 1.5;
+}
+
+qreal AppMetrics::GetBookFrameInset() const
+{
+    return 0.065;
+}
+
+qreal AppMetrics::GetBookFramePadding() const
+{
+    return 0.1;
+}
+
+qreal AppMetrics::GetBookTitleScale() const
+{
+    return 0.095;
+}
+
+qreal AppMetrics::GetBookAuthorScale() const
+{
+    return 0.046;
+}
+
+qreal AppMetrics::GetBookOrnamentWidth() const
+{
+    return 0.16;
+}
+
+int AppMetrics::GetBookRingSize() const
+{
+    return 54;
+}
+
+int AppMetrics::GetBookRingStroke() const
+{
+    return 4;
+}
+
+int AppMetrics::GetBookActionSize() const
+{
+    return 30;
+}
+
+int AppMetrics::GetBookOverviewWidth() const
+{
+    return 1104;
+}
+
+int AppMetrics::GetBookOverviewHeight() const
+{
+    return 744;
+}
+
+int AppMetrics::GetBookOverviewCoverWidth() const
+{
+    return 212;
+}
+
+int AppMetrics::GetHoldDuration() const
+{
+    return 900;
+}
+
 qreal AppMetrics::GetReaderTileAspect() const
 {
     return 1.7;

@@ -15,12 +15,14 @@ ColumnLayout
     property int gender: -1
     property string verbGroup: ""
     property string verbGroupLabel: ""
+    property var decks: []
 
     property alias actions: actionRow.data
     property alias status: statusRow.data
 
     signal speakRequested()
     signal webSearchRequested()
+    signal deckOpenRequested(int deckId)
 
     function speak()
     {
@@ -155,6 +157,24 @@ ColumnLayout
 
                 Layout.fillWidth: false
                 spacing: AppMetrics.gapSmall
+            }
+
+            Repeater
+            {
+                model: root.decks
+
+                delegate: DesktopDeckChip
+                {
+                    required property var modelData
+
+                    objectName: "entry_deck_" + modelData.id
+
+                    text: modelData.name
+                    iconName: modelData.icon
+                    tint: modelData.tint
+
+                    onClicked: root.deckOpenRequested(modelData.id)
+                }
             }
 
             DesktopLevelBadge

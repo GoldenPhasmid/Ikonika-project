@@ -25,7 +25,8 @@ enum class AppCloudFailureKind
     Transient,
     Credential,
     Permission,
-    Quota
+    Quota,
+    NewerApp
 };
 
 struct AppCloudFailure

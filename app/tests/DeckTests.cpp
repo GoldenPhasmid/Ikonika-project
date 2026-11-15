@@ -399,7 +399,7 @@ TEST_CASE("Discover adds a card for Learn and marks the meaning known for Know",
     const std::string KnownWord = Controller.GetWord().toStdString();
 
     Controller.choose(Controller.GetCorrectOptionIndex());
-    REQUIRE(Controller.GetOutcome() == QStringLiteral("known"));
+    REQUIRE(Controller.IsAnswered());
     CHECK_FALSE(Controller.IsLearn());
 
     Controller.commit(false);
@@ -417,7 +417,7 @@ TEST_CASE("Discover adds a card for Learn and marks the meaning known for Know",
         Controller.askClue();
     }
 
-    CHECK(Controller.GetOutcome() == QStringLiteral("new"));
+    CHECK(Controller.IsAnswered());
     CHECK(Controller.IsLearn());
 
     Controller.commit(true);

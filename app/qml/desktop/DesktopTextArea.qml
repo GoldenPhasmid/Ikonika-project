@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Layouts
+import QtQuick.Templates as T
 
 ScrollView
 {
@@ -36,6 +37,8 @@ ScrollView
     TextArea
     {
         id: area
+
+        T.ContextMenu.menu: null
 
         color: AppTheme.colourText
         placeholderTextColor: AppTheme.colourMuted

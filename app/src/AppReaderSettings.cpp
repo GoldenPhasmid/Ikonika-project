@@ -16,10 +16,17 @@ namespace
     const QString TextToneKey = QStringLiteral("reader/textTone");
     const QString TextFontKey = QStringLiteral("reader/textFont");
     const QString CropMarginsKey = QStringLiteral("reader/cropMargins");
+    const QString UploadImportedBooksKey = QStringLiteral("reader/uploadImportedBooks");
+#if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
+    constexpr bool DefaultUploadImportedBooks = false;
+#else
+    constexpr bool DefaultUploadImportedBooks = true;
+#endif
     const QString VolumeKeysKey = QStringLiteral("reader/volumeKeysTurnPages");
     const QString HighlightVocabularyKey = QStringLiteral("reader/highlightVocabulary");
     const QString LibrarySortOrderKey = QStringLiteral("reader/librarySortOrder");
     const QString LibrarySortReversedKey = QStringLiteral("reader/librarySortReversed");
+    const QString LibraryGroupKey = QStringLiteral("reader/libraryGroup");
 
     constexpr int DefaultTextSize = 16;
     constexpr int MinimumTextSize = 12;
@@ -33,7 +40,7 @@ namespace
     constexpr int MinimumTextMargin = 0;
     constexpr int MaximumTextMargin = 48;
 
-    constexpr int DefaultPageWidth = 100;
+    constexpr int DefaultPageWidth = 80;
     constexpr int MinimumPageWidth = 50;
     constexpr int MaximumPageWidth = 100;
 
@@ -220,6 +227,16 @@ void AppReaderSettings::SetCropMargins(bool bValue)
     Write(CropMarginsKey, bValue);
 }
 
+bool AppReaderSettings::IsUploadingImportedBooks() const
+{
+    return FTSettings::Get().OpenStore().value(UploadImportedBooksKey, DefaultUploadImportedBooks).toBool();
+}
+
+void AppReaderSettings::SetUploadImportedBooks(bool bValue)
+{
+    Write(UploadImportedBooksKey, bValue);
+}
+
 bool AppReaderSettings::AreVolumeKeysTurningPages() const
 {
     return FTSettings::Get().OpenStore().value(VolumeKeysKey,
@@ -271,3 +288,14 @@ void AppReaderSettings::SetLibrarySortReversed(bool bValue)
 {
     Write(LibrarySortReversedKey, bValue);
 }
+
+QString AppReaderSettings::GetLibraryGroup() const
+{
+    return FTSettings::Get().OpenStore().value(LibraryGroupKey, QStringLiteral("none")).toString();
+}
+
+void AppReaderSettings::SetLibraryGroup(const QString& Value)
+{
+    Write(LibraryGroupKey, Value);
+}
+

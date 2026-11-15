@@ -447,6 +447,11 @@ Rectangle
         anchors.verticalCenter: parent.verticalCenter
         spacing: AppMetrics.gapTight
 
+        DesktopDownloadsButton
+        {
+            objectName: "topbar_downloads"
+        }
+
         DesktopNavItem
         {
             objectName: "nav_settings"

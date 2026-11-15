@@ -162,9 +162,10 @@ Item
         readingList.leaveReadAloud()
 
         const step = readingList.height * 0.9 * (forward ? 1 : -1)
-        const bottom = Math.max(0, readingList.contentHeight - readingList.height)
+        const top = readingList.originY
+        const bottom = Math.max(top, readingList.originY + readingList.contentHeight - readingList.height)
 
-        readingList.contentY = Math.max(0, Math.min(bottom, readingList.contentY + step))
+        readingList.contentY = Math.max(top, Math.min(bottom, readingList.contentY + step))
     }
 
     function toggleChrome()
@@ -433,6 +434,13 @@ Item
             {
                 Qt.callLater(function()
                 {
+                    if (reader.currentPosition <= 0)
+                    {
+                        readingList.positionViewAtBeginning()
+
+                        return
+                    }
+
                     readingList.positionViewAtIndex(reader.currentPosition, ListView.Beginning)
                 })
             }
@@ -1005,6 +1013,18 @@ Item
                             && reader.paragraphModel !== undefined && reader.paragraphModel.styled === true
 
                         model: reader.paragraphModel
+
+                        header: Item
+                        {
+                            width: readingList.width
+                            height: readingList.height / 2
+                        }
+
+                        footer: Item
+                        {
+                            width: readingList.width
+                            height: readingList.height / 2
+                        }
 
                         property var selectedText: null
                         property bool followingReadAloud: true

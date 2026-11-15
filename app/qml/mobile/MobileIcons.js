@@ -94,6 +94,13 @@ var Icons = {
     today_review: { path: "M8 3a1 1 0 0 1 1 -1h6a1 1 0 0 1 1 1v2h-8z M4 5h16v16h-16z M8 11h8 M8 15h8", minX: 0, minY: 0, width: 24, height: 24 },
     turtle: { path: "M3.5 16a7.5 8 0 0 1 15 0z M11 8v8 M6 12.5h10 M7.5 16v3.5 M14.5 16v3.5 M3.5 16l-2 1.5 M22.8 13a1.8 1.8 0 1 1 -3.6 0a1.8 1.8 0 1 1 3.6 0", minX: 0, minY: 0, width: 24, height: 24 },
     text_size: { path: "M2 19L7 6l5 13 M3.9 14.5h6.2 M14 19l4 -9l4 9 M15.5 16h5", minX: 0, minY: 0, width: 24, height: 24 },
+    download: { path: "M12 15V3M7 10l5 5 5-5M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4", minX: 0, minY: 0, width: 24, height: 24 },
+    filter: { path: "M3 6h18M7 12h10M10 18h4", minX: 0, minY: 0, width: 24, height: 24 },
+    folder_plus: { path: "M12 10v6M9 13h6M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2z", minX: 0, minY: 0, width: 24, height: 24 },
+    globe: { path: "M12 2a10 10 0 1 0 0 20a10 10 0 1 0 0-20z M2 12h20 M12 2a14.5 14.5 0 0 0 0 20a14.5 14.5 0 0 0 0-20", minX: 0, minY: 0, width: 24, height: 24 },
+    heart: { path: "M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7z", minX: 0, minY: 0, width: 24, height: 24 },
+    library: { path: "M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20", minX: 0, minY: 0, width: 24, height: 24 },
+    circle_check: { path: "M12 2a10 10 0 1 0 0 20a10 10 0 1 0 0-20z M8.5 12l2.5 2.5 4.5-5", minX: 0, minY: 0, width: 24, height: 24 },
     trash: { path: "M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6", minX: 0, minY: 0, width: 24, height: 24 },
     undo: { path: "M9 14 4 9l5-5 M20 20v-7a4 4 0 0 0-4-4H4", minX: 0, minY: 0, width: 24, height: 24 }
 }

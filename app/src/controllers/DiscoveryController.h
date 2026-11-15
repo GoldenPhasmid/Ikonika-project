@@ -31,7 +31,9 @@ class DiscoveryController : public QObject
     Q_PROPERTY(bool roundOver READ IsRoundOver NOTIFY stateChanged)
     Q_PROPERTY(bool hasActiveSession READ HasActiveSession NOTIFY stateChanged)
     Q_PROPERTY(QString deckName READ GetDeckName NOTIFY stateChanged)
-    Q_PROPERTY(QString promptKind READ GetPromptKind NOTIFY stateChanged)
+    Q_PROPERTY(bool sentencePrompt READ IsSentencePrompt NOTIFY stateChanged)
+    Q_PROPERTY(bool beginnerPrompt READ IsBeginnerPrompt NOTIFY stateChanged)
+    Q_PROPERTY(bool skipsReveal READ IsSkippingReveal NOTIFY stateChanged)
 
     Q_PROPERTY(QString word READ GetWord NOTIFY stateChanged)
     Q_PROPERTY(QString displayWord READ GetDisplayWord NOTIFY stateChanged)
@@ -58,7 +60,6 @@ class DiscoveryController : public QObject
     Q_PROPERTY(bool answered READ IsAnswered NOTIFY stateChanged)
     Q_PROPERTY(bool showsExample READ ShowsExample NOTIFY stateChanged)
     Q_PROPERTY(bool lastClue READ IsLastClue NOTIFY stateChanged)
-    Q_PROPERTY(QString outcome READ GetOutcome NOTIFY stateChanged)
     Q_PROPERTY(bool learn READ IsLearn NOTIFY stateChanged)
     Q_PROPERTY(QVariantMap meaning READ GetMeaning NOTIFY stateChanged)
     Q_PROPERTY(QVariantList translationOptions READ GetTranslationOptions NOTIFY stateChanged)
@@ -115,7 +116,9 @@ public:
     bool IsRoundOver() const;
     bool HasActiveSession() const;
     QString GetDeckName() const;
-    QString GetPromptKind() const;
+    bool IsSentencePrompt() const;
+    bool IsBeginnerPrompt() const;
+    bool IsSkippingReveal() const;
     QString GetWord() const;
     QString GetDisplayWord() const;
     QString GetArticle() const;
@@ -139,7 +142,6 @@ public:
     bool IsAnswered() const;
     bool ShowsExample() const;
     bool IsLastClue() const;
-    QString GetOutcome() const;
     bool IsLearn() const;
     QVariantMap GetMeaning() const;
     QVariantList GetTranslationOptions() const;

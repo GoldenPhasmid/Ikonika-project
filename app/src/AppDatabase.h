@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/FTDatabase.h"
+#include "core/FTBookShelfRepository.h"
 #include "core/FTCardRepository.h"
 #include "core/FTCloudBookRepository.h"
 #include "core/FTReaderRepository.h"
@@ -27,6 +28,8 @@ public:
     virtual FTReaderRepository& GetReaderLibrary() = 0;
 
     virtual FTCloudBookRepository& GetCloudBooks() = 0;
+
+    virtual FTBookShelfRepository& GetBookShelf() = 0;
 
     virtual FTYoutubeRepository& GetYoutubeLibrary() = 0;
 

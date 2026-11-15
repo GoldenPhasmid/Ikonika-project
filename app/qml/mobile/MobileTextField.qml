@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls.Basic
+import QtQuick.Templates as T
 
 TextField
 {
@@ -14,6 +15,10 @@ TextField
 
     placeholderTextColor: AppTheme.colourMuted
     inputMethodHints: Qt.ImhNoPredictiveText
+
+    T.ContextMenu.menu: null
+
+    MobileKeyboardTap { editor: root }
 
     background: Rectangle
     {

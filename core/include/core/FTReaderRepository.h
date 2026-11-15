@@ -17,6 +17,7 @@ struct FTReaderDocumentRow
     std::string Id;
     std::string FilePath;
     std::string Title;
+    std::string Author;
     std::string Format;
     FTTimestamp AddedDate = 0;
     FTTimestamp LastOpenedDate = 0;
@@ -28,7 +29,18 @@ struct FTReaderDocumentRow
     int64_t PositionCount = 0;
     int64_t ReadAloudParagraph = -1;
     int64_t ReadAloudCharacter = 0;
+    bool bMetadataRead = false;
+    bool bTitleEdited = false;
     bool bExists = true;
+};
+
+struct FTReaderDocumentDetails
+{
+    std::string Language;
+    std::string Description;
+    int64_t WordCount = 0;
+    int64_t PageCount = 0;
+    std::vector<FTReaderChapter> Chapters;
 };
 
 /**
@@ -86,6 +98,14 @@ public:
     bool SetFilePath(const std::string& Id, const std::string& FilePath);
 
     bool SetTitle(const std::string& Id, const std::string& Title);
+
+    bool RenameDocument(const std::string& Id, const std::string& Title);
+
+    bool SetDetails(const std::string& Id, const FTReaderDocumentDetails& Details);
+
+    std::optional<FTReaderDocumentDetails> FindDetails(const std::string& Id) const;
+
+    bool SetMetadata(const std::string& Id, const std::string& Author);
 
     std::string GetLastError() const;
 

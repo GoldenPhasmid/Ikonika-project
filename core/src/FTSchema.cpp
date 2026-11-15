@@ -112,6 +112,17 @@ namespace
         ");"
         "CREATE INDEX IF NOT EXISTS IdxReaderDocumentsOpened ON ReaderDocuments (LastOpenedDate);";
 
+    constexpr const char* ReaderDocumentDetailsDefinition =
+        "CREATE TABLE IF NOT EXISTS ReaderDocumentDetails"
+        "("
+        "    DocumentId     TEXT PRIMARY KEY NOT NULL,"
+        "    Language       TEXT NOT NULL DEFAULT '',"
+        "    Description    TEXT NOT NULL DEFAULT '',"
+        "    WordCount      INTEGER NOT NULL DEFAULT 0,"
+        "    PageCount      INTEGER NOT NULL DEFAULT 0,"
+        "    Chapters       TEXT NOT NULL DEFAULT '[]'"
+        ");";
+
     constexpr const char* CloudBooksDefinition =
         "CREATE TABLE IF NOT EXISTS CloudBooks"
         "("
@@ -130,6 +141,45 @@ namespace
         "    LastUpdatedDate INTEGER NOT NULL,"
         "    Deleted         INTEGER NOT NULL DEFAULT 0"
         ");";
+
+    constexpr const char* FavoriteBooksDefinition =
+        "CREATE TABLE IF NOT EXISTS FavoriteBooks"
+        "("
+        "    BookKey         TEXT PRIMARY KEY NOT NULL,"
+        "    Favorite        INTEGER NOT NULL DEFAULT 0,"
+        "    LastUpdatedDate INTEGER NOT NULL"
+        ");";
+
+    constexpr const char* BookCollectionsDefinition =
+        "CREATE TABLE IF NOT EXISTS BookCollections"
+        "("
+        "    Id              TEXT PRIMARY KEY NOT NULL,"
+        "    Name            TEXT NOT NULL,"
+        "    Colour          INTEGER NOT NULL DEFAULT 0,"
+        "    CreatedDate     INTEGER NOT NULL,"
+        "    LastUpdatedDate INTEGER NOT NULL,"
+        "    Deleted         INTEGER NOT NULL DEFAULT 0"
+        ");";
+
+    constexpr const char* BookCollectionMembersDefinition =
+        "CREATE TABLE IF NOT EXISTS BookCollectionMembers"
+        "("
+        "    CollectionId    TEXT NOT NULL,"
+        "    BookKey         TEXT NOT NULL,"
+        "    LastUpdatedDate INTEGER NOT NULL,"
+        "    Deleted         INTEGER NOT NULL DEFAULT 0,"
+        "    PRIMARY KEY (CollectionId, BookKey)"
+        ");";
+
+    constexpr const char* BookCardsDefinition =
+        "CREATE TABLE IF NOT EXISTS BookCards"
+        "("
+        "    CardId          TEXT PRIMARY KEY NOT NULL,"
+        "    BookKey         TEXT NOT NULL,"
+        "    AddedDate       INTEGER NOT NULL,"
+        "    LastUpdatedDate INTEGER NOT NULL"
+        ");"
+        "CREATE INDEX IF NOT EXISTS IdxBookCardsBook ON BookCards (BookKey);";
 
     constexpr const char* JournalDefinition =
         "CREATE TABLE IF NOT EXISTS Journal"
@@ -350,6 +400,16 @@ bool MigrateDeviceSchema(FTDatabase& Target)
             || Target.Execute("ALTER TABLE ReaderDocuments ADD COLUMN ReadAloudParagraph INTEGER NOT NULL DEFAULT -1"))
         && (ColumnExists(Target, "ReaderDocuments", "ReadAloudCharacter")
             || Target.Execute("ALTER TABLE ReaderDocuments ADD COLUMN ReadAloudCharacter INTEGER NOT NULL DEFAULT 0"))
+        && (ColumnExists(Target, "ReaderDocuments", "Author")
+            || Target.Execute("ALTER TABLE ReaderDocuments ADD COLUMN Author TEXT NOT NULL DEFAULT ''"))
+        && (ColumnExists(Target, "ReaderDocuments", "MetadataRead")
+            || Target.Execute("ALTER TABLE ReaderDocuments ADD COLUMN MetadataRead INTEGER NOT NULL DEFAULT 0"))
+        && (ColumnExists(Target, "ReaderDocuments", "CoverOpaque")
+            || (Target.Execute("ALTER TABLE ReaderDocuments ADD COLUMN CoverOpaque INTEGER NOT NULL DEFAULT 1")
+                && Target.Execute("UPDATE ReaderDocuments SET MetadataRead = 0 WHERE lower(FilePath) LIKE '%.pdf'")))
+        && (ColumnExists(Target, "ReaderDocuments", "TitleEdited")
+            || Target.Execute("ALTER TABLE ReaderDocuments ADD COLUMN TitleEdited INTEGER NOT NULL DEFAULT 0"))
+        && Target.Execute(ReaderDocumentDetailsDefinition)
         && Target.Execute(YoutubeVideosDefinition);
 }
 
@@ -845,6 +905,34 @@ bool MigrateSchema(FTDatabase& Target)
         }
 
         Reached = 37;
+    }
+
+    if (Reached < 38)
+    {
+        if ((TableExists(Target, "CloudBooks") && !ColumnExists(Target, "CloudBooks", "Author")
+             && !Target.Execute("ALTER TABLE CloudBooks ADD COLUMN Author TEXT NOT NULL DEFAULT ''"))
+            || !Target.Execute(FavoriteBooksDefinition)
+            || !Target.Execute(BookCollectionsDefinition)
+            || !Target.Execute(BookCollectionMembersDefinition))
+        {
+            Target.Rollback();
+
+            return false;
+        }
+
+        Reached = 38;
+    }
+
+    if (Reached < 39)
+    {
+        if (!Target.Execute(BookCardsDefinition))
+        {
+            Target.Rollback();
+
+            return false;
+        }
+
+        Reached = 39;
     }
 
     if (Reached != CurrentSchemaVersion)

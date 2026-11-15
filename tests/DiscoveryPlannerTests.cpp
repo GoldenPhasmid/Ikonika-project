@@ -165,7 +165,7 @@ namespace
 
     void AnswerWrong(FTDiscoveryPlanner& Planner)
     {
-        while (!Planner.GetCurrentQuestion()->Outcome)
+        while (!Planner.GetCurrentQuestion()->bAnswered)
         {
             const int Index = WrongIndex(*Planner.GetCurrentQuestion());
 
@@ -231,7 +231,7 @@ TEST_CASE("A Discover Word question never offers another meaning of the asked wo
             const FTDiscoveryQuestion& Question = *Planner.GetCurrentQuestion();
 
             if (Planner.GetRows()[static_cast<std::size_t>(Question.RowIndex)].Headword == "pêche"
-                && Question.Prompt == EFTDiscoveryPrompt::Word)
+                && IsDiscoveryWordQuestion(Question))
             {
                 for (const FTDiscoveryOption& Option : Question.Options)
                 {
@@ -259,7 +259,7 @@ TEST_CASE("A Discover Sentence question offers the word's other meanings as trap
         {
             const FTDiscoveryQuestion& Question = *Planner.GetCurrentQuestion();
 
-            if (Question.Prompt == EFTDiscoveryPrompt::Sentence)
+            if (Question.bSentencePrompt)
             {
                 CHECK(Question.ExampleSpanStart >= 0);
 
@@ -278,7 +278,7 @@ TEST_CASE("A Discover Sentence question offers the word's other meanings as trap
     CHECK(bSawTrap);
 }
 
-TEST_CASE("An Almost answer leaves the Discover level estimate unchanged", "[discovery]")
+TEST_CASE("A right Discover answer after a clue defaults to Learn and leaves the level estimate unchanged", "[discovery]")
 {
     const std::vector<FTestWord> Words = MakeDeck();
 
@@ -289,23 +289,23 @@ TEST_CASE("An Almost answer leaves the Discover level estimate unchanged", "[dis
     Planner.AskClue();
     Planner.Choose(CorrectIndex(*Planner.GetCurrentQuestion()));
 
-    REQUIRE(Planner.GetCurrentQuestion()->Outcome == EFTDiscoveryOutcome::Almost);
+    REQUIRE(Planner.GetCurrentQuestion()->bAnswered);
     CHECK(Planner.GetLevelCutoffRank() == Before);
     CHECK(Planner.GetResults().back().bLearn);
 }
 
-TEST_CASE("Show me settles a Discover question as New after the last clue", "[discovery]")
+TEST_CASE("Show me answers a Discover question after the last clue and defaults to Learn", "[discovery]")
 {
     const std::vector<FTestWord> Words = MakeDeck();
 
     FTDiscoveryPlanner Planner = MakePlanner(Words, 1200, 3);
 
-    const int ClueCount = GetDiscoveryClueCount(Planner.GetCurrentQuestion()->Prompt);
+    const int ClueCount = GetDiscoveryClueCount(*Planner.GetCurrentQuestion());
 
     for (int Step = 0; Step < ClueCount; ++Step)
     {
         Planner.AskClue();
-        CHECK(!Planner.GetCurrentQuestion()->Outcome);
+        CHECK(!Planner.GetCurrentQuestion()->bAnswered);
     }
 
     int Struck = 0;
@@ -319,7 +319,8 @@ TEST_CASE("Show me settles a Discover question as New after the last clue", "[di
 
     Planner.AskClue();
 
-    CHECK(Planner.GetCurrentQuestion()->Outcome == EFTDiscoveryOutcome::New);
+    CHECK(Planner.GetCurrentQuestion()->bAnswered);
+    CHECK(Planner.GetResults().back().bLearn);
 }
 
 TEST_CASE("A wrong Discover answer before the sentence shows the sentence", "[discovery]")
@@ -333,7 +334,7 @@ TEST_CASE("A wrong Discover answer before the sentence shows the sentence", "[di
 
         const FTDiscoveryQuestion& Question = *Planner.GetCurrentQuestion();
 
-        if (Question.Prompt == EFTDiscoveryPrompt::Sentence)
+        if (Question.bSentencePrompt)
         {
             continue;
         }
@@ -342,26 +343,27 @@ TEST_CASE("A wrong Discover answer before the sentence shows the sentence", "[di
 
         Planner.Choose(Wrong);
 
-        REQUIRE(!Question.Outcome);
+        REQUIRE(!Question.bAnswered);
         CHECK(ShowsDiscoveryExample(Question));
         CHECK(Question.Struck[static_cast<std::size_t>(Wrong)]);
         CHECK(std::count(Question.Struck.begin(), Question.Struck.end(), true) == 1);
 
         Planner.AskClue();
 
-        REQUIRE(!Question.Outcome);
+        REQUIRE(!Question.bAnswered);
         CHECK(std::count(Question.Struck.begin(), Question.Struck.end(), true) == 2);
 
         Planner.Choose(CorrectIndex(Question));
 
-        CHECK(Question.Outcome == EFTDiscoveryOutcome::Almost);
+        CHECK(Question.bAnswered);
+        CHECK(Planner.GetResults().back().bLearn);
         ++Checked;
     }
 
     CHECK(Checked > 0);
 }
 
-TEST_CASE("A wrong Discover answer with the sentence shown settles as New", "[discovery]")
+TEST_CASE("A wrong Discover answer with the sentence shown answers the question and defaults to Learn", "[discovery]")
 {
     const std::vector<FTestWord> Words = MakeDeck();
 
@@ -370,11 +372,12 @@ TEST_CASE("A wrong Discover answer with the sentence shown settles as New", "[di
         FTDiscoveryPlanner Planner = MakePlanner(Words, 1200, Seed);
 
         const FTDiscoveryQuestion& Question = *Planner.GetCurrentQuestion();
-        const bool bSentence = Question.Prompt == EFTDiscoveryPrompt::Sentence;
+        const bool bSentence = Question.bSentencePrompt;
 
         AnswerWrong(Planner);
 
-        CHECK(Question.Outcome == EFTDiscoveryOutcome::New);
+        CHECK(Question.bAnswered);
+        CHECK(Planner.GetResults().back().bLearn);
         CHECK(Question.ClueStep == (bSentence ? 0 : 1));
         CHECK(std::count(Question.Struck.begin(), Question.Struck.end(), true) == (bSentence ? 0 : 1));
     }
@@ -393,7 +396,7 @@ TEST_CASE("A Beginner question swaps the native word for the French one", "[disc
         const FTDiscoveryQuestion& Question = *Planner.GetCurrentQuestion();
         const std::string& Headword = Planner.GetRows()[static_cast<std::size_t>(Question.RowIndex)].Headword;
 
-        REQUIRE(Question.Prompt == EFTDiscoveryPrompt::Beginner);
+        REQUIRE(IsDiscoveryBeginnerQuestion(Question));
         CHECK(Question.BeginnerSentence == "The " + Headword + " is here.");
         CHECK(Question.BeginnerSpanStart == 4);
         CHECK(Question.BeginnerSpanLength == static_cast<int>(Headword.size()));
@@ -423,13 +426,13 @@ TEST_CASE("A Beginner verb question swaps the whole verb group", "[discovery]")
 
     const FTDiscoveryQuestion& Question = *Planner.GetCurrentQuestion();
 
-    REQUIRE(Question.Prompt == EFTDiscoveryPrompt::Beginner);
+    REQUIRE(IsDiscoveryBeginnerQuestion(Question));
     CHECK(Question.BeginnerSentence == "Our team a gagné the match last night.");
     CHECK(Question.BeginnerSpanStart == 9);
     CHECK(Question.BeginnerSpanLength == 7);
 }
 
-TEST_CASE("A right Beginner answer is Known, defaults to Learn and leaves the estimate unchanged", "[discovery]")
+TEST_CASE("A right Beginner answer defaults to Learn and leaves the estimate unchanged", "[discovery]")
 {
     const std::vector<FTestWord> Words = MakeBeginnerDeck();
 
@@ -437,11 +440,11 @@ TEST_CASE("A right Beginner answer is Known, defaults to Learn and leaves the es
 
     const int Before = Planner.GetLevelCutoffRank();
 
-    REQUIRE(Planner.GetCurrentQuestion()->Prompt == EFTDiscoveryPrompt::Beginner);
+    REQUIRE(IsDiscoveryBeginnerQuestion(*Planner.GetCurrentQuestion()));
 
     Planner.Choose(CorrectIndex(*Planner.GetCurrentQuestion()));
 
-    REQUIRE(Planner.GetCurrentQuestion()->Outcome == EFTDiscoveryOutcome::Known);
+    REQUIRE(Planner.GetCurrentQuestion()->bAnswered);
     CHECK(Planner.GetLevelCutoffRank() == Before);
     CHECK(Planner.GetResults().back().bLearn);
 }
@@ -462,7 +465,8 @@ TEST_CASE("A Beginner question shows the French example when its other words are
     const FTDiscoveryQuestion& Question = *Planner.GetCurrentQuestion();
 
     REQUIRE(Planner.IsBeginner());
-    CHECK(Question.Prompt == EFTDiscoveryPrompt::Sentence);
+    CHECK(Question.bSentencePrompt);
+    CHECK(!IsDiscoveryBeginnerQuestion(Question));
     CHECK(Question.BeginnerSentence.empty());
     CHECK(Question.ExampleSpanStart == 3);
 }
@@ -475,16 +479,17 @@ TEST_CASE("A wrong first Beginner answer strikes two options instead of settling
 
     const FTDiscoveryQuestion& Question = *Planner.GetCurrentQuestion();
 
-    REQUIRE(Question.Prompt == EFTDiscoveryPrompt::Beginner);
+    REQUIRE(IsDiscoveryBeginnerQuestion(Question));
 
     Planner.Choose(WrongIndex(Question));
 
-    REQUIRE(!Question.Outcome);
+    REQUIRE(!Question.bAnswered);
     CHECK(std::count(Question.Struck.begin(), Question.Struck.end(), true) == 2);
 
     Planner.Choose(WrongIndex(Question));
 
-    CHECK(Question.Outcome == EFTDiscoveryOutcome::New);
+    CHECK(Question.bAnswered);
+    CHECK(Planner.GetResults().back().bLearn);
 }
 
 TEST_CASE("A Beginner question asks the translation its sentence uses", "[discovery]")
@@ -505,7 +510,7 @@ TEST_CASE("A Beginner question asks the translation its sentence uses", "[discov
 
     const FTDiscoveryQuestion& Question = *Planner.GetCurrentQuestion();
 
-    REQUIRE(Question.Prompt == EFTDiscoveryPrompt::Beginner);
+    REQUIRE(IsDiscoveryBeginnerQuestion(Question));
     CHECK(Question.BeginnerSentence == "The couloir is dark.");
     CHECK(Question.Options[static_cast<std::size_t>(CorrectIndex(Question))].Text == "hallway");
 
@@ -534,7 +539,7 @@ TEST_CASE("A standard Discover question asks the translation its example uses", 
 
         const FTDiscoveryQuestion& Question = *Planner.GetCurrentQuestion();
 
-        REQUIRE(Question.Prompt != EFTDiscoveryPrompt::Beginner);
+        REQUIRE(!IsDiscoveryBeginnerQuestion(Question));
         CHECK(Question.Options[static_cast<std::size_t>(CorrectIndex(Question))].Text == "hallway");
 
         Planner.Choose(CorrectIndex(Question));
@@ -573,15 +578,15 @@ TEST_CASE("Beginner mode asks every question as a Beginner question", "[discover
 
     FTDiscoveryPlanner Planner = MakePlanner(Words, FTDiscoveryLearner{300, 300}, 9);
 
-    std::vector<EFTDiscoveryPrompt> Prompts;
+    std::vector<bool> BeginnerPrompts;
 
     while (!Planner.IsFinished())
     {
         const FTDiscoveryQuestion& Question = *Planner.GetCurrentQuestion();
 
-        Prompts.push_back(Question.Prompt);
+        BeginnerPrompts.push_back(IsDiscoveryBeginnerQuestion(Question));
 
-        if (Question.Prompt == EFTDiscoveryPrompt::Beginner)
+        if (IsDiscoveryBeginnerQuestion(Question))
         {
             Planner.Choose(CorrectIndex(Question));
         }
@@ -593,11 +598,11 @@ TEST_CASE("Beginner mode asks every question as a Beginner question", "[discover
         Planner.Advance();
     }
 
-    REQUIRE(Prompts.size() == static_cast<std::size_t>(FTDiscoveryPlanner::DefaultQuestionCount));
+    REQUIRE(BeginnerPrompts.size() == static_cast<std::size_t>(FTDiscoveryPlanner::DefaultQuestionCount));
 
-    for (const EFTDiscoveryPrompt Prompt : Prompts)
+    for (const bool bBeginnerPrompt : BeginnerPrompts)
     {
-        CHECK(Prompt == EFTDiscoveryPrompt::Beginner);
+        CHECK(bBeginnerPrompt);
     }
 }
 
@@ -608,7 +613,7 @@ TEST_CASE("A learner who knows no word starts Discover in beginner mode", "[disc
     FTDiscoveryPlanner Planner = MakePlanner(Words, FTDiscoveryLearner{}, 3);
 
     CHECK(Planner.IsBeginner());
-    CHECK(Planner.GetCurrentQuestion()->Prompt == EFTDiscoveryPrompt::Beginner);
+    CHECK(IsDiscoveryBeginnerQuestion(*Planner.GetCurrentQuestion()));
 }
 
 TEST_CASE("A Discover headword held by two decks is asked once per round", "[discovery]")
@@ -644,7 +649,7 @@ TEST_CASE("A Discover headword held by two decks is asked once per round", "[dis
     }
 }
 
-TEST_CASE("Discover results hold one row per question, Known defaulting to Know", "[discovery]")
+TEST_CASE("Discover results hold one row per question, a right answer with no clue defaulting to Know", "[discovery]")
 {
     const std::vector<FTestWord> Words = MakeDeck();
 
@@ -661,7 +666,6 @@ TEST_CASE("Discover results hold one row per question, Known defaulting to Know"
 
     for (const FTDiscoveryResult& Result : Planner.GetResults())
     {
-        CHECK(Result.Outcome == EFTDiscoveryOutcome::Known);
         CHECK(!Result.bLearn);
     }
 }
@@ -684,4 +688,63 @@ TEST_CASE("Discover never asks a word at or below the placement cutoff", "[disco
             Planner.Advance();
         }
     }
+}
+
+TEST_CASE("A right answer with no clue to a French sentence question moves straight on in beginner mode", "[discovery]")
+{
+    const std::vector<FTestWord> Words = MakeBeginnerDeck();
+
+    std::set<std::string> KnownExamples;
+
+    for (const FTestWord& Word : Words)
+    {
+        KnownExamples.insert(Word.Meanings.front().Example);
+    }
+
+    FTDiscoveryPlanner Planner = MakePlanner(Words, FTDiscoveryLearner{300, 300}, 8, {}, KnownExamples);
+
+    const FTDiscoveryQuestion& Question = *Planner.GetCurrentQuestion();
+
+    REQUIRE(Planner.IsBeginner());
+    REQUIRE(Question.bSentencePrompt);
+
+    Planner.Choose(CorrectIndex(Question));
+
+    CHECK(Question.bSkipsReveal);
+    CHECK(Planner.GetResults().back().bLearn);
+}
+
+TEST_CASE("A right answer to a Beginner question always opens the reveal", "[discovery]")
+{
+    const std::vector<FTestWord> Words = MakeBeginnerDeck();
+
+    FTDiscoveryPlanner Planner = MakePlanner(Words, FTDiscoveryLearner{300, 300}, 5);
+
+    const FTDiscoveryQuestion& Question = *Planner.GetCurrentQuestion();
+
+    REQUIRE(IsDiscoveryBeginnerQuestion(Question));
+
+    Planner.Choose(CorrectIndex(Question));
+
+    CHECK(!Question.bSkipsReveal);
+}
+
+TEST_CASE("Only a right answer with no clue moves straight on outside beginner mode", "[discovery]")
+{
+    const std::vector<FTestWord> Words = MakeDeck();
+
+    FTDiscoveryPlanner Clean = MakePlanner(Words, 1200, 3);
+
+    Clean.Choose(CorrectIndex(*Clean.GetCurrentQuestion()));
+
+    CHECK(Clean.GetCurrentQuestion()->bSkipsReveal);
+    CHECK(!Clean.GetResults().back().bLearn);
+
+    FTDiscoveryPlanner Assisted = MakePlanner(Words, 1200, 3);
+
+    Assisted.AskClue();
+    Assisted.Choose(CorrectIndex(*Assisted.GetCurrentQuestion()));
+
+    CHECK(!Assisted.GetCurrentQuestion()->bSkipsReveal);
+    CHECK(Assisted.GetResults().back().bLearn);
 }

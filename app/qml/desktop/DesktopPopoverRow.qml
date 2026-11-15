@@ -15,7 +15,6 @@ ItemDelegate
     property bool toggle: false
     property bool toggledOn: false
     property string trailingText: ""
-    property real progress: -1
 
     Layout.fillWidth: true
     implicitHeight: Math.max(AppMetrics.buttonHeight,
@@ -88,26 +87,6 @@ ItemDelegate
             text: root.trailingText
             font.pixelSize: AppMetrics.fontSmall
             color: AppTheme.colourSubtle
-        }
-
-        RowLayout
-        {
-            visible: root.progress >= 0
-            spacing: AppMetrics.gapSmall
-
-            DesktopProgressBar
-            {
-                Layout.preferredWidth: AppMetrics.rowProgressWidth
-                progress: root.progress
-                fill: AppTheme.colourAccent
-            }
-
-            DesktopLabel
-            {
-                text: qsTr("%1%").arg(Math.round(root.progress * 100))
-                font.pixelSize: AppMetrics.fontSmall
-                color: AppTheme.colourMuted
-            }
         }
 
         DesktopIcon

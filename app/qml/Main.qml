@@ -14,6 +14,8 @@ ApplicationWindow
     visible: false
     title: qsTr("Ikonika")
 
+    property bool startInTray: false
+
     color: AppTheme.colourPanel
 
     font.family: AppMetrics.fontFamily
@@ -862,7 +864,11 @@ ApplicationWindow
         navigationWalk.start()
 
         window.openWelcome()
-        window.show()
+
+        if (!window.startInTray)
+        {
+            window.show()
+        }
 
         const snapshotDirectory = snapshotProbe.environmentVariable("IKONIKA_SNAPSHOT_DIR")
 
@@ -1125,6 +1131,7 @@ ApplicationWindow
                     review: review
                     sentences: sentenceTraining
                     discovery: discovery
+                    books: readerScreen.continueBooks
 
                     onLearnRequested: window.startFromTile("learn", window.startTraining)
                     onReviewRequested: window.startFromTile("review", window.startReview)
@@ -1134,6 +1141,11 @@ ApplicationWindow
                     onDiscoverRequested: window.startFromTile("discover", window.startDiscoveryPick)
                     onWordListRequested: function(source) { window.openWordList(source) }
                     onMessageRequested: function(message) { toast.show(message) }
+                    onBookRequested: function(documentId)
+                    {
+                        window.navigate("reader")
+                        readerScreen.openDocument(documentId)
+                    }
                 }
 
                 Loader
@@ -1227,6 +1239,19 @@ ApplicationWindow
 
                 AppHeartbeat {}
 
+                Connections
+                {
+                    target: vocabularyScreen.vocabulary
+
+                    function onCardAdded(cardId)
+                    {
+                        if (window.screen === "reader")
+                        {
+                            readerScreen.recordAddedCard(cardId)
+                        }
+                    }
+                }
+
                 DesktopReaderScreen
                 {
                     id: readerScreen
@@ -1256,6 +1281,12 @@ ApplicationWindow
                     store: window.store
 
                     onAddWordRequested: function(word, translation, partOfSpeech, meaningGist) { window.addWord(word, translation, partOfSpeech, meaningGist) }
+
+                    onDeckOpenRequested: function(deckId)
+                    {
+                        window.navigate("decks")
+                        decksScreen.openDeck(deckId)
+                    }
 
                     onEditWordRequested: function(cardId, word, translation, gender, partOfSpeech, box)
                     {

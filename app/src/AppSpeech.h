@@ -31,6 +31,7 @@ public:
 
     static constexpr float SlowRateScale = 0.6f;
     static constexpr int MinimumSentenceWords = 4;
+    static constexpr float DefaultSentenceSpeed = 0.85f;
 
     ~AppSpeech() override = default;
 

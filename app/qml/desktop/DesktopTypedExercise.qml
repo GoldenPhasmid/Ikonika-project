@@ -400,6 +400,12 @@ Item
                 Keys.onReturnPressed: root.submitOrAdvance()
                 Keys.onEnterPressed: root.submitOrAdvance()
             },
+            DesktopAccentBar
+            {
+                languageCode: !!root.store && !!root.controller && (root.listening || !root.controller.showsTargetLanguage)
+                    ? root.store.targetLanguageCode : ""
+                field: answerField
+            },
             Item
             {
                 Layout.fillHeight: true

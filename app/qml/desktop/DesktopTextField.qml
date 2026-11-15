@@ -1,9 +1,12 @@
 import QtQuick
 import QtQuick.Controls.Basic
+import QtQuick.Templates as T
 
 TextField
 {
     id: root
+
+    T.ContextMenu.menu: null
 
     property bool large: false
 

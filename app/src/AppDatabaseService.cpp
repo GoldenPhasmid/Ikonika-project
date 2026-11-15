@@ -63,6 +63,11 @@ FTCloudBookRepository& AppDatabaseService::GetCloudBooks()
     return GetWorkspace().GetCloudBooks();
 }
 
+FTBookShelfRepository& AppDatabaseService::GetBookShelf()
+{
+    return GetWorkspace().GetBookShelf();
+}
+
 FTYoutubeRepository& AppDatabaseService::GetYoutubeLibrary()
 {
     return GetWorkspace().GetYoutubeLibrary();

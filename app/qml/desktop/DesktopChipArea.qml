@@ -13,6 +13,11 @@ Flickable
     readonly property real rowLimitHeight: AppMetrics.buttonHeight * AppMetrics.tileRowLimit
         + flow.spacing * (AppMetrics.tileRowLimit - 1)
 
+    function arrange()
+    {
+        flow.arrange()
+    }
+
     function showLastRow()
     {
         contentY = Math.max(0, contentHeight - height)

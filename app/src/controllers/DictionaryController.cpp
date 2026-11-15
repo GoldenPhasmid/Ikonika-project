@@ -405,8 +405,33 @@ namespace
         return Text;
     }
 
+    QString MakeFormQuery(const QString& Form)
+    {
+        const qsizetype SpaceAt = Form.indexOf(QLatin1Char(' '));
+        const qsizetype SlashAt = Form.indexOf(QLatin1Char('/'));
+
+        if (SpaceAt < 0 || SlashAt < 0 || SlashAt > SpaceAt)
+        {
+            return Form;
+        }
+
+        return Form.left(SlashAt) + Form.mid(SpaceAt);
+    }
+
+    void AppendUniqueText(QVariantMap& Row, const QString& Key, const QString& Text)
+    {
+        QStringList Texts = Row.value(Key).toStringList();
+
+        if (!Text.isEmpty() && !Texts.contains(Text))
+        {
+            Texts.append(Text);
+            Row[Key] = Texts;
+        }
+    }
+
     void AppendMatchedForms(QVariantList& MatchedForms, const std::vector<std::string>& CellValues,
-                            const QString& SearchText, int Mood, int CellIndex, const QString& Reading)
+                            const QString& SearchText, int Mood, int CellIndex, const QString& Reading,
+                            const QString& Cue)
     {
         const std::string& TargetLanguage = FTSettings::Get().GetLanguageRules().TargetLanguage;
 
@@ -427,9 +452,32 @@ namespace
 
             Form[0] = Form[0].toUpper();
 
+            const bool bImperative = Mood == ImperativeMood;
+            const QString Group = (bImperative ? QStringLiteral("!") : QString{}) + QString::fromStdString(Value).toLower();
+
+            const auto Existing = std::find_if(MatchedForms.begin(), MatchedForms.end(), [&Group](const QVariant& Candidate)
+            {
+                return Candidate.toMap().value(QStringLiteral("group")).toString() == Group;
+            });
+
+            if (Existing != MatchedForms.end())
+            {
+                QVariantMap Row = Existing->toMap();
+                AppendUniqueText(Row, QStringLiteral("readings"), Reading);
+                AppendUniqueText(Row, QStringLiteral("cues"), Cue);
+                *Existing = Row;
+
+                continue;
+            }
+
             QVariantMap Row;
+            Row[QStringLiteral("group")] = Group;
             Row[QStringLiteral("form")] = Form;
+            Row[QStringLiteral("query")] = MakeFormQuery(Form);
             Row[QStringLiteral("reading")] = Reading;
+            Row[QStringLiteral("imperative")] = bImperative;
+            AppendUniqueText(Row, QStringLiteral("readings"), Reading);
+            AppendUniqueText(Row, QStringLiteral("cues"), Cue);
             MatchedForms.append(Row);
         }
     }
@@ -525,7 +573,8 @@ namespace
 
                     if (bCellMatched && SearchText.compare(QString::fromStdString(Headword), Qt::CaseInsensitive) != 0)
                     {
-                        AppendMatchedForms(MatchedForms, CellValues, SearchText, Mood, CellIndex, Description);
+                        AppendMatchedForms(MatchedForms, CellValues, SearchText, Mood, CellIndex, Description,
+                                           CellIndex < Cues.size() ? Cues[CellIndex] : QString{});
                     }
                 }
 
@@ -794,6 +843,24 @@ namespace
         }
 
         return Result;
+    }
+
+    QStringList BuildDeckNames(const FTDictionaryEntry& Entry)
+    {
+        QStringList Names;
+
+        if (Entry.Id == 0)
+        {
+            return Names;
+        }
+
+        for (const std::string& Name :
+             AppDictionary::Get().GetRepository().ListDeckNamesForReading(Entry.Headword, Entry.PartOfSpeech))
+        {
+            Names.append(QString::fromStdString(Name));
+        }
+
+        return Names;
     }
 
     QVariantMap BuildEntry(const FTDictionaryEntry& Entry, const QString& SearchText)
@@ -1383,6 +1450,18 @@ DictionaryController::DictionaryController(QObject* Parent)
     connect(&AppTranslator::Notifier(), &AppTranslatorNotifier::translated, this,
             [this](const QString& Source, const QString& Text)
             {
+                if (!FormQueue.isEmpty() && Source == FormQueue.front())
+                {
+                    FormTranslations[Source] = TrimSentenceEnding(Text);
+                    FormQueue.removeFirst();
+
+                    emit translationChanged();
+
+                    RequestNextFormTranslation();
+
+                    return;
+                }
+
                 if (Source != TranslationQuery)
                 {
                     return;
@@ -1397,6 +1476,8 @@ DictionaryController::DictionaryController(QObject* Parent)
     connect(&AppTranslator::Notifier(), &AppTranslatorNotifier::modelsChanged, this,
             [this]()
             {
+                RequestNextFormTranslation();
+
                 if ((Results.isEmpty() || !FormTerm.isEmpty()) && MachineTranslation.isEmpty())
                 {
                     RequestTranslation();
@@ -1434,13 +1515,59 @@ void DictionaryController::RequestTranslation()
 
     emit translationChanged();
 
-    AppTranslator::Translate(TranslationQuery);
+    AppTranslator::Translate(TranslationQuery, reinterpret_cast<quintptr>(this));
 }
 
 void DictionaryController::translate(const QString& Text)
 {
     ResetTranslation(Text.trimmed());
     RequestTranslation();
+}
+
+void DictionaryController::RequestFormTranslation(const QString& Form, const QString& Query, const QString& Reading)
+{
+    FormTerm = Form;
+    FormReading = Reading;
+    TranslationQuery = Query;
+
+    emit translationChanged();
+
+    RequestTranslation();
+}
+
+void DictionaryController::translateForms(const QStringList& Queries)
+{
+    if (Queries == FormQueries)
+    {
+        return;
+    }
+
+    FormQueries = Queries;
+    FormQueue = Queries;
+    FormQueue.removeDuplicates();
+    FormQueue.removeAll(QString{});
+    FormTranslations.clear();
+
+    emit translationChanged();
+
+    RequestNextFormTranslation();
+}
+
+void DictionaryController::RequestNextFormTranslation()
+{
+    if (FormQueue.isEmpty() || !AppTranslator::IsEnabled() || !AppTranslator::IsSupportedPair())
+    {
+        return;
+    }
+
+    qCInfo(LogTranslate) << "Translating form" << FormQueue.front();
+
+    AppTranslator::Translate(FormQueue.front(), reinterpret_cast<quintptr>(this));
+}
+
+QVariantMap DictionaryController::GetFormTranslations() const
+{
+    return FormTranslations;
 }
 
 QString DictionaryController::GetMachineTranslation() const
@@ -1605,13 +1732,9 @@ void DictionaryController::search(const QString& Text)
                     {
                         const QVariantMap FirstForm = MatchedForms.front().toMap();
 
-                        Guard->FormTerm = FirstForm.value(QStringLiteral("form")).toString();
-                        Guard->FormReading = FirstForm.value(QStringLiteral("reading")).toString();
-                        Guard->TranslationQuery = Guard->FormTerm;
-
-                        emit Guard->translationChanged();
-
-                        Guard->RequestTranslation();
+                        Guard->RequestFormTranslation(FirstForm.value(QStringLiteral("form")).toString(),
+                                                      FirstForm.value(QStringLiteral("query")).toString(),
+                                                      FirstForm.value(QStringLiteral("reading")).toString());
                     }
 
                     emit Guard->resultsChanged();
@@ -1745,6 +1868,7 @@ void DictionaryController::openEntry(const QString& Headword, const QString& Par
 
             Cards = BuildCardRows(HeadwordCards, Match->PartOfSpeech);
             Entry[QStringLiteral("meanings")] = BuildMeanings(*Match, HeadwordCards);
+            Entry[QStringLiteral("decks")] = BuildDeckNames(*Match);
 
             bInDictionary = Match->Id != 0
                 && QString::fromStdString(Match->Headword).compare(Headword, Qt::CaseInsensitive) == 0;

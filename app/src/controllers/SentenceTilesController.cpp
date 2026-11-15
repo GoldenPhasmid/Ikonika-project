@@ -371,19 +371,39 @@ QVariantList SentenceTilesController::GetPlaced() const
 
 void SentenceTilesController::placeTile(int TileIndex)
 {
+    if (std::find(Placed.begin(), Placed.end(), TileIndex) != Placed.end())
+    {
+        return;
+    }
+
+    insertTile(TileIndex, static_cast<int>(Placed.size()));
+}
+
+void SentenceTilesController::insertTile(int TileIndex, int Position)
+{
     if (!Session.has_value() || bAnswered || Session->IsFinished())
     {
         return;
     }
 
-    const bool bValid = TileIndex >= 0 && TileIndex < static_cast<int>(TileOrder.size());
-
-    if (!bValid || Placed.size() >= AnswerWordCount || std::find(Placed.begin(), Placed.end(), TileIndex) != Placed.end())
+    if (TileIndex < 0 || TileIndex >= static_cast<int>(TileOrder.size()))
     {
         return;
     }
 
-    Placed.push_back(TileIndex);
+    const auto Found = std::find(Placed.begin(), Placed.end(), TileIndex);
+
+    if (Found != Placed.end())
+    {
+        Placed.erase(Found);
+    }
+    else if (Placed.size() >= AnswerWordCount)
+    {
+        return;
+    }
+
+    const int Clamped = std::clamp(Position, 0, static_cast<int>(Placed.size()));
+    Placed.insert(Placed.begin() + Clamped, TileIndex);
 
     emit stateChanged();
 }

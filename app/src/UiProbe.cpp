@@ -261,6 +261,18 @@ void UiProbe::LogSamples(const QString& What, std::vector<qint64>& Samples)
         << "| p95" << QString::number(NinetyFifth, 'f', 1)
         << "| worst" << QString::number(Worst, 'f', 1)
         << "| over 20ms" << LongOnes;
+
+    QStringList Long;
+
+    for (auto Sample = Samples.end() - LongOnes; Sample != Samples.end(); ++Sample)
+    {
+        Long.append(QString::number(ToMilliseconds(*Sample), 'f', 1));
+    }
+
+    if (!Long.isEmpty())
+    {
+        qCInfo(LogApp).noquote() << "PROBE" << FrameLabel << "|" << What << "| long ones" << Long.join(QStringLiteral(", "));
+    }
 }
 
 void UiProbe::wheel(QQuickItem* Item, int AngleDelta, bool bControl)
@@ -496,6 +508,20 @@ void UiProbe::OnSnapshotPoll()
         if (Parts.size() == 3 && Parts[0] == QStringLiteral("size"))
         {
             SnapshotWindow->resize(Parts[1].toInt(), Parts[2].toInt());
+
+            continue;
+        }
+
+        if (Parts.size() == 2 && Parts[0] == QStringLiteral("frames"))
+        {
+            startFrames(SnapshotWindow->contentItem(), Parts[1]);
+
+            continue;
+        }
+
+        if (Parts.size() == 1 && Parts[0] == QStringLiteral("stopframes"))
+        {
+            stopFrames();
 
             continue;
         }

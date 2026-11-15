@@ -40,6 +40,7 @@ public:
 
     Q_INVOKABLE void startSession();
     Q_INVOKABLE void placeTile(int TileIndex);
+    Q_INVOKABLE void insertTile(int TileIndex, int Position);
     Q_INVOKABLE void removeTile(int TileIndex);
     Q_INVOKABLE void submit();
     Q_INVOKABLE void skip();

@@ -25,6 +25,7 @@ Rectangle
     property real swipeStrength: 0
 
     readonly property real secondaryHeight: secondaryArea.height
+    readonly property real primaryHeight: Math.max(0, layout.height * root.primaryShare / 100 - meta.height - layout.spacing * 2)
     readonly property real stretchHeight: layout.height - meta.height - AppMetrics.borderWidth - layout.spacing * 3
                                           - (root.reserveActionsSpace ? AppMetrics.buttonHeightLarge + layout.spacing : 0)
     readonly property real secondaryVisibleHeight: root.keyboardEdge() - AppMetrics.gapMedium - layout.y - secondaryArea.y
@@ -103,12 +104,11 @@ Rectangle
             visible: root.showPrimary
             Layout.fillWidth: true
             Layout.fillHeight: true
-            Layout.preferredHeight: 1
-            Layout.minimumHeight: root.primaryFitsContent ? primaryColumn.implicitHeight : 0
+            Layout.preferredHeight: root.primaryHeight
+            Layout.minimumHeight: primaryColumn.implicitHeight
             Layout.maximumHeight: root.primaryFitsContent
-                                  ? Math.max(primaryColumn.implicitHeight, root.stretchHeight * root.primaryShare / 100)
+                                  ? Math.max(primaryColumn.implicitHeight, root.primaryHeight)
                                   : Number.POSITIVE_INFINITY
-            Layout.verticalStretchFactor: root.primaryShare
 
             ColumnLayout
             {
@@ -132,8 +132,7 @@ Rectangle
 
             Layout.fillWidth: true
             Layout.fillHeight: true
-            Layout.preferredHeight: 1
-            Layout.verticalStretchFactor: root.showPrimary ? 100 - root.primaryShare : 100
+            Layout.preferredHeight: root.showPrimary ? root.stretchHeight - root.primaryHeight : 1
 
             Flickable
             {

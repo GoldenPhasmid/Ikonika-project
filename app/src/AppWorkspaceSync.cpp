@@ -638,6 +638,8 @@ AppWorkspaceSync::FPullOutcome AppWorkspaceSync::MergeDownloadedCopy()
 
         if (Problem->bFromNewerApp)
         {
+            LastFailureKind = AppCloudFailureKind::NewerApp;
+
             return FPullOutcome{};
         }
 

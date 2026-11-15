@@ -1,10 +1,13 @@
 import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Layouts
+import QtQuick.Templates as T
 
 TextField
 {
     id: root
+
+    T.ContextMenu.menu: null
 
     property bool marked: false
     property bool correct: false
@@ -32,6 +35,25 @@ TextField
     }
 
     onTextChanged: if (root.text.length === 0) root.heldMiss = ""
+
+    function typeCharacter(character)
+    {
+        if (root.holdingMiss)
+        {
+            root.heldMiss = ""
+            root.text = character
+            root.forceActiveFocus()
+            return
+        }
+
+        if (root.selectedText.length > 0)
+        {
+            root.remove(root.selectionStart, root.selectionEnd)
+        }
+
+        root.insert(root.cursorPosition, character)
+        root.forceActiveFocus()
+    }
 
     function shake()
     {

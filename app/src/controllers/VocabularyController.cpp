@@ -145,6 +145,8 @@ bool VocabularyController::addCard(const QString& Word, const QString& Translati
 
     Load();
 
+    emit cardAdded(QString::fromStdString(*Added));
+
     return true;
 }
 

@@ -30,20 +30,6 @@ struct FTDiscoveryRow
     bool bAskable = false;
 };
 
-enum class EFTDiscoveryPrompt
-{
-    Word,
-    Sentence,
-    Beginner
-};
-
-enum class EFTDiscoveryOutcome
-{
-    Known,
-    Almost,
-    New
-};
-
 struct FTDiscoveryOption
 {
     std::string Text;
@@ -61,7 +47,7 @@ struct FTDiscoveryQuestion
 
     FTDictionarySense Meaning;
 
-    EFTDiscoveryPrompt Prompt = EFTDiscoveryPrompt::Word;
+    bool bSentencePrompt = false;
 
     std::vector<FTDiscoveryOption> Options;
 
@@ -83,7 +69,9 @@ struct FTDiscoveryQuestion
 
     std::optional<int> Chosen;
 
-    std::optional<EFTDiscoveryOutcome> Outcome;
+    bool bAnswered = false;
+
+    bool bSkipsReveal = false;
 };
 
 struct FTDiscoveryResult
@@ -93,8 +81,6 @@ struct FTDiscoveryResult
     FTDictionarySense Meaning;
 
     std::string Translation;
-
-    EFTDiscoveryOutcome Outcome = EFTDiscoveryOutcome::New;
 
     bool bLearn = true;
 };
@@ -115,7 +101,11 @@ struct FTDiscoveryLearner
     int KnownWordCount = 0;
 };
 
-int GetDiscoveryClueCount(EFTDiscoveryPrompt Prompt);
+bool IsDiscoveryBeginnerQuestion(const FTDiscoveryQuestion& Question);
+
+bool IsDiscoveryWordQuestion(const FTDiscoveryQuestion& Question);
+
+int GetDiscoveryClueCount(const FTDiscoveryQuestion& Question);
 
 bool ShowsDiscoveryExample(const FTDiscoveryQuestion& Question);
 
@@ -168,9 +158,9 @@ private:
 
     std::optional<FTDiscoveryQuestion> PickFreshQuestion(bool bBeginnerPrompt);
 
-    std::optional<FTDiscoveryQuestion> BuildQuestion(int RowIndex, EFTDiscoveryPrompt Prompt);
+    std::optional<FTDiscoveryQuestion> BuildQuestion(int RowIndex, bool bBeginnerPrompt, bool bSentencePrompt);
 
-    EFTDiscoveryPrompt ChoosePrompt(const FTDiscoveryRow& Row);
+    bool AsksSentence(const FTDiscoveryRow& Row) const;
 
     const std::vector<FTDictionarySense>& LoadMeanings(int RowIndex);
 
@@ -182,7 +172,11 @@ private:
 
     bool AddNativeOptions(FTDiscoveryQuestion& Question, const std::vector<FTDictionarySense>& Meanings);
 
-    void Settle(EFTDiscoveryOutcome Outcome);
+    void Measure(double ChanceIfKnown, double ChanceIfUnknown);
+
+    void Settle(bool bLearn);
+
+    void SettleMissed();
 
     std::vector<FTDiscoveryRow> Rows;
 

@@ -6,6 +6,10 @@
 -- columns would quietly stay. The date columns are days, the two sync columns are milliseconds.
 
 DROP TABLE IF EXISTS CloudBooks;
+DROP TABLE IF EXISTS FavoriteBooks;
+DROP TABLE IF EXISTS BookCollections;
+DROP TABLE IF EXISTS BookCollectionMembers;
+DROP TABLE IF EXISTS BookCards;
 DROP TABLE IF EXISTS Erasures;
 DROP TABLE IF EXISTS Journal;
 DROP TABLE IF EXISTS DailyStats;
@@ -227,5 +231,42 @@ CREATE TABLE CloudBooks
     LastScrollY     REAL NOT NULL DEFAULT 0,
     PositionCount   INTEGER NOT NULL DEFAULT 0,
     LastUpdatedDate INTEGER NOT NULL,
+    Deleted         INTEGER NOT NULL DEFAULT 0,
+    Author          TEXT NOT NULL DEFAULT ''
+);
+
+CREATE TABLE FavoriteBooks
+(
+    BookKey         TEXT PRIMARY KEY NOT NULL,
+    Favorite        INTEGER NOT NULL DEFAULT 0,
+    LastUpdatedDate INTEGER NOT NULL
+);
+
+CREATE TABLE BookCollections
+(
+    Id              TEXT PRIMARY KEY NOT NULL,
+    Name            TEXT NOT NULL,
+    Colour          INTEGER NOT NULL DEFAULT 0,
+    CreatedDate     INTEGER NOT NULL,
+    LastUpdatedDate INTEGER NOT NULL,
     Deleted         INTEGER NOT NULL DEFAULT 0
 );
+
+CREATE TABLE BookCollectionMembers
+(
+    CollectionId    TEXT NOT NULL,
+    BookKey         TEXT NOT NULL,
+    LastUpdatedDate INTEGER NOT NULL,
+    Deleted         INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (CollectionId, BookKey)
+);
+
+CREATE TABLE BookCards
+(
+    CardId          TEXT PRIMARY KEY NOT NULL,
+    BookKey         TEXT NOT NULL,
+    AddedDate       INTEGER NOT NULL,
+    LastUpdatedDate INTEGER NOT NULL
+);
+
+CREATE INDEX IdxBookCardsBook ON BookCards (BookKey);

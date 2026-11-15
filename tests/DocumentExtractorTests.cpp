@@ -528,3 +528,138 @@ TEST_CASE("Epub images become their own rows with the path and size of the pictu
     CHECK(Result->Paragraphs[5] == "Fin.");
     CHECK(Result->Images[5].Path.empty());
 }
+
+TEST_CASE("Epub metadata gives the title, the first author and the cover image", "[reader][extractor]")
+{
+    const std::string Path = WriteEpub("ReaderFixtureMetadata.epub",
+        "<?xml version=\"1.0\"?><package version=\"3.0\" xmlns=\"http://www.idpf.org/2007/opf\" "
+        "xmlns:dc=\"http://purl.org/dc/elements/1.1/\">"
+        "<metadata><dc:title>Le Petit Chose</dc:title><dc:creator>Alphonse Daudet</dc:creator>"
+        "<dc:creator>Someone Else</dc:creator></metadata><manifest>"
+        "<item id=\"c1\" href=\"chapter1.xhtml\" media-type=\"application/xhtml+xml\"/>"
+        "<item id=\"art\" href=\"images/front.jpg\" media-type=\"image/jpeg\" properties=\"cover-image\"/>"
+        "</manifest><spine><itemref idref=\"c1\"/></spine></package>",
+        { { "OEBPS/chapter1.xhtml", "<html><body><p>Texte.</p></body></html>" },
+          { "OEBPS/images/front.jpg", "JPEGDATA" } });
+
+    REQUIRE_FALSE(Path.empty());
+
+    const std::optional<FTBookMetadata> Result = ReadBookMetadata(Path);
+
+    REQUIRE(Result.has_value());
+    CHECK(Result->Title == "Le Petit Chose");
+    CHECK(Result->Author == "Alphonse Daudet");
+    CHECK(Result->CoverBytes == "JPEGDATA");
+    CHECK(Result->CoverExtension == "jpg");
+}
+
+TEST_CASE("Epub 2 names its cover through a meta element", "[reader][extractor]")
+{
+    const std::string Path = WriteEpub("ReaderFixtureMetaCover.epub",
+        "<?xml version=\"1.0\"?><package version=\"2.0\" xmlns=\"http://www.idpf.org/2007/opf\">"
+        "<metadata><meta name=\"cover\" content=\"pic\"/></metadata><manifest>"
+        "<item id=\"c1\" href=\"chapter1.xhtml\" media-type=\"application/xhtml+xml\"/>"
+        "<item id=\"pic\" href=\"art.png\" media-type=\"image/png\"/>"
+        "</manifest><spine><itemref idref=\"c1\"/></spine></package>",
+        { { "OEBPS/chapter1.xhtml", "<html><body><p>Texte.</p></body></html>" },
+          { "OEBPS/art.png", "PNGDATA" } });
+
+    REQUIRE_FALSE(Path.empty());
+
+    const std::optional<FTBookMetadata> Result = ReadBookMetadata(Path);
+
+    REQUIRE(Result.has_value());
+    CHECK(Result->Author.empty());
+    CHECK(Result->CoverBytes == "PNGDATA");
+    CHECK(Result->CoverExtension == "png");
+}
+
+TEST_CASE("An epub without a cover gives no cover bytes", "[reader][extractor]")
+{
+    const std::string Path = WriteEpub("ReaderFixtureNoCover.epub",
+        "<?xml version=\"1.0\"?><package version=\"2.0\" xmlns=\"http://www.idpf.org/2007/opf\">"
+        "<metadata/><manifest>"
+        "<item id=\"c1\" href=\"chapter1.xhtml\" media-type=\"application/xhtml+xml\"/>"
+        "</manifest><spine><itemref idref=\"c1\"/></spine></package>",
+        { { "OEBPS/chapter1.xhtml", "<html><body><p>Texte.</p></body></html>" } });
+
+    REQUIRE_FALSE(Path.empty());
+
+    const std::optional<FTBookMetadata> Result = ReadBookMetadata(Path);
+
+    REQUIRE(Result.has_value());
+    CHECK(Result->CoverBytes.empty());
+}
+
+TEST_CASE("Fb2 metadata joins the first author's names and decodes the cover", "[reader][extractor]")
+{
+    const std::string Path = WriteFile("ReaderFixtureMetadata.fb2",
+        "<?xml version=\"1.0\"?>\n"
+        "<FictionBook xmlns=\"http://www.gribuser.ru/xml/fictionbook/2.0\" xmlns:l=\"http://www.w3.org/1999/xlink\">"
+        "<description><title-info>"
+        "<author><first-name>Jules</first-name><last-name>Verne</last-name></author>"
+        "<author><first-name>Other</first-name></author>"
+        "<book-title>Le Tour du monde</book-title>"
+        "<coverpage><image l:href=\"#cover.jpg\"/></coverpage>"
+        "</title-info></description>"
+        "<body><section><p>Texte.</p></section></body>"
+        "<binary id=\"cover.jpg\" content-type=\"image/jpeg\">QUJDRA==</binary></FictionBook>");
+
+    REQUIRE_FALSE(Path.empty());
+
+    const std::optional<FTBookMetadata> Result = ReadBookMetadata(Path);
+
+    REQUIRE(Result.has_value());
+    CHECK(Result->Title == "Le Tour du monde");
+    CHECK(Result->Author == "Jules Verne");
+    CHECK(Result->CoverBytes == "ABCD");
+    CHECK(Result->CoverExtension == "jpg");
+}
+
+TEST_CASE("A text file has no metadata to read", "[reader][extractor]")
+{
+    const std::string Path = WriteFile("ReaderFixtureMetadata.txt", "Texte.");
+
+    REQUIRE_FALSE(Path.empty());
+    CHECK_FALSE(ReadBookMetadata(Path).has_value());
+}
+
+TEST_CASE("Epub metadata gives the language and the description as plain text", "[reader][extractor]")
+{
+    const std::string Path = WriteEpub("ReaderFixtureDescription.epub",
+        "<?xml version=\"1.0\"?><package version=\"3.0\" xmlns=\"http://www.idpf.org/2007/opf\" "
+        "xmlns:dc=\"http://purl.org/dc/elements/1.1/\">"
+        "<metadata><dc:title>Livre</dc:title><dc:language>fr</dc:language>"
+        "<dc:description>&lt;p&gt;Une chambre &lt;i&gt;ferm\xC3\xA9""e&lt;/i&gt;.&lt;/p&gt;&lt;p&gt;Rouletabille &amp;amp; Sainclair.&lt;/p&gt;"
+        "</dc:description></metadata><manifest>"
+        "<item id=\"c1\" href=\"chapter1.xhtml\" media-type=\"application/xhtml+xml\"/>"
+        "</manifest><spine><itemref idref=\"c1\"/></spine></package>",
+        { { "OEBPS/chapter1.xhtml", "<html><body><p>Texte.</p></body></html>" } });
+
+    REQUIRE_FALSE(Path.empty());
+
+    const std::optional<FTBookMetadata> Result = ReadBookMetadata(Path);
+
+    REQUIRE(Result.has_value());
+    CHECK(Result->Language == "fr");
+    CHECK(Result->Description == "Une chambre ferm\xC3\xA9""e.\n\nRouletabille & Sainclair.");
+}
+
+TEST_CASE("Fb2 metadata gives the language and the annotation paragraphs", "[reader][extractor]")
+{
+    const std::string Path = WriteFile("ReaderFixtureAnnotation.fb2",
+        "<?xml version=\"1.0\"?>\n"
+        "<FictionBook xmlns=\"http://www.gribuser.ru/xml/fictionbook/2.0\">"
+        "<description><title-info><book-title>Livre</book-title>"
+        "<annotation><p>Premier <emphasis>paragraphe</emphasis>.</p><p>Second.</p></annotation>"
+        "<lang>fr</lang></title-info></description>"
+        "<body><section><p>Texte.</p></section></body></FictionBook>");
+
+    REQUIRE_FALSE(Path.empty());
+
+    const std::optional<FTBookMetadata> Result = ReadBookMetadata(Path);
+
+    REQUIRE(Result.has_value());
+    CHECK(Result->Language == "fr");
+    CHECK(Result->Description == "Premier paragraphe.\n\nSecond.");
+}

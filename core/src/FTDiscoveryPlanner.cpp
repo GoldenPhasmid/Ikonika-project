@@ -22,10 +22,10 @@ namespace
     constexpr double TargetChance = 0.5;
     constexpr double OtherDeckPenalty = 1.0;
 
-    constexpr double KnownIfKnown = 0.97;
-    constexpr double KnownIfUnknown = 0.25;
-    constexpr double NewIfKnown = 0.03;
-    constexpr double NewIfUnknown = 0.40;
+    constexpr double RightIfKnown = 0.97;
+    constexpr double RightIfUnknown = 0.25;
+    constexpr double MissedIfKnown = 0.03;
+    constexpr double MissedIfUnknown = 0.40;
 
     constexpr int ShortStemLength = 5;
     constexpr int MinimumStemLength = 3;
@@ -425,21 +425,29 @@ namespace
     }
 }
 
-int GetDiscoveryClueCount(EFTDiscoveryPrompt Prompt)
+bool IsDiscoveryBeginnerQuestion(const FTDiscoveryQuestion& Question)
 {
-    return Prompt == EFTDiscoveryPrompt::Sentence || Prompt == EFTDiscoveryPrompt::Beginner ? 1 : 2;
+    return !Question.BeginnerSentence.empty();
+}
+
+bool IsDiscoveryWordQuestion(const FTDiscoveryQuestion& Question)
+{
+    return !Question.bSentencePrompt && !IsDiscoveryBeginnerQuestion(Question);
+}
+
+int GetDiscoveryClueCount(const FTDiscoveryQuestion& Question)
+{
+    return IsDiscoveryWordQuestion(Question) ? 2 : 1;
 }
 
 bool ShowsDiscoveryExample(const FTDiscoveryQuestion& Question)
 {
-    return Question.Prompt != EFTDiscoveryPrompt::Sentence && Question.Prompt != EFTDiscoveryPrompt::Beginner
-        && Question.ClueStep >= 1;
+    return IsDiscoveryWordQuestion(Question) && Question.ClueStep >= 1;
 }
 
 bool ShowsDiscoverySentence(const FTDiscoveryQuestion& Question)
 {
-    return Question.Prompt == EFTDiscoveryPrompt::Sentence || Question.Prompt == EFTDiscoveryPrompt::Beginner
-        || ShowsDiscoveryExample(Question);
+    return !IsDiscoveryWordQuestion(Question) || ShowsDiscoveryExample(Question);
 }
 
 std::string CleanDiscoveryTranslation(const std::string& Text)
@@ -577,7 +585,7 @@ void FTDiscoveryPlanner::SetTranslation(int ResultIndex, const std::string& Tran
 
 int FTDiscoveryPlanner::GetCurrentResultIndex() const
 {
-    if (!Current || !Current->Outcome)
+    if (!Current || !Current->bAnswered)
     {
         return -1;
     }
@@ -587,7 +595,7 @@ int FTDiscoveryPlanner::GetCurrentResultIndex() const
 
 void FTDiscoveryPlanner::Choose(int OptionIndex)
 {
-    if (!Current || Current->Outcome || OptionIndex < 0 || OptionIndex >= static_cast<int>(Current->Options.size())
+    if (!Current || Current->bAnswered || OptionIndex < 0 || OptionIndex >= static_cast<int>(Current->Options.size())
         || Current->Struck[static_cast<std::size_t>(OptionIndex)])
     {
         return;
@@ -597,13 +605,13 @@ void FTDiscoveryPlanner::Choose(int OptionIndex)
 
     if (!Current->Options[static_cast<std::size_t>(OptionIndex)].bCorrect)
     {
-        const bool bLastChance = Current->Prompt == EFTDiscoveryPrompt::Beginner
-            ? Current->ClueStep >= GetDiscoveryClueCount(Current->Prompt)
+        const bool bLastChance = IsDiscoveryBeginnerQuestion(*Current)
+            ? Current->ClueStep >= GetDiscoveryClueCount(*Current)
             : ShowsDiscoverySentence(*Current);
 
         if (bLastChance)
         {
-            Settle(EFTDiscoveryOutcome::New);
+            SettleMissed();
 
             return;
         }
@@ -615,21 +623,32 @@ void FTDiscoveryPlanner::Choose(int OptionIndex)
         return;
     }
 
-    Settle(Current->ClueStep > 0 ? EFTDiscoveryOutcome::Almost : EFTDiscoveryOutcome::Known);
+    if (Current->ClueStep > 0)
+    {
+        Settle(true);
+
+        return;
+    }
+
+    Measure(RightIfKnown, RightIfUnknown);
+
+    Current->bSkipsReveal = !IsDiscoveryBeginnerQuestion(*Current);
+
+    Settle(false);
 }
 
 void FTDiscoveryPlanner::AskClue()
 {
-    if (!Current || Current->Outcome)
+    if (!Current || Current->bAnswered)
     {
         return;
     }
 
-    const int ClueCount = GetDiscoveryClueCount(Current->Prompt);
+    const int ClueCount = GetDiscoveryClueCount(*Current);
 
     if (Current->ClueStep >= ClueCount)
     {
-        Settle(EFTDiscoveryOutcome::New);
+        SettleMissed();
 
         return;
     }
@@ -664,7 +683,7 @@ void FTDiscoveryPlanner::AskClue()
 
 void FTDiscoveryPlanner::Advance()
 {
-    if (Current && !Current->Outcome)
+    if (Current && !Current->bAnswered)
     {
         return;
     }
@@ -687,28 +706,31 @@ void FTDiscoveryPlanner::Advance()
     ++AskedCount;
 }
 
-void FTDiscoveryPlanner::Settle(EFTDiscoveryOutcome Outcome)
+void FTDiscoveryPlanner::Measure(double ChanceIfKnown, double ChanceIfUnknown)
 {
-    Current->Outcome = Outcome;
-
-    const int Rank = Rows[static_cast<std::size_t>(Current->RowIndex)].TeachingRank;
-    const bool bMeasures = Current->Prompt != EFTDiscoveryPrompt::Beginner;
-
-    if (bMeasures && Outcome == EFTDiscoveryOutcome::Known)
+    if (IsDiscoveryBeginnerQuestion(*Current))
     {
-        Belief.Update(Rank, KnownIfKnown, KnownIfUnknown);
+        return;
     }
-    else if (bMeasures && Outcome == EFTDiscoveryOutcome::New)
-    {
-        Belief.Update(Rank, NewIfKnown, NewIfUnknown);
-    }
+
+    Belief.Update(Rows[static_cast<std::size_t>(Current->RowIndex)].TeachingRank, ChanceIfKnown, ChanceIfUnknown);
+}
+
+void FTDiscoveryPlanner::SettleMissed()
+{
+    Measure(MissedIfKnown, MissedIfUnknown);
+    Settle(true);
+}
+
+void FTDiscoveryPlanner::Settle(bool bLearn)
+{
+    Current->bAnswered = true;
 
     FTDiscoveryResult Result;
     Result.RowIndex = Current->RowIndex;
     Result.Meaning = Current->Meaning;
     Result.Translation = Current->Translation;
-    Result.Outcome = Outcome;
-    Result.bLearn = Outcome != EFTDiscoveryOutcome::Known || bBeginner;
+    Result.bLearn = bLearn || bBeginner;
 
     Results.push_back(std::move(Result));
 }
@@ -764,7 +786,7 @@ std::optional<FTDiscoveryQuestion> FTDiscoveryPlanner::PickFreshQuestion(bool bB
         const FTDiscoveryRow& Row = Rows[static_cast<std::size_t>(RowIndex)];
 
         std::optional<FTDiscoveryQuestion> Question =
-            BuildQuestion(RowIndex, bBeginnerPrompt ? EFTDiscoveryPrompt::Beginner : ChoosePrompt(Row));
+            BuildQuestion(RowIndex, bBeginnerPrompt, !bBeginnerPrompt && AsksSentence(Row));
 
         if (!Question)
         {
@@ -779,9 +801,9 @@ std::optional<FTDiscoveryQuestion> FTDiscoveryPlanner::PickFreshQuestion(bool bB
     }
 }
 
-EFTDiscoveryPrompt FTDiscoveryPlanner::ChoosePrompt(const FTDiscoveryRow& Row)
+bool FTDiscoveryPlanner::AsksSentence(const FTDiscoveryRow& Row) const
 {
-    return bBeginner || AsksInSentence(Row.PartOfSpeech) ? EFTDiscoveryPrompt::Sentence : EFTDiscoveryPrompt::Word;
+    return bBeginner || AsksInSentence(Row.PartOfSpeech);
 }
 
 const std::vector<FTDictionarySense>& FTDiscoveryPlanner::LoadMeanings(int RowIndex)
@@ -885,7 +907,7 @@ std::vector<int> FTDiscoveryPlanner::FindNeighbours(int RowIndex) const
     return Result;
 }
 
-std::optional<FTDiscoveryQuestion> FTDiscoveryPlanner::BuildQuestion(int RowIndex, EFTDiscoveryPrompt Prompt)
+std::optional<FTDiscoveryQuestion> FTDiscoveryPlanner::BuildQuestion(int RowIndex, bool bBeginnerPrompt, bool bSentencePrompt)
 {
     const FTDiscoveryRow& Row = Rows[static_cast<std::size_t>(RowIndex)];
     const std::vector<FTDictionarySense> Meanings = LoadMeanings(RowIndex);
@@ -900,7 +922,7 @@ std::optional<FTDiscoveryQuestion> FTDiscoveryPlanner::BuildQuestion(int RowInde
     FTDiscoveryQuestion Question;
     Question.RowIndex = RowIndex;
     Question.Meaning = *Asked;
-    Question.Prompt = Prompt;
+    Question.bSentencePrompt = bSentencePrompt;
 
     const auto Native = FindNativeSpan(Asked->ExampleTranslation, *Asked, Row.PartOfSpeech == "verb");
     Question.Translation = Native ? Native->Translation : CleanDiscoveryTranslation(Asked->Translations.front().Text);
@@ -911,18 +933,19 @@ std::optional<FTDiscoveryQuestion> FTDiscoveryPlanner::BuildQuestion(int RowInde
         Question.ExampleSpanLength = Span->second;
     }
 
-    if (Prompt == EFTDiscoveryPrompt::Beginner && Question.ExampleSpanStart >= 0 && Sources.IsKnownExample
+    if (bBeginnerPrompt && Question.ExampleSpanStart >= 0 && Sources.IsKnownExample
         && Sources.IsKnownExample(Row, Asked->Example))
     {
-        Question.Prompt = EFTDiscoveryPrompt::Sentence;
+        bBeginnerPrompt = false;
+        Question.bSentencePrompt = true;
     }
 
-    if (Question.Prompt == EFTDiscoveryPrompt::Beginner && !AddBeginnerSentence(Question))
+    if (bBeginnerPrompt && !AddBeginnerSentence(Question))
     {
         return std::nullopt;
     }
 
-    if (Prompt == EFTDiscoveryPrompt::Sentence && Question.ExampleSpanStart < 0)
+    if (Question.bSentencePrompt && Question.ExampleSpanStart < 0)
     {
         return std::nullopt;
     }
@@ -960,7 +983,7 @@ bool FTDiscoveryPlanner::AddNativeOptions(FTDiscoveryQuestion& Question, const s
         EntryTranslations.insert(Translations.begin(), Translations.end());
     }
 
-    if (Question.Prompt == EFTDiscoveryPrompt::Sentence)
+    if (Question.bSentencePrompt)
     {
         int Added = 0;
 

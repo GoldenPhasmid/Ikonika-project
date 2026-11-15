@@ -110,6 +110,7 @@
 namespace
 {
     const QHash<QString, QString> PreferredRegions{
+        {QStringLiteral("de"), QStringLiteral("de-DE")},
         {QStringLiteral("en"), QStringLiteral("en-GB")},
         {QStringLiteral("es"), QStringLiteral("es-ES")},
         {QStringLiteral("fr"), QStringLiteral("fr-FR")},
@@ -145,9 +146,30 @@ namespace
         qCInfo(LogSpeech) << "Audio session set to playback of spoken audio";
     }
 
+    bool IsCharacterVoice(AVSpeechSynthesisVoice* Voice)
+    {
+        const QString Identifier = QString::fromNSString(Voice.identifier);
+
+        if (Identifier.contains(QLatin1String(".eloquence."))
+            || Identifier.startsWith(QLatin1String("com.apple.speech.synthesis.voice.")))
+        {
+            return true;
+        }
+
+        if (@available(iOS 17.0, *))
+        {
+            return (Voice.voiceTraits & (AVSpeechSynthesisVoiceTraitIsNoveltyVoice
+                                         | AVSpeechSynthesisVoiceTraitIsPersonalVoice)) != 0;
+        }
+
+        return false;
+    }
+
     QString FindVoiceIdentifier(const QString& LanguageCode)
     {
         const QString Preferred = PreferredRegions.value(LanguageCode);
+        AVSpeechSynthesisVoice* SystemDefault =
+            [AVSpeechSynthesisVoice voiceWithLanguage:(Preferred.isEmpty() ? LanguageCode : Preferred).toNSString()];
         AVSpeechSynthesisVoice* Best = nil;
         int BestScore = -1;
 
@@ -160,13 +182,25 @@ namespace
                 continue;
             }
 
-            const int Score = static_cast<int>(Voice.quality) * 10 + (Language == Preferred ? 5 : 0);
+            if (IsCharacterVoice(Voice))
+            {
+                continue;
+            }
+
+            const bool bSystemDefault = SystemDefault != nil && [Voice.identifier isEqualToString:SystemDefault.identifier];
+            const int Score = static_cast<int>(Voice.quality) * 10 + (Language == Preferred ? 5 : 0)
+                + (bSystemDefault ? 2 : 0);
 
             if (Score > BestScore)
             {
                 Best = Voice;
                 BestScore = Score;
             }
+        }
+
+        if (Best == nil)
+        {
+            Best = SystemDefault;
         }
 
         if (Best == nil)

@@ -41,7 +41,7 @@ namespace AppTranslator
     
     bool IsBusy();
     
-    void Translate(const QString& Text);
+    void Translate(const QString& Text, quintptr Owner);
 
     void Reset();
 

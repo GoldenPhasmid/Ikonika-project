@@ -216,3 +216,50 @@ TEST_CASE("Removing every document empties the library", "[reader][repository]")
 
     CHECK(Test.Repository->ListDocuments().empty());
 }
+
+TEST_CASE("A renamed document keeps its title when the file is added again", "[reader][repository]")
+{
+    Fixture Test;
+    QTemporaryDir Dir;
+
+    const std::string Path = MakeExistingFile(Dir, "book.txt");
+    const std::optional<std::string> Id = Test.Repository->AddDocument(Path, "File Title", "TXT");
+    REQUIRE(Id.has_value());
+
+    REQUIRE(Test.Repository->RenameDocument(*Id, "My Title"));
+    REQUIRE(Test.Repository->AddDocument(Path, "File Title", "TXT") == Id);
+
+    const std::optional<FTReaderDocumentRow> Row = Test.Repository->FindDocument(*Id);
+    REQUIRE(Row.has_value());
+    CHECK(Row->Title == "My Title");
+    CHECK(Row->bTitleEdited);
+    CHECK_FALSE(Test.Repository->RenameDocument(*Id, ""));
+}
+
+TEST_CASE("A document keeps the details read from its file", "[reader][repository]")
+{
+    Fixture Test;
+    QTemporaryDir Dir;
+
+    const std::optional<std::string> Id = Test.Repository->AddDocument(MakeExistingFile(Dir, "book.epub"), "Book", "EPUB");
+    REQUIRE(Id.has_value());
+    CHECK_FALSE(Test.Repository->FindDetails(*Id).has_value());
+
+    FTReaderDocumentDetails Details;
+    Details.Language = "fr";
+    Details.Description = "Une chambre fermée.";
+    Details.WordCount = 62000;
+    Details.Chapters = {{"Chapitre premier", 4, 1}, {"Partie", 90, 2}};
+    REQUIRE(Test.Repository->SetDetails(*Id, Details));
+
+    const std::optional<FTReaderDocumentDetails> Read = Test.Repository->FindDetails(*Id);
+    REQUIRE(Read.has_value());
+    CHECK(Read->Language == "fr");
+    CHECK(Read->Description == "Une chambre fermée.");
+    CHECK(Read->WordCount == 62000);
+    CHECK(Read->PageCount == 0);
+    REQUIRE(Read->Chapters.size() == 2);
+    CHECK(Read->Chapters[0].Title == "Chapitre premier");
+    CHECK(Read->Chapters[1].Paragraph == 90);
+    CHECK(Read->Chapters[1].Level == 2);
+}

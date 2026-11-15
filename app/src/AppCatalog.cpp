@@ -732,6 +732,16 @@ QString AppCatalog::GetPublishedVersion() const
     return QString::fromStdString(Catalog->App->Version);
 }
 
+qint64 AppCatalog::GetPublishedBytes() const
+{
+    if (!Catalog || !Catalog->App.has_value())
+    {
+        return 0;
+    }
+
+    return Catalog->App->Bytes;
+}
+
 void AppCatalog::Fail(const QString& Message)
 {
     qCWarning(LogUpdate) << "Catalog:" << Message;

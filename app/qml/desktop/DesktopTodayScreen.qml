@@ -6,9 +6,6 @@ Item
 {
     id: root
 
-    readonly property bool hasUpdates: (AppCatalog.updateAvailable && !AppUpdater.storePackage && !AppCatalog.appUpdateDismissed)
-        || AppCatalog.packageUpdates.some(Update => !Update.dismissed)
-
     required property var store
     property var training: null
     property var review: null
@@ -23,8 +20,10 @@ Item
     signal discoverRequested()
     signal wordListRequested(string source)
     signal messageRequested(string message)
+    signal bookRequested(string documentId)
 
     property bool hasLearnSession: false
+    property var books: []
     readonly property bool hasReviewSession: root.review ? root.review.hasActiveSession : false
     readonly property bool hasDiscoverSession: root.discovery ? root.discovery.hasActiveSession : false
 
@@ -49,7 +48,7 @@ Item
     readonly property int ringDone: root.hasLearnGoal ? root.doneToday : daily.reviewedToday
     readonly property int ringGoal: root.hasLearnGoal ? root.dailyGoal : root.reviewTotal
 
-    readonly property var comingDays: daily.reviewTimeline.filter(Day => Day.daysFromToday > 0)
+    readonly property var comingDays: daily.reviewTimeline.filter(Day => Day.daysFromToday > 0).slice(0, 4)
 
     readonly property int vocabularyTotal: daily.ladder.reduce((Sum, Entry) => Sum + Entry.count, 0)
 
@@ -685,10 +684,36 @@ Item
                         {
                             model: 2
 
-                            delegate: DesktopDashedBox
+                            delegate: Item
                             {
+                                id: bookSlot
+
+                                required property int index
+
+                                readonly property var book: bookSlot.index < root.books.length ? root.books[bookSlot.index] : null
+
                                 Layout.preferredWidth: board.bookWidth
                                 Layout.preferredHeight: board.bookWidth / AppMetrics.todayBookAspect
+
+                                DesktopDashedBox
+                                {
+                                    anchors.fill: parent
+                                    visible: bookSlot.book === null
+                                }
+
+                                DesktopContinueBook
+                                {
+                                    objectName: "today_book_" + bookSlot.index
+
+                                    anchors.fill: parent
+                                    visible: bookSlot.book !== null
+                                    text: bookSlot.book ? bookSlot.book.title : ""
+                                    author: bookSlot.book ? bookSlot.book.author || "" : ""
+                                    coverSource: bookSlot.book ? bookSlot.book.cover || "" : ""
+                                    progress: bookSlot.book ? bookSlot.book.progress : 0
+
+                                    onClicked: root.bookRequested(bookSlot.book.id)
+                                }
                             }
                         }
                     }
@@ -701,65 +726,13 @@ Item
     {
         id: notices
 
-        visible: root.hasUpdates || AppSyncController.needsReconnect
+        visible: AppSyncController.needsReconnect
 
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.bottom: parent.bottom
         anchors.bottomMargin: AppMetrics.gapSmall
         spacing: AppMetrics.gapSmall
-
-        Flickable
-        {
-            id: updates
-
-            visible: root.hasUpdates
-            Layout.fillWidth: true
-            Layout.preferredHeight: updateRow.implicitHeight
-            Layout.leftMargin: AppMetrics.gapSmall
-            contentWidth: updateRow.implicitWidth
-            contentHeight: height
-            clip: true
-            flickableDirection: Flickable.HorizontalFlick
-            ScrollBar.horizontal: ScrollBar {}
-
-            RowLayout
-            {
-                id: updateRow
-
-                spacing: AppMetrics.gapSmall
-
-                DesktopAppUpdateCard
-                {
-                    id: appUpdate
-
-                    objectName: "today_app_update"
-                    dismissible: true
-
-                    Layout.fillWidth: false
-                    Layout.preferredWidth: AppMetrics.categoryPaneWidth
-                    Layout.alignment: Qt.AlignBottom
-                }
-
-                Repeater
-                {
-                    model: AppCatalog.packageUpdates
-
-                    delegate: DesktopPackageUpdateCard
-                    {
-                        required property var modelData
-
-                        objectName: "today_" + modelData.id + "_update"
-                        update: modelData
-                        dismissible: true
-
-                        Layout.fillWidth: false
-                        Layout.preferredWidth: AppMetrics.categoryPaneWidth
-                        Layout.alignment: Qt.AlignBottom
-                    }
-                }
-            }
-        }
 
         DesktopReconnectBanner
         {

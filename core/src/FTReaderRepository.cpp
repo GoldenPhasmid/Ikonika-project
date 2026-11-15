@@ -6,12 +6,16 @@
 #include "core/FTUuid.h"
 
 #include <QFileInfo>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
 
 namespace
 {
     constexpr const char* DocumentColumns =
         "Id, FilePath, Title, Format, AddedDate, LastOpenedDate, LastPosition, LastZoom, LastScrollX, "
-        "LastScrollY, CloudId, PositionCount, ReadAloudParagraph, ReadAloudCharacter";
+        "LastScrollY, CloudId, PositionCount, ReadAloudParagraph, ReadAloudCharacter, Author, MetadataRead, "
+        "TitleEdited";
 
     FTReaderDocumentRow ReadRow(const FTStatement& Query)
     {
@@ -30,6 +34,9 @@ namespace
         Row.PositionCount = Query.GetInt64(11);
         Row.ReadAloudParagraph = Query.GetInt64(12);
         Row.ReadAloudCharacter = Query.GetInt64(13);
+        Row.Author = Query.GetText(14);
+        Row.bMetadataRead = Query.GetInt(15) != 0;
+        Row.bTitleEdited = Query.GetInt(16) != 0;
 
         Row.bExists = QFileInfo::exists(QString::fromStdString(Row.FilePath));
 
@@ -80,7 +87,8 @@ std::optional<std::string> FTReaderRepository::AddDocument(const std::string& Fi
         const std::string Id = Existing.GetText(0);
 
         FTStatement Update = Target.Prepare(
-            "UPDATE ReaderDocuments SET Title = ?1, Format = ?2, LastOpenedDate = ?3 "
+            "UPDATE ReaderDocuments SET Title = CASE WHEN TitleEdited = 0 THEN ?1 ELSE Title END, "
+            "                           Format = ?2, LastOpenedDate = ?3 "
             "WHERE Id = ?4");
         Update.BindText(1, Title);
         Update.BindText(2, Format);
@@ -322,6 +330,127 @@ bool FTReaderRepository::SetTitle(const std::string& Id, const std::string& Titl
     FTStatement Update = Target.Prepare(
         "UPDATE ReaderDocuments SET Title = ?1 WHERE Id = ?2");
     Update.BindText(1, Title);
+    Update.BindText(2, Id);
+
+    if (!Update.Run())
+    {
+        LastError = Target.GetLastError();
+
+        return false;
+    }
+
+    return true;
+}
+
+bool FTReaderRepository::RenameDocument(const std::string& Id, const std::string& Title)
+{
+    const FTQueryTimer Timer("FTReaderRepository::RenameDocument");
+
+    if (Title.empty())
+    {
+        LastError = "empty title";
+
+        return false;
+    }
+
+    FTStatement Update = Target.Prepare(
+        "UPDATE ReaderDocuments SET Title = ?1, TitleEdited = 1 WHERE Id = ?2 AND Deleted = 0");
+    Update.BindText(1, Title);
+    Update.BindText(2, Id);
+
+    if (!Update.Run())
+    {
+        LastError = Target.GetLastError();
+
+        return false;
+    }
+
+    return true;
+}
+
+bool FTReaderRepository::SetDetails(const std::string& Id, const FTReaderDocumentDetails& Details)
+{
+    const FTQueryTimer Timer("FTReaderRepository::SetDetails");
+
+    QJsonArray Chapters;
+
+    for (const FTReaderChapter& Chapter : Details.Chapters)
+    {
+        Chapters.append(QJsonObject{{QStringLiteral("title"), QString::fromStdString(Chapter.Title)},
+                                    {QStringLiteral("paragraph"), Chapter.Paragraph},
+                                    {QStringLiteral("level"), Chapter.Level}});
+    }
+
+    FTStatement Update = Target.Prepare(
+        "INSERT OR REPLACE INTO ReaderDocumentDetails (DocumentId, Language, Description, WordCount, PageCount, Chapters) "
+        "VALUES (?1, ?2, ?3, ?4, ?5, ?6)");
+    Update.BindText(1, Id);
+    Update.BindText(2, Details.Language);
+    Update.BindText(3, Details.Description);
+    Update.BindInt64(4, Details.WordCount);
+    Update.BindInt64(5, Details.PageCount);
+    Update.BindText(6, QJsonDocument{Chapters}.toJson(QJsonDocument::Compact).toStdString());
+
+    if (!Update.Run())
+    {
+        LastError = Target.GetLastError();
+
+        return false;
+    }
+
+    return true;
+}
+
+std::optional<FTReaderDocumentDetails> FTReaderRepository::FindDetails(const std::string& Id) const
+{
+    const FTQueryTimer Timer("FTReaderRepository::FindDetails");
+
+    FTStatement Query = Target.Prepare(
+        "SELECT Language, Description, WordCount, PageCount, Chapters FROM ReaderDocumentDetails WHERE DocumentId = ?1");
+
+    if (!Query.IsValid())
+    {
+        LastError = Target.GetLastError();
+
+        return std::nullopt;
+    }
+
+    Query.BindText(1, Id);
+
+    if (!Query.Step())
+    {
+        return std::nullopt;
+    }
+
+    FTReaderDocumentDetails Details;
+    Details.Language = Query.GetText(0);
+    Details.Description = Query.GetText(1);
+    Details.WordCount = Query.GetInt64(2);
+    Details.PageCount = Query.GetInt64(3);
+
+    const QJsonArray Chapters{QJsonDocument::fromJson(QByteArray::fromStdString(Query.GetText(4))).array()};
+
+    for (const QJsonValue& Value : Chapters)
+    {
+        const QJsonObject Object{Value.toObject()};
+
+        FTReaderChapter Chapter;
+        Chapter.Title = Object.value(QStringLiteral("title")).toString().toStdString();
+        Chapter.Paragraph = Object.value(QStringLiteral("paragraph")).toInt();
+        Chapter.Level = Object.value(QStringLiteral("level")).toInt(1);
+        Details.Chapters.push_back(std::move(Chapter));
+    }
+
+    return Details;
+}
+
+bool FTReaderRepository::SetMetadata(const std::string& Id, const std::string& Author)
+{
+    const FTQueryTimer Timer("FTReaderRepository::SetMetadata");
+
+    FTStatement Update = Target.Prepare(
+        "UPDATE ReaderDocuments SET Author = ?1, MetadataRead = 1 WHERE Id = ?2");
+    Update.BindText(1, Author);
     Update.BindText(2, Id);
 
     if (!Update.Run())

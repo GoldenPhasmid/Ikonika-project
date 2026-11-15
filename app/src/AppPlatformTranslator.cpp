@@ -1,5 +1,7 @@
 #include "AppTranslator.h"
 
+#include "AppTranslationRequests.h"
+
 #include "core/FTLog.h"
 #include "core/FTSettings.h"
 
@@ -27,7 +29,7 @@ namespace
 
     FPairState State;
 
-    QAtomicInteger<quint64> PendingGeneration = 0;
+    FAppTranslationRequests Requests;
 
     QAtomicInteger<int> BusyCount = 0;
 
@@ -101,7 +103,7 @@ namespace
     {
         BusyCount.fetchAndAddOrdered(-1);
 
-        if (Generation != PendingGeneration.loadRelaxed())
+        if (!Requests.Finish(Generation))
         {
             return;
         }
@@ -286,7 +288,7 @@ namespace AppTranslator
         return BusyCount.loadRelaxed() > 0;
     }
 
-    void Translate(const QString& Text)
+    void Translate(const QString& Text, quintptr Owner)
     {
         const QString Trimmed = Text.trimmed();
 
@@ -295,7 +297,7 @@ namespace AppTranslator
             return;
         }
 
-        const quint64 Generation = ++PendingGeneration;
+        const quint64 Generation = Requests.Begin(Owner);
 
         BusyCount.fetchAndAddOrdered(1);
 

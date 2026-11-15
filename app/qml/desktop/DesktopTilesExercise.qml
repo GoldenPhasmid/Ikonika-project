@@ -289,6 +289,7 @@ Item
             DesktopChipArea
             {
                 visible: !root.typing && !root.revealed
+                interactive: !tileDrag.active
                 Layout.fillWidth: true
                 Layout.maximumHeight: Math.max(AppMetrics.buttonHeight,
                     card.primaryHeight - AppMetrics.waveformButtonHeight - AppMetrics.gapSmall * 2)
@@ -304,12 +305,24 @@ Item
 
                     delegate: DesktopWordTile
                     {
+                        id: bankTile
+
                         required property string modelData
                         required property int index
 
+                        objectName: "tile_bank_" + index
                         text: modelData
                         used: root.placed.indexOf(index) >= 0
                         enabled: root.awaiting && !used
+                        opacity: used || tileDrag.source === bankTile ? AppTheme.opacityDisabled : 1.0
+
+                        TileDragHandler
+                        {
+                            overlay: tileDrag
+                            tileIndex: bankTile.index
+                            tileText: bankTile.modelData
+                            fromAnswer: false
+                        }
 
                         onClicked:
                         {
@@ -339,8 +352,16 @@ Item
 
             }
 
+            DesktopAccentBar
+            {
+                languageCode: !!root.store && root.typing && !root.buildsTranslation ? root.store.targetLanguageCode : ""
+                field: answerField
+            }
+
             Rectangle
             {
+                id: answerWell
+
                 visible: !root.typing
                 Layout.fillWidth: true
                 Layout.preferredHeight: Math.min(card.secondaryHeight, answerTiles.implicitHeight + AppMetrics.gapSmall * 2)
@@ -370,19 +391,57 @@ Item
                     spacing: AppMetrics.gapSmall
                     centred: false
                     followEnd: true
+                    interactive: !tileDrag.active
 
                     Repeater
                     {
+                        id: answerRepeater
+
                         model: root.placed
 
                         delegate: DesktopWordTile
                         {
-                            required property int modelData
+                            id: answerTile
 
+                            required property int modelData
+                            required property int index
+
+                            readonly property bool lifted: tileDrag.source === answerTile
+
+                            objectName: "tile_answer_" + index
                             text: root.tiles[modelData] || ""
                             enabled: root.awaiting
+                            width: answerTile.lifted ? 0 : implicitWidth
+                            opacity: answerTile.lifted ? 0 : 1
+
+                            TileDragHandler
+                            {
+                                overlay: tileDrag
+                                tileIndex: answerTile.modelData
+                                tileText: answerTile.text
+                                fromAnswer: true
+                            }
 
                             onClicked: root.controller.removeTile(modelData)
+                        }
+                    }
+
+                    AppStackingItem
+                    {
+                        id: dropGap
+
+                        visible: tileDrag.overAnswer && tileDrag.gapShown
+                        width: tileDrag.ghostWidth
+                        height: AppMetrics.buttonHeight
+
+                        Rectangle
+                        {
+                            anchors.fill: parent
+
+                            radius: AppMetrics.radiusMedium
+                            color: AppTheme.colourSunken
+                            border.width: AppMetrics.borderWidth
+                            border.color: AppTheme.colourOutline
                         }
                     }
 
@@ -403,8 +462,8 @@ Item
 
                         radius: AppMetrics.radiusMedium
                         color: AppTheme.colourCard
-                        border.width: AppMetrics.borderWidth
-                        border.color: tileInput.activeFocus ? AppTheme.colourAccent : AppTheme.colourBorder
+                        border.width: tileDrag.endTarget ? AppMetrics.borderWidth * 2 : AppMetrics.borderWidth
+                        border.color: tileInput.activeFocus || tileDrag.endTarget ? AppTheme.colourAccent : AppTheme.colourBorder
 
                         transform: Translate { x: typingChip.shakeOffset }
 
@@ -493,5 +552,32 @@ Item
                 onClicked: root.submitOrAdvance()
             }
         ]
+    }
+
+    TileDrag
+    {
+        id: tileDrag
+
+        anchors.fill: parent
+
+        controller: root.controller
+        answerArea: answerWell
+        answerRepeater: answerRepeater
+        gap: dropGap
+        endItem: typingChip
+        slack: AppMetrics.buttonHeight / 2
+
+        onGapMoved: answerTiles.arrange()
+
+        DesktopWordTile
+        {
+            visible: tileDrag.active
+            enabled: false
+            x: tileDrag.ghostX
+            y: tileDrag.ghostY
+            width: tileDrag.ghostWidth
+            scale: 1.05
+            text: tileDrag.text
+        }
     }
 }

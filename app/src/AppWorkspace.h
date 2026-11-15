@@ -10,6 +10,7 @@
 #include <vector>
 
 class FTDatabase;
+class FTBookShelfRepository;
 class FTCardRepository;
 class FTCloudBookRepository;
 class FTReaderRepository;
@@ -46,6 +47,7 @@ public:
     FTCardRepository& GetCardRepository();
     FTReaderRepository& GetReaderLibrary();
     FTCloudBookRepository& GetCloudBooks();
+    FTBookShelfRepository& GetBookShelf();
     FTYoutubeRepository& GetYoutubeLibrary();
     FTSettings& GetSettings();
     AppWorkspaceCheckpoints& GetCheckpoints();
@@ -61,6 +63,7 @@ private:
     std::unique_ptr<FTCardRepository> CardRepository;
     std::unique_ptr<FTReaderRepository> ReaderLibrary;
     std::unique_ptr<FTCloudBookRepository> CloudBooks;
+    std::unique_ptr<FTBookShelfRepository> BookShelf;
     std::unique_ptr<FTYoutubeRepository> YoutubeLibrary;
     std::unique_ptr<FTSettings> Settings;
     AppWorkspaceCheckpoints Checkpoints;

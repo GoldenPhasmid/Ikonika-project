@@ -60,6 +60,7 @@ class AppTheme : public QObject
     Q_PROPERTY(QVariantMap verbColours READ GetVerbColours NOTIFY themeChanged)
 
     Q_PROPERTY(QVariantList coverColours READ GetCoverColours NOTIFY themeChanged)
+    Q_PROPERTY(QVariantList bookCovers READ GetBookCovers CONSTANT)
     Q_PROPERTY(QColor colourCoverInk READ GetColourCoverInk NOTIFY themeChanged)
     Q_PROPERTY(QColor colourCoverMuted READ GetColourCoverMuted NOTIFY themeChanged)
     Q_PROPERTY(QColor colourCoverStripe READ GetColourCoverStripe NOTIFY themeChanged)
@@ -123,6 +124,7 @@ public:
     QVariantList GetGenderColours() const;
 
     QVariantList GetCoverColours() const;
+    QVariantList GetBookCovers() const;
     QColor GetColourCoverInk() const;
     QColor GetColourCoverMuted() const;
     QColor GetColourCoverStripe() const;

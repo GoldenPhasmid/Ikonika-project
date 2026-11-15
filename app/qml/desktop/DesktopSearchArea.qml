@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls.Basic
+import QtQuick.Templates as T
 
 FocusScope
 {
@@ -87,6 +88,8 @@ FocusScope
         TextArea.flickable: TextArea
         {
             id: area
+
+            T.ContextMenu.menu: null
 
             focus: true
             wrapMode: TextEdit.Wrap

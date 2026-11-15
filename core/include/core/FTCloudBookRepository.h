@@ -14,6 +14,7 @@ struct FTCloudBookRow
 {
     std::string Id;
     std::string Title;
+    std::string Author;
     std::string Format;
     int64_t FileSize = 0;
     std::string DriveFileId;
@@ -43,8 +44,8 @@ public:
 
     explicit FTCloudBookRepository(FTDatabase& InDatabase, ClockFunction InClock = {});
 
-    std::optional<std::string> AddBook(const std::string& Title, const std::string& Format, int64_t FileSize,
-                                       const std::string& DriveFileId, const FTReadingPlace& Place);
+    std::optional<std::string> AddBook(const std::string& Title, const std::string& Author, const std::string& Format,
+                                       int64_t FileSize, const std::string& DriveFileId, const FTReadingPlace& Place);
 
     std::vector<FTCloudBookRow> ListBooks() const;
 
@@ -55,6 +56,8 @@ public:
     bool RemoveBook(const std::string& Id);
 
     bool SetReadingPlace(const std::string& Id, const FTReadingPlace& Place);
+
+    bool SetTitle(const std::string& Id, const std::string& Title);
 
     std::string GetLastError() const;
 

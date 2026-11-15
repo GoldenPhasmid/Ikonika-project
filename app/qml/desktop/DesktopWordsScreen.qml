@@ -13,6 +13,7 @@ Item
     property string pendingPartOfSpeech: ""
 
     signal addWordRequested(string word, string translation, string partOfSpeech, string meaningGist)
+    signal deckOpenRequested(int deckId)
     signal editWordRequested(string cardId, string word, string translation, int gender,
                              string partOfSpeech, int box)
 
@@ -350,6 +351,7 @@ Item
 
         onAddWordRequested: function(word, translation, partOfSpeech, meaningGist) { root.addWordRequested(word, translation, partOfSpeech, meaningGist) }
         onWordClicked: function(word) { root.showWord(word, "") }
+        onDeckOpenRequested: function(deckId) { root.deckOpenRequested(deckId) }
         onEditWordRequested: function(cardId, word, translation, gender, partOfSpeech, box)
         {
             root.editWordRequested(cardId, word, translation, gender, partOfSpeech, box)

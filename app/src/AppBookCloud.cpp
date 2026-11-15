@@ -137,7 +137,7 @@ void AppBookCloud::Upload(const QString& DocumentId)
             const FTReadingPlace Place{Document->LastPosition, Document->LastZoom, Document->LastScrollX,
                                        Document->LastScrollY, Document->PositionCount};
             const std::optional<std::string> CloudId{AppDatabase::Get().GetCloudBooks().AddBook(
-                Document->Title, Document->Format, Size, DriveFileId.toStdString(), Place)};
+                Document->Title, Document->Author, Document->Format, Size, DriveFileId.toStdString(), Place)};
 
             if (!CloudId.has_value())
             {
@@ -151,6 +151,12 @@ void AppBookCloud::Upload(const QString& DocumentId)
             }
 
             AppDatabase::Get().GetReaderLibrary().SetCloudId(Document->Id, *CloudId);
+
+            if (!AppDatabase::Get().GetBookShelf().RenameBookKey("local:" + Document->Id, "cloud:" + *CloudId))
+            {
+                qCWarning(LogSync) << "Could not move the marks of" << Title << "to its cloud copy:"
+                                   << AppDatabase::Get().GetBookShelf().GetLastError();
+            }
 
             qCInfo(LogSync) << "Uploaded the book" << Title;
 

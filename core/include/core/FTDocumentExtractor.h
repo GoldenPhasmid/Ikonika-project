@@ -41,3 +41,15 @@ class FTEpubDocumentExtractor final : public FTDocumentExtractor
 public:
     std::optional<FTReaderDocument> Extract(const std::string& FilePath) const override;
 };
+
+struct FTBookMetadata
+{
+    std::string Title;
+    std::string Author;
+    std::string Language;
+    std::string Description;
+    std::string CoverBytes;
+    std::string CoverExtension;
+};
+
+std::optional<FTBookMetadata> ReadBookMetadata(const std::string& FilePath);

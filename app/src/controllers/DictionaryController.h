@@ -2,6 +2,7 @@
 
 #include <QObject>
 #include <QString>
+#include <QStringList>
 #include <QVariantList>
 #include <QVariantMap>
 #include <QtQml/qqmlregistration.h>
@@ -26,6 +27,7 @@ class DictionaryController : public QObject
     Q_PROPERTY(bool translating READ IsTranslating NOTIFY translationChanged)
     Q_PROPERTY(QString formTerm READ GetFormTerm NOTIFY translationChanged)
     Q_PROPERTY(QString formReading READ GetFormReading NOTIFY translationChanged)
+    Q_PROPERTY(QVariantMap formTranslations READ GetFormTranslations NOTIFY translationChanged)
 
 public:
     explicit DictionaryController(QObject* Parent = nullptr);
@@ -36,6 +38,7 @@ public:
     Q_INVOKABLE void recordSearch();
     Q_INVOKABLE void clear();
     Q_INVOKABLE void translate(const QString& Text);
+    Q_INVOKABLE void translateForms(const QStringList& Queries);
 
     Q_INVOKABLE void openEntry(const QString& Headword, const QString& PartOfSpeech, const QString& SearchText = {});
 
@@ -62,6 +65,7 @@ public:
     bool IsTranslating() const;
     QString GetFormTerm() const;
     QString GetFormReading() const;
+    QVariantMap GetFormTranslations() const;
 
 signals:
     void resultsChanged();
@@ -73,9 +77,15 @@ signals:
 private:
     void ResetTranslation(const QString& Text);
     void RequestTranslation();
+    void RequestFormTranslation(const QString& Form, const QString& Query, const QString& Reading);
+    void RequestNextFormTranslation();
 
     QString FormTerm;
     QString FormReading;
+
+    QStringList FormQueries;
+    QStringList FormQueue;
+    QVariantMap FormTranslations;
 
     QString TranslationQuery;
     QString MachineTranslation;

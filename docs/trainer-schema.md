@@ -134,14 +134,30 @@ the schema cannot drift from what actually creates the database.
   imported; text is re-extracted on open and nothing derived is stored. A path is meaningless on
   another device, so the table sits in the workspace's `Device.db`, which sync never uploads.
   Existence is re-checked against the filesystem on every list, so a moved file shows as missing
-  rather than opening nothing. A row that is a copy of a cloud book names it in `CloudId`. `ReadAloudParagraph` and
+  rather than opening nothing. A row that is a copy of a cloud book names it in `CloudId`. `Author`
+  is read from the file's own metadata once, and `MetadataRead` records that it was tried, so a book
+  without an author is not read again on every list. `ReadAloudParagraph` and
   `ReadAloudCharacter` hold the sentence read aloud last, -1 when the book was never read aloud. See
   [book-reader.md](book-reader.md).
 - **`CloudBooks` lists the books uploaded to the cloud, and it syncs.** One row per book: its title,
   format, size, the Drive file that holds it, how many pages or paragraphs it has, and where the
   reader last left it: page or paragraph, zoom and scroll. A device writes the place when it closes the book or the app goes to the
   background, not on every page, so reading does not start a sync on every page turn. Removing a
-  book is a dated soft delete, so the merge carries it to every device.
+  book is a dated soft delete, so the merge carries it to every device. `Author` is copied from the
+  library row when the book is uploaded.
+- **`FavoriteBooks`, `BookCollections` and `BookCollectionMembers` hold the marks a reader puts on
+  books, and they sync.** A book is named by a key that means the same book on every device:
+  `cloud:` and a `CloudBooks` id, `free:` and a free catalog id, or `local:` and a `ReaderDocuments`
+  id for a file that never left this device. A local key reaches other devices too, where it matches
+  no book and shows nothing. Uploading a book moves its marks from the local key to the cloud key.
+  Unmarking a favourite, leaving a collection and deleting a collection are dated flags, so the merge
+  carries them. A collection's `Colour` is an index into the theme's eight cover tints. Finished is
+  not stored: a book is finished when its reading place is on its last page.
+- **`BookCards` names the book each card was added from, and it syncs.** A card added while the
+  Reader screen shows an open book gets one row: the card id and the book's key, in the same key
+  form as the marks above. A card keeps the first book it was added from. A deleted card drops out
+  of the book's word list through its own `Deleted` flag, so the row itself is never removed.
+  Uploading a book moves its cards to the cloud key along with its marks.
 - **`WordForms` holds forms progress, one row per headword and kind, and per tense for a verb.**
   The id names all of them: `conjugation-fr-vouloir-present`, `forms-adj-fr-beau`. `LearnedDate`
   is a day and stays NULL while the word waits for a training. The row carries its own language

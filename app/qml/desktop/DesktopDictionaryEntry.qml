@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Layouts
 import QtQml.Models
+import "../Decks.js" as Decks
 
 Item
 {
@@ -20,6 +21,7 @@ Item
     signal editWordRequested(string cardId, string word, string translation, int gender,
                              string partOfSpeech, int box)
     signal wordClicked(string word)
+    signal deckOpenRequested(int deckId)
 
     readonly property var entry: controller.entry.headword ? controller.entry : null
     readonly property string headword: root.entry ? root.entry.headword : root.word
@@ -29,6 +31,59 @@ Item
     readonly property string shownPartOfSpeech: root.entry ? root.entry.partOfSpeech : root.partOfSpeech
     readonly property var meanings: root.entry ? (root.entry.meanings || []) : []
     readonly property bool hasMeanings: root.meanings.length > 0
+
+    readonly property var formRows: !root.entry ? []
+        : (root.entry.forms.matchedForms || []).length > 0 ? root.entry.forms.matchedForms
+        : (root.entry.forms.matchedText || "").length > 0
+            ? [{ form: root.entry.forms.matchedText, query: "", readings: root.entry.forms.matchedReadings || [],
+                 cues: [], imperative: false }]
+        : []
+    readonly property color formTint: AppTheme.verbGroupColours[root.entry ? root.entry.verbGroup : ""]
+        ?? AppTheme.colourAccent
+
+    readonly property var deckChips: (root.entry ? root.entry.decks || [] : []).map(Name =>
+    {
+        const deck = DecksController.decks.find(Deck => Deck.name === Name)
+
+        return deck
+            ? { id: deck.id, name: deck.name, icon: deck.icon,
+                tint: Decks.tint(Decks.categories(DecksController.decks), deck.category, AppTheme.coverColours) }
+            : null
+    }).filter(Chip => Chip !== null)
+
+    function lowerFirst(text)
+    {
+        if (text.length === 0 || text === "I" || text.startsWith("I ") || text.startsWith("I'"))
+        {
+            return text
+        }
+
+        return text.charAt(0).toLowerCase() + text.slice(1)
+    }
+
+    function formTenses(row)
+    {
+        const readings = row.readings || []
+        const lead = readings.length > 0 ? readings[0].split(" ")[0] + " " : ""
+
+        return readings.map((Reading, Index) => Index > 0 && lead.length > 1 && Reading.startsWith(lead)
+            ? Reading.slice(lead.length) : Reading).join(", ")
+    }
+
+    function formPronouns(row)
+    {
+        const cues = row.cues || []
+        const showsCues = row.imperative ? cues.length > 0 : cues.length > 1
+
+        return showsCues ? cues.join(", ") : ""
+    }
+
+    function formTranslation(row)
+    {
+        const translated = row.query ? controller.formTranslations[row.query] || "" : ""
+
+        return root.lowerFirst(translated)
+    }
 
     readonly property var meaningTranslationKeys: root.meanings.reduce(
         (Keys, Meaning) => Keys.concat(Meaning.translations.map(Text => Text.trim().toLowerCase())), [])
@@ -138,6 +193,13 @@ Item
     DictionaryController
     {
         id: controller
+
+        onEntryChanged:
+        {
+            const forms = controller.entry.forms ? controller.entry.forms.matchedForms || [] : []
+
+            controller.translateForms(forms.map(Form => Form.query))
+        }
     }
 
     DesktopLabel
@@ -179,8 +241,10 @@ Item
                 phonetic: root.entry ? root.entry.phonetic : ""
                 frequencyBucket: root.entry ? root.entry.frequencyBucket : ""
                 cefrLevel: root.entry ? root.entry.cefrLevel : ""
+                decks: root.deckChips
 
                 onSpeakRequested: root.speak()
+                onDeckOpenRequested: function(deckId) { root.deckOpenRequested(deckId) }
                 onWebSearchRequested: controller.openWebSearch(root.headword)
 
                 actions: [
@@ -259,13 +323,133 @@ Item
                 ]
             }
 
-            DictionaryMatchedForm
+            Flow
             {
+                id: formFlow
+
+                objectName: "entry_matched_forms"
+
                 Layout.fillWidth: true
                 Layout.topMargin: AppMetrics.gapSmall
-                form: root.entry ? root.entry.forms.matchedText || "" : ""
-                readings: root.entry ? root.entry.forms.matchedReadings || [] : []
-                tint: AppTheme.verbGroupColours[root.entry ? root.entry.verbGroup : ""] ?? AppTheme.colourAccent
+                visible: root.formRows.length > 0
+                spacing: AppMetrics.gapSmall
+
+                Repeater
+                {
+                    model: root.formRows
+
+                    delegate: Rectangle
+                    {
+                        id: formChip
+
+                        required property var modelData
+                        required property int index
+
+                        readonly property string translation: root.formTranslation(modelData)
+
+                        objectName: "entry_form_" + index
+
+                        width: Math.min(chipContent.implicitWidth + AppMetrics.gapCompact * 2, formFlow.width)
+                        height: chipContent.implicitHeight + AppMetrics.gapSmall * 2
+                        radius: AppMetrics.radiusSmall
+                        color: AppTheme.faded(root.formTint, chipHover.hovered ? AppTheme.alphaMedium : AppTheme.alphaFaint)
+                        border.width: AppMetrics.borderWidth
+                        border.color: AppTheme.faded(root.formTint, AppTheme.alphaMedium)
+
+                        Behavior on color { ColorAnimation { duration: AppMetrics.motionFast } }
+
+                        HoverHandler
+                        {
+                            id: chipHover
+                        }
+
+                        ColumnLayout
+                        {
+                            id: chipContent
+
+                            anchors.fill: parent
+                            anchors.leftMargin: AppMetrics.gapCompact
+                            anchors.rightMargin: AppMetrics.gapCompact
+                            anchors.topMargin: AppMetrics.gapSmall
+                            anchors.bottomMargin: AppMetrics.gapSmall
+                            spacing: 0
+
+                            RowLayout
+                            {
+                                Layout.fillWidth: true
+                                spacing: AppMetrics.gapSmall
+
+                                Text
+                                {
+                                    text: root.lowerFirst(formChip.modelData.form)
+                                    textFormat: Text.PlainText
+                                    color: root.formTint
+                                    font.family: AppMetrics.fontFamily
+                                    font.pixelSize: AppMetrics.fontSubtitle
+                                    font.weight: Font.DemiBold
+                                }
+
+                                Text
+                                {
+                                    Layout.fillWidth: true
+                                    visible: formChip.translation.length > 0
+                                    text: "— " + formChip.translation
+                                    textFormat: Text.PlainText
+                                    color: AppTheme.colourText
+                                    font.family: AppMetrics.fontFamily
+                                    font.pixelSize: AppMetrics.fontSubtitle
+                                    elide: Text.ElideRight
+
+                                    Accessible.name: formChip.translation
+                                }
+
+                                DesktopSpeakButton
+                                {
+                                    objectName: "entry_form_speak_" + formChip.index
+
+                                    text: qsTr("Pronounce %1").arg(formChip.modelData.form)
+
+                                    onSpeakRequested: controller.speak(formChip.modelData.form)
+                                }
+                            }
+
+                            RowLayout
+                            {
+                                Layout.fillWidth: true
+                                spacing: AppMetrics.gapSmall
+
+                                DesktopLabel
+                                {
+                                    visible: text.length > 0
+                                    text: root.formTenses(formChip.modelData)
+                                    font.pixelSize: AppMetrics.fontSmall
+                                    font.weight: Font.Medium
+                                    color: root.formTint
+                                }
+
+                                Rectangle
+                                {
+                                    visible: pronouns.visible
+                                    Layout.preferredHeight: pronouns.implicitHeight * 0.7
+                                    implicitWidth: AppMetrics.borderWidth
+                                    color: AppTheme.faded(root.formTint, AppTheme.alphaMedium)
+                                }
+
+                                DesktopLabel
+                                {
+                                    id: pronouns
+
+                                    Layout.fillWidth: true
+                                    visible: text.length > 0
+                                    text: root.formPronouns(formChip.modelData)
+                                    font.pixelSize: AppMetrics.fontSmall
+                                    color: AppTheme.colourMuted
+                                    elide: Text.ElideRight
+                                }
+                            }
+                        }
+                    }
+                }
             }
 
             DesktopLabel

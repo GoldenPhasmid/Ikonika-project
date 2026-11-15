@@ -347,6 +347,21 @@ QVariantList AppTheme::GetCoverColours() const
     return GetPalette(Theme).CoverColours;
 }
 
+QVariantList AppTheme::GetBookCovers() const
+{
+    const auto Cover = [](const char* Paper, const char* Foil, const char* Ink)
+    {
+        return QVariantMap{{QStringLiteral("paper"), QColor(Paper)},
+                           {QStringLiteral("foil"), QColor(Foil)},
+                           {QStringLiteral("ink"), QColor(Ink)}};
+    };
+
+    return {Cover("#6b2a2a", "#d9b26f", "#f3e6d6"),
+            Cover("#1f3f66", "#bcc8d6", "#eef2f7"),
+            Cover("#2f4a35", "#d39a6a", "#f1e9d6"),
+            Cover("#4b2e4f", "#e2b3a3", "#f6ebee")};
+}
+
 QColor AppTheme::GetColourCoverInk() const
 {
     return GetPalette(Theme).CoverInk;

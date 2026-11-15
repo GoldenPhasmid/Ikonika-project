@@ -211,6 +211,11 @@ void AppFreeBooks::Refresh()
             return;
         }
 
+        if (Catalog.has_value() && Body == CatalogBody)
+        {
+            return;
+        }
+
         std::optional<FTBookCatalog> Parsed{ParseBookCatalog(Body.toStdString())};
 
         if (!Parsed.has_value())
@@ -227,6 +232,7 @@ void AppFreeBooks::Refresh()
         }
 
         Catalog = std::move(Parsed);
+        CatalogBody = Body;
 
         emit catalogChanged();
     });

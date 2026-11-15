@@ -35,7 +35,7 @@ TEST_CASE("An uploaded book is listed with the place it was read to", "[reader][
     Fixture Test;
 
     const std::optional<std::string> Id =
-        Test.Repository->AddBook("Le Petit Prince", "epub", 4096, "drive-1", FTReadingPlace{12, 1.5, 3.0, 40.0});
+        Test.Repository->AddBook("Le Petit Prince", "", "epub", 4096, "drive-1", FTReadingPlace{12, 1.5, 3.0, 40.0});
 
     REQUIRE(Id.has_value());
 
@@ -56,7 +56,7 @@ TEST_CASE("A book without a Drive file is refused", "[reader][cloud]")
 {
     Fixture Test;
 
-    CHECK_FALSE(Test.Repository->AddBook("Empty", "pdf", 1, "", FTReadingPlace{}).has_value());
+    CHECK_FALSE(Test.Repository->AddBook("Empty", "", "pdf", 1, "", FTReadingPlace{}).has_value());
     CHECK(Test.Repository->ListBooks().empty());
 }
 
@@ -64,7 +64,7 @@ TEST_CASE("Reading a cloud book dates the place it was left", "[reader][cloud]")
 {
     Fixture Test;
 
-    const std::string Id = Test.Repository->AddBook("Book", "pdf", 1, "drive-1", FTReadingPlace{}).value();
+    const std::string Id = Test.Repository->AddBook("Book", "", "pdf", 1, "drive-1", FTReadingPlace{}).value();
 
     Test.FakeNow = 5000;
     REQUIRE(Test.Repository->SetReadingPlace(Id, FTReadingPlace{88, 2.0, 0.0, 10.0}));
@@ -82,9 +82,9 @@ TEST_CASE("Books are listed most recently opened first", "[reader][cloud]")
 {
     Fixture Test;
 
-    const std::string First = Test.Repository->AddBook("First", "pdf", 1, "drive-1", FTReadingPlace{}).value();
+    const std::string First = Test.Repository->AddBook("First", "", "pdf", 1, "drive-1", FTReadingPlace{}).value();
     Test.FakeNow = 2000;
-    Test.Repository->AddBook("Second", "pdf", 1, "drive-2", FTReadingPlace{});
+    Test.Repository->AddBook("Second", "", "pdf", 1, "drive-2", FTReadingPlace{});
     Test.FakeNow = 3000;
     REQUIRE(Test.Repository->SetReadingPlace(First, FTReadingPlace{}));
 
@@ -99,7 +99,7 @@ TEST_CASE("A removed book leaves the list and is reported as deleted", "[reader]
 {
     Fixture Test;
 
-    const std::string Id = Test.Repository->AddBook("Book", "pdf", 1, "drive-1", FTReadingPlace{}).value();
+    const std::string Id = Test.Repository->AddBook("Book", "", "pdf", 1, "drive-1", FTReadingPlace{}).value();
 
     Test.FakeNow = 9000;
     REQUIRE(Test.Repository->RemoveBook(Id));
@@ -157,7 +157,7 @@ TEST_CASE("A cloud book keeps its length, and a place without one leaves it alon
 {
     Fixture Test;
 
-    const std::string Id = Test.Repository->AddBook("Book", "pdf", 1, "drive-1", FTReadingPlace{0, 0.0, 0.0, 0.0, 120}).value();
+    const std::string Id = Test.Repository->AddBook("Book", "", "pdf", 1, "drive-1", FTReadingPlace{0, 0.0, 0.0, 0.0, 120}).value();
 
     REQUIRE(Test.Repository->SetReadingPlace(Id, FTReadingPlace{40, 1.0, 0.0, 0.0, 0}));
     CHECK(Test.Repository->FindBook(Id)->PositionCount == 120);

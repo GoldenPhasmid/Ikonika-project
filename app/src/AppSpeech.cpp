@@ -41,7 +41,7 @@ float AppSpeech::GetSentenceSpeed() const
 {
     const QSettings Settings(FTSettings::Get().OpenStore());
 
-    return std::clamp(Settings.value(SentenceSpeedKey, 1.0).toFloat(), MinimumSpeechSpeed, MaximumSpeechSpeed);
+    return std::clamp(Settings.value(SentenceSpeedKey, DefaultSentenceSpeed).toFloat(), MinimumSpeechSpeed, MaximumSpeechSpeed);
 }
 
 void AppSpeech::SetSentenceSpeed(float Value)

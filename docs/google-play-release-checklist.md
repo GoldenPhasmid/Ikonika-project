@@ -17,7 +17,7 @@ The next upload needs a version code above 21.
 
 ## Prepared release
 
-Version `0.9.0`, version code `22`, was built on 2026-11-14 from tag `0.9.0`. The signed arm64
+Version `0.9.1`, version code `23`, was built on 2026-11-15 from tag `0.9.1`. The signed arm64
 bundle passed `jarsigner` verification with the Ikonika upload certificate. It is not uploaded to
 Play Console yet.
 
@@ -25,18 +25,14 @@ Release notes for Google Play (under 500 characters):
 
 ```text
 New Features
-Discover quiz over topic decks finds unknown words and meanings.
-Read aloud starts with one press and moves by sentence, with a slow-repeat button.
-Redesigned conjugation tables for every language.
-Fill the gap exercise in Practice.
-Placement test asks the level first and adds core cards.
-
-Content
-All dictionaries rebuilt, and thirty free books in four languages.
+Tiles exercise: word tiles are dragged into place and reordered.
+Discover meaning screen is split into a question area and a details area, with slide transitions.
+Library separates My books from the free catalogue, and Today lists the books being read under Continue reading.
+Phone reader pads the text with half a screen above and below.
 
 Fixes
-Speech recovers when the voice engine stalls.
-Interrupted dictionary downloads no longer corrupt data.
+Keyboard rises when a focused text field is tapped.
+Language flag shows after an account switch.
 ```
 
 ## Prerequisites (one-time, not per release)

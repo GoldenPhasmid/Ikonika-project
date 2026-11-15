@@ -261,6 +261,26 @@ TEST_CASE("Migrating from the version before erasures adds their table", "[schem
     CHECK(TableExists(Target, "Erasures"));
 }
 
+TEST_CASE("Migrating from the version before book marks adds favourites, collections and authors", "[schema][reader]")
+{
+    FTDatabase Target = MakeDatabase();
+    REQUIRE(MigrateSchema(Target));
+
+    REQUIRE(Target.Execute("DROP TABLE FavoriteBooks"));
+    REQUIRE(Target.Execute("DROP TABLE BookCollections"));
+    REQUIRE(Target.Execute("DROP TABLE BookCollectionMembers"));
+    REQUIRE(Target.Execute("ALTER TABLE CloudBooks DROP COLUMN Author"));
+    REQUIRE(Target.Execute("PRAGMA user_version = 37"));
+
+    REQUIRE(MigrateSchema(Target));
+
+    CHECK(ReadSchemaVersion(Target) == CurrentSchemaVersion);
+    CHECK(TableExists(Target, "FavoriteBooks"));
+    CHECK(TableExists(Target, "BookCollections"));
+    CHECK(TableExists(Target, "BookCollectionMembers"));
+    CHECK(ColumnExists(Target, "CloudBooks", "Author"));
+}
+
 TEST_CASE("The journal refuses a second event with the same id", "[schema][journal]")
 {
     FTDatabase Target = MakeDatabase();
@@ -411,6 +431,11 @@ TEST_CASE("An older reader library gains the read aloud place", "[schema][reader
     REQUIRE(Place.Step());
     CHECK(Place.GetInt(0) == -1);
     CHECK(Place.GetInt(1) == 0);
+
+    FTStatement Metadata = Target.Prepare("SELECT Author, MetadataRead FROM ReaderDocuments");
+    REQUIRE(Metadata.Step());
+    CHECK(Metadata.GetText(0).empty());
+    CHECK(Metadata.GetInt(1) == 0);
 }
 
 TEST_CASE("A fresh database has no Skipped column", "[schema]")

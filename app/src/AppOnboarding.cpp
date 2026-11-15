@@ -7,6 +7,7 @@
 #include "AppLocalization.h"
 #include "AppPackageDownloader.h"
 #include "AppPaths.h"
+#include "AppTranslator.h"
 #include "controllers/AppSyncController.h"
 #include "controllers/PlacementTestController.h"
 
@@ -178,6 +179,7 @@ void AppOnboarding::RequestPackages()
 {
     ChosenDictionaryId.clear();
     ChosenVoiceId.clear();
+    ChosenTranslationId.clear();
     bDictionaryReady = false;
     bVoiceReady = false;
 
@@ -206,6 +208,12 @@ void AppOnboarding::RequestPackages()
         }
     }
 
+    RequestVoice();
+    RequestTranslation();
+}
+
+void AppOnboarding::RequestVoice()
+{
     bVoiceReady = true;
 
     const QString VoiceId{AppCatalog::Get().FindVoicePackage(ChosenLanguage.toStdString())};
@@ -219,6 +227,39 @@ void AppOnboarding::RequestPackages()
     bVoiceReady = false;
 
     AppPackageDownloader::Get().download(VoiceId);
+}
+
+void AppOnboarding::RequestTranslation()
+{
+#if defined(IKONIKA_DESKTOP)
+    if (!AppTranslator::IsEnabled())
+    {
+        return;
+    }
+
+    const std::optional<FTCatalogPackage> Package{
+        AppCatalog::Get().FindTranslationPackage(ChosenLanguage.toStdString(), ChosenNative.toStdString())};
+
+    if (!Package.has_value())
+    {
+        qCInfo(LogApp) << "Setup has no translation model to fetch for" << ChosenLanguage << "to" << ChosenNative;
+
+        return;
+    }
+
+    const QString TranslationId{QString::fromStdString(Package->Id)};
+
+    if (AppCatalog::GetInstalledVersion(TranslationId) > 0)
+    {
+        return;
+    }
+
+    ChosenTranslationId = TranslationId;
+
+    qCInfo(LogApp) << "Setup fetches the translation model" << ChosenTranslationId << "in the background";
+
+    AppPackageDownloader::Get().download(ChosenTranslationId);
+#endif
 }
 
 void AppOnboarding::retry()
@@ -271,6 +312,13 @@ void AppOnboarding::ForgetPendingPackages()
         qCInfo(LogApp) << "Setup drops the voice it no longer needs" << ChosenVoiceId;
 
         AppPackageDownloader::Get().forget(ChosenVoiceId);
+    }
+
+    if (!ChosenTranslationId.isEmpty() && AppPackageDownloader::Get().isPending(ChosenTranslationId))
+    {
+        qCInfo(LogApp) << "Setup drops the translation model it no longer needs" << ChosenTranslationId;
+
+        AppPackageDownloader::Get().forget(ChosenTranslationId);
     }
 }
 
@@ -633,6 +681,7 @@ void AppOnboarding::ReevaluateRequired()
         ChosenNative.clear();
         ChosenDictionaryId.clear();
         ChosenVoiceId.clear();
+        ChosenTranslationId.clear();
         bDictionaryReady = false;
         bVoiceReady = false;
         bResumingLanguage = false;

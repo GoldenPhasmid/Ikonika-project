@@ -7,6 +7,7 @@ Button
     id: root
 
     property string count: ""
+    property string iconName: ""
     property color dotColour: "transparent"
     property bool selected: false
     property bool toggle: false
@@ -39,6 +40,15 @@ Button
             {
                 visible: root.dotColour.a > 0
                 colour: root.dotColour
+            }
+
+            DesktopIcon
+            {
+                visible: root.iconName.length > 0
+                name: root.iconName
+                color: AppTheme.colourMuted
+                width: AppMetrics.iconSizeSmall
+                height: AppMetrics.iconSizeSmall
             }
 
             DesktopLabel

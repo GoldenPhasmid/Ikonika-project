@@ -3,6 +3,7 @@
 #include "AppCatalog.h"
 #include "AppPackageDownloader.h"
 #include "AppPaths.h"
+#include "AppTranslationRequests.h"
 
 #include "core/FTInContextTranslator.h"
 #include "core/FTLog.h"
@@ -136,9 +137,7 @@ namespace
         going on translating Spanish with the French one. */
     QString LoadedFolder;
 
-    /** Which request is the newest. An older one throws its answer away rather than replacing a
-        translation of the word the user has since moved on from. */
-    QAtomicInteger<quint64> PendingGeneration = 0;
+    FAppTranslationRequests Requests;
 
     QAtomicInteger<int> BusyCount = 0;
 
@@ -210,7 +209,7 @@ namespace AppTranslator
         return BusyCount.loadRelaxed() > 0;
     }
 
-    void Translate(const QString& Text)
+    void Translate(const QString& Text, quintptr Owner)
     {
         const QString Trimmed = Text.trimmed();
 
@@ -219,7 +218,7 @@ namespace AppTranslator
             return;
         }
 
-        const quint64 Generation = ++PendingGeneration;
+        const quint64 Generation = Requests.Begin(Owner);
 
         BusyCount.fetchAndAddOrdered(1);
 
@@ -232,7 +231,7 @@ namespace AppTranslator
 
                 // Checked with the lock held as well: loading the model takes long enough that a
                 // second word can be typed while the first is still waiting for it.
-                if (Generation == PendingGeneration.loadRelaxed())
+                if (Requests.IsLatest(Generation))
                 {
                     const bool bWasLoaded = Translator().has_value();
 
@@ -256,7 +255,7 @@ namespace AppTranslator
             BusyCount.fetchAndAddOrdered(-1);
 
             // Superseded while decoding. The answer is for a word the user has moved on from.
-            if (Generation != PendingGeneration.loadRelaxed())
+            if (!Requests.Finish(Generation))
             {
                 return;
             }

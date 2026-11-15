@@ -95,6 +95,8 @@ private:
     void ReevaluateRequired();
     void ChooseChosenLanguage();
     void RequestPackages();
+    void RequestVoice();
+    void RequestTranslation();
     void ForgetPendingPackages();
     void ApplySpokenLanguage();
     void RestartSteps();
@@ -103,6 +105,7 @@ private:
     QString ChosenNative;
     QString ChosenDictionaryId;
     QString ChosenVoiceId;
+    QString ChosenTranslationId;
     QString SpokenLanguage;
     QString CurrentStep;
     QString PendingCoreCardsLanguage;

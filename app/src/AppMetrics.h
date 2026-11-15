@@ -232,6 +232,20 @@ class AppMetrics : public QObject
     Q_PROPERTY(int rowProgressWidth READ GetRowProgressWidth CONSTANT)
     Q_PROPERTY(int categoryPaneWidth READ GetCategoryPaneWidth CONSTANT)
     Q_PROPERTY(int coverTileMinimumWidth READ GetCoverTileMinimumWidth CONSTANT)
+    Q_PROPERTY(int bookTileMinimumWidth READ GetBookTileMinimumWidth CONSTANT)
+    Q_PROPERTY(qreal bookCoverAspect READ GetBookCoverAspect CONSTANT)
+    Q_PROPERTY(qreal bookFrameInset READ GetBookFrameInset CONSTANT)
+    Q_PROPERTY(qreal bookFramePadding READ GetBookFramePadding CONSTANT)
+    Q_PROPERTY(qreal bookTitleScale READ GetBookTitleScale CONSTANT)
+    Q_PROPERTY(qreal bookAuthorScale READ GetBookAuthorScale CONSTANT)
+    Q_PROPERTY(qreal bookOrnamentWidth READ GetBookOrnamentWidth CONSTANT)
+    Q_PROPERTY(int bookRingSize READ GetBookRingSize CONSTANT)
+    Q_PROPERTY(int bookRingStroke READ GetBookRingStroke CONSTANT)
+    Q_PROPERTY(int bookActionSize READ GetBookActionSize CONSTANT)
+    Q_PROPERTY(int bookOverviewWidth READ GetBookOverviewWidth CONSTANT)
+    Q_PROPERTY(int bookOverviewHeight READ GetBookOverviewHeight CONSTANT)
+    Q_PROPERTY(int bookOverviewCoverWidth READ GetBookOverviewCoverWidth CONSTANT)
+    Q_PROPERTY(int holdDuration READ GetHoldDuration CONSTANT)
     Q_PROPERTY(qreal readerTileAspect READ GetReaderTileAspect CONSTANT)
     Q_PROPERTY(qreal readerPageAspect READ GetReaderPageAspect CONSTANT)
     Q_PROPERTY(int switchGlyphSize READ GetSwitchGlyphSize CONSTANT)
@@ -495,6 +509,20 @@ public:
     int GetRowProgressWidth() const;
     int GetCategoryPaneWidth() const;
     int GetCoverTileMinimumWidth() const;
+    int GetBookTileMinimumWidth() const;
+    qreal GetBookCoverAspect() const;
+    qreal GetBookFrameInset() const;
+    qreal GetBookFramePadding() const;
+    qreal GetBookTitleScale() const;
+    qreal GetBookAuthorScale() const;
+    qreal GetBookOrnamentWidth() const;
+    int GetBookRingSize() const;
+    int GetBookRingStroke() const;
+    int GetBookActionSize() const;
+    int GetBookOverviewWidth() const;
+    int GetBookOverviewHeight() const;
+    int GetBookOverviewCoverWidth() const;
+    int GetHoldDuration() const;
     qreal GetReaderTileAspect() const;
     qreal GetReaderPageAspect() const;
     int GetSwitchGlyphSize() const;

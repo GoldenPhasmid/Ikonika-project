@@ -36,21 +36,6 @@ namespace
         return QStringLiteral("discover/decks/") + TargetLanguageCode();
     }
 
-    QString OutcomeName(EFTDiscoveryOutcome Outcome)
-    {
-        switch (Outcome)
-        {
-        case EFTDiscoveryOutcome::Known:
-            return QStringLiteral("known");
-        case EFTDiscoveryOutcome::Almost:
-            return QStringLiteral("almost");
-        case EFTDiscoveryOutcome::New:
-            return QStringLiteral("new");
-        }
-
-        return {};
-    }
-
     std::vector<FTDictionarySense> LoadRowMeanings(const FTDiscoveryRow& Row)
     {
         std::vector<FTDictionarySense> Meanings;
@@ -363,7 +348,7 @@ bool DiscoveryController::restart()
 
 void DiscoveryController::choose(int Index)
 {
-    if (!Planner || !GetQuestion() || GetQuestion()->Outcome)
+    if (!Planner || !GetQuestion() || GetQuestion()->bAnswered)
     {
         return;
     }
@@ -374,9 +359,9 @@ void DiscoveryController::choose(int Index)
 
     const FTDiscoveryQuestion* Question = GetQuestion();
 
-    if (Question->Outcome)
+    if (Question->bAnswered)
     {
-        qCInfo(LogApp) << "Discover:" << GetWord() << "answered" << GetOutcome();
+        qCInfo(LogApp) << "Discover:" << GetWord() << "answered, defaults to" << (IsLearn() ? "learn" : "know");
     }
     else if (Question->ClueStep != ClueStep)
     {
@@ -391,7 +376,7 @@ void DiscoveryController::choose(int Index)
 
 void DiscoveryController::askClue()
 {
-    if (!Planner || !GetQuestion() || GetQuestion()->Outcome)
+    if (!Planner || !GetQuestion() || GetQuestion()->bAnswered)
     {
         return;
     }
@@ -399,7 +384,7 @@ void DiscoveryController::askClue()
     Planner->AskClue();
 
     qCInfo(LogApp) << "Discover: clue" << GetQuestion()->ClueStep << "on" << GetWord()
-                   << (GetQuestion()->Outcome ? "shows the answer" : "");
+                   << (GetQuestion()->bAnswered ? "shows the answer" : "");
 
     SpeakClue();
 
@@ -411,7 +396,7 @@ void DiscoveryController::SpeakClue()
 {
     const FTDiscoveryQuestion* Question = GetQuestion();
 
-    if (Question->ClueStep == 1 && Question->Prompt == EFTDiscoveryPrompt::Word && !Question->Outcome)
+    if (Question->ClueStep == 1 && IsDiscoveryWordQuestion(*Question) && !Question->bAnswered)
     {
         speakWord();
     }
@@ -432,7 +417,7 @@ void DiscoveryController::setTranslation(const QString& Translation)
 
 void DiscoveryController::commit(bool bLearn)
 {
-    if (!Planner || !GetQuestion() || !GetQuestion()->Outcome)
+    if (!Planner || !GetQuestion() || !GetQuestion()->bAnswered)
     {
         return;
     }
@@ -726,26 +711,25 @@ QString DiscoveryController::GetDeckName() const
     return DeckName;
 }
 
-QString DiscoveryController::GetPromptKind() const
+bool DiscoveryController::IsSentencePrompt() const
 {
     const FTDiscoveryQuestion* Question = GetQuestion();
 
-    if (!Question)
-    {
-        return {};
-    }
+    return Question && Question->bSentencePrompt;
+}
 
-    switch (Question->Prompt)
-    {
-    case EFTDiscoveryPrompt::Word:
-        return QStringLiteral("word");
-    case EFTDiscoveryPrompt::Sentence:
-        return QStringLiteral("sentence");
-    case EFTDiscoveryPrompt::Beginner:
-        return QStringLiteral("beginner");
-    }
+bool DiscoveryController::IsBeginnerPrompt() const
+{
+    const FTDiscoveryQuestion* Question = GetQuestion();
 
-    return {};
+    return Question && IsDiscoveryBeginnerQuestion(*Question);
+}
+
+bool DiscoveryController::IsSkippingReveal() const
+{
+    const FTDiscoveryQuestion* Question = GetQuestion();
+
+    return Question && Question->bSkipsReveal;
 }
 
 QString DiscoveryController::GetWord() const
@@ -980,7 +964,7 @@ bool DiscoveryController::IsAnswered() const
 {
     const FTDiscoveryQuestion* Question = GetQuestion();
 
-    return Question && Question->Outcome.has_value();
+    return Question && Question->bAnswered;
 }
 
 bool DiscoveryController::ShowsExample() const
@@ -994,14 +978,7 @@ bool DiscoveryController::IsLastClue() const
 {
     const FTDiscoveryQuestion* Question = GetQuestion();
 
-    return Question && Question->ClueStep >= GetDiscoveryClueCount(Question->Prompt);
-}
-
-QString DiscoveryController::GetOutcome() const
-{
-    const FTDiscoveryQuestion* Question = GetQuestion();
-
-    return Question && Question->Outcome ? OutcomeName(*Question->Outcome) : QString();
+    return Question && Question->ClueStep >= GetDiscoveryClueCount(*Question);
 }
 
 bool DiscoveryController::IsLearn() const

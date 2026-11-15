@@ -241,6 +241,38 @@ TEST_CASE("A placed tile can be taken back and placed again", "[sentencetiles]")
     CHECK(Controller.WasLastAnswerCorrect());
 }
 
+TEST_CASE("A bank tile dropped between placed tiles lands there", "[sentencetiles]")
+{
+    FAppSpeechGuard SpeechGuard;
+
+    SentenceTilesController Controller;
+    Controller.Start(MakeApple());
+
+    PlaceInOrder(Controller, {"Je", "une", "pomme", "rouge"});
+    Controller.insertTile(static_cast<int>(Controller.GetTiles().indexOf("mange")), 1);
+    Controller.submit();
+
+    CHECK(Controller.WasLastAnswerCorrect());
+}
+
+TEST_CASE("A placed tile dragged to a new position moves there", "[sentencetiles]")
+{
+    FAppSpeechGuard SpeechGuard;
+
+    SentenceTilesController Controller;
+    Controller.Start(MakeApple());
+
+    PlaceInOrder(Controller, {"mange", "Je", "une", "pomme", "rouge"});
+    Controller.insertTile(static_cast<int>(Controller.GetTiles().indexOf("Je")), 0);
+
+    CHECK(Controller.GetPlaced().size() == 5);
+
+    Controller.insertTile(static_cast<int>(Controller.GetTiles().indexOf("rouge")), 100);
+    Controller.submit();
+
+    CHECK(Controller.WasLastAnswerCorrect());
+}
+
 TEST_CASE("A tile index outside the bank is ignored", "[sentencetiles]")
 {
     FAppSpeechGuard SpeechGuard;
@@ -536,6 +568,27 @@ TEST_CASE("A full answer takes no more tiles until one is taken back", "[sentenc
 
     CHECK(Controller.IsAnswered());
     CHECK_FALSE(Controller.WasLastAnswerCorrect());
+}
+
+TEST_CASE("A full answer takes no dropped bank tile", "[sentencetiles]")
+{
+    FAppSpeechGuard SpeechGuard;
+
+    SentenceTilesController Controller;
+    Controller.SetBuildsTranslation(true);
+    Controller.Start(MakeAppleAmongOthers());
+
+    const QStringList Answer = WordsOf(Controller.GetPrompt());
+    const QStringList Distractors = TranslationTiles(Controller, Answer);
+    REQUIRE_FALSE(Distractors.isEmpty());
+
+    PlaceInOrder(Controller, Answer);
+    REQUIRE(Controller.CanSubmit());
+
+    const QVariantList Before = Controller.GetPlaced();
+    Controller.insertTile(static_cast<int>(Controller.GetTiles().indexOf(Distractors.first())), 0);
+
+    CHECK(Controller.GetPlaced() == Before);
 }
 
 TEST_CASE("A lone sentence gets translation tiles with no distractors", "[sentencetiles]")

@@ -6,6 +6,7 @@
 
 #include "core/FTReaderDocument.h"
 
+#include <QHash>
 #include <QObject>
 #include <QPointF>
 #include <QString>
@@ -72,6 +73,8 @@ class ReaderController : public QObject
     Q_PROPERTY(QVariantMap transfers READ GetTransfers NOTIFY transfersChanged)
 
     Q_PROPERTY(QVariantList freeBooks READ GetFreeBooks NOTIFY documentsChanged)
+    Q_PROPERTY(QVariantMap details READ GetDetails NOTIFY detailsChanged)
+    Q_PROPERTY(QVariantList collections READ GetCollections NOTIFY documentsChanged)
     Q_PROPERTY(QVariantMap freeTransfers READ GetFreeTransfers NOTIFY transfersChanged)
 
     Q_PROPERTY(int textSize READ GetTextSize WRITE SetTextSize NOTIFY readingSettingsChanged)
@@ -99,6 +102,16 @@ public:
     /** Adds a file by path and opens it, the same as picking it from the dialog. This is what a
         file dropped on the library goes through. True when a document was opened. */
     Q_INVOKABLE bool openPath(const QString& FilePath);
+
+    Q_INVOKABLE bool openDocumentAt(const QString& Id, int Position);
+
+    Q_INVOKABLE void renameDocument(const QString& Id, const QString& Title);
+
+    Q_INVOKABLE void loadDetails(const QString& Id);
+
+    Q_INVOKABLE void recordAddedCard(const QString& CardId);
+
+    Q_INVOKABLE QVariantList bookWords(const QString& Key) const;
 
     Q_INVOKABLE void openExternal(const QString& FilePath, const QString& DisplayName);
 
@@ -128,8 +141,17 @@ public:
     Q_INVOKABLE void downloadFreeBook(const QString& Id);
     Q_INVOKABLE void cancelFreeBook(const QString& Id);
 
+    Q_INVOKABLE void setFavorite(const QString& Key, bool bFavorite);
+    Q_INVOKABLE QString createCollection(const QString& Name, int Colour);
+    Q_INVOKABLE void renameCollection(const QString& Id, const QString& Name);
+    Q_INVOKABLE void deleteCollection(const QString& Id);
+    Q_INVOKABLE void addToCollection(const QString& CollectionId, const QString& Key);
+    Q_INVOKABLE void removeFromCollection(const QString& CollectionId, const QString& Key);
+
     QVariantList GetDocuments() const;
     QVariantList GetFreeBooks() const;
+    QVariantMap GetDetails() const;
+    QVariantList GetCollections() const;
     QVariantMap GetFreeTransfers() const;
     QVariantList GetChapters() const;
     QString GetCurrentId() const;
@@ -171,6 +193,7 @@ public:
 
 signals:
     void documentsChanged();
+    void detailsChanged();
     void currentDocumentChanged();
     void fullScreenChanged();
     void readingSettingsChanged();
@@ -185,12 +208,18 @@ private:
 
     void ApplyKeepScreenOn(bool bEnabled);
 
+    void UploadImported(const QString& Id, const QString& FilePath);
+
     void SaveCloudPlace();
 
     void LoadReadAloudPlace();
     void SaveReadAloudPlace();
 
     void UpdateVolumeKeys();
+
+    QString GetCoversDirectory() const;
+    QHash<QString, QString> ListCovers() const;
+    void ReadMetadata(const QVariantList& Pending);
 
     void StartReflowLoad(quint64 Generation, const QString& FilePath, EFTDocumentFormat Format,
                          bool bRecordTitle);
@@ -205,10 +234,13 @@ private:
 
     QVariantList Documents;
     QVariantList FreeBooks;
+    QVariantList Collections;
     FTParagraphModel ParagraphModel;
     ReaderVocabulary Vocabulary;
     ReaderReadAloud ReadAloud;
     QVariantList Chapters;
+    QVariantMap Details;
+    QString DetailsId;
     QString CurrentId;
     QString CurrentCloudId;
     QString CurrentTitle;
@@ -224,4 +256,5 @@ private:
     bool bUnreadable = false;
     bool bKeepScreenOn = false;
     bool bFullScreen = false;
+    bool bReadingMetadata = false;
 };

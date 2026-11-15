@@ -1,0 +1,13 @@
+{
+  "frameWidth": 256,
+  "frameHeight": 400,
+  "frameCount": 72,
+  "frameRate": 24,
+  "columns": 8,
+  "rows": 9,
+  "durationMs": 3000,
+  "transparent": true,
+  "source": "Lufi_Model_V8.blend",
+  "action": "Lufi - Paw lick",
+  "order": "row-major"
+}

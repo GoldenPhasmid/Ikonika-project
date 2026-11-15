@@ -314,12 +314,23 @@ Item
 
                         delegate: MobileWordTile
                         {
+                            id: bankTile
+
                             required property string modelData
                             required property int index
 
                             text: modelData
                             interactive: !root.finished && !root.answered
-                            used: root.placed.indexOf(index) >= 0
+                            used: root.placed.indexOf(index) >= 0 || tileDrag.source === bankTile
+
+                            TileDragHandler
+                            {
+                                enabled: bankTile.interactive && root.placed.indexOf(bankTile.index) < 0
+                                overlay: tileDrag
+                                tileIndex: bankTile.index
+                                tileText: bankTile.modelData
+                                fromAnswer: false
+                            }
 
                             onClicked: root.controller.placeTile(index)
                             onHeld: root.wordHeld(text)
@@ -344,6 +355,8 @@ Item
                 },
                 Rectangle
                 {
+                    id: answerWell
+
                     visible: !root.typing
                     Layout.fillWidth: true
                     implicitHeight: Math.max(answerRow.implicitHeight, tileMeasure.implicitHeight)
@@ -376,17 +389,54 @@ Item
 
                         Repeater
                         {
+                            id: answerRepeater
+
                             model: root.placed
 
                             delegate: MobileWordTile
                             {
+                                id: answerTile
+
                                 required property int modelData
+
+                                readonly property bool lifted: tileDrag.source === answerTile
 
                                 text: root.tiles[modelData] || ""
                                 interactive: !root.answered
+                                width: answerTile.lifted ? 0 : implicitWidth
+                                opacity: answerTile.lifted ? 0 : 1
+
+                                TileDragHandler
+                                {
+                                    enabled: answerTile.interactive
+                                    overlay: tileDrag
+                                    tileIndex: answerTile.modelData
+                                    tileText: answerTile.text
+                                    fromAnswer: true
+                                }
 
                                 onClicked: root.controller.removeTile(modelData)
                                 onHeld: root.wordHeld(text)
+                            }
+                        }
+
+                        AppStackingItem
+                        {
+                            id: dropGap
+
+                            visible: tileDrag.overAnswer && tileDrag.gapShown
+                            width: tileDrag.ghostWidth
+                            height: tileMeasure.implicitHeight
+
+                            Rectangle
+                            {
+                                anchors.fill: parent
+
+                                radius: AppMetrics.radiusMedium
+                                color: AppTheme.colourPanel
+                                opacity: 0.5
+                                border.width: AppMetrics.borderWidth
+                                border.color: AppTheme.colourBorder
                             }
                         }
 
@@ -406,8 +456,8 @@ Item
 
                             radius: AppMetrics.radiusMedium
                             color: AppTheme.colourPanel
-                            border.width: AppMetrics.borderWidth
-                            border.color: tileInput.activeFocus ? AppTheme.colourAccent : AppTheme.colourBorder
+                            border.width: tileDrag.endTarget ? AppMetrics.borderWidth * 2 : AppMetrics.borderWidth
+                            border.color: tileInput.activeFocus || tileDrag.endTarget ? AppTheme.colourAccent : AppTheme.colourBorder
 
                             transform: MobileShake { id: chipShake }
 
@@ -466,6 +516,30 @@ Item
                     }
                 }
             ]
+        }
+    }
+
+    TileDrag
+    {
+        id: tileDrag
+
+        anchors.fill: parent
+
+        controller: root.controller
+        answerArea: answerWell
+        answerRepeater: answerRepeater
+        gap: dropGap
+        endItem: typingChip
+        slack: tileMeasure.implicitHeight / 2
+
+        MobileWordTile
+        {
+            visible: tileDrag.active
+            interactive: false
+            x: tileDrag.ghostX
+            y: tileDrag.ghostY
+            scale: 1.08
+            text: tileDrag.text
         }
     }
 

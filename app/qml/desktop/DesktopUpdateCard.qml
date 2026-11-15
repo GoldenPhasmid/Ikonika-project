@@ -9,9 +9,6 @@ DesktopCard
     property string detail
     property real progress: -1
     property string error
-    property bool dismissible: false
-
-    signal dismissed()
 
     default property alias actions: actionRow.data
 
@@ -45,17 +42,6 @@ DesktopCard
             text: root.title
             font.weight: Font.DemiBold
             wrapMode: Text.WordWrap
-        }
-
-        DesktopIconButton
-        {
-            objectName: root.objectName + "_dismiss"
-            visible: root.dismissible
-            Layout.alignment: Qt.AlignTop
-            iconName: "close"
-            text: qsTr("Dismiss update")
-
-            onClicked: root.dismissed()
         }
     }
 

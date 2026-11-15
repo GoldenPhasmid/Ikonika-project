@@ -38,7 +38,11 @@ namespace
             {"DailyStats", {"Day", "TargetLanguage", "NativeLanguage", "DeviceId"}, "LastUpdatedDate"},
             {"TriagedWords", {"TargetWord", "TargetLanguage", "PartOfSpeech", "Gender", "MeaningGist"}, nullptr},
             {"SearchHistory", {"Term", "TargetLanguage"}, "SearchedAt"},
-            {"CloudBooks", {"Id"}, "LastUpdatedDate"}};
+            {"CloudBooks", {"Id"}, "LastUpdatedDate"},
+            {"FavoriteBooks", {"BookKey"}, "LastUpdatedDate"},
+            {"BookCollections", {"Id"}, "LastUpdatedDate"},
+            {"BookCollectionMembers", {"CollectionId", "BookKey"}, "LastUpdatedDate"},
+            {"BookCards", {"CardId"}, "LastUpdatedDate"}};
 
         return Rules;
     }

@@ -7,6 +7,8 @@ TextInput
     property string placeholderText: ""
     property color placeholderTextColor: AppTheme.colourMuted
 
+    MobileKeyboardTap { editor: root }
+
     Text
     {
         anchors.fill: parent

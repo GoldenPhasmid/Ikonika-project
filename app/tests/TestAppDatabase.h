@@ -34,6 +34,7 @@ namespace
 
             ReaderLibrary = std::make_unique<FTReaderRepository>(*DeviceConnection);
             CloudBooks = std::make_unique<FTCloudBookRepository>(*Connection);
+            BookShelf = std::make_unique<FTBookShelfRepository>(*Connection);
             YoutubeLibrary = std::make_unique<FTYoutubeRepository>(*DeviceConnection);
         }
 
@@ -61,6 +62,11 @@ namespace
         FTCloudBookRepository& GetCloudBooks() override
         {
             return *CloudBooks;
+        }
+
+        FTBookShelfRepository& GetBookShelf() override
+        {
+            return *BookShelf;
         }
 
         FTYoutubeRepository& GetYoutubeLibrary() override
@@ -93,6 +99,7 @@ namespace
         std::unique_ptr<FTCardRepository> CardRepository;
         std::unique_ptr<FTReaderRepository> ReaderLibrary;
         std::unique_ptr<FTCloudBookRepository> CloudBooks;
+        std::unique_ptr<FTBookShelfRepository> BookShelf;
         std::unique_ptr<FTYoutubeRepository> YoutubeLibrary;
     };
 

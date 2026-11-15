@@ -182,6 +182,7 @@ qt_add_executable(IkonikaApp
     src/controllers/AppSyncController.h
     src/AppTheme.cpp
     src/AppTheme.h
+    src/AppTranslationRequests.h
     src/AppTranslator.h
     src/AppMachineTranslation.cpp
     src/AppMachineTranslation.h
@@ -193,6 +194,8 @@ qt_add_executable(IkonikaApp
     src/AppHomeWidget.h
     src/AppModifierKeys.cpp
     src/AppModifierKeys.h
+    src/AppStackingItem.cpp
+    src/AppStackingItem.h
     src/AppReaderIntake.cpp
     src/AppReaderIntake.h
     src/AppTextIntake.cpp
@@ -338,6 +341,7 @@ set(IKONIKA_MOBILE_QML_FILES
     qml/mobile/MobileWideButton.qml
     qml/mobile/MobileActionButton.qml
     qml/mobile/MobileToast.qml
+    qml/mobile/MobileKeyboardTap.qml
     qml/mobile/MobileTextField.qml
     qml/mobile/MobileTextInput.qml
     qml/mobile/MobileTextEdit.qml
@@ -490,6 +494,8 @@ set(IKONIKA_QML_FILES
     qml/ReaderShelf.js
     qml/ReaderLevelBadge.qml
     qml/ReaderTones.js
+    qml/TileDrag.qml
+    qml/TileDragHandler.qml
     qml/Greeting.js
     qml/MeaningPicks.js
     qml/WelcomeScreen.qml
@@ -506,9 +512,10 @@ set(IKONIKA_QML_FILES
     qml/desktop/DesktopAccountProfile.qml
     qml/desktop/DesktopSettingsAccount.qml
     qml/desktop/DesktopActionBar.qml
+    qml/desktop/DesktopAccentBar.qml
     qml/desktop/DesktopAnswerField.qml
     qml/desktop/DesktopBookCover.qml
-    qml/desktop/DesktopBookMorph.qml
+    qml/desktop/DesktopReaderTransition.qml
     qml/desktop/DesktopButton.qml
     qml/desktop/DesktopCard.qml
     qml/desktop/DesktopCenteredFlow.qml
@@ -533,6 +540,10 @@ set(IKONIKA_QML_FILES
     qml/desktop/DesktopPackageUpdateCard.qml
     qml/desktop/DesktopAppUpdateCard.qml
     qml/desktop/DesktopUpdateCard.qml
+    qml/desktop/DesktopDownloadStatus.qml
+    qml/desktop/DesktopAppDownload.qml
+    qml/desktop/DesktopPackageDownload.qml
+    qml/desktop/DesktopDownloadsButton.qml
     qml/desktop/DesktopReconnectBanner.qml
     qml/desktop/DesktopDivider.qml
     qml/desktop/DesktopDropdownButton.qml
@@ -560,6 +571,7 @@ set(IKONIKA_QML_FILES
     qml/desktop/DesktopLanguagePopover.qml
     qml/desktop/DesktopNativeLanguagePopover.qml
     qml/desktop/DesktopLearnedMark.qml
+    qml/desktop/DesktopDeckChip.qml
     qml/desktop/DesktopLevelBadge.qml
     qml/desktop/DesktopMasteryDots.qml
     qml/desktop/DesktopMatchExercise.qml
@@ -592,7 +604,11 @@ set(IKONIKA_QML_FILES
     qml/desktop/DesktopReaderPlayBar.qml
     qml/desktop/DesktopReaderVoiceNotice.qml
     qml/desktop/DesktopReaderBookTile.qml
-    qml/desktop/DesktopReaderOpenTile.qml
+    qml/desktop/DesktopReaderLibraryPane.qml
+    qml/desktop/DesktopContinueBook.qml
+    qml/desktop/DesktopCollectionDialog.qml
+    qml/desktop/DesktopBookOverviewDialog.qml
+    qml/desktop/DesktopHoldButton.qml
     qml/desktop/DesktopCoverBar.qml
     qml/desktop/DesktopCoverButton.qml
     qml/desktop/DesktopReaderAppearanceButton.qml

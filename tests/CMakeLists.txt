@@ -46,6 +46,7 @@ add_executable(CoreTests
     RepetitionBatchTests.cpp
     ResultMarksTests.cpp
     ReaderRepositoryTests.cpp
+    BookShelfRepositoryTests.cpp
     CloudBookRepositoryTests.cpp
     ScheduleManagerTests.cpp
     ErasureTests.cpp

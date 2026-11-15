@@ -133,6 +133,10 @@ Item
         onWidthChanged: requestPaint()
         onHeightChanged: requestPaint()
         onVisibleChanged: if (visible) requestPaint()
+        onAvailableChanged: if (available) requestPaint()
+        onCanvasWindowChanged: requestPaint()
+
+        Component.onCompleted: requestPaint()
 
         onPaint:
         {

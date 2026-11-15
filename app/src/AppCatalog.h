@@ -28,6 +28,7 @@ class AppCatalog : public QObject
     Q_PROPERTY(QVariantMap dictionaryUpdate READ GetDictionaryUpdate NOTIFY dictionaryUpdateChanged)
     Q_PROPERTY(QVariantMap availableDictionaryUpdate READ GetAvailableDictionaryUpdate NOTIFY dictionaryUpdateChanged)
     Q_PROPERTY(QString publishedVersion READ GetPublishedVersion NOTIFY catalogChanged)
+    Q_PROPERTY(qint64 publishedBytes READ GetPublishedBytes NOTIFY catalogChanged)
     Q_PROPERTY(bool appUpdateDismissed READ IsAppUpdateDismissed NOTIFY catalogChanged)
     Q_PROPERTY(QVariantList packageUpdates READ GetPackageUpdates NOTIFY catalogChanged)
 
@@ -79,6 +80,7 @@ public:
 
     bool IsUpdateAvailable() const;
     QString GetPublishedVersion() const;
+    qint64 GetPublishedBytes() const;
     bool IsAppUpdateDismissed() const;
 
     const FTCatalog* GetCatalog() const;

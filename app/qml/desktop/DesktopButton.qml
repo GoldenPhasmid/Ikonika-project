@@ -8,6 +8,8 @@ Button
 
     property string tone: "secondary"
     property string iconName: ""
+    property color iconColour: root.contentColour
+    property bool iconFilled: false
     property string trailingIconName: ""
     property string keyHint: ""
     property bool large: false
@@ -108,7 +110,8 @@ Button
 
                 visible: root.iconName.length > 0
                 name: root.iconName
-                color: root.contentColour
+                color: root.iconColour
+                filled: root.iconFilled
                 Layout.alignment: Qt.AlignVCenter
             }
 

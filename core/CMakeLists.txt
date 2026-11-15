@@ -47,6 +47,7 @@ add_library(core STATIC
     src/FTDiscoveryPlanner.cpp
     src/FTReaderDocument.cpp
     src/FTReaderRepository.cpp
+    src/FTBookShelfRepository.cpp
     src/FTCloudBookRepository.cpp
     src/FTRepetitionBatch.cpp
     src/FTErasure.cpp
@@ -93,6 +94,7 @@ add_library(core STATIC
     include/core/FTLog.h
     include/core/FTReaderDocument.h
     include/core/FTReaderRepository.h
+    include/core/FTBookShelfRepository.h
     include/core/FTCloudBookRepository.h
     include/core/FTPlacementTest.h
     include/core/FTCoreCards.h

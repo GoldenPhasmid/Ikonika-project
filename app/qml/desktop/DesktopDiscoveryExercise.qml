@@ -26,11 +26,10 @@ Item
     readonly property bool roundOver: !root.controller || root.controller.roundOver
     readonly property bool answered: !!root.controller && root.controller.answered
     readonly property bool awaiting: !root.roundOver && !root.answered
-    readonly property bool skipsReveal: root.answered && root.controller.outcome === "known" && root.promptKind !== "beginner"
-    readonly property string promptKind: root.controller ? root.controller.promptKind : ""
-    readonly property bool beginnerPrompt: root.promptKind === "beginner" && !root.answered
-    readonly property bool showsSentence: root.promptKind === "sentence" || root.promptKind === "beginner"
-        || (!!root.controller && root.controller.showsExample)
+    readonly property bool skipsReveal: !!root.controller && root.controller.skipsReveal
+    readonly property bool beginnerPrompt: !!root.controller && root.controller.beginnerPrompt && !root.answered
+    readonly property bool showsSentence: !!root.controller
+        && (root.controller.sentencePrompt || root.controller.beginnerPrompt || root.controller.showsExample)
     readonly property var results: root.controller ? root.controller.results : []
     readonly property var addedResults: root.results.filter(Row => Row.learn)
     readonly property Item headword: root.revealed ? revealedWord.item : promptWord.item
@@ -41,6 +40,7 @@ Item
     readonly property string translation: root.controller ? root.controller.translation : ""
 
     property bool revealed: false
+    property bool pendingLearn: false
     property real contentOpacity: 1
     property int wrongIndex: -1
 
@@ -143,7 +143,7 @@ Item
 
         if (root.skipsReveal)
         {
-            root.controller.commit(root.controller.learn)
+            root.advance(root.controller.learn)
 
             return
         }
@@ -151,11 +151,24 @@ Item
         revealFade.restart()
     }
 
+    function advance(learn)
+    {
+        if (commitFade.running)
+        {
+            return
+        }
+
+        console.info("Discover: moving to the next question,", learn ? "to learn" : "known")
+
+        root.pendingLearn = learn
+        commitFade.restart()
+    }
+
     function commit(learn)
     {
         if (root.revealed)
         {
-            root.controller.commit(learn)
+            root.advance(learn)
         }
     }
 
@@ -240,7 +253,11 @@ Item
         {
             revealFade.stop()
             root.revealed = false
-            root.contentOpacity = 1
+
+            if (!commitFade.running)
+            {
+                root.contentOpacity = 1
+            }
         }
     }
 
@@ -267,6 +284,31 @@ Item
         }
 
         ScriptAction { script: root.revealed = true }
+
+        NumberAnimation
+        {
+            target: root
+            property: "contentOpacity"
+            to: 1
+            duration: AppMetrics.transitionsEnabled ? AppMetrics.motionBase : 0
+            easing.type: AppMetrics.motionEasing
+        }
+    }
+
+    SequentialAnimation
+    {
+        id: commitFade
+
+        NumberAnimation
+        {
+            target: root
+            property: "contentOpacity"
+            to: 0
+            duration: AppMetrics.transitionsEnabled ? AppMetrics.motionFast : 0
+            easing.type: AppMetrics.motionEasing
+        }
+
+        ScriptAction { script: root.controller.commit(root.pendingLearn) }
 
         NumberAnimation
         {

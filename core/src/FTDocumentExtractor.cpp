@@ -1392,3 +1392,376 @@ std::optional<FTReaderDocument> FTEpubDocumentExtractor::Extract(const std::stri
 
     return Result;
 }
+
+namespace
+{
+    QString ImageExtension(const QString& MediaType, const QString& Href)
+    {
+        if (MediaType.contains(QStringLiteral("png")))
+        {
+            return QStringLiteral("png");
+        }
+
+        if (MediaType.contains(QStringLiteral("jpeg")) || MediaType.contains(QStringLiteral("jpg")))
+        {
+            return QStringLiteral("jpg");
+        }
+
+        if (MediaType.contains(QStringLiteral("gif")))
+        {
+            return QStringLiteral("gif");
+        }
+
+        if (MediaType.contains(QStringLiteral("webp")))
+        {
+            return QStringLiteral("webp");
+        }
+
+        return QFileInfo(Href).suffix().toLower();
+    }
+
+    QString PlainDescription(QString Text)
+    {
+        static const QRegularExpression Breaks(QStringLiteral("<\\s*(br|/p|/div|/li)[^>]*>"),
+                                               QRegularExpression::CaseInsensitiveOption);
+        static const QRegularExpression Tags(QStringLiteral("<[^>]*>"));
+
+        Text.replace(Breaks, QStringLiteral("\n"));
+        Text.remove(Tags);
+        Text.replace(QStringLiteral("&nbsp;"), QStringLiteral(" "));
+        Text.replace(QStringLiteral("&lt;"), QStringLiteral("<"));
+        Text.replace(QStringLiteral("&gt;"), QStringLiteral(">"));
+        Text.replace(QStringLiteral("&quot;"), QStringLiteral("\""));
+        Text.replace(QStringLiteral("&#39;"), QStringLiteral("'"));
+        Text.replace(QStringLiteral("&amp;"), QStringLiteral("&"));
+
+        QStringList Paragraphs;
+
+        for (const QString& Line : Text.split(QLatin1Char('\n')))
+        {
+            const QString Paragraph{Line.simplified()};
+
+            if (!Paragraph.isEmpty())
+            {
+                Paragraphs.append(Paragraph);
+            }
+        }
+
+        return Paragraphs.join(QStringLiteral("\n\n"));
+    }
+
+    std::optional<FTBookMetadata> ReadEpubMetadata(const QByteArray& Bytes)
+    {
+        mz_zip_archive Zip;
+        std::memset(&Zip, 0, sizeof(Zip));
+
+        if (!mz_zip_reader_init_mem(&Zip, Bytes.constData(), static_cast<size_t>(Bytes.size()), 0))
+        {
+            return std::nullopt;
+        }
+
+        const auto ReadEntry = [&Zip](const QString& Name) -> std::optional<QByteArray>
+        {
+            size_t Size = 0;
+            void* Data = mz_zip_reader_extract_file_to_heap(&Zip, Name.toUtf8().constData(), &Size, 0);
+
+            if (Data == nullptr)
+            {
+                return std::nullopt;
+            }
+
+            QByteArray Result(static_cast<const char*>(Data), static_cast<int>(Size));
+            MZ_FREE(Data);
+
+            return Result;
+        };
+
+        const std::optional<QByteArray> Container = ReadEntry(QStringLiteral("META-INF/container.xml"));
+        QString OpfPath;
+
+        if (Container.has_value())
+        {
+            QXmlStreamReader ContainerReader(*Container);
+
+            while (!ContainerReader.atEnd())
+            {
+                if (ContainerReader.readNext() == QXmlStreamReader::StartElement
+                    && ContainerReader.name() == QStringLiteral("rootfile"))
+                {
+                    OpfPath = ContainerReader.attributes().value(QStringLiteral("full-path")).toString();
+                    break;
+                }
+            }
+        }
+
+        const std::optional<QByteArray> Opf = OpfPath.isEmpty() ? std::nullopt : ReadEntry(OpfPath);
+
+        if (!Opf.has_value())
+        {
+            mz_zip_reader_end(&Zip);
+
+            return std::nullopt;
+        }
+
+        const QString DublinCore{QStringLiteral("http://purl.org/dc/elements/1.1/")};
+        FTBookMetadata Result;
+        QString CoverId;
+        QString CoverHref;
+        QString CoverMediaType;
+        QString GuessHref;
+        QString GuessMediaType;
+        QHash<QString, QPair<QString, QString>> ItemsById;
+
+        QXmlStreamReader Reader(*Opf);
+
+        while (!Reader.atEnd())
+        {
+            if (Reader.readNext() != QXmlStreamReader::StartElement)
+            {
+                continue;
+            }
+
+            if (Reader.namespaceUri() == DublinCore && Reader.name() == QStringLiteral("title") && Result.Title.empty())
+            {
+                Result.Title = Reader.readElementText().simplified().toStdString();
+            }
+            else if (Reader.namespaceUri() == DublinCore && Reader.name() == QStringLiteral("creator")
+                     && Result.Author.empty())
+            {
+                Result.Author = Reader.readElementText().simplified().toStdString();
+            }
+            else if (Reader.namespaceUri() == DublinCore && Reader.name() == QStringLiteral("language")
+                     && Result.Language.empty())
+            {
+                Result.Language = Reader.readElementText().simplified().toStdString();
+            }
+            else if (Reader.namespaceUri() == DublinCore && Reader.name() == QStringLiteral("description")
+                     && Result.Description.empty())
+            {
+                Result.Description = PlainDescription(
+                    Reader.readElementText(QXmlStreamReader::IncludeChildElements)).toStdString();
+            }
+            else if (Reader.name() == QStringLiteral("meta")
+                     && Reader.attributes().value(QStringLiteral("name")) == QStringLiteral("cover"))
+            {
+                CoverId = Reader.attributes().value(QStringLiteral("content")).toString();
+            }
+            else if (Reader.name() == QStringLiteral("item"))
+            {
+                const QXmlStreamAttributes Attributes = Reader.attributes();
+                const QString Id = Attributes.value(QStringLiteral("id")).toString();
+                const QString Href = Attributes.value(QStringLiteral("href")).toString();
+                const QString MediaType = Attributes.value(QStringLiteral("media-type")).toString();
+
+                ItemsById.insert(Id, qMakePair(Href, MediaType));
+
+                if (Attributes.value(QStringLiteral("properties")).toString().split(QLatin1Char(' '))
+                        .contains(QStringLiteral("cover-image")))
+                {
+                    CoverHref = Href;
+                    CoverMediaType = MediaType;
+                }
+                else if (GuessHref.isEmpty() && MediaType.startsWith(QStringLiteral("image/"))
+                         && (Id.contains(QStringLiteral("cover"), Qt::CaseInsensitive)
+                             || Href.contains(QStringLiteral("cover"), Qt::CaseInsensitive)))
+                {
+                    GuessHref = Href;
+                    GuessMediaType = MediaType;
+                }
+            }
+        }
+
+        if (CoverHref.isEmpty() && ItemsById.contains(CoverId))
+        {
+            CoverHref = ItemsById.value(CoverId).first;
+            CoverMediaType = ItemsById.value(CoverId).second;
+        }
+
+        if (CoverHref.isEmpty())
+        {
+            CoverHref = GuessHref;
+            CoverMediaType = GuessMediaType;
+        }
+
+        if (!CoverHref.isEmpty() && CoverMediaType.startsWith(QStringLiteral("image/")))
+        {
+            if (const std::optional<QByteArray> Cover = ReadEntry(ResolveZipPath(OpfPath, CoverHref)))
+            {
+                Result.CoverBytes = Cover->toStdString();
+                Result.CoverExtension = ImageExtension(CoverMediaType, CoverHref).toStdString();
+            }
+        }
+
+        mz_zip_reader_end(&Zip);
+
+        return Result;
+    }
+
+    std::optional<FTBookMetadata> ReadFb2Metadata(const QByteArray& Bytes)
+    {
+        QXmlStreamReader Reader(DecodeXml(Bytes));
+        FTBookMetadata Result;
+        QString CoverId;
+        bool bInTitleInfo = false;
+        bool bInAuthor = false;
+        bool bInCoverPage = false;
+        bool bAuthorDone = false;
+        QStringList AuthorParts;
+
+        while (!Reader.atEnd())
+        {
+            const QXmlStreamReader::TokenType Token = Reader.readNext();
+
+            if (Token == QXmlStreamReader::EndElement)
+            {
+                if (Reader.name() == QStringLiteral("title-info"))
+                {
+                    bInTitleInfo = false;
+                }
+                else if (Reader.name() == QStringLiteral("author") && bInAuthor)
+                {
+                    bInAuthor = false;
+                    bAuthorDone = !AuthorParts.isEmpty();
+                }
+                else if (Reader.name() == QStringLiteral("coverpage"))
+                {
+                    bInCoverPage = false;
+                }
+
+                continue;
+            }
+
+            if (Token != QXmlStreamReader::StartElement)
+            {
+                continue;
+            }
+
+            const QStringView Name = Reader.name();
+
+            if (Name == QStringLiteral("title-info"))
+            {
+                bInTitleInfo = true;
+            }
+            else if (bInTitleInfo && Name == QStringLiteral("author") && !bAuthorDone)
+            {
+                bInAuthor = true;
+            }
+            else if (bInAuthor && (Name == QStringLiteral("first-name") || Name == QStringLiteral("middle-name")
+                                   || Name == QStringLiteral("last-name")))
+            {
+                const QString Part = Reader.readElementText().simplified();
+
+                if (!Part.isEmpty())
+                {
+                    AuthorParts.append(Part);
+                }
+            }
+            else if (bInTitleInfo && Name == QStringLiteral("book-title") && Result.Title.empty())
+            {
+                Result.Title = Reader.readElementText().simplified().toStdString();
+            }
+            else if (bInTitleInfo && Name == QStringLiteral("lang") && Result.Language.empty())
+            {
+                Result.Language = Reader.readElementText().simplified().toStdString();
+            }
+            else if (bInTitleInfo && Name == QStringLiteral("annotation") && Result.Description.empty())
+            {
+                QStringList Paragraphs;
+
+                while (!Reader.atEnd())
+                {
+                    const QXmlStreamReader::TokenType Inner = Reader.readNext();
+
+                    if (Inner == QXmlStreamReader::EndElement && Reader.name() == QStringLiteral("annotation"))
+                    {
+                        break;
+                    }
+
+                    if (Inner == QXmlStreamReader::StartElement && Reader.name() == QStringLiteral("p"))
+                    {
+                        const QString Paragraph{
+                            Reader.readElementText(QXmlStreamReader::IncludeChildElements).simplified()};
+
+                        if (!Paragraph.isEmpty())
+                        {
+                            Paragraphs.append(Paragraph);
+                        }
+                    }
+                }
+
+                Result.Description = Paragraphs.join(QStringLiteral("\n\n")).toStdString();
+            }
+            else if (bInTitleInfo && Name == QStringLiteral("coverpage"))
+            {
+                bInCoverPage = true;
+            }
+            else if (bInCoverPage && Name == QStringLiteral("image") && CoverId.isEmpty())
+            {
+                for (const QXmlStreamAttribute& Attribute : Reader.attributes())
+                {
+                    if (Attribute.name() == QStringLiteral("href"))
+                    {
+                        CoverId = Attribute.value().toString();
+
+                        if (CoverId.startsWith(QLatin1Char('#')))
+                        {
+                            CoverId.remove(0, 1);
+                        }
+                    }
+                }
+            }
+            else if (Name == QStringLiteral("binary") && !CoverId.isEmpty()
+                     && Reader.attributes().value(QStringLiteral("id")) == CoverId)
+            {
+                const QString MediaType = Reader.attributes().value(QStringLiteral("content-type")).toString();
+                const QByteArray Decoded = QByteArray::fromBase64(Reader.readElementText().toLatin1());
+
+                if (!Decoded.isEmpty())
+                {
+                    Result.CoverBytes = Decoded.toStdString();
+                    Result.CoverExtension = ImageExtension(MediaType, CoverId).toStdString();
+                }
+
+                break;
+            }
+        }
+
+        Result.Author = AuthorParts.join(QLatin1Char(' ')).toStdString();
+
+        return Result;
+    }
+}
+
+std::optional<FTBookMetadata> ReadBookMetadata(const std::string& FilePath)
+{
+    const EFTDocumentFormat Format = DetectDocumentFormat(FilePath);
+
+    if (Format != EFTDocumentFormat::Epub && Format != EFTDocumentFormat::Fb2)
+    {
+        return std::nullopt;
+    }
+
+    std::optional<QByteArray> Bytes = ReadBytes(QString::fromStdString(FilePath));
+
+    if (!Bytes.has_value())
+    {
+        return std::nullopt;
+    }
+
+    if (Format == EFTDocumentFormat::Epub)
+    {
+        return ReadEpubMetadata(*Bytes);
+    }
+
+    if (Bytes->startsWith("PK"))
+    {
+        Bytes = ReadFirstZipEntryEndingWith(*Bytes, QStringLiteral(".fb2"));
+
+        if (!Bytes.has_value())
+        {
+            return std::nullopt;
+        }
+    }
+
+    return ReadFb2Metadata(*Bytes);
+}

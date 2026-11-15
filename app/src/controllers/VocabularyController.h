@@ -88,6 +88,7 @@ public:
 
 signals:
     void vocabularyChanged();
+    void cardAdded(const QString& CardId);
     void viewChanged();
 
 private:

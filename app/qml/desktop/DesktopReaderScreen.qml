@@ -21,46 +21,85 @@ Item
     readonly property bool cannotRead: root.reading && (reader.unreadable || (reader.isPdf && pdfView.failed))
     readonly property bool readable: root.reading && !root.cannotRead
     readonly property int bookCount: reader.documents.length
+    readonly property var continueBooks: Shelf.continueBooks(reader.documents)
     readonly property bool freeAvailable: reader.freeBooks.length > 0
-    property bool freeShown: false
-    property string levelFilter: ""
-    readonly property int shelfCount: root.freeShown ? reader.freeBooks.length : root.bookCount
-    readonly property real chromeShown: bookMorph.chromeShown
+    property string section: "all"
+    property var filter: root.emptyFilter()
+    readonly property real chromeShown: pageTransition.chromeShown
     readonly property ReaderReadAloud readAloud: reader.readAloud
     readonly property bool readAloudOffered: root.readable && !reader.isPdf
     property bool voiceNoticeShown: false
 
     property bool immersive: false
-    readonly property string sortOrder: Shelf.sortOrders.indexOf(AppReaderSettings.librarySortOrder) >= 0
-                                        ? AppReaderSettings.librarySortOrder : Shelf.sortOrders[0]
+    readonly property string sortOrder: Shelf.libraryOrders.indexOf(AppReaderSettings.librarySortOrder) >= 0
+                                        ? AppReaderSettings.librarySortOrder : Shelf.libraryOrders[0]
     readonly property bool sortReversed: AppReaderSettings.librarySortReversed
+    readonly property string groupMode: Shelf.libraryGroups.indexOf(AppReaderSettings.libraryGroup) >= 0
+                                        ? AppReaderSettings.libraryGroup : Shelf.libraryGroups[0]
 
-    readonly property var sortDirections: [
-        [qsTr("Newest first"), qsTr("Oldest first")],
-        [qsTr("Newest first"), qsTr("Oldest first")],
-        [qsTr("A to Z"), qsTr("Z to A")],
-        [qsTr("In progress first"), qsTr("Finished first")]
-    ]
+    readonly property var sortDirections: ({
+        "recent": [qsTr("Newest first"), qsTr("Oldest first")],
+        "title": [qsTr("A to Z"), qsTr("Z to A")],
+        "author": [qsTr("A to Z"), qsTr("Z to A")],
+        "level": [qsTr("Easiest first"), qsTr("Hardest first")],
+        "progress": [qsTr("In progress first"), qsTr("Finished first")],
+        "added": [qsTr("Newest first"), qsTr("Oldest first")],
+        "size": [qsTr("Largest first"), qsTr("Smallest first")]
+    })
 
     readonly property string searchTerm: librarySearch.term
-    readonly property var shelf: root.freeShown ? Shelf.arrange(reader.freeBooks, "", root.searchTerm, false, root.levelFilter)
-                                                : Shelf.arrange(reader.documents, root.sortOrder, root.searchTerm, root.sortReversed)
+    readonly property var sourceBooks: root.section === "free" ? reader.freeBooks : reader.documents
+    readonly property var shelf: Shelf.shelve(root.sourceBooks, root.section, root.filter, root.searchTerm,
+                                              root.sortOrder, root.sortReversed)
+    readonly property var shelfGroups: Shelf.group(root.shelf, root.groupMode)
+    readonly property var shelfRows: Shelf.rows(root.shelfGroups, root.tileColumns)
+    readonly property var formats: root.sourceBooks.map(function(book) { return (book.format || "").toLowerCase() })
+                                                 .filter(function(format, index, all) { return format.length > 0 && all.indexOf(format) === index })
+                                                 .sort()
 
-    onFreeAvailableChanged:
+    readonly property var sectionCounts:
     {
-        if (!root.freeAvailable)
+        const counts = { "free": reader.freeBooks.length }
+        const keys = ["all", "reading", "finished", "favorites"]
+
+        for (const collection of reader.collections)
         {
-            root.freeShown = false
+            keys.push("collection:" + collection.id)
         }
-        else if (root.bookCount === 0)
+
+        for (const key of keys)
         {
-            root.freeShown = true
+            counts[key] = reader.documents.filter(function(book) { return Shelf.inSection(book, key) }).length
         }
+
+        return counts
     }
 
-    readonly property int tileColumns: Math.max(1, Math.floor((library.columnWidth + AppMetrics.gapMedium)
-                                                              / (AppMetrics.coverTileMinimumWidth + AppMetrics.gapMedium)))
-    readonly property real tileWidth: Math.floor((library.columnWidth - AppMetrics.gapMedium * (root.tileColumns - 1))
+    readonly property string sectionTitle:
+    {
+        const titles = {
+            "all": qsTr("My books"),
+            "reading": qsTr("Reading"),
+            "finished": qsTr("Finished"),
+            "favorites": qsTr("Favorites"),
+            "free": qsTr("Free library")
+        }
+
+        if (titles[root.section] !== undefined)
+        {
+            return titles[root.section]
+        }
+
+        const collection = reader.collections.find(function(entry) { return "collection:" + entry.id === root.section })
+
+        return collection ? collection.name : titles["all"]
+    }
+
+    readonly property real shelfColumnWidth: Math.max(0, Math.min(AppMetrics.coverGridWidth,
+                                                                  shelfArea.width - AppMetrics.contentPadding * 2))
+    readonly property int tileColumns: Math.max(1, Math.floor((root.shelfColumnWidth + AppMetrics.gapLarge)
+                                                              / (AppMetrics.bookTileMinimumWidth + AppMetrics.gapLarge)))
+    readonly property real tileWidth: Math.floor((root.shelfColumnWidth - AppMetrics.gapLarge * (root.tileColumns - 1))
                                                  / root.tileColumns)
     property bool contentsOpen: false
 
@@ -90,12 +129,42 @@ Item
         if (!reader.reading)
         {
             reader.refresh()
-
-            if (root.bookCount === 0)
-            {
-                root.freeShown = root.freeAvailable
-            }
         }
+    }
+
+    function emptyFilter()
+    {
+        return { "levels": [], "statuses": [], "storage": [], "formats": [] }
+    }
+
+    function toggleFilter(key, value)
+    {
+        const next = { "levels": root.filter.levels.slice(), "statuses": root.filter.statuses.slice(),
+                       "storage": root.filter.storage.slice(), "formats": root.filter.formats.slice() }
+        const index = next[key].indexOf(value)
+
+        if (index >= 0)
+        {
+            next[key].splice(index, 1)
+        }
+        else
+        {
+            next[key].push(value)
+        }
+
+        root.filter = next
+    }
+
+    function download(book)
+    {
+        if (book.freeId !== undefined && !book.cloudId)
+        {
+            reader.downloadFreeBook(book.freeId)
+
+            return
+        }
+
+        reader.downloadBook(book.cloudId)
     }
 
     function openBook()
@@ -107,6 +176,17 @@ Item
     {
         root.savePosition()
         reader.openPath(path)
+    }
+
+    function recordAddedCard(cardId)
+    {
+        reader.recordAddedCard(cardId)
+    }
+
+    function openDocument(id)
+    {
+        root.savePosition()
+        reader.openDocument(id)
     }
 
     function focusSearch()
@@ -126,14 +206,6 @@ Item
                                                       : qsTr("The file stays where it is on your computer."),
                               qsTr("Remove"),
                               function() { reader.removeDocument(document.id) })
-    }
-
-    function confirmCloudDelete(document)
-    {
-        cloudDeleteDialog.ask(qsTr("Delete \"%1\" from the cloud?").arg(document.title),
-                              qsTr("The book is removed from the cloud and from every device that downloaded it."),
-                              qsTr("Delete"),
-                              function() { reader.deleteCloudBook(document.cloudId) })
     }
 
     function savePosition()
@@ -158,46 +230,22 @@ Item
         }
     }
 
-    function landingFor(isPdf)
+    function openFromTile(document, position)
     {
-        const page = bookMorph.rectIn(pageArea)
-        const height = page.height - AppMetrics.gapLarge * 2
+        pageTransition.open()
 
-        if (isPdf)
+        if (position === undefined)
         {
-            const width = Math.min(page.width - AppMetrics.gapLarge * 2, height * AppMetrics.readerPageAspect)
-
-            return Qt.rect(page.x + (page.width - width) / 2, page.y + AppMetrics.gapLarge, width, height)
+            reader.openDocument(document.id)
+        }
+        else
+        {
+            reader.openDocumentAt(document.id, position)
         }
 
-        return Qt.rect(page.x + (page.width - textView.columnWidth) / 2, page.y + AppMetrics.gapLarge, textView.columnWidth, height)
-    }
-
-    function tileFor(id)
-    {
-        shelfFlow.forceLayout()
-
-        for (let index = 0; index < shelfRepeater.count; ++index)
+        if (pageTransition.running && !reader.reading)
         {
-            const tile = shelfRepeater.itemAt(index)
-
-            if (tile && tile.modelData.id === id)
-            {
-                return tile
-            }
-        }
-
-        return null
-    }
-
-    function openFromTile(tile, document)
-    {
-        bookMorph.open(tile, root.landingFor(document.format === "pdf"))
-        reader.openDocument(document.id)
-
-        if (bookMorph.morphing && !reader.reading)
-        {
-            bookMorph.finishOpen()
+            pageTransition.finishOpen()
         }
     }
 
@@ -206,12 +254,7 @@ Item
         root.contentsOpen = false
         root.immersive = false
 
-        const id = reader.currentId
-        const tile = root.readable ? root.tileFor(id) : null
-        const landing = root.landingFor(reader.isPdf)
-
-        if (!bookMorph.close(tile, landing, bookMorph.rectIn(pageArea), pageArea.color, root.closeNow,
-                             function() { return root.tileFor(id) }))
+        if (!root.readable || !pageTransition.close(root.closeNow))
         {
             root.closeNow()
         }
@@ -227,7 +270,7 @@ Item
         reader.closeDocument()
         reader.refresh()
 
-        if (bookMorph.morphing)
+        if (pageTransition.running)
         {
             root.crumbsChanging()
         }
@@ -417,7 +460,7 @@ Item
 
     function onReadingKey(event)
     {
-        if (bookMorph.morphing)
+        if (pageTransition.running)
         {
             event.accepted = true
 
@@ -608,227 +651,546 @@ Item
 
     Component.onCompleted: root.refresh()
 
-    DesktopPage
+    Item
     {
         id: library
 
         anchors.fill: parent
-        visible: !root.reading || bookMorph.morphing
-        opacity: bookMorph.shelfShown
-        scale: bookMorph.shelfScale
-        maximumWidth: AppMetrics.coverGridWidth
-        spacing: AppMetrics.gapMedium
+        visible: !root.reading || pageTransition.running
+        opacity: pageTransition.shelfShown
+        scale: pageTransition.shelfScale
 
-        RowLayout
+        DesktopReaderLibraryPane
         {
-            Layout.fillWidth: true
-            spacing: AppMetrics.gapTight
+            id: libraryPane
 
-            DesktopSearchField
+            anchors.left: parent.left
+            anchors.top: parent.top
+            anchors.bottom: parent.bottom
+
+            section: root.section
+            counts: root.sectionCounts
+            collections: reader.collections
+            freeShown: root.freeAvailable
+
+            onSectionChosen: function(section)
             {
-                id: librarySearch
+                root.section = section
 
-                objectName: "reader_search"
-
-                Layout.preferredWidth: AppMetrics.searchWidth
-                visible: root.shelfCount > 0
-                placeholderText: qsTr("Search books")
-            }
-
-            DesktopLabel
-            {
-                Layout.fillWidth: true
-                Layout.leftMargin: librarySearch.visible ? AppMetrics.gapSmall : 0
-                visible: root.shelfCount > 0
-                text: root.searchTerm.length > 0 || (root.freeShown && root.levelFilter.length > 0)
-                    ? qsTr("%1 of %2 books").arg(root.shelf.length).arg(root.shelfCount)
-                    : root.shelfCount === 1 ? qsTr("1 book") : qsTr("%1 books").arg(root.shelfCount)
-                font.pixelSize: AppMetrics.fontSmall
-                color: AppTheme.colourMuted
-            }
-
-            Item
-            {
-                Layout.fillWidth: true
-                visible: root.shelfCount === 0
-            }
-
-            DesktopSelect
-            {
-                objectName: "reader_shelf"
-
-                Layout.fillWidth: false
-                Layout.preferredWidth: AppMetrics.settingsControlWidth
-                visible: root.freeAvailable
-                heading: qsTr("Show books")
-                options: [qsTr("My books"), qsTr("Free books")]
-                currentIndex: root.freeShown ? 1 : 0
-
-                onChosen: function(index)
+                if (section === "free")
                 {
-                    root.freeShown = index === 1
+                    reader.refreshFreeBooks()
+                }
+            }
+            onNewCollectionRequested: collectionDialog.create(function(name, colour) { reader.createCollection(name, colour) })
+            onRenameCollectionRequested: function(collectionId, name)
+            {
+                collectionDialog.rename(collectionId, name, function(newName) { reader.renameCollection(collectionId, newName) })
+            }
+            onDeleteCollectionRequested: function(collectionId, name)
+            {
+                cloudDeleteDialog.ask(qsTr("Delete the collection \"%1\"?").arg(name),
+                                      qsTr("The books stay in your library."),
+                                      qsTr("Delete"),
+                                      function() { reader.deleteCollection(collectionId) })
+            }
+            onImportRequested: root.openBook()
+        }
 
-                    if (root.freeShown)
+        Item
+        {
+            id: shelfArea
+
+            anchors.left: libraryPane.right
+            anchors.right: parent.right
+            anchors.top: parent.top
+            anchors.bottom: parent.bottom
+
+            RowLayout
+            {
+                id: shelfToolbar
+
+                x: (shelfArea.width - width) / 2
+                y: AppMetrics.contentPadding
+                width: root.shelfColumnWidth
+                spacing: AppMetrics.gapSmall
+
+                DesktopLabel
+                {
+                    Layout.minimumWidth: implicitWidth
+                    text: root.sectionTitle
+                    font.pixelSize: AppMetrics.fontTitle
+                    font.weight: Font.DemiBold
+                }
+
+                DesktopLabel
+                {
+                    Layout.leftMargin: AppMetrics.gapTight
+                    text: root.shelf.length === 1 ? qsTr("1 book") : qsTr("%1 books").arg(root.shelf.length)
+                    font.pixelSize: AppMetrics.fontSmall
+                    color: AppTheme.colourMuted
+                }
+
+                Item
+                {
+                    Layout.fillWidth: true
+                }
+
+                DesktopSearchField
+                {
+                    id: librarySearch
+
+                    objectName: "reader_search"
+
+                    Layout.fillWidth: true
+                    Layout.preferredWidth: AppMetrics.searchWidth
+                    Layout.maximumWidth: AppMetrics.searchWidth
+                    placeholderText: qsTr("Search title or author")
+                }
+
+                DesktopButton
+                {
+                    id: filterButton
+
+                    objectName: "reader_filter"
+
+                    iconName: "filter"
+                    text: Shelf.filterCount(root.filter) > 0 ? qsTr("Filter · %1").arg(Shelf.filterCount(root.filter))
+                                                             : qsTr("Filter")
+
+                    onClicked: filterPopover.visible ? filterPopover.close() : filterPopover.open()
+
+                    DesktopPopover
                     {
-                        reader.refreshFreeBooks()
+                        id: filterPopover
+
+                        x: filterButton.width - width
+                        y: filterButton.height + AppMetrics.gapTight
+                        width: AppMetrics.popoverWidth
+                        heading: qsTr("Filter")
+
+                        component FilterGroup: ColumnLayout
+                        {
+                            id: filterGroup
+
+                            required property string key
+                            required property string title
+                            required property var values
+                            required property var labels
+
+                            Layout.fillWidth: true
+                            Layout.leftMargin: AppMetrics.gapCompact
+                            Layout.rightMargin: AppMetrics.gapCompact
+                            Layout.bottomMargin: AppMetrics.gapCompact
+                            visible: filterGroup.values.length > 0
+                            spacing: AppMetrics.gapSmall
+
+                            DesktopLabel
+                            {
+                                text: filterGroup.title
+                                font.pixelSize: AppMetrics.fontSmall
+                                font.weight: Font.DemiBold
+                                color: AppTheme.colourSubtle
+                            }
+
+                            Flow
+                            {
+                                Layout.fillWidth: true
+                                spacing: AppMetrics.gapSmall
+
+                                Repeater
+                                {
+                                    model: filterGroup.values
+
+                                    delegate: DesktopChip
+                                    {
+                                        required property string modelData
+                                        required property int index
+
+                                        objectName: "reader_filter_" + filterGroup.key + "_" + modelData
+                                        text: filterGroup.labels[index]
+                                        toggle: true
+                                        selected: root.filter[filterGroup.key].indexOf(modelData) >= 0
+
+                                        onClicked: root.toggleFilter(filterGroup.key, modelData)
+                                    }
+                                }
+                            }
+                        }
+
+                        FilterGroup
+                        {
+                            key: "levels"
+                            title: qsTr("Level")
+                            values: Shelf.levels.slice(1)
+                            labels: Shelf.levelLabels().slice(1)
+                        }
+
+                        FilterGroup
+                        {
+                            key: "statuses"
+                            title: qsTr("Status")
+                            values: ["new", "reading", "finished"]
+                            labels: [qsTr("Not started"), qsTr("Reading"), qsTr("Finished")]
+                        }
+
+                        FilterGroup
+                        {
+                            key: "storage"
+                            title: qsTr("Storage")
+                            values: ["downloaded", "cloud"]
+                            labels: [qsTr("Downloaded"), qsTr("In the cloud")]
+                        }
+
+                        FilterGroup
+                        {
+                            key: "formats"
+                            title: qsTr("Format")
+                            values: root.formats
+                            labels: root.formats.map(function(format) { return format.toUpperCase() })
+                        }
+
+                        DesktopButton
+                        {
+                            objectName: "reader_filter_reset"
+
+                            Layout.alignment: Qt.AlignRight
+                            Layout.margins: AppMetrics.gapCompact
+                            enabled: Shelf.filterCount(root.filter) > 0
+                            text: qsTr("Reset")
+
+                            onClicked: root.filter = root.emptyFilter()
+                        }
+                    }
+                }
+
+                DesktopButton
+                {
+                    id: sortButton
+
+                    objectName: "reader_sort"
+
+                    iconName: root.sortReversed ? "arrow_up_narrow_wide" : "arrow_down_wide_narrow"
+                    trailingIconName: "chevron_down"
+                    text: Shelf.libraryOrderLabels()[Shelf.libraryOrders.indexOf(root.sortOrder)]
+
+                    onClicked: sortPopover.visible ? sortPopover.close() : sortPopover.open()
+
+                    DesktopPopover
+                    {
+                        id: sortPopover
+
+                        x: sortButton.width - width
+                        y: sortButton.height + AppMetrics.gapTight
+                        heading: qsTr("Sort by")
+
+                        Repeater
+                        {
+                            model: Shelf.libraryOrders
+
+                            delegate: DesktopPopoverRow
+                            {
+                                required property string modelData
+                                required property int index
+
+                                objectName: "reader_sort_" + modelData
+                                Layout.fillWidth: true
+                                text: Shelf.libraryOrderLabels()[index]
+                                showsCheck: true
+                                selected: root.sortOrder === modelData
+
+                                onClicked: AppReaderSettings.librarySortOrder = modelData
+                            }
+                        }
+
+                        DesktopDivider
+                        {
+                            Layout.fillWidth: true
+                            Layout.topMargin: AppMetrics.gapTight
+                            Layout.bottomMargin: AppMetrics.gapTight
+                        }
+
+                        Repeater
+                        {
+                            model: 2
+
+                            delegate: DesktopPopoverRow
+                            {
+                                required property int index
+
+                                objectName: "reader_sort_direction_" + index
+                                Layout.fillWidth: true
+                                text: root.sortDirections[root.sortOrder][index]
+                                showsCheck: true
+                                selected: root.sortReversed === (index === 1)
+
+                                onClicked: AppReaderSettings.librarySortReversed = index === 1
+                            }
+                        }
+
+                        DesktopDivider
+                        {
+                            Layout.fillWidth: true
+                            Layout.topMargin: AppMetrics.gapTight
+                            Layout.bottomMargin: AppMetrics.gapTight
+                        }
+
+                        DesktopSectionLabel
+                        {
+                            Layout.leftMargin: AppMetrics.gapCompact
+                            Layout.bottomMargin: AppMetrics.gapTight
+                            text: qsTr("Group by")
+                        }
+
+                        Repeater
+                        {
+                            model: Shelf.libraryGroups
+
+                            delegate: DesktopPopoverRow
+                            {
+                                required property string modelData
+                                required property int index
+
+                                objectName: "reader_group_" + modelData
+                                Layout.fillWidth: true
+                                text: Shelf.libraryGroupLabels()[index]
+                                showsCheck: true
+                                selected: root.groupMode === modelData
+
+                                onClicked: AppReaderSettings.libraryGroup = modelData
+                            }
+                        }
                     }
                 }
             }
 
-            DesktopSelect
+            ListView
             {
-                objectName: "reader_level"
+                id: shelfList
 
-                Layout.fillWidth: false
-                Layout.preferredWidth: AppMetrics.settingsControlWidth
-                visible: root.freeShown
-                heading: qsTr("Reading level")
-                options: Shelf.levelLabels()
-                currentIndex: Shelf.levels.indexOf(root.levelFilter)
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.top: shelfToolbar.bottom
+                anchors.topMargin: AppMetrics.gapMedium
+                anchors.bottom: parent.bottom
+                clip: true
+                boundsBehavior: Flickable.StopAtBounds
+                model: shelfList.rows
 
-                onChosen: function(index) { root.levelFilter = Shelf.levels[index] }
-            }
+                property var rows: []
+                property string rowsIdentity: ""
 
-            DesktopSelect
-            {
-                objectName: "reader_sort"
-
-                Layout.fillWidth: false
-                Layout.preferredWidth: AppMetrics.settingsControlWidth
-                visible: !root.freeShown
-                enabled: root.bookCount > 1
-                heading: qsTr("Sort by")
-                options: [qsTr("Last opened"), qsTr("Recently added"), qsTr("Title"), qsTr("Progress")]
-                currentIndex: Shelf.sortOrders.indexOf(root.sortOrder)
-
-                onChosen: function(index) { AppReaderSettings.librarySortOrder = Shelf.sortOrders[index] }
-            }
-
-            DesktopIconButton
-            {
-                objectName: "reader_sort_direction"
-
-                visible: !root.freeShown
-                enabled: root.bookCount > 1
-                iconName: root.sortReversed ? "arrow_up_narrow_wide" : "arrow_down_wide_narrow"
-                text: root.sortDirections[Shelf.sortOrders.indexOf(root.sortOrder)][root.sortReversed ? 1 : 0]
-
-                onClicked: AppReaderSettings.librarySortReversed = !root.sortReversed
-            }
-        }
-
-        Flow
-        {
-            id: shelfFlow
-
-            Layout.fillWidth: true
-            spacing: AppMetrics.gapMedium
-
-            Accessible.role: Accessible.List
-            Accessible.name: qsTr("Books")
-
-            DesktopReaderOpenTile
-            {
-                objectName: "reader_open_tile"
-
-                width: root.tileWidth
-                visible: !root.freeShown && root.searchTerm.length === 0
-
-                onClicked: root.openBook()
-            }
-
-            Repeater
-            {
-                id: shelfRepeater
-
-                model: root.shelf
-
-                delegate: DesktopReaderBookTile
+                function adoptRows()
                 {
-                    id: tile
+                    const identity = [root.section, root.searchTerm, root.sortOrder, root.sortReversed, root.groupMode,
+                                      root.tileColumns, JSON.stringify(root.filter)].join("|")
+                    const heldPosition = shelfList.contentY
+                    const keepPosition = identity === shelfList.rowsIdentity
+
+                    shelfList.rowsIdentity = identity
+                    shelfList.rows = root.shelfRows
+
+                    if (keepPosition)
+                    {
+                        shelfList.contentY = heldPosition
+                    }
+                }
+
+                Component.onCompleted: shelfList.adoptRows()
+
+                Connections
+                {
+                    target: root
+
+                    function onShelfRowsChanged() { shelfList.adoptRows() }
+                }
+
+                Accessible.role: Accessible.List
+                Accessible.name: root.sectionTitle
+
+                ScrollBar.vertical: DesktopScrollBar {}
+
+                header: Item
+                {
+                    width: shelfList.width
+                    height: AppMetrics.gapSmall
+                }
+
+                footer: Item
+                {
+                    width: shelfList.width
+                    height: AppMetrics.contentPadding
+                }
+
+                delegate: Item
+                {
+                    id: shelfRow
 
                     required property var modelData
                     required property int index
 
-                    objectName: "reader_book_" + index
+                    width: shelfList.width
+                    height: shelfRow.modelData.title !== undefined
+                            ? groupLabel.implicitHeight + AppMetrics.gapMedium
+                            : tileRow.implicitHeight + AppMetrics.gapLarge
 
-                    width: root.tileWidth
-
-                    title: modelData.title
-                    level: modelData.level || ""
-                    format: modelData.format
-                    exists: modelData.exists
-                    local: modelData.local
-                    inCloud: modelData.cloudId.length > 0
-                    free: modelData.free || modelData.freeId !== undefined
-                    cloudAvailable: reader.cloudAvailable
-                    size: modelData.size || 0
-                    readProgress: modelData.progress
-                    progress:
+                    DesktopSectionLabel
                     {
-                        const value = !modelData.local && modelData.freeId !== undefined
-                                    ? reader.freeTransfers[modelData.freeId]
-                                    : reader.transfers[modelData.local ? modelData.id : modelData.cloudId]
+                        id: groupLabel
 
-                        return value === undefined ? -1 : value
+                        x: (shelfRow.width - root.shelfColumnWidth) / 2
+                        visible: shelfRow.modelData.title !== undefined
+                        text: shelfRow.modelData.title || ""
                     }
 
-                    onClicked:
+                    Row
                     {
-                        if (progress >= 0)
+                        id: tileRow
+
+                        x: (shelfRow.width - root.shelfColumnWidth) / 2
+                        spacing: AppMetrics.gapLarge
+
+                        Repeater
                         {
-                            return
+                            id: tileRepeater
+
+                            model: shelfRow.modelData.books || []
+
+                            delegate: DesktopReaderBookTile
+                            {
+                                id: tile
+
+                                required property var modelData
+                                required property int index
+
+                                objectName: "reader_book_" + (shelfRow.modelData.first + index)
+
+                                width: root.tileWidth
+
+                                title: modelData.title
+                                author: modelData.author || ""
+                                level: modelData.level || ""
+                                format: modelData.format
+                                coverSource: modelData.cover || ""
+                                exists: modelData.exists
+                                local: modelData.local
+                                free: modelData.free || modelData.freeId !== undefined
+                                cloudAvailable: reader.cloudAvailable
+                                favorite: modelData.favorite || false
+                                finished: modelData.finished || false
+                                size: modelData.size || 0
+                                readProgress: modelData.progress
+                                progress:
+                                {
+                                    const value = !modelData.local && modelData.freeId !== undefined
+                                                ? reader.freeTransfers[modelData.freeId]
+                                                : reader.transfers[modelData.local ? modelData.id : modelData.cloudId]
+
+                                    return value === undefined ? -1 : value
+                                }
+
+                                onClicked:
+                                {
+                                    if (progress >= 0)
+                                    {
+                                        return
+                                    }
+
+                                    if (!modelData.local)
+                                    {
+                                        root.download(modelData)
+
+                                        return
+                                    }
+
+                                    if (!modelData.exists)
+                                    {
+                                        reader.locateDocument(modelData.id)
+
+                                        return
+                                    }
+
+                                    root.openFromTile(modelData)
+                                }
+                                onRemoveRequested: root.confirmRemove(modelData)
+                                onOverviewRequested: bookOverview.show(modelData.id)
+                                onCancelRequested:
+                                {
+                                    if (!modelData.local && modelData.freeId !== undefined)
+                                    {
+                                        reader.cancelFreeBook(modelData.freeId)
+
+                                        return
+                                    }
+
+                                    reader.cancelTransfer(modelData.local ? modelData.id : modelData.cloudId)
+                                }
+                            }
                         }
-
-                        if (!modelData.local && modelData.freeId !== undefined)
-                        {
-                            reader.downloadFreeBook(modelData.freeId)
-
-                            return
-                        }
-
-                        if (!modelData.local)
-                        {
-                            reader.downloadBook(modelData.cloudId)
-
-                            return
-                        }
-
-                        if (!modelData.exists)
-                        {
-                            reader.locateDocument(modelData.id)
-
-                            return
-                        }
-
-                        root.openFromTile(tile, modelData)
-                    }
-                    onShowRequested: reader.showOnDevice(modelData.id)
-                    onRemoveRequested: root.confirmRemove(modelData)
-                    onUploadRequested: reader.uploadDocument(modelData.id)
-                    onCloudDeleteRequested: root.confirmCloudDelete(modelData)
-                    onCancelRequested:
-                    {
-                        if (!modelData.local && modelData.freeId !== undefined)
-                        {
-                            reader.cancelFreeBook(modelData.freeId)
-
-                            return
-                        }
-
-                        reader.cancelTransfer(modelData.local ? modelData.id : modelData.cloudId)
                     }
                 }
             }
-        }
 
-        DesktopLabel
+            DesktopLabel
+            {
+                x: (shelfArea.width - width) / 2
+                anchors.top: shelfToolbar.bottom
+                anchors.topMargin: AppMetrics.gapLarge
+                width: root.shelfColumnWidth
+                visible: root.shelf.length === 0
+                text: root.searchTerm.length > 0 ? qsTr("No books match \"%1\"").arg(root.searchTerm)
+                    : Shelf.filterCount(root.filter) > 0 ? qsTr("No books match the filter.")
+                    : qsTr("No books here yet.")
+                color: AppTheme.colourMuted
+            }
+
+            Rectangle
+            {
+                anchors.fill: parent
+                anchors.margins: AppMetrics.gapMedium
+                visible: dropTarget.containsDrag
+                radius: AppMetrics.radiusLarge
+                color: AppTheme.faded(AppTheme.colourAccent, AppTheme.alphaFaint)
+                border.width: AppMetrics.focusRingWidth
+                border.color: AppTheme.colourAccent
+
+                DesktopIcon
+                {
+                    anchors.centerIn: parent
+                    name: "plus"
+                    color: AppTheme.colourAccent
+                    width: AppMetrics.readerOpenPlusSize
+                    height: AppMetrics.readerOpenPlusSize
+                }
+            }
+        }
+    }
+
+    DesktopCollectionDialog
+    {
+        id: collectionDialog
+    }
+
+    DesktopBookOverviewDialog
+    {
+        id: bookOverview
+
+        controller: reader
+        maxStage: root.store.stageCount
+
+        onReadRequested: function(book) { root.openFromTile(book) }
+        onChapterRequested: function(book, position) { root.openFromTile(book, position) }
+        onNewCollectionRequested: function(key)
         {
-            Layout.fillWidth: true
-            visible: root.shelf.length === 0 && (root.searchTerm.length > 0 || (root.freeShown && root.levelFilter.length > 0))
-            text: root.searchTerm.length > 0 ? qsTr("No books match \"%1\"").arg(root.searchTerm)
-                                            : qsTr("No books at this level.")
-            color: AppTheme.colourMuted
+            collectionDialog.create(function(name, colour)
+            {
+                const collectionId = reader.createCollection(name, colour)
+
+                if (collectionId.length > 0)
+                {
+                    reader.addToCollection(collectionId, key)
+                }
+            })
         }
     }
 
@@ -858,17 +1220,6 @@ Item
 
             drop.accept()
         }
-    }
-
-    Rectangle
-    {
-        anchors.fill: parent
-        anchors.margins: AppMetrics.gapMedium
-        visible: dropTarget.containsDrag
-        radius: AppMetrics.radiusLarge
-        color: AppTheme.faded(AppTheme.colourAccent, AppTheme.alphaFaint)
-        border.width: AppMetrics.focusRingWidth
-        border.color: AppTheme.colourAccent
     }
 
     Item
@@ -918,7 +1269,7 @@ Item
                 anchors.top: parent.top
                 anchors.bottom: bar.visible ? bar.top : parent.bottom
 
-                color: AppTheme.faded(reader.isPdf ? AppTheme.colourSunken : root.textPaper, bookMorph.pageShown)
+                color: AppTheme.faded(reader.isPdf ? AppTheme.colourSunken : root.textPaper, pageTransition.pageShown)
 
                 PointHandler
                 {
@@ -933,7 +1284,7 @@ Item
 
                     anchors.fill: parent
                     visible: reader.isPdf
-                    opacity: bookMorph.chromeShown
+                    opacity: pageTransition.chromeShown
 
                     source: reader.isPdf ? reader.currentPath : ""
                     initialPage: reader.currentPosition
@@ -974,8 +1325,8 @@ Item
 
                     anchors.fill: parent
                     visible: !reader.isPdf && !reader.loading
-                    opacity: bookMorph.chromeShown
-                    transform: Translate { y: AppMetrics.gapTight * (1 - bookMorph.chromeShown) }
+                    opacity: pageTransition.chromeShown
+                    transform: Translate { y: AppMetrics.gapTight * (1 - pageTransition.chromeShown) }
 
                     model: reader.paragraphModel
                     textSize: reader.textSize
@@ -1006,7 +1357,7 @@ Item
 
                     anchors.fill: parent
                     visible: root.readable && !reader.loading
-                    opacity: bookMorph.chromeShown
+                    opacity: pageTransition.chromeShown
 
                     lookup: translationLookup
                     maxStage: root.store.stageCount
@@ -1030,7 +1381,7 @@ Item
                     anchors.bottom: playBar.top
                     anchors.bottomMargin: AppMetrics.gapSmall
                     visible: playBar.visible && textView.readingAway
-                    opacity: bookMorph.chromeShown
+                    opacity: pageTransition.chromeShown
                     implicitWidth: backToReading.implicitWidth
                     implicitHeight: backToReading.implicitHeight
                     radius: height / 2
@@ -1061,7 +1412,7 @@ Item
                     anchors.bottom: parent.bottom
                     anchors.bottomMargin: AppMetrics.gapMedium
                     visible: root.readAloudOffered && reader.readAloud.started && !reader.loading
-                    opacity: bookMorph.chromeShown
+                    opacity: pageTransition.chromeShown
 
                     readAloud: reader.readAloud
 
@@ -1074,7 +1425,7 @@ Item
                     anchors.bottom: parent.bottom
                     anchors.bottomMargin: AppMetrics.gapMedium
                     visible: root.voiceNoticeShown && root.readAloudOffered && !reader.loading && !reader.readAloud.available
-                    opacity: bookMorph.chromeShown
+                    opacity: pageTransition.chromeShown
 
                     readAloud: reader.readAloud
 
@@ -1085,7 +1436,7 @@ Item
                 {
                     anchors.centerIn: parent
                     visible: reader.loading
-                    opacity: bookMorph.chromeShown
+                    opacity: pageTransition.chromeShown
                     text: qsTr("Loading")
                     color: AppTheme.colourMuted
                 }
@@ -1113,8 +1464,8 @@ Item
                 anchors.right: parent.right
                 anchors.bottom: parent.bottom
                 visible: !root.immersive
-                opacity: bookMorph.chromeShown
-                transform: Translate { y: bar.height * (1 - bookMorph.chromeShown) }
+                opacity: pageTransition.chromeShown
+                transform: Translate { y: bar.height * (1 - pageTransition.chromeShown) }
 
                 count: root.positionCount
                 index: root.positionIndex
@@ -1180,9 +1531,9 @@ Item
         }
     }
 
-    DesktopBookMorph
+    DesktopReaderTransition
     {
-        id: bookMorph
+        id: pageTransition
 
         anchors.fill: parent
 

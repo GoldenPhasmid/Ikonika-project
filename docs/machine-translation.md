@@ -155,7 +155,8 @@ Settings, Account opens a page for each language, which offers the same download
 translation for the language being learned. The model loads on the first translation, not at launch.
 
 On desktop the model is a catalog package of kind `translation`, unpacked into the downloaded
-models directory. Four pairs are published:
+models directory. Setup, and adding a language in Settings, queue it after the dictionary and the
+voice. Setup does not wait for it. Four pairs are published:
 
 | Package | Source model | Download | Unpacked |
 | --- | --- | --- | --- |

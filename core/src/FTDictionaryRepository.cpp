@@ -2714,6 +2714,40 @@ std::vector<FTDeckWord> FTDictionaryRepository::LoadDeckWords(int64_t DeckId) co
     return Words;
 }
 
+std::vector<std::string> FTDictionaryRepository::ListDeckNamesForReading(const std::string& Headword,
+                                                                         const std::string& PartOfSpeech) const
+{
+    const FTQueryTimer Timer("FTDictionaryRepository::ListDeckNamesForReading");
+
+    std::vector<std::string> Names;
+
+    if (!HasDecks())
+    {
+        return Names;
+    }
+
+    FTStatement Query = Target.Prepare(
+        "SELECT DISTINCT decks.name, decks.id FROM deck_words "
+        "JOIN decks ON decks.id = deck_words.deck_id "
+        "WHERE deck_words.headword = ?1 AND deck_words.part_of_speech = ?2 "
+        "ORDER BY decks.id");
+
+    if (!Query.IsValid())
+    {
+        return Names;
+    }
+
+    Query.BindText(1, Headword);
+    Query.BindText(2, PartOfSpeech);
+
+    while (Query.Step())
+    {
+        Names.push_back(Query.GetText(0));
+    }
+
+    return Names;
+}
+
 std::map<int64_t, std::vector<FTDeckWord>> FTDictionaryRepository::LoadDeckReadings() const
 {
     const FTQueryTimer Timer("FTDictionaryRepository::LoadDeckReadings");

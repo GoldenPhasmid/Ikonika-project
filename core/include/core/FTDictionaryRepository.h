@@ -208,6 +208,8 @@ public:
 
     std::map<int64_t, std::vector<FTDeckWord>> LoadDeckReadings() const;
 
+    std::vector<std::string> ListDeckNamesForReading(const std::string& Headword, const std::string& PartOfSpeech) const;
+
     std::vector<FTDictionaryTranslation> LoadTranslationsForReading(
         const std::string& Headword,
         const std::string& PartOfSpeech,

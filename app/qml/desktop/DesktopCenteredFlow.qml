@@ -21,7 +21,7 @@ Item
         {
             const child = root.children[index]
 
-            if (!(child instanceof Repeater) && child.visible)
+            if (!(child instanceof Repeater) && child.visible && child.width > 0)
             {
                 items.push(child)
             }

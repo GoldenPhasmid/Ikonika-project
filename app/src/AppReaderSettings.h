@@ -30,11 +30,13 @@ class AppReaderSettings : public QObject
     Q_PROPERTY(QString textFont READ GetTextFont WRITE SetTextFont NOTIFY changed)
     Q_PROPERTY(QStringList textFonts READ GetTextFonts CONSTANT)
     Q_PROPERTY(bool cropMargins READ IsCropMargins WRITE SetCropMargins NOTIFY changed)
+    Q_PROPERTY(bool uploadImportedBooks READ IsUploadingImportedBooks WRITE SetUploadImportedBooks NOTIFY changed)
     Q_PROPERTY(bool volumeKeysTurnPages READ AreVolumeKeysTurningPages WRITE SetVolumeKeysTurnPages NOTIFY changed)
     Q_PROPERTY(bool highlightUnknownWords READ IsHighlightingUnknownWords WRITE SetHighlightUnknownWords NOTIFY changed)
     Q_PROPERTY(bool highlightVocabulary READ IsHighlightingVocabulary WRITE SetHighlightVocabulary NOTIFY changed)
     Q_PROPERTY(QString librarySortOrder READ GetLibrarySortOrder WRITE SetLibrarySortOrder NOTIFY changed)
     Q_PROPERTY(bool librarySortReversed READ IsLibrarySortReversed WRITE SetLibrarySortReversed NOTIFY changed)
+    Q_PROPERTY(QString libraryGroup READ GetLibraryGroup WRITE SetLibraryGroup NOTIFY changed)
 
 public:
     static AppReaderSettings& Get();
@@ -74,6 +76,8 @@ public:
 
     bool IsCropMargins() const;
     void SetCropMargins(bool bValue);
+    bool IsUploadingImportedBooks() const;
+    void SetUploadImportedBooks(bool bValue);
 
     bool AreVolumeKeysTurningPages() const;
     void SetVolumeKeysTurnPages(bool bValue);
@@ -89,6 +93,10 @@ public:
 
     bool IsLibrarySortReversed() const;
     void SetLibrarySortReversed(bool bValue);
+
+    QString GetLibraryGroup() const;
+    void SetLibraryGroup(const QString& Value);
+
 
 signals:
     void changed();

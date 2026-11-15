@@ -23,8 +23,7 @@ A round is a quiz of 10 to 15 questions, 12 by default, over one or two decks of
 | **Category** | A group of decks, `decks.category`: Vie quotidienne, Personnes, Bases, and so on. |
 | **Level estimate** | The learner's level in log teaching rank. Same model as the placement test. |
 | **Most common meaning** | The entry's top meaning by the dictionary's meaning sort. |
-| **Outcome** | Known, Almost or New. Set by the answer. |
-| **Decision** | Learn or Know. Defaults from the outcome. |
+| **Decision** | Learn or Know. The reveal highlights one of the two buttons by default, and the answer sets which. |
 
 ## Categories and decks
 
@@ -106,9 +105,9 @@ The answer shows the word, the French example and its translation.
 
 - **Entry.** The learner knows under 1,000 words: the placement result plus the learned cards and
   the known marks. No placement result counts as zero, the same as a placement result of zero.
-- **Outcome.** A right answer is Known. A first wrong answer is struck out and strikes
-  out wrong options until two are struck, the same as Not sure; the next wrong answer reveals the
-  answer as New. Neither moves the estimate.
+- **Answers.** A first wrong answer is struck out and strikes out wrong options until two are
+  struck, the same as Not sure; the next wrong answer reveals the answer. No Beginner answer moves
+  the estimate.
 - **Decision.** Every answer defaults to Learn while beginner mode is on.
 
 ## Options
@@ -133,9 +132,9 @@ topic deck.
 ## Not sure
 
 Not sure is a fifth option, centred under the four. Each press gives the next clue. After the last
-clue it becomes Show me, which reveals the answer as New. A wrong answer before the sentence shows
+clue it becomes Show me, which reveals the answer. A wrong answer before the sentence shows
 flashes red, is struck out, and shows the sentence. A wrong answer with the sentence on screen reveals
-the answer as New. Not sure with the sentence on screen strikes out wrong options until two are
+the answer. Not sure with the sentence on screen strikes out wrong options until two are
 struck, counting the wrong answer. The card keeps room for the example under
 the word, so a clue that shows it moves nothing.
 
@@ -155,25 +154,29 @@ rank 400 with spread 2.0.
 
 **Update.** First answer on a word, Beginner questions excluded:
 
-| Outcome | P(outcome \| known) | P(outcome \| unknown) |
+| Answer | P(answer \| known) | P(answer \| unknown) |
 | --- | --- | --- |
-| Known | 0.97 | 0.25 |
-| New | 0.03 | 0.40 |
-| Almost | no update | |
+| Right with no clue | 0.97 | 0.25 |
+| Wrong with the sentence on screen, or Show me | 0.03 | 0.40 |
+| Right after a clue or a wrong answer | no update | |
 
 **Pick.** From the ticked decks' askable words above the placement cutoff, take the three with P(known) nearest 0.5 and pick
 one at random.
 
-## Outcomes and the reveal
+## Answers and the reveal
 
-| Answer | Outcome | Default decision |
-| --- | --- | --- |
-| Right, no clue | Known | Know |
-| Right after a clue or a wrong answer | Almost | Learn |
-| Wrong with the sentence on screen, or Show me | New | Learn |
+The answer sets which of Know and Learn the reveal highlights:
 
-Outside beginner mode, Continue after a right answer with no clue moves straight to the next
-question with the default decision, Know, and shows no reveal.
+| Answer | Highlighted |
+| --- | --- |
+| Right, no clue | Know |
+| Right after a clue or a wrong answer | Learn |
+| Wrong with the sentence on screen, or Show me | Learn |
+
+Continue after a right answer with no clue moves straight to the next question with the default
+decision and shows no reveal. A Beginner question always shows the reveal. In beginner mode, a question
+whose other words are all known asks the French sentence instead, so it moves straight on too, and its
+default decision is Learn.
 
 An answer, right or wrong, stays on screen with the right option marked. The example sentence shows in full
 with its translation under it. Nothing moves on by itself: Not sure turns into Continue, same size
@@ -183,7 +186,7 @@ The reveal replaces the options. Above the divider: the word with its article, t
 card's translation in a field, set to the right option. Below it: the meaning as triage shows it, with
 its definition, example and translation chips; a chip adds or removes a translation. Under the card,
 Know on the left and Learn on the right, the default filled. Either one moves on. Only the word is
-spoken. No other sound, no animation.
+spoken. No other sound. On desktop, moving on to the next question fades the card out and back in.
 
 The round runs in the session screen, so it has what every exercise has: a word in a sentence opens
 the translation popup, Ctrl+F opens the lookup pane, Ctrl+Space plays the word, and the forms popover
@@ -224,7 +227,7 @@ column to the row key.
 ## MVP
 
 A click on a deck cover starts a round over that deck. The Discover tile on Today opens category and
-deck selection. A tap on a category only marks it; the Continue button, or Enter on desktop, opens its decks. Mobile has the same flow. Its question card gives 60 percent of its height to the word and 40 to the
+deck selection. A tap on a category only marks it; the Continue button, or Enter on desktop, opens its decks. Mobile has the same flow. Its question card gives 40 percent of its height to the word and 60 to the
 options. Not sure, Continue, Know and Learn stay in the button row under the card, as on every other
 phone screen. The answer card is one area; swiping it left marks the word known and swiping it right
 learns it, with the outline turning green or blue. The results screen lists the added words as
@@ -237,7 +240,7 @@ opens category and deck selection, as the Discover tile does. Nothing starts tri
 | Piece | Location | Role |
 | --- | --- | --- |
 | `FTLevelBelief` | `core` | Level estimate and update, moved out of `FTPlacementTest` and shared. |
-| `FTDiscoveryPlanner` | `core` | Picks, question types, options, beginner mode and its spans, outcomes. |
+| `FTDiscoveryPlanner` | `core` | Picks, question types, options, beginner mode and its spans, answers. |
 | `DiscoveryController` | `app` | Plain `QObject`. Reads `FTDictionaryRepository`, writes cards and known marks. |
 | `DesktopDiscoverPick` | `app/qml` | Category and deck pick, shown in place of the Today page, under the top bar. |
 | `DesktopDiscoveryExercise` | `app/qml` | The round, inside `DesktopSessionScreen`. |
@@ -249,7 +252,7 @@ opens category and deck selection, as the Discover tile does. Nothing starts tri
 - No option set has two right answers or two equal options, against the real French and English
   dictionaries.
 - Word and Beginner questions never offer another meaning of the asked word.
-- Almost answers and Beginner questions leave the estimate unchanged.
+- Right answers after a clue and Beginner questions leave the estimate unchanged.
 - Nothing at or below the placement cutoff is asked.
 - A Beginner question whose example is known apart from the word asks the French example.
 - A Beginner verb question swaps the whole verb group.
@@ -296,7 +299,7 @@ meaning is plainly wrong, and it is the trap that catches the learner who knows 
 Difficulty comes from close neighbours: `la pêche` against apricot, plum and raspberry.
 
 Not sure replaces "I don't know". A clue turns a dead answer into inference, the same skill reading
-asks for. Almost marks partly known words, the quickest to learn.
+asks for. A right answer after a clue marks a partly known word, the quickest to learn.
 
 ## Why beginner mode asks in the native language
 
@@ -314,7 +317,7 @@ beginner mode works for it.
 
 ## Why ask near 50%
 
-An answer is most informative where the outcome is least certain, and at 50% the learner is right
+An answer is most informative where the answer is least certain, and at 50% the learner is right
 often enough to keep going. Half a round goes to known words, so a round finds five to seven new
 meanings, not twelve. That half still writes known marks and sharpens the estimate.
 
@@ -340,8 +343,8 @@ final scores, notifications.
 - Con: Known overstates production. Training covers it.
 
 **Clues instead of "I don't know".**
-- Pro: the round teaches; Almost finds partly known words.
-- Con: Almost can come from elimination. It goes to Learn anyway.
+- Pro: the round teaches; a right answer after a clue finds partly known words.
+- Con: such an answer can come from elimination. It defaults to Learn anyway.
 
 **Native sentences for beginners.**
 - Pro: a learner with no French answers every question and meets words in use.

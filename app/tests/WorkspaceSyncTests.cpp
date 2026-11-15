@@ -644,6 +644,7 @@ TEST_CASE("A cloud copy from a newer app is left alone and not retried", "[sync]
     CHECK(Harness.Store.UploadedIds.empty());
     CHECK(Harness.Store.VersionCount == 0);
     CHECK(Harness.Finished == std::vector<bool>{false});
+    CHECK(Harness.Sync->GetLastFailureKind() == AppCloudFailureKind::NewerApp);
 
     CHECK_FALSE(Harness.RetryTimer().isActive());
 

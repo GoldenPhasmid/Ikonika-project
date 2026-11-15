@@ -15,6 +15,10 @@ Button
     property color markColour: AppTheme.colourAccent
     property bool destination: true
     property string shortcutKey: ""
+    property color dotColour: "transparent"
+    property bool barAtBottom: true
+
+    readonly property bool dotShown: root.dotColour.a > 0
 
     readonly property bool showsShortcut: root.collapsed && root.shortcutKey.length > 0 && AppModifierKeys.controlHeld
 
@@ -47,8 +51,22 @@ Button
 
             DesktopIcon
             {
+                visible: !root.dotShown
                 name: root.iconName
                 color: root.selected ? AppTheme.colourText : AppTheme.colourSubtle
+            }
+
+            Item
+            {
+                visible: root.dotShown
+                implicitWidth: AppMetrics.iconSize
+                implicitHeight: AppMetrics.iconSize
+
+                CategoryDot
+                {
+                    anchors.centerIn: parent
+                    colour: root.dotColour
+                }
             }
 
             DesktopLabel
@@ -103,7 +121,7 @@ Button
         hovered: root.hovered
         pressed: root.down
         focused: root.visualFocus
-        barAtBottom: true
+        barAtBottom: root.barAtBottom
     }
 
     HoverHandler

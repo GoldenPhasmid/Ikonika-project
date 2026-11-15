@@ -21,6 +21,8 @@ public:
 
     FTCloudBookRepository& GetCloudBooks() override;
 
+    FTBookShelfRepository& GetBookShelf() override;
+
     FTYoutubeRepository& GetYoutubeLibrary() override;
 
     void ApplyActiveLanguages() override;

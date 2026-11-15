@@ -616,7 +616,7 @@ std::vector<int16_t> FTSpeechSynthesizer::Synthesize(std::string_view Text,
 
     const std::span<const float> Generated(Audio->samples, static_cast<size_t>(Audio->n));
 
-    const std::span<const float> Speech = bIsSupertonic ? Generated : Generated.subspan(FindSpeechStart(Generated, Audio->sample_rate));
+    const std::span<const float> Speech = Generated.subspan(FindSpeechStart(Generated, Audio->sample_rate));
     const float Gain = bIsSupertonic ? 1.0f : ComputeSpeechGain(Speech);
 
     Result.reserve(Speech.size());

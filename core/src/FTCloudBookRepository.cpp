@@ -9,7 +9,7 @@ namespace
 {
     constexpr const char* BookColumns =
         "Id, Title, Format, FileSize, DriveFileId, AddedDate, LastOpenedDate, LastPosition, LastZoom, "
-        "LastScrollX, LastScrollY, LastUpdatedDate, PositionCount";
+        "LastScrollX, LastScrollY, LastUpdatedDate, PositionCount, Author";
 
     FTCloudBookRow ReadRow(const FTStatement& Query)
     {
@@ -27,6 +27,7 @@ namespace
         Row.LastScrollY = Query.GetDouble(10);
         Row.LastUpdatedDate = Query.GetInt64(11);
         Row.PositionCount = Query.GetInt64(12);
+        Row.Author = Query.GetText(13);
 
         return Row;
     }
@@ -43,9 +44,9 @@ int64_t FTCloudBookRepository::Now() const
     return Clock ? Clock() : GetSystemTimeMilliseconds();
 }
 
-std::optional<std::string> FTCloudBookRepository::AddBook(const std::string& Title, const std::string& Format,
-                                                          int64_t FileSize, const std::string& DriveFileId,
-                                                          const FTReadingPlace& Place)
+std::optional<std::string> FTCloudBookRepository::AddBook(const std::string& Title, const std::string& Author,
+                                                          const std::string& Format, int64_t FileSize,
+                                                          const std::string& DriveFileId, const FTReadingPlace& Place)
 {
     const FTQueryTimer Timer("FTCloudBookRepository::AddBook");
 
@@ -61,8 +62,8 @@ std::optional<std::string> FTCloudBookRepository::AddBook(const std::string& Tit
 
     FTStatement Add = Target.Prepare(
         "INSERT INTO CloudBooks (Id, Title, Format, FileSize, DriveFileId, AddedDate, LastOpenedDate, "
-        "                        LastPosition, LastZoom, LastScrollX, LastScrollY, LastUpdatedDate, PositionCount) "
-        "VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?6, ?7, ?8, ?9, ?10, ?6, ?11)");
+        "                        LastPosition, LastZoom, LastScrollX, LastScrollY, LastUpdatedDate, PositionCount, Author) "
+        "VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?6, ?7, ?8, ?9, ?10, ?6, ?11, ?12)");
     Add.BindText(1, Id);
     Add.BindText(2, Title);
     Add.BindText(3, Format);
@@ -74,6 +75,7 @@ std::optional<std::string> FTCloudBookRepository::AddBook(const std::string& Tit
     Add.BindDouble(9, Place.ScrollX);
     Add.BindDouble(10, Place.ScrollY);
     Add.BindInt64(11, Place.PositionCount);
+    Add.BindText(12, Author);
 
     if (!Add.Run())
     {
@@ -187,6 +189,26 @@ bool FTCloudBookRepository::SetReadingPlace(const std::string& Id, const FTReadi
     Update.BindInt64(5, Now());
     Update.BindText(6, Id);
     Update.BindInt64(7, Place.PositionCount);
+
+    if (!Update.Run())
+    {
+        LastError = Target.GetLastError();
+
+        return false;
+    }
+
+    return true;
+}
+
+bool FTCloudBookRepository::SetTitle(const std::string& Id, const std::string& Title)
+{
+    const FTQueryTimer Timer("FTCloudBookRepository::SetTitle");
+
+    FTStatement Update = Target.Prepare(
+        "UPDATE CloudBooks SET Title = ?1, LastUpdatedDate = ?2 WHERE Id = ?3 AND Deleted = 0");
+    Update.BindText(1, Title);
+    Update.BindInt64(2, Now());
+    Update.BindText(3, Id);
 
     if (!Update.Run())
     {

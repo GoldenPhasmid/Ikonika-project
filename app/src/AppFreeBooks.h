@@ -2,6 +2,7 @@
 
 #include "core/FTBookCatalog.h"
 
+#include <QByteArray>
 #include <QHash>
 #include <QObject>
 #include <QString>
@@ -54,6 +55,7 @@ private:
     std::unique_ptr<QNetworkAccessManager> Network;
     QNetworkReply* Reply = nullptr;
     std::optional<FTBookCatalog> Catalog;
+    QByteArray CatalogBody;
     QHash<QString, AppFileTransfer*> Transfers;
     QHash<QString, double> Progress;
 };

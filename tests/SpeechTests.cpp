@@ -997,6 +997,58 @@ TEST_CASE("The same text in two languages is cached separately", "[speech]")
     CHECK(Service.GetCachedCount() == AfterEnglish + 1);
 }
 
+TEST_CASE("scratch: Supertonic leading and trailing silence on single words", "[speech][.]")
+{
+    const std::optional<FTSpeechSynthesizer> Synthesizer = FTSpeechSynthesizer::Create(SupertonicDirectory, "fr", 2);
+    REQUIRE(Synthesizer.has_value());
+
+    Synthesizer->Synthesize("a", 0, 1.0f, "fr");
+
+    const std::vector<std::string> Words = {
+        "chat", "montagne", "maison", "eau", "pomme", "souvent", "cheval", "fenêtre",
+        "oiseau", "hier", "grand", "livre", "travailler", "beaucoup", "ville", "peut-être"};
+
+    const int SampleRate = Synthesizer->GetSampleRate();
+    constexpr int WindowMilliseconds = 5;
+    constexpr double SilenceLevel = 300.0;
+    const size_t Window = static_cast<size_t>(SampleRate * WindowMilliseconds / 1000);
+
+    for (const int Speaker : {0, 7})
+    {
+        for (const std::string& Word : Words)
+        {
+            const auto Start = std::chrono::steady_clock::now();
+            const std::vector<int16_t> Samples = Synthesizer->Synthesize(Word, Speaker, 1.0f, "fr");
+            const auto Elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::steady_clock::now() - Start);
+
+            REQUIRE(!Samples.empty());
+
+            std::vector<bool> Loud;
+
+            for (size_t Begin = 0; Begin + Window <= Samples.size(); Begin += Window)
+            {
+                double Sum = 0.0;
+
+                for (size_t Index = Begin; Index < Begin + Window; ++Index)
+                {
+                    Sum += std::abs(static_cast<double>(Samples[Index]));
+                }
+
+                Loud.push_back(Sum / static_cast<double>(Window) >= SilenceLevel);
+            }
+
+            const auto First = std::find(Loud.begin(), Loud.end(), true);
+            const auto Last = std::find(Loud.rbegin(), Loud.rend(), true).base();
+
+            WARN("speaker " << Speaker << " " << Word << ": total "
+                 << Samples.size() * 1000 / static_cast<size_t>(SampleRate) << " ms, leading "
+                 << (First - Loud.begin()) * WindowMilliseconds << " ms, trailing "
+                 << (Loud.end() - Last) * WindowMilliseconds << " ms, synthesis " << Elapsed.count() << " ms");
+        }
+    }
+}
+
 TEST_CASE("scratch: Piper vs Supertonic across text lengths", "[speech][.]")
 {
     const std::vector<std::pair<std::string, std::string>> Texts = {

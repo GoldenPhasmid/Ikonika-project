@@ -15,8 +15,8 @@ Item
     readonly property bool roundOver: root.controller.roundOver
     readonly property bool answered: root.controller.answered
     readonly property bool awaiting: !root.roundOver && !root.answered
-    readonly property bool beginnerPrompt: root.controller.promptKind === "beginner" && !root.answered
-    readonly property bool showsSentence: root.controller.promptKind === "sentence" || root.controller.promptKind === "beginner"
+    readonly property bool beginnerPrompt: root.controller.beginnerPrompt && !root.answered
+    readonly property bool showsSentence: root.controller.sentencePrompt || root.controller.beginnerPrompt
         || root.controller.showsExample || root.answered
     readonly property var pickedTranslations: root.controller.translation.split(",")
         .map(Part => Part.trim().toLowerCase())
@@ -114,14 +114,14 @@ Item
     {
         if (root.answered)
         {
-            if (root.controller.outcome === "known" && root.controller.promptKind !== "beginner")
+            if (root.controller.skipsReveal)
             {
                 root.commit(root.controller.learn)
 
                 return
             }
 
-            root.revealed = true
+            shell.swap(function() { root.revealed = true })
 
             return
         }
@@ -150,6 +150,14 @@ Item
         {
             root.revealed = false
         }
+    }
+
+    FontMetrics
+    {
+        id: phoneticMetrics
+
+        font.pixelSize: AppMetrics.fontBody
+        font.family: AppMetrics.fontFamily
     }
 
     Timer
@@ -234,11 +242,7 @@ Item
         {
             id: contentArea
 
-            showPrimary: !root.revealed
-            primaryShare: 60
-            primaryCentred: true
             primaryFitsContent: true
-            secondaryFillsArea: root.revealed
             swipeColour: shell.swipeFrameColour
             swipeStrength: shell.swipeHintStrength
             posText: root.controller.partOfSpeech === "noun" && root.controller.gender.length > 0
@@ -257,6 +261,20 @@ Item
                     maximumSize: AppMetrics.sessionAnswerSize
 
                     TapHandler { onTapped: root.controller.speakWord() }
+                },
+                Text
+                {
+                    objectName: "discovery_phonetic"
+
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: phoneticMetrics.height
+                    visible: root.revealed
+                    text: root.controller.phonetic
+                    font.pixelSize: AppMetrics.fontBody
+                    font.family: AppMetrics.fontFamily
+                    color: AppTheme.colourMuted
+                    horizontalAlignment: Text.AlignHCenter
+                    elide: Text.ElideRight
                 },
                 MobileSentenceText
                 {
@@ -287,43 +305,6 @@ Item
                     color: AppTheme.colourMuted
                     horizontalAlignment: Text.AlignHCenter
                     wrapMode: Text.WordWrap
-                }
-            ]
-
-            secondaryContent: [
-                MobileOptionGrid
-                {
-                    id: optionGrid
-
-                    objectName: "discovery_options"
-
-                    Layout.fillWidth: true
-                    visible: !root.revealed
-                    rowSpacing: AppMetrics.gapSmall
-                    columnSpacing: AppMetrics.gapSmall
-
-                    cardModel: root.controller.options
-                    borderColours: root.borderColours
-                    cellOpacities: root.cellOpacities
-                    interactive: root.awaiting
-
-                    onOptionClicked: function(index) { root.choose(index) }
-                },
-                Item
-                {
-                    visible: root.revealed
-                    Layout.fillHeight: true
-                },
-                MobilePromptText
-                {
-                    objectName: "discovery_revealed_word"
-
-                    visible: root.revealed
-                    text: root.controller.displayWord
-                    gender: root.controller.headwordGender
-                    maximumSize: AppMetrics.sessionAnswerSize
-
-                    TapHandler { onTapped: root.controller.speakWord() }
                 },
                 Rectangle
                 {
@@ -356,6 +337,27 @@ Item
 
                         onTextEdited: root.controller.setTranslation(translationField.text)
                     }
+                }
+            ]
+
+            secondaryContent: [
+                MobileOptionGrid
+                {
+                    id: optionGrid
+
+                    objectName: "discovery_options"
+
+                    Layout.fillWidth: true
+                    visible: !root.revealed
+                    rowSpacing: AppMetrics.gapSmall
+                    columnSpacing: AppMetrics.gapSmall
+
+                    cardModel: root.controller.options
+                    borderColours: root.borderColours
+                    cellOpacities: root.cellOpacities
+                    interactive: root.awaiting
+
+                    onOptionClicked: function(index) { root.choose(index) }
                 },
                 MobileTriageMeaning
                 {
@@ -372,11 +374,6 @@ Item
 
                     onTranslationPicked: function(text) { root.pickTranslation(text) }
                     onWordTapped: function(word, sentence) { root.wordTapped(word, sentence) }
-                },
-                Item
-                {
-                    visible: root.revealed
-                    Layout.fillHeight: true
                 }
             ]
         }

@@ -179,7 +179,7 @@ not a zip, since an EPUB is a zip already.
 
 Each language's books are assets of one release, tagged `books-<lang>` and never replaced, so adding a
 book uploads one file and adds one entry. The catalog itself, `books-<lang>.json`, sits next to
-`catalog.json` at the root of the releases repository. French is published with thirty books: Ségur, La Fontaine, Molière and Daudet for beginners; Voltaire, Verne, Sand, Hugo and Leblanc among the intermediate readers; and Balzac, Flaubert, Dumas, Proust and Zola among the advanced ones, plus the shared classics below. English is published with thirty: ten later classics (Austen, Defoe, Dickens, Melville, Shakespeare, Shelley, Stoker, Swift, Verne and Wells) join the twenty below. The first twenty are Potter, Williams, Wilde, Baum and Sewell for
+`catalog.json` at the root of the releases repository. French is published with thirty-four books: Ségur, La Fontaine, Molière, Daudet and Renard for beginners; Voltaire, Verne, Sand, Hugo, Leblanc, Daudet's Tartarin de Tarascon and Colette's Claudine à l'école among the intermediate readers; and Balzac, Flaubert, Dumas, Proust and Zola among the advanced ones, plus the shared classics below. Renard's Poil de Carotte and Histoires naturelles and Claudine à l'école were chosen because they narrate in the present tense or the spoken past tense, which beginners find plainer than the literary past tense of most classics. Claudine and Tartarin are Wikisource transcriptions that keep their CC BY-SA attribution in the EPUB. English is published with thirty: ten later classics (Austen, Defoe, Dickens, Melville, Shakespeare, Shelley, Stoker, Swift, Verne and Wells) join the twenty below. The first twenty are Potter, Williams, Wilde, Baum and Sewell for
 beginners; Carroll, Burnett, Kipling, Stevenson and Doyle for intermediate readers; and Jane Eyre,
 The Fall of the House of Usher, The Phantom of the Opera, Twelve Years a Slave, The Adventures of
 Tom Sawyer, Wuthering Heights, White Fang, Little Women and The Secret of Chimneys.
@@ -285,8 +285,10 @@ digest. Anything else in that directory is cleared.
 The catalog is read at launch, and again whenever the window comes back to the foreground at least
 four hours after the last read, so a copy left in the tray for days still learns about an update.
 Settings, About has Check for updates for an immediate read, and Try again when a download failed.
-The Today offer survives navigation and restarts until installed or dismissed with its close button.
-Dismissal is saved for that published version; Settings keeps the offer and a newer version appears on Today again.
+On desktop, a blue download button in the top bar offers every pending app and package update.
+With one update, its tooltip names it and a click starts it. With several, a click opens a list,
+and each row starts its own download and shows its progress while the list stays open.
+Settings keeps the same offers as cards.
 
 ## Package install
 
@@ -402,7 +404,7 @@ Done:
 
 Outstanding:
 
-- The German dictionary is built but not published: its LLM passes are about 20% done, so it has no definitions. The German book catalog is published and unreachable until the dictionary ships
+- The German dictionary is published as version 1 without definitions: its LLM passes are about 20% done, so every meaning shows a gloss. The mapping and deck-gist passes are the remaining work
 - Not every built package is published; see `catalog.json`
 - No code signing, so SmartScreen warns on every download of the installer
 - The Store package has not been submitted, and its start at sign-in has not been watched across a

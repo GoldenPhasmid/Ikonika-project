@@ -9,6 +9,8 @@ TextEdit
 
     wrapMode: TextEdit.WordWrap
 
+    MobileKeyboardTap { editor: root }
+
     Text
     {
         anchors.left: parent.left

@@ -287,6 +287,11 @@ QString AppSyncController::GetStatusText() const
         return tr("Your Google Drive is full. Free some space to sync.");
     }
 
+    if (Host->GetSync()->GetLastFailureKind() == AppCloudFailureKind::NewerApp)
+    {
+        return tr("Your database requires a newer app version.");
+    }
+
     return Host->GetSync()->IsRetryScheduled() ? tr("Not synced yet, will retry") : tr("Not synced");
 }
 

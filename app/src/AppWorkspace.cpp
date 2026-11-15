@@ -3,6 +3,7 @@
 #include "AppCards.h"
 
 #include "core/FTDatabase.h"
+#include "core/FTBookShelfRepository.h"
 #include "core/FTCardRepository.h"
 #include "core/FTCloudBookRepository.h"
 #include "core/FTReaderRepository.h"
@@ -193,6 +194,7 @@ std::unique_ptr<AppWorkspace> AppWorkspace::Open(const AppWorkspaceFolder& Folde
     Workspace->DeviceConnection = std::make_unique<FTDatabase>(std::move(*OpenedDevice));
     Workspace->ReaderLibrary = std::make_unique<FTReaderRepository>(*Workspace->DeviceConnection);
     Workspace->CloudBooks = std::make_unique<FTCloudBookRepository>(*Workspace->Connection);
+    Workspace->BookShelf = std::make_unique<FTBookShelfRepository>(*Workspace->Connection);
     Workspace->YoutubeLibrary = std::make_unique<FTYoutubeRepository>(*Workspace->DeviceConnection);
 
     Workspace->ApplyActiveLanguages();
@@ -236,6 +238,11 @@ FTReaderRepository& AppWorkspace::GetReaderLibrary()
 FTCloudBookRepository& AppWorkspace::GetCloudBooks()
 {
     return *CloudBooks;
+}
+
+FTBookShelfRepository& AppWorkspace::GetBookShelf()
+{
+    return *BookShelf;
 }
 
 FTYoutubeRepository& AppWorkspace::GetYoutubeLibrary()

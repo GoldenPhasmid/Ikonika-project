@@ -112,3 +112,213 @@ function placeText(book, localText)
 
     return book.inCloud ? qsTr("Here and in the cloud") : localText
 }
+
+const libraryOrders = ["recent", "title", "author", "level", "progress", "added", "size"]
+const libraryGroups = ["none", "level", "author"]
+
+function libraryOrderLabels()
+{
+    return [qsTr("Recently opened"), qsTr("Title"), qsTr("Author"), qsTr("Level"), qsTr("Progress"),
+            qsTr("Date added"), qsTr("File size")]
+}
+
+function libraryGroupLabels()
+{
+    return [qsTr("None"), qsTr("Level"), qsTr("Author")]
+}
+
+function status(book)
+{
+    if (book.finished)
+    {
+        return "finished"
+    }
+
+    return book.progress > 0 && book.local ? "reading" : "new"
+}
+
+function inSection(book, section)
+{
+    if (section === "reading")
+    {
+        return status(book) === "reading"
+    }
+
+    if (section === "finished")
+    {
+        return book.finished
+    }
+
+    if (section === "favorites")
+    {
+        return book.favorite
+    }
+
+    if (section.indexOf("collection:") === 0)
+    {
+        return (book.collections || []).indexOf(section.substring("collection:".length)) >= 0
+    }
+
+    return true
+}
+
+function storage(book)
+{
+    return book.local ? "downloaded" : "cloud"
+}
+
+function passes(book, filter)
+{
+    const checks = [
+        [filter.levels, book.level || ""],
+        [filter.statuses, status(book)],
+        [filter.storage, storage(book)],
+        [filter.formats, (book.format || "").toLowerCase()]
+    ]
+
+    return checks.every(function(check) { return check[0].length === 0 || check[0].indexOf(check[1]) >= 0 })
+}
+
+function filterCount(filter)
+{
+    return filter.levels.length + filter.statuses.length + filter.storage.length + filter.formats.length
+}
+
+function levelRank(book)
+{
+    const index = levels.indexOf(book.level || "")
+
+    return index > 0 ? index : levels.length
+}
+
+function compare(order)
+{
+    if (order === "title")
+    {
+        return function(left, right) { return left.title.localeCompare(right.title) }
+    }
+
+    if (order === "author")
+    {
+        return function(left, right)
+        {
+            return (!left.author) - (!right.author)
+                || (left.author || "").localeCompare(right.author || "")
+                || left.title.localeCompare(right.title)
+        }
+    }
+
+    if (order === "level")
+    {
+        return function(left, right) { return levelRank(left) - levelRank(right) || left.title.localeCompare(right.title) }
+    }
+
+    if (order === "progress")
+    {
+        return function(left, right)
+        {
+            return readingStage(left) - readingStage(right)
+                || right.progress - left.progress
+                || right.lastOpened - left.lastOpened
+        }
+    }
+
+    if (order === "added")
+    {
+        return function(left, right) { return (right.added || 0) - (left.added || 0) }
+    }
+
+    if (order === "size")
+    {
+        return function(left, right) { return (right.size || 0) - (left.size || 0) }
+    }
+
+    return function(left, right) { return (right.lastOpened || 0) - (left.lastOpened || 0) }
+}
+
+function shelve(books, section, filter, term, order, reversed)
+{
+    const needle = fold(term)
+    const shelf = books.filter(function(book)
+    {
+        return inSection(book, section) && passes(book, filter)
+            && (fold(book.title).indexOf(needle) >= 0 || fold(book.author || "").indexOf(needle) >= 0)
+    })
+
+    shelf.sort(compare(order))
+
+    if (reversed)
+    {
+        shelf.reverse()
+    }
+
+    return shelf
+}
+
+function group(books, mode)
+{
+    if (mode !== "level" && mode !== "author")
+    {
+        return [{ "title": "", "books": books }]
+    }
+
+    const groups = []
+    const byName = {}
+
+    for (const book of books)
+    {
+        const name = mode === "level" ? (levelLabel(book.level || "") || qsTr("No level"))
+                                      : (book.author || qsTr("Unknown author"))
+
+        if (byName[name] === undefined)
+        {
+            byName[name] = groups.length
+            groups.push({ "title": name, "books": [] })
+        }
+
+        groups[byName[name]].books.push(book)
+    }
+
+    if (mode === "level")
+    {
+        groups.sort(function(left, right) { return levelRank(left.books[0]) - levelRank(right.books[0]) })
+    }
+    else
+    {
+        groups.sort(function(left, right)
+        {
+            return (!left.books[0].author) - (!right.books[0].author) || left.title.localeCompare(right.title)
+        })
+    }
+
+    return groups
+}
+
+function rows(groups, columns)
+{
+    const result = []
+    let first = 0
+
+    for (const group of groups)
+    {
+        if (group.title.length > 0)
+        {
+            result.push({ "title": group.title })
+        }
+
+        for (let start = 0; start < group.books.length; start += columns)
+        {
+            result.push({ "books": group.books.slice(start, start + columns), "first": first + start })
+        }
+
+        first += group.books.length
+    }
+
+    return result
+}
+
+function continueBooks(books)
+{
+    return books.filter(function(book) { return status(book) === "reading" && book.exists })
+                .sort(compare("recent"))
+}

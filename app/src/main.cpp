@@ -499,14 +499,18 @@ int main(int ArgumentCount, char* Arguments[])
     QPointer<QQuickWindow> CurrentWindow;
     AppReminder& Reminder = AppReminder::Get();
 
-    const auto LoadInterface = [&](bool bStartHidden) -> QQuickWindow*
+    const auto LoadInterface = [&](bool bStartHidden, bool bStayInTray = false) -> QQuickWindow*
     {
         Engine = std::make_unique<QQmlApplicationEngine>();
         Engine->rootContext()->setContextProperty(QStringLiteral("quickLookupService"), QuickLookupService);
         Engine->addImageProvider(QStringLiteral("book"), new AppBookImageProvider);
         AppLocalization::Get().SetEngine(Engine.get());
 
-        if (bStartHidden)
+        if (bStayInTray)
+        {
+            Engine->setInitialProperties({{QStringLiteral("visible"), false}, {QStringLiteral("startInTray"), true}});
+        }
+        else if (bStartHidden)
         {
             Engine->setInitialProperties({{QStringLiteral("visible"), false}});
         }
@@ -575,7 +579,7 @@ int main(int ArgumentCount, char* Arguments[])
 
     bStartHidden = bStartHidden && Reminder.ShouldHideOnClose();
 
-    QQuickWindow* Window = LoadInterface(bStartHidden);
+    QQuickWindow* Window = LoadInterface(bStartHidden, bStartHidden && !IsMobileLayoutEnabled());
 
 #if defined(IKONIKA_DESKTOP)
     if (!BookPath.isEmpty())

@@ -287,14 +287,6 @@ Item
 
                     Behavior on opacity { NumberAnimation { duration: AppMetrics.motionFast } }
                 },
-                MobileSentenceAudioSlot
-                {
-                    visible: root.sentenceMode
-                    canPlay: !!root.controller.canReplay
-                    playing: root.controller.speaking
-
-                    onReplayRequested: root.controller.replay()
-                },
                 MobilePromptText
                 {
                     id: revealedAnswer
