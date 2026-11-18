@@ -61,10 +61,6 @@
 #include <QTimer>
 #include <memory>
 
-#ifdef IKONIKA_ENABLE_WEBENGINE
-#include <QtWebEngineQuick/qtwebenginequickglobal.h>
-#endif
-
 #if defined(Q_OS_ANDROID)
 #include "AppPlatformSpeech.h"
 #elif defined(IKONIKA_DESKTOP)
@@ -411,10 +407,6 @@ namespace
 int main(int ArgumentCount, char* Arguments[])
 {
     AppStartup::Begin();
-
-#ifdef IKONIKA_ENABLE_WEBENGINE
-    QtWebEngineQuick::initialize();
-#endif
 
     QApplication Application(ArgumentCount, Arguments);
     const auto CloseDictionary{qScopeGuard([] { AppDictionary::Get().Close(); })};

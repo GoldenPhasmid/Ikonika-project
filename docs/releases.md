@@ -194,6 +194,7 @@ advanced ones including Manzoni, Boccaccio, Machiavelli, Svevo, Leopardi, Ariost
 Wikisource transcriptions that keep their CC BY-SA attribution in the EPUB; the rest are Project Gutenberg
 editions with the Gutenberg text removed. The release is `books-it`.
 German is published with thirty books, from Der Struwwelpeter and Max und Moritz for beginners to Buddenbrooks and Die Traumdeutung for advanced readers. The release is `books-de`.
+Portuguese is built with thirty Project Gutenberg editions: five beginner readers (Junqueiro's children's tales, the Grimm tales, Trindade Coelho, Coelho Netto and Marques de Carvalho), fourteen intermediate books from Machado de Assis's shorter novels to Júlio Dinis, Garrett, Alencar and Verne, and eleven advanced ones including Dom Casmurro, Os Maias, O Primo Basílio, Os Lusíadas and O Cortiço. Brazilian and European authors are mixed, and every edition keeps its original period spelling. The release is `books-pt`.
 
 The shared classics collection starts with six works. Each translation has its own reading level;
 matching a title does not imply matching language difficulty or identical editorial content.

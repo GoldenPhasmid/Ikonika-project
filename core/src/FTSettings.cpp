@@ -74,7 +74,8 @@ namespace
             }
         }
 
-        for (const char* DeviceKey : {LaunchAtStartupKey, CachedLineCountKey, DebugContinueForcedKey})
+        for (const char* DeviceKey :
+             {LaunchAtStartupKey, CachedLineCountKey, DebugContinueForcedKey, TargetLanguageKey, NativeLanguageKey})
         {
             if (Key == QLatin1String(DeviceKey))
             {

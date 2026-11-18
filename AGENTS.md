@@ -66,6 +66,10 @@ Use `-Walk` after touching `Main.qml`, rail/tab QML, or a screen's routing signa
 shell screen and drives rail/tab navigation, training, exercises, drills, and repetition with real
 posted clicks, desktop and mobile layouts both, then exits 1 if anything warned or routed wrong.
 Not part of the default `-Test` run: each layout takes ~15-20s.
+Every walk launches with `-headless`. A headless launch runs in a fresh sandbox at
+`%TEMP%\Ikonika-headless`, writes its log there, and skips the setup screens while a dictionary is
+installed. Without it a walk reads whatever workspace sits in `local/`, and a workspace with no
+language set up opens the setup screens instead of Today, which fails every navigation check.
 On Android, `python scripts\tools\walk-android.py` runs the same two walks on the installed Debug
 build on the emulator. The emulator needs network, or the update check warns on the Today screen.
 

@@ -774,7 +774,7 @@ qreal AppMetrics::GetTodayMarkHoverScale() const
 
 qreal AppMetrics::GetTodayCatAspect() const
 {
-    return 676.0 / 1213.0;
+    return 676.0 / 1214.0;
 }
 
 qreal AppMetrics::GetTodayBookAspect() const

@@ -118,12 +118,11 @@ the schema cannot drift from what actually creates the database.
   dates. Every change to a synced setting writes its row with the time of the change, and opening a
   workspace writes a row at time zero for any setting the file holds that has none yet. The merge
   keeps the newer row and copies the winning values back into the settings file. Launch at startup,
-  the speech cache size, and everything under appearance, motion, reader, sound, audio, sentences
-  and triage stay in the workspace's file on this device and never get a row.
-- **The language pair syncs, so the last choice wins on every device.** A device without that
-  language's dictionary keeps the choice and its setup goes straight to downloading it. A workspace
-  where no language was ever chosen takes the pair of the card changed last, at opening and after
-  each merge.
+  the speech cache size, the language pair, and everything under appearance, motion, reader, sound,
+  audio, sentences and triage stay in the workspace's file on this device and never get a row.
+- **The language pair stays on the device.** Switching the language on one device leaves the others
+  where they were. A workspace where no language was ever chosen takes the pair of the card changed
+  last, at opening and after each merge.
 - **Rows edited at the same moment still converge.** When two copies of a row carry the same time,
   the merge keeps the one whose whole row compares higher, so both devices pick the same one.
 - **What the user said they already know is keyed by the language being learned**, not by the pair.

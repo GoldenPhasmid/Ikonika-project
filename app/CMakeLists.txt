@@ -2,19 +2,16 @@
 # helpers per directly requested component, and without it the generated install script calls
 # qt6_deploy_qml_imports, which nothing has defined.
 #
-# WebEngineQuick has no Android build at all, so the YouTube screen it serves stays desktop-only.
-# Pdf ships for Android too (unlike WebEngineQuick), so the reader's PDF pipeline builds on both
-# platforms; PdfQuick is desktop-only since nothing here uses it - the reader paints its own PDF
-# bitmaps rather than using PdfQuick's page-view components. WebEngineQuick is also gated by its
-# own option, since it pulls in Chromium and is otherwise only for the YouTube screen.
-option(IKONIKA_ENABLE_WEBENGINE "Build the YouTube screen, which needs QtWebEngine" ON)
+# Pdf ships for Android too, so the reader's PDF pipeline builds on both platforms; PdfQuick is
+# desktop-only since nothing here uses it - the reader paints its own PDF bitmaps rather than
+# using PdfQuick's page-view components.
 option(IKONIKA_ENABLE_MACHINE_TRANSLATION "Translate what dictionary search cannot find" ON)
 
 if (IOS)
     enable_language(Swift)
 endif()
 
-set(IKONIKA_QT_COMPONENTS Qml Quick QuickControls2 Sql Widgets Network LinguistTools Pdf GuiPrivate ShaderTools)
+set(IKONIKA_QT_COMPONENTS Qml Quick QuickControls2 Sql Widgets Network LinguistTools Pdf GuiPrivate ShaderTools Svg)
 
 if (NOT IOS)
     list(APPEND IKONIKA_QT_COMPONENTS NetworkAuth)
@@ -22,10 +19,6 @@ endif()
 
 if (IKONIKA_DESKTOP)
     list(APPEND IKONIKA_QT_COMPONENTS PdfQuick)
-endif()
-
-if (IKONIKA_DESKTOP AND IKONIKA_ENABLE_WEBENGINE)
-    list(APPEND IKONIKA_QT_COMPONENTS WebEngineQuick)
 endif()
 
 find_package(Qt6 REQUIRED COMPONENTS ${IKONIKA_QT_COMPONENTS})
@@ -772,6 +765,12 @@ qt_add_resources(IkonikaApp "icons"
     FILES icons/AppIcon.png icons/AppIconHover.png
 )
 
+qt_add_resources(IkonikaApp "images"
+    PREFIX "/images"
+    BASE images
+    FILES images/LufiExcited.svg
+)
+
 qt_add_shaders(IkonikaApp "shaders"
     PREFIX "/"
     BASE ${CMAKE_CURRENT_SOURCE_DIR}
@@ -842,6 +841,7 @@ target_link_libraries(IkonikaApp PRIVATE
     Qt6::Widgets
     Qt6::Network
     Qt6::Pdf
+    Qt6::Svg
 )
 
 if (NOT IOS)
@@ -850,11 +850,6 @@ endif()
 
 if (IKONIKA_DESKTOP)
     target_link_libraries(IkonikaApp PRIVATE Qt6::PdfQuick)
-endif()
-
-if (IKONIKA_DESKTOP AND IKONIKA_ENABLE_WEBENGINE)
-    target_link_libraries(IkonikaApp PRIVATE Qt6::WebEngineQuick)
-    target_compile_definitions(IkonikaApp PRIVATE IKONIKA_ENABLE_WEBENGINE)
 endif()
 
 if (IKONIKA_ENABLE_MACHINE_TRANSLATION)
@@ -1048,29 +1043,13 @@ if (WIN32 AND NOT IKONIKA_WINDEPLOYQT)
         "Qt runtime, and will not start on a machine without Qt.")
 endif()
 
-set(IKONIKA_WINDEPLOYQT_QMLDIR "${CMAKE_CURRENT_SOURCE_DIR}/qml")
-set(IKONIKA_WINDEPLOYQT_STAGE_CODE "")
-
-if (NOT IKONIKA_ENABLE_WEBENGINE)
-    set(IKONIKA_WINDEPLOYQT_QMLDIR "${CMAKE_CURRENT_BINARY_DIR}/qmldir-scan")
-    set(IKONIKA_WINDEPLOYQT_STAGE_CODE "
-        file(REMOVE_RECURSE \"${IKONIKA_WINDEPLOYQT_QMLDIR}\")
-        file(COPY \"${CMAKE_CURRENT_SOURCE_DIR}/qml/\" DESTINATION \"${IKONIKA_WINDEPLOYQT_QMLDIR}\")
-        file(REMOVE
-            \"${IKONIKA_WINDEPLOYQT_QMLDIR}/YoutubeScreen.qml\"
-            \"${IKONIKA_WINDEPLOYQT_QMLDIR}/YoutubeVideoTile.qml\")
-    ")
-endif()
-
 if (WIN32 AND IKONIKA_WINDEPLOYQT)
     install(CODE "
-        ${IKONIKA_WINDEPLOYQT_STAGE_CODE}
-
         message(STATUS \"Deploying the Qt runtime with windeployqt\")
 
         execute_process(
             COMMAND \"${IKONIKA_WINDEPLOYQT}\"
-                    --qmldir \"${IKONIKA_WINDEPLOYQT_QMLDIR}\"
+                    --qmldir \"${CMAKE_CURRENT_SOURCE_DIR}/qml\"
                     --\$<LOWER_CASE:\$<CONFIG>>
                     --no-compiler-runtime
                     --no-translations

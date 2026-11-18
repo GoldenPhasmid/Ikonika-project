@@ -178,7 +178,7 @@ TEST_CASE("Intervals survive a round trip through their stored text", "[settings
     CHECK(Destination.Settings.GetScheduleRules().IntervalDays == std::vector<int>{1, 3, 9});
 }
 
-TEST_CASE("The language pair is a synced setting", "[settings][sync]")
+TEST_CASE("The language pair stays on this device", "[settings][sync]")
 {
     FTSettings::SetAvailableLanguagePairs({FTLanguageRules{"fr", "en"}, FTLanguageRules{"es", "en"}});
     const auto Restore = qScopeGuard([] { FTSettings::SetAvailableLanguagePairs({}); });
@@ -187,15 +187,14 @@ TEST_CASE("The language pair is a synced setting", "[settings][sync]")
 
     REQUIRE(Test.Settings.SetLanguagePair("es", "en"));
 
-    const auto Target = std::find_if(Test.Changes.begin(), Test.Changes.end(),
-                                     [](const FChange& Change) { return Change.Key == "languages/target"; });
-    REQUIRE(Target != Test.Changes.end());
-    CHECK(Target->Value.toString() == "es");
-    CHECK(FindValue(Test.Settings.ReadSyncedValues(), "languages/target").has_value());
+    CHECK(std::none_of(Test.Changes.begin(), Test.Changes.end(),
+                       [](const FChange& Change) { return Change.Key.startsWith("languages/"); }));
+    CHECK_FALSE(FindValue(Test.Settings.ReadSyncedValues(), "languages/target").has_value());
+    CHECK_FALSE(FindValue(Test.Settings.ReadSyncedValues(), "languages/native").has_value());
 
     Test.Settings.ApplySyncedValues({{"languages/target", QVariant("fr")}});
 
-    CHECK(Test.Settings.GetLanguageRules().TargetLanguage == "fr");
+    CHECK(Test.Settings.GetLanguageRules().TargetLanguage == "es");
 }
 
 TEST_CASE("A chosen language with no dictionary on this device is kept", "[settings][sync]")
@@ -205,7 +204,7 @@ TEST_CASE("A chosen language with no dictionary on this device is kept", "[setti
 
     Fixture Test;
 
-    Test.Settings.ApplySyncedValues({{"languages/target", QVariant("fr")}, {"languages/native", QVariant("en")}});
+    Test.Settings.AdoptLanguagePair(FTLanguageRules{"fr", "en"});
 
     CHECK(Test.Settings.GetLanguageRules().TargetLanguage == "fr");
 
@@ -230,7 +229,7 @@ TEST_CASE("A language nobody chose falls back to one with a dictionary", "[setti
     CHECK(Test.Settings.GetLanguageRules().TargetLanguage == "en");
 }
 
-TEST_CASE("Adopting a language pair needs no dictionary and tells the listener", "[settings][sync]")
+TEST_CASE("Adopting a language pair needs no dictionary and records no synced change", "[settings][sync]")
 {
     FTSettings::SetAvailableLanguagePairs({FTLanguageRules{"en", "uk"}});
     const auto Restore = qScopeGuard([] { FTSettings::SetAvailableLanguagePairs({}); });
@@ -242,11 +241,8 @@ TEST_CASE("Adopting a language pair needs no dictionary and tells the listener",
     CHECK(Test.Settings.HasChosenLanguage());
     CHECK(Test.Settings.GetLanguageRules().TargetLanguage == "es");
     CHECK(Test.Settings.GetLanguageRules().NativeLanguage == "en");
-    CHECK(std::any_of(Test.Changes.begin(), Test.Changes.end(),
-                      [](const FChange& Change)
-                      {
-                          return Change.Key == "languages/target" && Change.Value.toString() == "es";
-                      }));
+    CHECK(std::none_of(Test.Changes.begin(), Test.Changes.end(),
+                       [](const FChange& Change) { return Change.Key.startsWith("languages/"); }));
 }
 
 TEST_CASE("Device preferences live in the workspace file and never sync", "[settings][sync]")

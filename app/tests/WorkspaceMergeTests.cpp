@@ -836,20 +836,20 @@ TEST_CASE("A merge with no chosen language adopts the language of the cards stud
     CHECK(Desktop.Settings.GetLanguageRules().NativeLanguage == "uk");
 }
 
-TEST_CASE("A merged language wins over the language of the cards", "[merge][settings]")
+TEST_CASE("A language chosen on the other device does not reach this one", "[merge][settings]")
 {
     FCopy Phone;
     FCopy Desktop;
 
+    Desktop.Settings.AdoptLanguagePair(FTLanguageRules{"pt", "en"});
     Phone.Repository->SetActiveLanguages("es", "en");
-    Phone.Clock = 3000;
     SeedCard(Phone);
     RecordSetting(Phone, "languages/target", "fr", 2000);
     RecordSetting(Phone, "languages/native", "en", 2000);
 
     Merge(Desktop, Phone);
 
-    CHECK(Desktop.Settings.GetLanguageRules().TargetLanguage == "fr");
+    CHECK(Desktop.Settings.GetLanguageRules().TargetLanguage == "pt");
 }
 
 TEST_CASE("A language chosen on this device is kept when the merge brings none", "[merge][settings]")

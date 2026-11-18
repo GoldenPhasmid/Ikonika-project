@@ -144,7 +144,7 @@ if ($Speech)
 if ($Walk)
 {
     $Exe = Join-Path $Build "app\$Config\IkonikaApp.exe"
-    $Log = Join-Path $Root "local\logs\Ikonika.log"
+    $Log = Join-Path ([System.IO.Path]::GetTempPath()) "Ikonika-headless\logs\Ikonika.log"
     $DesktopScreens = "today,vocabulary,words,reader,settings"
     $MobileScreens = "today,vocabulary,dictionary,settings,profile,reader"
 
@@ -157,7 +157,7 @@ if ($Walk)
             Set-Item -Path "Env:$Key" -Value $EnvVars[$Key]
         }
 
-        $Process = Start-Process -FilePath $Exe -ArgumentList (@("--minimised") + $ExtraArgs) -PassThru
+        $Process = Start-Process -FilePath $Exe -ArgumentList (@("--minimised", "-headless") + $ExtraArgs) -PassThru
 
         try
         {

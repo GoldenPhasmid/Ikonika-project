@@ -388,13 +388,17 @@ Item
                 anchors.topMargin: AppMetrics.todayInsetY
                 anchors.bottomMargin: AppMetrics.todayInsetY
 
-                DesktopDashedBox
+                Image
                 {
                     objectName: "today_cat"
 
                     width: Math.min(board.sideWidth, board.catRoom * AppMetrics.todayCatAspect)
                     height: width / AppMetrics.todayCatAspect
                     y: board.height - height
+                    source: "qrc:/images/LufiExcited.svg"
+                    sourceSize: Qt.size(width, height)
+                    fillMode: Image.PreserveAspectFit
+                    smooth: true
                 }
 
                 DesktopDailyRing

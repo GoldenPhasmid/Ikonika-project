@@ -46,7 +46,7 @@ body {
 .topbar .icons .box { width: 32px }
 .navbar { height: 80px; flex: none; display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; padding: 10px 16px; border-top: 1px solid var(--border) }
 
-.content { flex: 1; min-height: 0; display: flex; flex-direction: column; row-gap: 20px; padding-bottom: 16px }
+.content { flex: 1; min-height: 0; display: flex; flex-direction: column; row-gap: 16px; padding-bottom: 16px }
 
 .box {
   display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; border-radius: 10px; background: var(--faint);
@@ -55,16 +55,17 @@ body {
 .box small { display: block; font-weight: 400; font-size: 11px; opacity: .8; margin-top: 2px }
 
 .strip {
-  --cell: 48px; --mark: 30px; --today: 68px; --name: 14px; --name-gap: 8px;
+  --cell: 48px; --mark: 30px; --today: 68px; --name: 14px; --name-gap: 4px;
   position: relative; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; flex: none;
 }
 .strip::-webkit-scrollbar { display: none }
-.days { display: flex; align-items: flex-end; width: max-content }
+.days { display: flex; align-items: flex-start; width: max-content }
 .day { width: var(--cell); display: grid; justify-items: center; row-gap: var(--name-gap); scroll-snap-align: center }
 .day.today { width: calc(var(--today) + 20px) }
 .name { height: var(--name); line-height: var(--name); font-size: 12px; font-weight: 500; color: var(--muted); white-space: nowrap }
 .day.today .name { color: var(--text); font-weight: 700 }
-.slot { height: var(--today); display: grid; place-items: center }
+.slot { display: grid; place-items: center }
+.day.today .slot { height: var(--today) }
 .mark { width: var(--mark); height: var(--mark); position: relative }
 .day.today .mark { width: var(--today); height: var(--today) }
 .mark svg { width: 100%; height: 100%; transform: rotate(-90deg) }
@@ -78,12 +79,28 @@ body {
 .due.zero { border: 1.5px dashed var(--border); background: var(--sunken); color: var(--muted); font-weight: 500 }
 .missed { width: 100%; height: 100%; border-radius: 50%; border: 1.5px dashed var(--border) }
 
-.board {
-  display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 10px; padding: 0 16px; flex: none;
+.frame { --hero: 168px; --row: 68px; --tile: 84px; --cover: 184px; --pet: 132px }
+.frame[data-size="small"] { --hero: 140px; --row: 60px; --tile: 72px; --cover: 136px; --pet: 108px }
+
+.primary { background: color-mix(in srgb, var(--text) 16%, var(--faint)); color: var(--text) }
+.study { display: grid; row-gap: 8px; padding: 0 16px; flex: none }
+.hero {
+  position: relative; height: var(--hero); border-radius: 14px; padding: 18px;
+  display: grid; align-content: space-between; justify-items: start;
 }
-.cat { grid-row: 1 / 5; height: 100%; aspect-ratio: 676 / 1213 }
-.actions { display: grid; grid-template-rows: 80px 80px 56px 56px; row-gap: 8px }
-.actions .primary { background: color-mix(in srgb, var(--text) 16%, var(--faint)); color: var(--text) }
+.hero .box { background: color-mix(in srgb, var(--sunken) 55%, transparent) }
+.hero .label { width: 96px; height: 26px }
+.hero .count { width: 132px; height: 52px }
+.pet { position: absolute; right: 16px; bottom: 0; height: var(--pet); aspect-ratio: 535 / 704; border-radius: 10px 10px 0 0 }
+.study > .box { height: var(--row) }
+
+.exercises { display: grid; grid-template-columns: repeat(3, 1fr); column-gap: 8px; height: var(--tile); padding: 0 16px; flex: none }
+
+.reading { display: grid; row-gap: 10px; flex: none }
+.reading .label { justify-self: start; margin-left: 16px; height: 20px; padding: 0 10px; font-size: 11px }
+.shelf { display: flex; column-gap: 10px; overflow-x: auto; padding: 0 16px; scroll-snap-type: x mandatory; scroll-padding: 16px; scrollbar-width: none }
+.shelf::-webkit-scrollbar { display: none }
+.shelf .box { flex: none; height: var(--cover); aspect-ratio: 2 / 3; border-radius: 6px; scroll-snap-align: start }
 
 svg circle { fill: none }
 svg .arc { animation: draw 1000ms var(--ease) var(--delay, 0ms) both }
@@ -113,13 +130,25 @@ svg .arc { animation: draw 1000ms var(--ease) var(--delay, 0ms) both }
     <div class="content">
       <div class="strip" id="strip"><div class="days" id="days"></div></div>
 
-      <div class="board">
-        <div class="box cat">Cat</div>
-        <div class="actions">
-          <div class="box primary">Review<small>primary</small></div>
-          <div class="box primary">Learn new words<small>primary</small></div>
-          <div class="box">Discover<small>find new words</small></div>
-          <div class="box">Practice<small>conjugations, forms, sentences</small></div>
+      <div class="study">
+        <div class="hero primary">
+          <div class="box label">Review</div>
+          <div class="box count">due count</div>
+          <div class="box pet">Cat</div>
+        </div>
+        <div class="box primary">Learn new words</div>
+      </div>
+
+      <div class="exercises">
+        <div class="box">Discover</div>
+        <div class="box">Sentences</div>
+        <div class="box">Practice</div>
+      </div>
+
+      <div class="reading">
+        <div class="box label">Continue reading</div>
+        <div class="shelf">
+          <div class="box">Cover</div><div class="box">Cover</div><div class="box">Cover</div><div class="box">Cover</div><div class="box">Cover</div>
         </div>
       </div>
     </div>
@@ -174,6 +203,7 @@ function render() {
   const z = SIZES[view.size];
   const frame = $('frame');
   frame.dataset.t = view.theme;
+  frame.dataset.size = view.size;
   frame.style.width = z.w + 'px';
   frame.style.height = z.h + 'px';
 

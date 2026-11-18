@@ -1354,7 +1354,7 @@ TEST_CASE("A forms card shows the translation of the learner's own card, as it i
 }
 
 TEST_CASE("The forms lookup runs once per word, not on a card write, and again when the dictionary reopens",
-          "[forms][appcards]")
+          "[.][forms][appcards]")
 {
     FFormsTestBed Bed;
 
