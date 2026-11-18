@@ -8,6 +8,7 @@ ColumnLayout
 
     property string title: qsTr("Ikonika")
     property bool showBack: false
+    property string leadingIcon: ""
     property string trailingIcon: ""
 
     property bool showMute: false
@@ -25,6 +26,7 @@ ColumnLayout
     property alias searchFieldPreeditText: searchField.preeditText
 
     signal backRequested()
+    signal leadingActivated()
     signal trailingActivated()
     signal muteRequested()
     signal slowSpeechRequested()
@@ -55,20 +57,23 @@ ColumnLayout
         {
             objectName: "header_back"
 
-            visible: root.showBack
+            visible: root.showBack || root.leadingIcon.length > 0
             Layout.preferredWidth: visible ? AppMetrics.headerIconTapWidth : 0
             Layout.preferredHeight: AppMetrics.topBarHeight
+
+            Accessible.role: Accessible.Button
+            Accessible.name: root.showBack ? qsTr("Back") : qsTr("Menu")
 
             DesktopIcon
             {
                 anchors.centerIn: parent
-                name: "arrow_left"
+                name: root.showBack ? "arrow_left" : root.leadingIcon
                 width: AppMetrics.headerActionIconSize
                 height: width
                 color: AppTheme.colourText
             }
 
-            TapHandler { onTapped: root.backRequested() }
+            TapHandler { onTapped: root.showBack ? root.backRequested() : root.leadingActivated() }
         }
 
         Text

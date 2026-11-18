@@ -28,6 +28,7 @@ struct FTAudioPlayer::Impl
     std::vector<int16_t> Samples;
     size_t Position = 0;
     uint64_t ConsumedFrames = 0;
+    bool bPaused = false;
 
     ~Impl()
     {
@@ -194,6 +195,13 @@ struct FTAudioPlayer::Impl
 
         const std::lock_guard<std::mutex> Lock(Guard);
 
+        if (bPaused)
+        {
+            std::fill_n(Destination, static_cast<size_t>(FrameCount), int16_t{0});
+
+            return;
+        }
+
         const size_t Remaining = Samples.size() - std::min(Position, Samples.size());
         const size_t Copying = std::min(static_cast<size_t>(FrameCount), Remaining);
 
@@ -285,6 +293,7 @@ bool FTAudioPlayer::Play(std::vector<int16_t> Samples, int SampleRate)
         Data->Samples = std::move(Converted);
         Data->Position = 0;
         Data->ConsumedFrames = 0;
+        Data->bPaused = false;
     }
 
     return true;
@@ -326,6 +335,14 @@ void FTAudioPlayer::Stop()
     Data->Samples.clear();
     Data->Position = 0;
     Data->ConsumedFrames = 0;
+    Data->bPaused = false;
+}
+
+void FTAudioPlayer::SetPaused(bool bValue)
+{
+    const std::lock_guard<std::mutex> Lock(Data->Guard);
+
+    Data->bPaused = bValue;
 }
 
 uint64_t FTAudioPlayer::GetQueuedFrames() const

@@ -18,6 +18,8 @@ ColumnLayout
     readonly property var genderNames: [qsTr("Masculine"), qsTr("Feminine")]
     readonly property var numberNames: [qsTr("Singular"), qsTr("Plural")]
 
+    signal formSpeakRequested(string form)
+
     property string picker: ""
     property int categoryIndex: 0
     property int optionIndex: 0
@@ -190,6 +192,13 @@ ColumnLayout
                             font.pixelSize: AppMetrics.fontTitle
                             font.weight: formRow.modelData.matched ? Font.Bold : Font.Medium
                             color: AppTheme.colourText
+                        }
+
+                        TapHandler
+                        {
+                            enabled: root.forms.kind === "verb"
+
+                            onTapped: root.formSpeakRequested(formRow.modelData.form)
                         }
                     }
                 }

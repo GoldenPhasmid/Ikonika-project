@@ -681,6 +681,16 @@ void FTDiscoveryPlanner::AskClue()
     }
 }
 
+void FTDiscoveryPlanner::ShowAnswer()
+{
+    if (!Current || Current->bAnswered)
+    {
+        return;
+    }
+
+    SettleMissed();
+}
+
 void FTDiscoveryPlanner::Advance()
 {
     if (Current && !Current->bAnswered)

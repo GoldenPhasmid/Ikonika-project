@@ -6,6 +6,7 @@ Item
 {
     id: root
 
+    required property DictionaryController contextLookup
     required property var lookup
     property var geometry: null
     property string text: ""
@@ -28,7 +29,7 @@ Item
     readonly property int words: root.wordCount(root.text)
     readonly property bool brief: root.words > 0 && root.words <= AppMetrics.readerLookupWordLimit
     readonly property var matches: root.open && root.brief && !root.searching ? root.findMatches(root.lookup.results) : []
-    readonly property var shownMatches: root.rankMatches(root.matches, contextLookup.machineTranslation)
+    readonly property var shownMatches: root.rankMatches(root.matches, root.contextLookup.machineTranslation)
     readonly property var match: root.shownMatches.length > 0 ? root.shownMatches[0] : null
     readonly property bool cardShown: root.match !== null
     readonly property bool translated: !root.lookup.translating && root.lookup.machineTranslation.length > 0
@@ -176,12 +177,12 @@ Item
 
     function translateContext()
     {
-        contextLookup.translate("")
+        root.contextLookup.translate("")
 
         if (root.matches.length > 1 && root.sentence.trim().length > 0)
         {
             console.info("Translating the sentence to rank", root.matches.length, "dictionary matches")
-            contextLookup.translate(root.sentence)
+            root.contextLookup.translate(root.sentence)
         }
     }
 
@@ -189,7 +190,7 @@ Item
     {
         root.open = false
         root.searching = false
-        contextLookup.translate("")
+        root.contextLookup.translate("")
     }
     onGeometryChanged: if (root.geometry === null) root.open = false
 
@@ -224,11 +225,6 @@ Item
 
             root.translateContext()
         }
-    }
-
-    DictionaryController
-    {
-        id: contextLookup
     }
 
     DesktopButton

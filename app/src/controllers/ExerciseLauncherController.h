@@ -11,8 +11,10 @@ class ExerciseLauncherController : public QObject
 {
     Q_OBJECT
     QML_ELEMENT
+    QML_UNCREATABLE("The screens are given their controllers")
 
     Q_PROPERTY(ExerciseControllerBase* activeController READ GetActiveController NOTIFY activeControllerChanged)
+    Q_PROPERTY(QString exercise READ GetExercise NOTIFY activeControllerChanged)
 
 public:
     explicit ExerciseLauncherController(QObject* Parent = nullptr);
@@ -21,6 +23,7 @@ public:
         int RepetitionCount = -1, const QStringList& FilterKeys = {});
 
     ExerciseControllerBase* GetActiveController() const;
+    QString GetExercise() const;
 
 signals:
     void activeControllerChanged();
@@ -29,4 +32,5 @@ private:
     ExerciseControllerBase* CreateController(const QString& Exercise);
 
     ExerciseControllerBase* ActiveController = nullptr;
+    QString ActiveExercise;
 };

@@ -43,9 +43,9 @@ Rectangle
             {
                 id: column
 
-                x: AppMetrics.gapLarge
+                x: (flickable.width - column.width) / 2
                 y: Math.max(AppMetrics.gapLarge, (flickable.height - column.implicitHeight) / 2)
-                width: flickable.width - AppMetrics.gapLarge * 2
+                width: Math.min(flickable.width - AppMetrics.gapLarge * 2, AppMetrics.columnMaximumWidth)
                 spacing: AppMetrics.gapLarge
 
                 Text
@@ -72,6 +72,8 @@ Rectangle
             objectName: "onboarding_continue"
 
             Layout.fillWidth: true
+            Layout.maximumWidth: AppMetrics.columnMaximumWidth
+            Layout.alignment: Qt.AlignHCenter
             Layout.margins: AppMetrics.gapLarge
 
             label: root.continueLabel

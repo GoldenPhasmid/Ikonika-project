@@ -387,7 +387,7 @@ TEST_CASE("Package update offers persist until their version is dismissed or ins
     Published.Version = 2;
     REQUIRE(Test.Publish(Published));
 
-    QVariantList Updates{AppCatalog::Get().property("packageUpdates").toList()};
+    QVariantList Updates = AppCatalog::Get().property("packageUpdates").toList();
     REQUIRE(Updates.size() == 1);
     CHECK_FALSE(Updates.first().toMap().value(QStringLiteral("dismissed")).toBool());
 
@@ -428,7 +428,7 @@ TEST_CASE("Installed voices and translations offer newer versions without downlo
 
     AppCatalog::SetInstalledVersion(PackageId, 1);
     REQUIRE(Test.Publish(Published));
-    const QVariantList Updates{AppCatalog::Get().GetPackageUpdates()};
+    const QVariantList Updates = AppCatalog::Get().GetPackageUpdates();
     REQUIRE(Updates.size() == 1);
     CHECK(Updates.first().toMap().value(QStringLiteral("id")).toString() == PackageId);
     CHECK_FALSE(AppPackageDownloader::Get().isPending(PackageId));

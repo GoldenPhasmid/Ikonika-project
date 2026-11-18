@@ -6,6 +6,9 @@ FocusScope
 {
     id: root
 
+    required property DictionaryController contextLookup
+    required property DictionaryController translationLookup
+    required property DictionaryController lookup
     required property var store
     property var session: null
     property string sessionTitle: ""
@@ -432,7 +435,7 @@ FocusScope
         enabled: root.visible && !root.finished && !root.overlayOpen
         context: Qt.WindowShortcut
 
-        onActivated: root.runOnExercise("dontKnow")
+        onActivated: root.runOnExercise(root.kind === "discovery" ? "showAnswer" : "dontKnow")
     }
 
     Shortcut
@@ -486,11 +489,6 @@ FocusScope
         }
     }
 
-    DictionaryController
-    {
-        id: lookup
-    }
-
     DesktopLookupPane
     {
         id: lookupPane
@@ -500,23 +498,20 @@ FocusScope
         anchors.bottom: parent.bottom
         visible: root.explainOpen
 
-        lookup: lookup
+        lookup: root.lookup
         maxStage: root.store ? root.store.stageCount : 1
 
         onAddWordRequested: function(word, translation, partOfSpeech, hint) { root.addWordRequested(word, translation, partOfSpeech, hint) }
-    }
-
-    DictionaryController
-    {
-        id: translationLookup
     }
 
     DesktopReaderTranslation
     {
         id: translationPopup
 
+        contextLookup: root.contextLookup
+
         anchors.fill: parent
-        lookup: translationLookup
+        lookup: root.translationLookup
         maxStage: root.store ? root.store.stageCount : 1
         showTrigger: false
 

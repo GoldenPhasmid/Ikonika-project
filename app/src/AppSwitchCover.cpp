@@ -2,36 +2,55 @@
 
 #include "core/FTLog.h"
 
-#include <QQmlApplicationEngine>
+#include <QQmlComponent>
+#include <QQmlContext>
+#include <QQmlEngine>
+#include <QQuickItem>
 #include <QQuickWindow>
 #include <QTimer>
 
 namespace
 {
     constexpr int DrawTimeoutMilliseconds = 1000;
+    constexpr qreal OverlayLayer = 1000000;
 }
 
 AppSwitchCover::AppSwitchCover() = default;
 
-AppSwitchCover::~AppSwitchCover() = default;
+AppSwitchCover::~AppSwitchCover()
+{
+    Hide();
+}
 
 void AppSwitchCover::Show(QQuickWindow& Over, std::function<void()> Drawn)
 {
-    Engine = std::make_unique<QQmlApplicationEngine>();
-    Engine->setInitialProperties({{QStringLiteral("visible"), false}});
-    Engine->loadFromModule("Ikonika", "SwitchingScreen");
+    Hide();
 
-    QQuickWindow* Cover{GetWindow()};
+    Engine = std::make_unique<QQmlEngine>();
 
-    if (Cover == nullptr)
+    QQmlComponent Component{Engine.get()};
+    Component.loadFromModule(QStringLiteral("Ikonika"), QStringLiteral("SwitchingOverlay"));
+
+    QObject* Created{Component.isError() ? nullptr : Component.beginCreate(Engine->rootContext())};
+    QQuickItem* Item{qobject_cast<QQuickItem*>(Created)};
+
+    if (Item == nullptr)
     {
-        qCWarning(LogApp) << "The switching screen did not load, switching without it";
+        qCWarning(LogApp) << "The switching overlay did not load, switching without it:" << Component.errorString();
 
+        delete Created;
         Engine.reset();
         Drawn();
 
         return;
     }
+
+    QQmlEngine::setObjectOwnership(Item, QQmlEngine::CppOwnership);
+    Item->setParentItem(Over.contentItem());
+    Item->setZ(OverlayLayer);
+    Component.completeCreate();
+
+    Overlay = Item;
 
     const auto Proceed = std::make_shared<std::function<void()>>(std::move(Drawn));
     const auto RunOnce = [Proceed]
@@ -43,44 +62,43 @@ void AppSwitchCover::Show(QQuickWindow& Over, std::function<void()> Drawn)
         }
     };
 
-    QObject::connect(Cover, &QQuickWindow::frameSwapped, Cover, RunOnce,
+    QObject::connect(&Over, &QQuickWindow::frameSwapped, &Over, RunOnce,
                      static_cast<Qt::ConnectionType>(Qt::QueuedConnection | Qt::SingleShotConnection));
-    QTimer::singleShot(DrawTimeoutMilliseconds, Cover, RunOnce);
+    QTimer::singleShot(DrawTimeoutMilliseconds, &Over, RunOnce);
 
-    Cover->setIcon(Over.icon());
-    Cover->setGeometry(Over.geometry());
-    Cover->setVisibility(Over.visibility());
+    Over.update();
 }
 
 bool AppSwitchCover::IsShown() const
 {
-    return GetWindow() != nullptr;
+    return Overlay != nullptr;
 }
 
 void AppSwitchCover::HandOver(QQuickWindow& To)
 {
-    QQuickWindow* Cover{GetWindow()};
-
-    if (Cover == nullptr)
+    if (Overlay == nullptr)
     {
-        To.show();
+        return;
+    }
+
+    if (!To.isVisible())
+    {
+        Hide();
 
         return;
     }
 
-    To.setGeometry(Cover->geometry());
-    To.setVisibility(Cover->visibility());
-
-    QObject::connect(&To, &QQuickWindow::frameSwapped, &To, [this] { Engine.reset(); },
+    QObject::connect(&To, &QQuickWindow::frameSwapped, &To, [this] { Hide(); },
                      static_cast<Qt::ConnectionType>(Qt::QueuedConnection | Qt::SingleShotConnection));
+    To.update();
 }
 
-QQuickWindow* AppSwitchCover::GetWindow() const
+void AppSwitchCover::Hide()
 {
-    if (Engine == nullptr || Engine->rootObjects().isEmpty())
+    if (Overlay != nullptr)
     {
-        return nullptr;
+        delete Overlay.data();
     }
 
-    return qobject_cast<QQuickWindow*>(Engine->rootObjects().constFirst());
+    Engine.reset();
 }

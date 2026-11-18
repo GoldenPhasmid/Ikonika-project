@@ -33,7 +33,10 @@ Rectangle
 
     RowLayout
     {
-        anchors.fill: parent
+        anchors.top: parent.top
+        anchors.bottom: parent.bottom
+        anchors.horizontalCenter: parent.horizontalCenter
+        width: Math.min(parent.width, AppMetrics.columnMaximumWidth)
         anchors.topMargin: 12
         anchors.bottomMargin: 12
         spacing: 0

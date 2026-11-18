@@ -22,6 +22,7 @@ class IntensiveLearningController : public StageSessionControllerBase
 {
     Q_OBJECT
     QML_ELEMENT
+    QML_UNCREATABLE("The screens are given their controllers")
 
     Q_PROPERTY(QString title READ GetTitle NOTIFY stateChanged)
     Q_PROPERTY(int elapsedSeconds READ GetElapsedSeconds NOTIFY stateChanged)

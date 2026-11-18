@@ -175,7 +175,8 @@ if ($Walk)
         }
 
         $Bad = @(Select-String -Path $Log -Pattern "NAV FAIL") +
-               @(Select-String -Path $Log -Pattern "\| warnings [1-9]")
+               @(Select-String -Path $Log -Pattern "\| warnings [1-9]") +
+               @(Select-String -Path $Log -Pattern "\] critical ")
 
         if ($Bad.Count -gt 0)
         {

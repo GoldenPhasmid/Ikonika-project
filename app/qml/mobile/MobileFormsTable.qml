@@ -6,6 +6,9 @@ Column
 
     property var forms: []
     property int fontSize: AppMetrics.sessionTranslationSize
+    property bool speakable: false
+
+    signal formClicked(string form)
 
     readonly property var titles: [qsTr("Singular"), qsTr("Plural")]
 
@@ -139,6 +142,13 @@ Column
                         font.weight: Font.Medium
                         font.family: AppMetrics.fontFamily
                         color: AppTheme.colourText
+                    }
+
+                    TapHandler
+                    {
+                        enabled: root.speakable && modelData.form.length > 0
+
+                        onTapped: root.formClicked(modelData.form)
                     }
                 }
             }

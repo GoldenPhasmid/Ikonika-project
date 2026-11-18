@@ -6,6 +6,10 @@ Item
 {
     id: root
 
+    required property DictionaryController entryDictionary
+    required property DictionaryController dictionary
+    required property WordListController wordList
+
     required property var store
 
     property string source: "history"
@@ -13,7 +17,7 @@ Item
     property string pendingPartOfSpeech: ""
 
     signal addWordRequested(string word, string translation, string partOfSpeech, string meaningGist)
-    signal deckOpenRequested(int deckId)
+    signal deckOpenRequested(int deckId, string word, string partOfSpeech)
     signal editWordRequested(string cardId, string word, string translation, int gender,
                              string partOfSpeech, int box)
 
@@ -21,7 +25,7 @@ Item
     readonly property bool searching: searchField.term.length > 0
     readonly property bool dueSource: root.source.indexOf("due:") === 0
     readonly property bool phraseTranslated: AppMachineTranslation.enabled && root.searching
-        && dictionary.results.length === 0 && (dictionary.translating || dictionary.machineTranslation.length > 0)
+        && root.dictionary.results.length === 0 && (root.dictionary.translating || root.dictionary.machineTranslation.length > 0)
 
     readonly property var sources: [
         { key: "history", label: qsTr("Recent searches") },
@@ -55,7 +59,7 @@ Item
 
     function currentRows()
     {
-        return searchField.term.length > 0 ? dictionary.results : wordList.entries
+        return searchField.term.length > 0 ? root.dictionary.results : root.wordList.entries
     }
 
     function rowWord(row)
@@ -66,7 +70,7 @@ Item
     function searchTerm(term)
     {
         searchField.text = term
-        dictionary.search(term)
+        root.dictionary.search(term)
         root.selectedIndex = -1
         root.autoSelect()
     }
@@ -81,7 +85,7 @@ Item
     {
         root.source = newSource
         searchField.text = ""
-        wordList.load(newSource)
+        root.wordList.load(newSource)
         root.selectedIndex = -1
         root.autoSelect()
     }
@@ -96,11 +100,11 @@ Item
     {
         if (root.searching)
         {
-            dictionary.search(searchField.term)
+            root.dictionary.search(searchField.term)
         }
         else
         {
-            wordList.load(root.source)
+            root.wordList.load(root.source)
         }
 
         if (root.selectedIndex < 0 || root.selectedIndex >= root.currentRows().length)
@@ -147,11 +151,11 @@ Item
         entry.open(root.rowWord(row), "", record, root.term)
     }
 
-    DictionaryController
+    Connections
     {
-        id: dictionary
+        target: root.dictionary
 
-        onResultsChanged:
+        function onResultsChanged()
         {
             if (!root.searching)
             {
@@ -169,14 +173,15 @@ Item
         }
     }
 
-    WordListController
-    {
-        id: wordList
-    }
-
     Component.onCompleted:
     {
-        wordList.load(root.source)
+        root.wordList.load(root.source)
+
+        if (root.dictionary.query.length > 0)
+        {
+            searchField.text = root.dictionary.query
+        }
+
         root.autoSelect()
     }
 
@@ -205,12 +210,12 @@ Item
             {
                 if (searchField.term.length > 0)
                 {
-                    dictionary.search(searchField.term)
+                    root.dictionary.search(searchField.term)
 
                     return
                 }
 
-                dictionary.clear()
+                root.dictionary.clear()
                 root.selectedIndex = -1
                 root.autoSelect()
             }
@@ -259,9 +264,9 @@ Item
             DesktopLabel
             {
                 Layout.fillWidth: true
-                visible: !root.phraseTranslated && !(root.searching && dictionary.results.length === 0 && AppMachineTranslation.offered)
-                text: root.searching ? qsTr("%n results", "", dictionary.results.length)
-                                     : qsTr("%n words", "", wordList.entries.length)
+                visible: !root.phraseTranslated && !(root.searching && root.dictionary.results.length === 0 && AppMachineTranslation.offered)
+                text: root.searching ? qsTr("%n results", "", root.dictionary.results.length)
+                                     : qsTr("%n words", "", root.wordList.entries.length)
                 font.pixelSize: AppMetrics.fontSmall
                 color: AppTheme.colourMuted
             }
@@ -269,7 +274,7 @@ Item
             Item
             {
                 Layout.fillWidth: true
-                visible: root.phraseTranslated || (root.searching && dictionary.results.length === 0 && AppMachineTranslation.offered)
+                visible: root.phraseTranslated || (root.searching && root.dictionary.results.length === 0 && AppMachineTranslation.offered)
             }
 
             DesktopChip
@@ -277,10 +282,10 @@ Item
                 objectName: "words_search_foreign"
 
                 visible: root.searching
-                text: dictionary.targetLanguageCode
-                selected: !dictionary.nativeSearch
+                text: root.dictionary.targetLanguageCode
+                selected: !root.dictionary.nativeSearch
 
-                onClicked: dictionary.nativeSearch = false
+                onClicked: root.dictionary.nativeSearch = false
             }
 
             DesktopChip
@@ -288,18 +293,18 @@ Item
                 objectName: "words_search_native"
 
                 visible: root.searching
-                text: dictionary.nativeLanguageCode
-                selected: dictionary.nativeSearch
+                text: root.dictionary.nativeLanguageCode
+                selected: root.dictionary.nativeSearch
 
-                onClicked: dictionary.nativeSearch = true
+                onClicked: root.dictionary.nativeSearch = true
             }
         }
 
         DesktopMachineTranslation
         {
             visible: AppMachineTranslation.enabled && root.searching
-                && (dictionary.results.length === 0 || dictionary.formTerm.length > 0)
-            lookup: dictionary
+                && (root.dictionary.results.length === 0 || root.dictionary.formTerm.length > 0)
+            lookup: root.dictionary
             term: searchField.term
 
             onAddRequested: function(word, translation) { root.addWordRequested(word, translation, "", "") }
@@ -341,6 +346,8 @@ Item
     {
         id: entry
 
+        controller: root.entryDictionary
+
         anchors.left: listPane.right
         anchors.right: parent.right
         anchors.top: parent.top
@@ -351,7 +358,7 @@ Item
 
         onAddWordRequested: function(word, translation, partOfSpeech, meaningGist) { root.addWordRequested(word, translation, partOfSpeech, meaningGist) }
         onWordClicked: function(word) { root.showWord(word, "") }
-        onDeckOpenRequested: function(deckId) { root.deckOpenRequested(deckId) }
+        onDeckOpenRequested: function(deckId, word, partOfSpeech) { root.deckOpenRequested(deckId, word, partOfSpeech) }
         onEditWordRequested: function(cardId, word, translation, gender, partOfSpeech, box)
         {
             root.editWordRequested(cardId, word, translation, gender, partOfSpeech, box)

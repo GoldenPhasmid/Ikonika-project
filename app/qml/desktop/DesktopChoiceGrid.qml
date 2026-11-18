@@ -41,6 +41,7 @@ GridLayout
             description: modelData.caption || ""
             progress: modelData.progress === undefined ? -1 : modelData.progress
             enabled: modelData.enabled === undefined || modelData.enabled
+            filled: modelData.filled === true
             selectable: root.selectable
             selected: root.selectable && modelData.key === root.chosenKey
 

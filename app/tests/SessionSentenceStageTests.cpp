@@ -367,6 +367,181 @@ TEST_CASE("A phrase the dictionary lacks gets a sentence that contains it", "[se
     CHECK(GetPhaseTiles(*Stage, 1)->GetAnswer().contains("on y va", Qt::CaseInsensitive));
 }
 
+TEST_CASE("A verb gap can use a conjugated meaning example", "[sessionsentences][gap]")
+{
+    FSentenceStageTestBed TestBed;
+    FTCard Card = MakeCard("accourir", "accourir", "verb", "to come quickly");
+    Card.MeaningGist = "courir";
+
+    const FGapSentences Sentences = PickGapSentences(*MakeParams({Card}).CardState);
+    REQUIRE(Sentences.contains(Card.Id));
+    CHECK(GetGapWord(Sentences.at(Card.Id)) == "accourent");
+}
+
+TEST_CASE("Gap sentences prefer any card translation over other meaning translations", "[sessionsentences][gap]")
+{
+    FTCard Card = MakeCard("randonnee", "randonnée", "noun", "hike, trek");
+    FTTreeSentence Ramble;
+    Ramble.Text = "Partons en randonnée.";
+    Ramble.Translation = "Let's go rambling.";
+    FTTreeSentence Direct;
+    Direct.Text = "Une randonnée nous attend.";
+    Direct.Translation = "A trek awaits us.";
+
+    SECTION("A later candidate matching the second card translation wins")
+    {
+        const auto Picked = PickGapSentence({Ramble, Direct}, Card, {Card.TargetWord}, true);
+        REQUIRE(Picked.has_value());
+        CHECK(Picked->Text == Direct.Text);
+        CHECK(GetGapWord(*Picked) == "randonnée");
+    }
+
+    SECTION("Inflections of the card translation have the same priority")
+    {
+        Direct.Translation = "We like hiking.";
+        const auto Picked = PickGapSentence({Ramble, Direct}, Card, {Card.TargetWord}, true);
+        REQUIRE(Picked.has_value());
+        CHECK(Picked->Text == Direct.Text);
+    }
+
+    SECTION("A matching translation without a usable gap cannot win")
+    {
+        Direct.Text = "Nous aimons marcher.";
+        const auto Picked = PickGapSentence({Direct, Ramble}, Card, {Card.TargetWord}, true);
+        REQUIRE(Picked.has_value());
+        CHECK(Picked->Text == Ramble.Text);
+    }
+
+    SECTION("Other meaning translations remain available when no card translation matches")
+    {
+        const auto Picked = PickGapSentence({Ramble}, Card, {Card.TargetWord}, true);
+        REQUIRE(Picked.has_value());
+        CHECK(Picked->Text == Ramble.Text);
+    }
+
+    SECTION("Languages without English translation matching keep their existing order")
+    {
+        const auto Picked = PickGapSentence({Ramble, Direct}, Card, {Card.TargetWord}, false);
+        REQUIRE(Picked.has_value());
+        CHECK(Picked->Text == Ramble.Text);
+    }
+}
+
+TEST_CASE("Gap sentences prefer the headword within each translation priority", "[sessionsentences][gap]")
+{
+    const FTCard Card = MakeCard("renifler", "renifler", "verb", "to sniff");
+    const std::vector<std::string> Spellings{"renifler", "renifle"};
+    FTTreeSentence Form;
+    Form.Text = "Le chien renifle.";
+    Form.Translation = "The dog sniffs.";
+    FTTreeSentence Headword;
+    Headword.Text = "Il aime renifler.";
+    Headword.Translation = "He likes to sniff.";
+
+    SECTION("A later headword match wins over an earlier inflected form")
+    {
+        const auto Picked = PickGapSentence({Form, Headword}, Card, Spellings, true);
+        REQUIRE(Picked.has_value());
+        CHECK(Picked->Text == Headword.Text);
+        CHECK(GetGapWord(*Picked) == "renifler");
+    }
+
+    SECTION("An inflected form remains available when no headword matches")
+    {
+        const auto Picked = PickGapSentence({Form}, Card, Spellings, true);
+        REQUIRE(Picked.has_value());
+        CHECK(GetGapWord(*Picked) == "renifle");
+    }
+
+    SECTION("Card translation priority wins over exact headword priority")
+    {
+        Headword.Translation = "He likes to smell.";
+        const auto Picked = PickGapSentence({Headword, Form}, Card, Spellings, true);
+        REQUIRE(Picked.has_value());
+        CHECK(Picked->Text == Form.Text);
+    }
+
+    SECTION("Headwords are preferred among other meaning translations too")
+    {
+        Form.Translation = "The dog smells.";
+        Headword.Translation = "He likes to smell.";
+        const auto Picked = PickGapSentence({Form, Headword}, Card, Spellings, true);
+        REQUIRE(Picked.has_value());
+        CHECK(Picked->Text == Headword.Text);
+    }
+
+    SECTION("A sentence containing both forms puts the gap on its headword")
+    {
+        Headword.Text = "Il aime renifler et renifle.";
+        const auto Picked = PickGapSentence({Headword}, Card, Spellings, true);
+        REQUIRE(Picked.has_value());
+        CHECK(GetGapWord(*Picked) == "renifler");
+    }
+}
+
+TEST_CASE("A noun gap can match the ligature in its meaning example", "[sessionsentences][gap]")
+{
+    FSentenceStageTestBed TestBed;
+    FTCard Card = MakeCard("coeur", "coeur", "noun", "heart");
+    Card.MeaningGist = "sentiment";
+    const FGapSentences Sentences = PickGapSentences(*MakeParams({Card}).CardState);
+    REQUIRE(Sentences.contains(Card.Id));
+    CHECK(GetGapWord(Sentences.at(Card.Id)) == "cœur");
+}
+
+TEST_CASE("A noun gap can use the plural in its meaning example", "[sessionsentences][gap]")
+{
+    FSentenceStageTestBed TestBed;
+    FTCard Card = MakeCard("vacance", "vacance", "noun", "vacation");
+    Card.MeaningGist = "congé";
+
+    const FGapSentences Sentences = PickGapSentences(*MakeParams({Card}).CardState);
+    REQUIRE(Sentences.contains(Card.Id));
+    CHECK(GetGapWord(Sentences.at(Card.Id)) == "vacances");
+}
+
+TEST_CASE("An adjective gap can use a feminine plural meaning example", "[sessionsentences][gap]")
+{
+    FSentenceStageTestBed TestBed;
+    FTCard Card = MakeCard("allumé", "allumé", "adj", "lit");
+    Card.MeaningGist = "éclairé";
+
+    const FGapSentences Sentences = PickGapSentences(*MakeParams({Card}).CardState);
+    REQUIRE(Sentences.contains(Card.Id));
+    CHECK(GetGapWord(Sentences.at(Card.Id)) == "allumées");
+}
+
+TEST_CASE("Gap exercises search phrases even without an indexed headword or meaning example",
+          "[sessionsentences][gap][slow]")
+{
+    FSentenceStageTestBed TestBed;
+    FTCard Card = MakeCard("pas-cher", "pas cher", "", "cheap");
+
+    SECTION("The phrase gets a sentence from text search")
+    {
+        const FGapSentences Sentences = PickGapSentences(*MakeParams({Card}).CardState);
+        REQUIRE(Sentences.contains(Card.Id));
+        CHECK(Sentences.at(Card.Id).Id > 0);
+        CHECK(GetGapWord(Sentences.at(Card.Id)) == "pas cher");
+    }
+
+    SECTION("The phrase still has to match the card translation")
+    {
+        Card.Translation = "unmatchabletranslation";
+        CHECK(PickGapSentences(*MakeParams({Card}).CardState).empty());
+    }
+}
+
+TEST_CASE("Gap exercises search phrases before using their meaning example", "[sessionsentences][gap][slow]")
+{
+    FSentenceStageTestBed TestBed;
+    const FTCard Card = MakeCard("au-revoir", "au revoir", "intj", "goodbye");
+    const FGapSentences Sentences = PickGapSentences(*MakeParams({Card}).CardState);
+    REQUIRE(Sentences.contains(Card.Id));
+    CHECK(Sentences.at(Card.Id).Id > 0);
+    CHECK(QString::fromStdString(GetGapWord(Sentences.at(Card.Id))).compare("au revoir", Qt::CaseInsensitive) == 0);
+}
+
 TEST_CASE("Each sentence must be answered correctly once and a wrong answer brings it back", "[sessionsentences]")
 {
     FSentenceStageTestBed TestBed;

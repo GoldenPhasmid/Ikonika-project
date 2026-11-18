@@ -4,6 +4,7 @@ Item
 {
     id: root
 
+    required property DictionaryController controller
     required property var store
 
     signal done()
@@ -13,15 +14,23 @@ Item
 
     onVisibleChanged: if (root.visible) shell.focusSearchField()
 
+    Component.onCompleted:
+    {
+        if (root.controller.query.length > 0)
+        {
+            shell.searchFieldText = root.controller.query
+        }
+    }
+
     function search()
     {
-        controller.search(shell.searchFieldText + shell.searchFieldPreeditText)
+        root.controller.search(shell.searchFieldText + shell.searchFieldPreeditText)
     }
 
     function searchTerm(word)
     {
         shell.searchFieldText = word
-        controller.search(word)
+        root.controller.search(word)
     }
 
     function refreshLearnedMarks()
@@ -34,13 +43,8 @@ Item
 
     function reset()
     {
-        controller.clear()
+        root.controller.clear()
         shell.searchFieldText = ""
-    }
-
-    DictionaryController
-    {
-        id: controller
     }
 
     MobileShell
@@ -68,9 +72,9 @@ Item
             anchors.fill: parent
             anchors.margins: AppMetrics.contentPadding
             anchors.topMargin: AppMetrics.contentPadding
-                + (formTranslation.visible && controller.results.length > 0 ? formTranslation.height + AppMetrics.gapSmall : 0)
+                + (formTranslation.visible && root.controller.results.length > 0 ? formTranslation.height + AppMetrics.gapSmall : 0)
 
-            model: controller.results
+            model: root.controller.results
             maxStage: root.store.stageCount
 
             showPartOfSpeech: false
@@ -80,18 +84,18 @@ Item
 
             onWordClicked: function(index)
             {
-                const row = controller.results[index]
+                const row = root.controller.results[index]
                 root.entryOpened(row.word, "", shell.searchFieldText)
             }
 
             onVoicePlayRequested: function(index)
             {
-                controller.speak(controller.results[index].word)
+                root.controller.speak(root.controller.results[index].word)
             }
 
             onAddRequested: function(index)
             {
-                const row = controller.results[index]
+                const row = root.controller.results[index]
                 root.addWordRequested(row.word, row.translation.split(", ")[0] || "",
                                        row.partOfSpeech)
             }
@@ -107,9 +111,9 @@ Item
             anchors.margins: AppMetrics.contentPadding
 
             visible: AppMachineTranslation.enabled
-                && (controller.results.length === 0 || controller.formTerm.length > 0)
+                && (root.controller.results.length === 0 || root.controller.formTerm.length > 0)
                 && (shell.searchFieldText + shell.searchFieldPreeditText).trim().length > 0
-            lookup: controller
+            lookup: root.controller
             term: (shell.searchFieldText + shell.searchFieldPreeditText).trim()
 
             onAddRequested: function(word, translation) { root.addWordRequested(word, translation, "") }

@@ -14,12 +14,12 @@ A document sent from another app through "Open with" is different. Most senders 
 
 The library is local-only. Cloud sync merges the card tables, but a document's path is meaningless on another device, so the library never leaves the machine. Existence is re-checked on every list read; a missing file is marked as such rather than dropped, and the user removes the dead reference explicitly.
 
-The library view is a grid of covers, two columns on the phone, with Open book always first. The phone can switch it to a list. A search field keeps the books whose title holds the typed text, ignoring case and accents, and chips sort by last accessed or alphabetically.
+The phone and the desktop show the same library: the same sections, collections, filter, sort, grouping and covers. The phone's library is described under [Screens](#screens), the desktop's in [desktop-ui.md](desktop-ui.md).
 
-The desktop library is laid out in [desktop-ui.md](desktop-ui.md). Its data comes from three places:
+Its data comes from these places:
 
 - **Author and cover.** A free book's author comes from the catalog. For a file on this device the app reads the author and the cover image from the file once, on a background thread, the first time the library lists it: the creator and cover image of an EPUB, the first author and cover page of an FB2, and the Author field and first page of a PDF. The cover is scaled down and kept in a Covers folder beside the device database, named by the library row id. A book without a cover image, and a book not yet downloaded, gets a default cover. An uploaded book carries its author to other devices.
-- **Book details.** The desktop book overview shows a book's language, description, word count, pages and chapters. The app reads them from the whole file once, on a background thread, the first time the overview opens, and keeps them in the device database. An EPUB gives its language and description, an FB2 its language and annotation, and a PDF its Subject field, page count and bookmarks. A flowable book's pages are its word count divided by 250. The current chapter is the last one that starts at or before the reading position.
+- **Book details.** The book overview, a dialog on the desktop and a page on the phone, shows a book's language, description, word count, pages and chapters. The app reads them from the whole file once, on a background thread, the first time the overview opens, and keeps them in the device database. An EPUB gives its language and description, an FB2 its language and annotation, and a PDF its Subject field, page count and bookmarks. A flowable book's pages are its word count divided by 250. The current chapter is the last one that starts at or before the reading position.
 - **Renaming.** A title the user types replaces the stored one and is never replaced by one read from the file. A book in the cloud is renamed there too.
 - **Favourites and collections.** They sync, keyed by a book key that names the same book on every device. See [trainer-schema.md](trainer-schema.md).
 - **Finished.** A book is finished when its reading place is on its last page. Nothing is stored for it.
@@ -47,16 +47,10 @@ Ikonika publishes public-domain books for each language, and the learner downloa
 Free books shelf. The list comes from the language's book catalog; see
 [releases.md](releases.md#book-catalogs).
 
-- **The filter.** A dropdown beside the sort controls switches between My books, the learner's own
-  library as it was, and Free books, the catalog for the language being learned. The dropdown shows
-  only when that catalog lists at least one book. Free books keeps the catalog's order, has no Open
-  book tile, and the search field still filters it. Free books replaces the sort controls with a
-  reading-level filter: All levels, Beginner, Intermediate or Advanced. The level filter combines
-  with title search and keeps the catalog's order. A level badge sits at the top right of each
-  free book's cover and stays on downloaded copies in My books. Badges use A, B and C for Beginner,
-  Intermediate and Advanced; filters and tooltips keep the full names. On desktop, available
-  actions replace the badge in the same corner on hover or keyboard focus. Sorting is dimmed while My books
-  holds fewer than two books.
+- **The section.** Free library is a section of its own beside My books, shown only when the
+  catalog lists at least one book. The search field, the filter and the sort apply to it as to
+  any section. A level badge, A, B or C for Beginner, Intermediate and Advanced, sits under each
+  book's cover and stays on downloaded copies; filters and tooltips keep the full names.
 - **Download.** A free book that is not downloaded shows faded with the download icon. Clicking it
   downloads the file into the workspace's books folder, checks its checksum and adds it to the
   library under the catalog title. The cover shows the same percentage and Cancel as a cloud
@@ -66,7 +60,7 @@ Free books shelf. The list comes from the language's book catalog; see
 - **Remove** drops the book from the library and deletes the downloaded file. The book stays on the
   Free books shelf to download again.
 
-The phone has the same shelf. Two chips, My books and Free books, sit under the search field when the catalog lists a book. A reading-level picker replaces the sort chips on Free books. The same level badge appears on covers and in the list layout. A downloaded cover opens its actions sheet on a long press, keeping the badge's corner clear. A catalog book has a download icon and no actions menu; a tap downloads it with the same percentage and Cancel on the cover, and a failure shows as a toast.
+The phone has the same section. A catalog book's cover carries a large download button; a tap downloads it with a ring showing the percentage over the cover, and a failure shows as a toast.
 
 ## Pipeline
 
@@ -169,8 +163,9 @@ EPUB, FB2 and TXT books can be read aloud with the voice the app already uses fo
 
 - **Starting.** The headphones button in the reader's top bar starts reading at once and opens the play bar. Pressing it again closes the bar, the same as the bar's close button.
 - **The play bar.** Previous sentence, play or pause, next sentence, the speed, and close. Previous replays the current sentence when it has played for more than two seconds, and goes one sentence back otherwise, so a second press steps back. The speed steps through 50, 75, 100, 125 and 150 percent. It is the sentence speech rate from the sound settings, which the reader's Appearance panel also shows as a slider. A new speed restarts the sentence being read, so it applies at once.
+- **Pause keeps the place.** Pause from the play bar, Space, the media controls or leaving the screen continues the sentence where it stopped. The desktop holds the rendered audio and continues from the same sample. iOS pauses its own voice. Android's voice cannot pause, so the app tracks the word being spoken and reads the rest of the sentence from that word. A change of speed while paused, or a word spoken while the desktop is paused, drops the held audio, and Play restarts the sentence.
 - **Where reading starts.** Play reads what is on screen. It resumes the paused sentence when that sentence is visible, continues from the sentence read last in this book when that one is visible, and otherwise starts from the sentence at the top of the screen. The sentence read last is kept per book on this device.
-- **A tap always translates.** Tapping a word opens the translation, the dictionary sheet on the phone and the popup on the desktop, whether the voice is reading or not. A tap while reading pauses it, and Play then restarts the paused sentence, so the learner hears it again after the lookup. The phone's voice cannot pause in the middle of a sentence anyway. The popup and the sheet offer Read aloud from here, which starts at the tapped word's sentence.
+- **A tap always translates.** Tapping a word opens the translation, the dictionary sheet on the phone and the popup on the desktop, whether the voice is reading or not. A tap while reading pauses it, and Play then restarts the paused sentence, so the learner hears it again after the lookup. The popup and the sheet offer Read aloud from here, which starts at the tapped word's sentence.
 - **Back to reading.** Scrolling by hand while the bar is open stops the view from following. When the sentence being read leaves the screen, a Back to reading button above the bar scrolls to it and follows again.
 - **Keys on the desktop.** While the bar is open, Space plays or pauses, and Ctrl+Left and Ctrl+Right move by a sentence. Without the bar, Space turns the page.
 - **No voice.** When speech is turned off, or the desktop voice is not installed, the headphones button opens a notice in place of the bar: Turn on, or Download with its progress. Once the voice becomes available, reading starts.
@@ -188,7 +183,8 @@ Sentences are queued about 15 seconds ahead, measured in estimated seconds of au
 
 The reader holds two states, the same pattern as a list and its detail:
 
-- **Library** - a search field, the sort chips (Last opened, A to Z) with a button that switches between covers and a list, then the books. Open book comes first, a plain + in the primary colours: a cover-sized tile, or a full-width bar in the list. Covers come two to a row, 1.7 times as wide as tall, and nothing sits under them. A cover takes the book's tint, crossed by the darker band the desktop covers carry, and shows the format and where the book is at the top, a menu button in the top right corner, the title at the bottom, and a line along its bottom edge for how far the book was read. The list shows one row per book: a small cover in the same tint, the title, and a second line with where the book is and how far it was read, in percent. Where the book is takes one icon: a phone for a book only on this phone, a cloud with a check for one on the phone and in the cloud, a cloud with an arrow for one only in the cloud, which also shows its size. A book whose file is gone is not shown, since the phone cannot point it at a moved file. Tapping a book opens it, or downloads a cloud book. The menu button, or a long press, opens a sheet with Download, Upload to the cloud, Open in another app, Remove in red and Delete from the cloud in red, whichever apply; both red actions ask first. A download shows its percentage over the cover, and the menu button turns into Cancel while an upload runs. The app remembers the layout.
+- **Library** - the header holds a menu button, the section's name, then search, filter, sort, and a button that switches between covers and a list. The menu button opens a side sheet with My books, Free library, Reading, Finished and Favorites, each with its count, then the collections with a plus that creates one, and Import a book at the bottom. Holding a collection offers Rename and Delete. Filter and sort open bottom sheets with the desktop's choices: level, status, storage and format chips, then the sort order, its direction and grouping by level or author. Covers come two to a row in the desktop's look, with the title, the author, then the level badge, the percent read, a check once finished, a heart for a favourite and a button that opens the book page. The list shows a larger cover beside the title and the author, a progress bar, then the level badge with buttons for favourite, collections and the book page. A book only in the cloud shows a download button, and a download or upload shows its percentage over the cover. A book whose file is gone is not shown, since the phone cannot point it at a moved file. Tapping a cover opens the book, or downloads it. The app remembers the layout.
+- **Book page** - opens from a book's button or a long press on its cover, and holds what the desktop overview holds: the cover, title, author, level, format and language, the book's collections with a chip that adds one, the chapter and percent read, Start or Continue reading, Open with, Upload, and Remove and Delete from the cloud, which act only on a held press. Then pages, words, added words and known vocabulary, and the Overview, Contents and Words tabs. The header holds rename and favourite.
 - **Reading** - the page view or the paragraph view, selected by format. A top overlay holds back, read aloud, contents, appearance and search, with the title beneath. A bottom overlay holds previous page, page number and next page, with the page scrubber beneath. Tapping a PDF's page number turns it into a numeric field; entering a page and confirming jumps there. Contents and the dictionary search open as bottom sheets.
 
 The reader is a rail destination, a shell screen at the same level as the Dictionary screen. A document opens under the currently active language pair, and its cards go to that pair's pool.
@@ -213,9 +209,7 @@ The desktop reader keeps the two states, the library and the open book, and repl
 
 | Phone | Desktop |
 | --- | --- |
-| Open book tile, first in the grid | An Open book tile, always first in the grid, a plain + with the label in a tooltip. A file dropped on the library opens too. |
-| Two columns of covers with search and sort | A grid of covers, three columns, each 1.7 times as wide as tall. A cover is the book's tint from the theme, the size of a deck cover and crossed by the same darker band. Its top left shows the format and where the book is: a monitor for a book only on this computer, a cloud with a check for one also in the cloud, a cloud with an arrow for one only in the cloud, which shows faded. The title sits at the bottom. Nothing sits under the cover. Chips sort it by last accessed or alphabetically, and a search field keeps the books whose title holds the typed text, ignoring case and accents. |
-| A menu button or a long press opens a sheet of the book's actions | The whole cover is the button: it opens the book, or downloads a cloud book. A row of buttons appears on the cover's top right under the pointer or keyboard focus, where the phone has its menu button: show in folder, upload to the cloud for a book only on this computer, remove in red, delete from the cloud in red. Remove and Delete from the cloud both ask first. A download shows its percentage, the megabytes so far and a Cancel button over the cover. An upload shows its progress along the cover's bottom edge, with Cancel in the top right corner. Otherwise that edge shows how far the book was read. A book whose file is gone stays in the library on the desktop, unlike the phone, since the desktop can point it at the moved file: its cover says so, and clicking it asks where the file went and keeps its place. Enter opens the focused book and Delete removes it. |
+| Library with a side sheet for sections and collections, filter and sort sheets, and a book page | The same library with a side pane, popovers and a book overview dialog; see [desktop-ui.md](desktop-ui.md). A file dropped on the library opens too. |
 | Tap a word, long-press and drag a phrase | Click a word, drag across a phrase. Ctrl+C copies the selection, from a PDF too. A click outside the text, in the margins or between paragraphs, clears the selection. |
 | Dictionary sheet | A Translate button next to the selection, which opens a translation popup under it. See [Popups](#popups). |
 | Contents sheet | A pane over the left of the page. Its right edge drags to resize it, and the width is remembered. |

@@ -23,8 +23,6 @@ FTCardHandle FTCardStore::UpdateCard(FTCard Loaded)
     {
         if (const std::shared_ptr<FTCard> Live = FoundCard->second.lock())
         {
-            qCDebug(LogDatabase) << "card refreshed in place:" << QString::fromStdString(Loaded.Id);
-
             *Live = std::move(Loaded);
             return Live;
         }

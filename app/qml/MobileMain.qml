@@ -2,18 +2,12 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Window
 
-ApplicationWindow
+Page
 {
     id: window
 
-    width: 412
-    height: 887
-    minimumWidth: 360
-    minimumHeight: 640
-    visible: true
-    title: qsTr("Ikonika")
-
-    color: AppTheme.colourPanel
+    anchors.fill: parent
+    focus: true
 
     readonly property bool readingBook: window.screen === "reader" && readerMobile.reading
 
@@ -37,7 +31,27 @@ ApplicationWindow
     palette.dark: AppTheme.colourBorder
     palette.light: AppTheme.colourMuted
 
-    onClosing: function(close)
+    required property AppControllers controllers
+    property var layoutState: ({})
+
+    readonly property DailySessionController daily: window.controllers.daily
+    readonly property TriageController triage: window.controllers.triage
+    readonly property ExerciseLauncherController exerciseLauncher: window.controllers.launcher
+    readonly property SentenceTrainingController sentenceTraining: window.controllers.sentenceTraining
+    readonly property DiscoveryController discovery: window.controllers.discovery
+    readonly property PlacementTestController placementTest: window.controllers.placementTest
+    readonly property IntensiveLearningController training: window.controllers.training
+    readonly property RepetitionController review: window.controllers.review
+
+    Binding
+    {
+        target: window.Window.window
+        when: window.Window.window !== null
+        property: "color"
+        value: AppTheme.colourPanel
+    }
+
+    function handleClose()
     {
         if (Qt.platform.os === "android")
         {
@@ -46,18 +60,17 @@ ApplicationWindow
                 AppReminder.moveToBackground()
             }
 
-            close.accepted = false
-
-            return
+            return false
         }
 
         if (!AppReminder.trayAvailable)
         {
-            return
+            return true
         }
 
-        close.accepted = false
-        window.hide()
+        window.Window.window.hide()
+
+        return false
     }
 
     function androidBack()
@@ -178,6 +191,81 @@ ApplicationWindow
         window.openLookup(text, "")
     }
 
+    function captureLayoutState()
+    {
+        const tab = window.screenStack.length > 0 ? window.screenStack[0] : ""
+
+        if (AppOnboarding.required || tab === "onboarding")
+        {
+            return {}
+        }
+
+        const sessions = {
+            intensive: "training",
+            repetition: "review",
+            discovery: "discovery",
+            sentencesession: "sentences",
+            triage: "triage",
+            placement: "placement",
+            flashcards: "practice",
+            flip: "practice",
+            correctincorrect: "practice",
+            choice: "practice",
+            written: "practice",
+            audio: "practice",
+            speedmatch: "practice"
+        }
+        const open = window.screenStack.filter(Screen => sessions[Screen] !== undefined)
+
+        return {
+            place: tab === "dictionary" ? "words" : tab,
+            session: open.length > 0 ? sessions[open[open.length - 1]] : ""
+        }
+    }
+
+    function restoreLayoutState(state)
+    {
+        if (AppOnboarding.required || !state.place)
+        {
+            return
+        }
+
+        console.info("Layout switch: restoring", state.place, state.session)
+
+        welcome.shown = false
+        if (state.place === "words")
+        {
+            window.dictionaryAlreadyFresh = true
+            dictionaryMobile.active = true
+        }
+
+        window.resetTo(state.place === "words" ? "dictionary" : state.place)
+
+        const exercise = window.exerciseLauncher.exercise
+        const screens = {
+            training: "intensive",
+            review: "repetition",
+            discovery: "discovery",
+            sentences: "sentencesession",
+            triage: "triage",
+            placement: "placement",
+            practice: exercise === "gap" ? "written" : exercise
+        }
+        const screen = screens[state.session]
+
+        if (!screen)
+        {
+            return
+        }
+
+        if (screen === "triage")
+        {
+            triageMobile.active = true
+        }
+
+        window.pushScreen(screen)
+    }
+
     function popScreen()
     {
         if (window.screenStack.length > 1)
@@ -295,7 +383,7 @@ ApplicationWindow
     {
         window.store.clearLastError()
 
-        dailyCounts.refresh()
+        window.daily.refresh()
 
         if (window.screen === "vocabulary" && window.vocabularyAlreadyFresh)
         {
@@ -336,7 +424,7 @@ ApplicationWindow
 
     Component.onCompleted:
     {
-        if (window.screen === "today")
+        if (!window.layoutState.place && window.screen === "today")
         {
             if (repetitionMobile.hasActiveSession)
             {
@@ -370,6 +458,11 @@ ApplicationWindow
             welcome.forceActiveFocus()
         }
 
+        if (window.layoutState.place)
+        {
+            window.restoreLayoutState(window.layoutState)
+        }
+
         Qt.callLater(window.openPendingText)
     }
 
@@ -397,7 +490,7 @@ ApplicationWindow
             return
         }
 
-        if (dailyCounts.shortfall() > 0)
+        if (window.daily.shortfall() > 0)
         {
             console.info("Train: not enough words in My Vocabulary, opening Discover")
             window.startDiscovery()
@@ -432,7 +525,7 @@ ApplicationWindow
 
     function startFormsTraining(training)
     {
-        const trainingId = dailyCounts.formsTrainingId(training)
+        const trainingId = window.daily.formsTrainingId(training)
 
         if (trainingId.length === 0)
         {
@@ -446,7 +539,7 @@ ApplicationWindow
             return
         }
 
-        const tenses = dailyCounts.formsTenses(trainingId)
+        const tenses = window.daily.formsTenses(trainingId)
 
         if (tenses.length > 1)
         {
@@ -461,8 +554,8 @@ ApplicationWindow
 
     function startTenseTraining(trainingId, tense)
     {
-        const cards = tense === "present" ? dailyCounts.collectFormsCards(trainingId)
-                                          : dailyCounts.collectTenseCards(trainingId, tense)
+        const cards = tense === "present" ? window.daily.collectFormsCards(trainingId)
+                                          : window.daily.collectTenseCards(trainingId, tense)
 
         if (intensiveMobile.startWithCards(trainingId, cards))
         {
@@ -486,11 +579,6 @@ ApplicationWindow
         ["today", "vocabulary", "decks", "deck", "dictionary", "wordlist", "settings", "reader"]
 
     readonly property bool inShell: window.shellScreens.indexOf(window.screen) >= 0
-
-    DailySessionController
-    {
-        id: dailyCounts
-    }
 
     Connections
     {
@@ -554,7 +642,7 @@ ApplicationWindow
 
         function onDebugTimeChanged()
         {
-            dailyCounts.refresh()
+            window.daily.refresh()
             todayMobile.refresh()
             vocabularyMobile.refresh()
         }
@@ -566,9 +654,10 @@ ApplicationWindow
                 intensiveMobile.controller.endSession()
             }
 
-            sentenceTraining.forgetSessions()
+            window.sentenceTraining.forgetSessions()
 
-            if (window.screen === "intensive" || window.screen === "sentencesession")
+            if (window.screen === "intensive" || window.screen === "sentencesession" || window.screen === "discovery"
+                || window.screen === "discoverpick")
             {
                 window.resetTo("today")
             }
@@ -582,7 +671,7 @@ ApplicationWindow
                 return
             }
 
-            if (placementTest.isOffered(window.store.targetLanguageCode, ""))
+            if (window.placementTest.isOffered(window.store.targetLanguageCode, ""))
             {
                 window.placementRetake = false
                 window.pushScreen("placement")
@@ -606,7 +695,7 @@ ApplicationWindow
 
     function startExercise(exercise, reverse, cardCount, repetitionCount, filterKeys)
     {
-        if (exerciseLauncher.startExercise(exercise, !!reverse,
+        if (window.exerciseLauncher.startExercise(exercise, !!reverse,
             cardCount === undefined ? -1 : cardCount,
             repetitionCount === undefined ? -1 : repetitionCount,
             filterKeys === undefined ? [] : filterKeys))
@@ -619,14 +708,16 @@ ApplicationWindow
     {
         id: todayMobile
 
+        daily: window.daily
+
         anchors.fill: parent
         visible: false
 
         store: window.store
         repetition: repetitionMobile
         intensive: intensiveMobile
-        sentences: sentenceTraining
-        discovery: discovery
+        sentences: window.sentenceTraining
+        discovery: window.discovery
 
         onIntensiveRequested: window.startTraining()
         onDiscoverRequested: window.startDiscovery()
@@ -669,6 +760,8 @@ ApplicationWindow
 
         MobileWordListScreen
         {
+            controller: window.controllers.wordList
+
             anchors.fill: parent
 
             store: window.store
@@ -713,11 +806,6 @@ ApplicationWindow
         }
     }
 
-    TriageController
-    {
-        id: settingsTriage
-    }
-
     Component
     {
         id: settingsMobileComponent
@@ -727,7 +815,7 @@ ApplicationWindow
             anchors.fill: parent
 
             store: window.store
-            triageController: settingsTriage
+            triageController: window.triage
 
             onDone: window.popScreen()
 
@@ -744,7 +832,7 @@ ApplicationWindow
         }
     }
 
-    Loader
+    MobileScreenLoader
     {
         id: settingsMobile
 
@@ -771,6 +859,8 @@ ApplicationWindow
 
         MobileDictionaryScreen
         {
+            controller: window.controllers.dictionary("words")
+
             anchors.fill: parent
 
             store: window.store
@@ -908,6 +998,11 @@ ApplicationWindow
 
         MobileReaderScreen
         {
+            lookupDictionary: window.controllers.dictionary("readerLookup")
+
+            reader: window.controllers.reader
+            stageCount: window.store.stageCount
+
             anchors.fill: parent
 
             onAddWordRequested: function(word, translation, partOfSpeech, hint)
@@ -929,7 +1024,20 @@ ApplicationWindow
         }
     }
 
-    Loader
+    Connections
+    {
+        target: vocabularyMobile.vocabulary
+
+        function onCardAdded(cardId)
+        {
+            if (window.screenStack[0] === "reader" && readerMobile.item)
+            {
+                readerMobile.item.recordAddedCard(cardId)
+            }
+        }
+    }
+
+    MobileScreenLoader
     {
         id: readerMobile
 
@@ -1030,6 +1138,8 @@ ApplicationWindow
 
         MobileDictionaryWordScreen
         {
+            controller: window.controllers.dictionary("wordEntry")
+
             anchors.fill: parent
 
             stageCount: window.store.stageCount
@@ -1090,6 +1200,8 @@ ApplicationWindow
     {
         id: vocabularyMobile
 
+        controller: window.controllers.vocabulary
+
         anchors.fill: parent
         visible: false
 
@@ -1131,6 +1243,8 @@ ApplicationWindow
         MobileTriageScreen
         {
             id: triageScreen
+
+            controller: window.triage
 
             anchors.fill: parent
 
@@ -1182,6 +1296,8 @@ ApplicationWindow
 
         MobileVocabularyScreen
         {
+            controller: window.controllers.deckVocabulary
+
             anchors.fill: parent
 
             store: window.store
@@ -1276,6 +1392,8 @@ ApplicationWindow
     {
         id: repetitionMobile
 
+        controller: window.review
+
         anchors.fill: parent
         visible: false
 
@@ -1299,6 +1417,8 @@ ApplicationWindow
 
         MobileCardDetailsScreen
         {
+            dictionary: window.controllers.dictionary("addWord")
+
             anchors.fill: parent
 
             controller: vocabularyMobile.vocabulary
@@ -1335,6 +1455,8 @@ ApplicationWindow
 
         MobileCardDetailsScreen
         {
+            dictionary: window.controllers.dictionary("dictionaryAddWord")
+
             anchors.fill: parent
 
             store: window.store
@@ -1387,11 +1509,6 @@ ApplicationWindow
         }
     }
 
-    ExerciseLauncherController
-    {
-        id: exerciseLauncher
-    }
-
     Component
     {
         id: flashcardsMobileComponent
@@ -1402,8 +1519,8 @@ ApplicationWindow
 
             Binding on controller
             {
-                value: exerciseLauncher.activeController
-                when: exerciseLauncher.activeController instanceof FlashcardController
+                value: window.exerciseLauncher.activeController
+                when: window.exerciseLauncher.activeController instanceof FlashcardController
                 restoreMode: Binding.RestoreNone
             }
 
@@ -1417,7 +1534,7 @@ ApplicationWindow
         }
     }
 
-    Loader
+    MobileScreenLoader
     {
         id: flashcardsMobile
 
@@ -1440,8 +1557,8 @@ ApplicationWindow
 
             Binding on controller
             {
-                value: exerciseLauncher.activeController
-                when: exerciseLauncher.activeController instanceof FlipRecallController
+                value: window.exerciseLauncher.activeController
+                when: window.exerciseLauncher.activeController instanceof FlipRecallController
                 restoreMode: Binding.RestoreNone
             }
 
@@ -1455,7 +1572,7 @@ ApplicationWindow
         }
     }
 
-    Loader
+    MobileScreenLoader
     {
         id: flipMobile
 
@@ -1478,8 +1595,8 @@ ApplicationWindow
 
             Binding on controller
             {
-                value: exerciseLauncher.activeController
-                when: exerciseLauncher.activeController instanceof CorrectIncorrectController
+                value: window.exerciseLauncher.activeController
+                when: window.exerciseLauncher.activeController instanceof CorrectIncorrectController
                 restoreMode: Binding.RestoreNone
             }
 
@@ -1493,7 +1610,7 @@ ApplicationWindow
         }
     }
 
-    Loader
+    MobileScreenLoader
     {
         id: correctIncorrectMobile
 
@@ -1516,8 +1633,8 @@ ApplicationWindow
 
             Binding on controller
             {
-                value: exerciseLauncher.activeController
-                when: exerciseLauncher.activeController instanceof MultipleChoiceController
+                value: window.exerciseLauncher.activeController
+                when: window.exerciseLauncher.activeController instanceof MultipleChoiceController
                 restoreMode: Binding.RestoreNone
             }
 
@@ -1529,7 +1646,7 @@ ApplicationWindow
         }
     }
 
-    Loader
+    MobileScreenLoader
     {
         id: choiceMobile
 
@@ -1552,8 +1669,8 @@ ApplicationWindow
 
             Binding on controller
             {
-                value: exerciseLauncher.activeController
-                when: exerciseLauncher.activeController instanceof WrittenProductionController
+                value: window.exerciseLauncher.activeController
+                when: window.exerciseLauncher.activeController instanceof WrittenProductionController
                 restoreMode: Binding.RestoreNone
             }
 
@@ -1567,7 +1684,7 @@ ApplicationWindow
         }
     }
 
-    Loader
+    MobileScreenLoader
     {
         id: writtenMobile
 
@@ -1605,8 +1722,8 @@ ApplicationWindow
 
             Binding on controller
             {
-                value: exerciseLauncher.activeController
-                when: exerciseLauncher.activeController instanceof AudioTranscriptionController
+                value: window.exerciseLauncher.activeController
+                when: window.exerciseLauncher.activeController instanceof AudioTranscriptionController
                 restoreMode: Binding.RestoreNone
             }
 
@@ -1620,7 +1737,7 @@ ApplicationWindow
         }
     }
 
-    Loader
+    MobileScreenLoader
     {
         id: audioMobile
 
@@ -1658,8 +1775,8 @@ ApplicationWindow
 
             Binding on controller
             {
-                value: exerciseLauncher.activeController
-                when: exerciseLauncher.activeController instanceof SpeedMatchController
+                value: window.exerciseLauncher.activeController
+                when: window.exerciseLauncher.activeController instanceof SpeedMatchController
                 restoreMode: Binding.RestoreNone
             }
 
@@ -1671,7 +1788,7 @@ ApplicationWindow
         }
     }
 
-    Loader
+    MobileScreenLoader
     {
         id: speedmatchMobile
 
@@ -1684,19 +1801,17 @@ ApplicationWindow
         onVisibleChanged: if (visible) active = true
     }
 
-    SentenceTrainingController
-    {
-        id: sentenceTraining
-    }
-
-    DiscoveryController
-    {
-        id: discovery
-    }
-
     function startDiscovery()
     {
-        if (discovery.hasActiveSession)
+        if (!DecksController.categorised)
+        {
+            console.info("Discover: blocked,", DecksController.discoverBlockedReason)
+            toast.show(DecksController.discoverBlockedReason)
+
+            return
+        }
+
+        if (window.discovery.hasActiveSession)
         {
             console.info("Discover: continuing the unfinished round")
             window.pushScreen("discovery")
@@ -1709,9 +1824,9 @@ ApplicationWindow
 
     function startDiscoveryDecks(deckIds)
     {
-        discovery.saveDecks(deckIds)
+        window.discovery.saveDecks(deckIds)
 
-        if (!discovery.startDecks(deckIds))
+        if (!window.discovery.startDecks(deckIds))
         {
             toast.show(qsTr("Every word of these decks is already in My Vocabulary or known."))
 
@@ -1723,7 +1838,7 @@ ApplicationWindow
 
     function startDeckDiscovery(deckId)
     {
-        if (!discovery.startDeck(deckId))
+        if (!window.discovery.startDeck(deckId))
         {
             toast.show(qsTr("Every word of this deck is already in My Vocabulary or known."))
 
@@ -1741,7 +1856,7 @@ ApplicationWindow
         {
             anchors.fill: parent
 
-            controller: discovery
+            controller: window.discovery
 
             onStartRequested: function(deckIds) { window.startDiscoveryDecks(deckIds) }
             onDone: window.popScreen()
@@ -1778,14 +1893,14 @@ ApplicationWindow
         {
             anchors.fill: parent
 
-            controller: discovery
+            controller: window.discovery
             store: window.store
 
             onWordTapped: function(word, sentence) { window.openLookup(word, sentence) }
 
             onEditRequested: function(card)
             {
-                dictionaryAddWordDialogMobile.openForCard(discovery, card.id, card.targetWord, card.translation,
+                dictionaryAddWordDialogMobile.openForCard(window.discovery, card.id, card.targetWord, card.translation,
                                                           card.gender, card.partOfSpeech, card.box)
                 window.pushScreen("dictionaryaddword")
             }
@@ -1820,13 +1935,13 @@ ApplicationWindow
         {
             anchors.fill: parent
 
-            controller: sentenceTraining
+            controller: window.sentenceTraining
 
             onDone: window.popScreen()
 
             onExerciseRequested: function(exercise)
             {
-                if (sentenceTraining.start(exercise))
+                if (window.sentenceTraining.start(exercise))
                 {
                     window.pushScreen("sentencesession")
                 }
@@ -1856,11 +1971,13 @@ ApplicationWindow
     {
         id: sentenceSessionMobile
 
+        explainLookup: window.controllers.dictionary("sentenceExplain")
+
         anchors.fill: parent
         visible: false
 
         store: window.store
-        controller: sentenceTraining
+        controller: window.sentenceTraining
 
         onDone: window.popScreen()
         onLookupRequested: function(word, sentence) { window.openLookup(word, sentence) }
@@ -1869,6 +1986,9 @@ ApplicationWindow
     MobileIntensiveLearningScreen
     {
         id: intensiveMobile
+
+        controller: window.training
+        session: window.daily
 
         anchors.fill: parent
         visible: false
@@ -1916,11 +2036,6 @@ ApplicationWindow
     MobileScreenMotion { target: intensiveMobile; screenName: "intensive"; router: window }
     MobileScreenMotion { target: placementMobile; screenName: "placement"; router: window }
 
-    PlacementTestController
-    {
-        id: placementTest
-    }
-
     UiProbe
     {
         id: snapshotProbe
@@ -1934,7 +2049,7 @@ ApplicationWindow
         {
             anchors.fill: parent
 
-            controller: placementTest
+            controller: window.placementTest
             targetLanguage: window.store.targetLanguageCode
             retake: window.placementRetake
 
@@ -2056,7 +2171,7 @@ ApplicationWindow
 
         MobileOnboardingPlacementScreen
         {
-            controller: placementTest
+            controller: window.placementTest
             targetLanguage: AppOnboarding.chosenLanguage
             nativeLanguage: AppOnboarding.chosenNative
             showsBack: AppOnboarding.canGoBack
@@ -2209,6 +2324,9 @@ ApplicationWindow
     MobileLookupSheet
     {
         id: lookupMobile
+
+        lookup: window.controllers.dictionary("lookup")
+        stageCount: window.store.stageCount
 
         anchors.fill: parent
 

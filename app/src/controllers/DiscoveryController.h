@@ -19,6 +19,7 @@ class DiscoveryController : public QObject
 {
     Q_OBJECT
     QML_ELEMENT
+    QML_UNCREATABLE("The screens are given their controllers")
 
     Q_PROPERTY(QObject* activeController READ GetActiveController CONSTANT)
     Q_PROPERTY(bool finished READ IsSessionFinished CONSTANT)
@@ -69,6 +70,7 @@ class DiscoveryController : public QObject
     Q_PROPERTY(int questionCount READ GetQuestionCount NOTIFY stateChanged)
 
     Q_PROPERTY(QVariantList results READ GetResults NOTIFY resultsChanged)
+    Q_PROPERTY(QVariantList addedCards READ GetAddedCards NOTIFY resultsChanged)
 
 public:
     explicit DiscoveryController(QObject* Parent = nullptr);
@@ -86,6 +88,8 @@ public:
     Q_INVOKABLE void choose(int Index);
 
     Q_INVOKABLE void askClue();
+
+    Q_INVOKABLE void showAnswer();
 
     Q_INVOKABLE void setTranslation(const QString& Translation);
 
@@ -149,6 +153,7 @@ public:
     int GetAskedCount() const;
     int GetQuestionCount() const;
     QVariantList GetResults() const;
+    QVariantList GetAddedCards() const;
     int GetLearnCount() const;
 
 signals:
@@ -171,6 +176,12 @@ private:
 
     QString FormatHeadword(const FTDiscoveryRow& Row) const;
 
+    QString FormatWord(const std::string& Word, const std::string& PartOfSpeech, std::optional<int> Gender) const;
+
+    void RecordAddedCard(const QString& CardId);
+
+    void Abandon();
+
     void WriteResults();
 
     void WriteResult(std::size_t Index);
@@ -180,6 +191,8 @@ private:
     std::unique_ptr<FTDiscoveryPlanner> Planner;
 
     std::vector<FWritten> Written;
+
+    std::vector<std::string> ExternalCardIds;
 
     std::vector<FTDeckWord> DeckWords;
 

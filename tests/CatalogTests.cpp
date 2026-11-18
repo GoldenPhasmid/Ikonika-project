@@ -280,6 +280,27 @@ TEST_CASE("Only dictionaries are held to a schema", "[catalog]")
     REQUIRE(Catalog->Packages.front().IsCompatible());
 }
 
+TEST_CASE("A package carries its display name, and none is read as empty", "[catalog]")
+{
+    const std::string Named =
+        R"("id":"piper-pt","kind":"voice","name":"Piper","target":"pt","version":1,)"
+        R"("url":"https://example.invalid/piper-pt.zip","sha256":")" + GoodHash + R"(")";
+    const std::string Unnamed =
+        R"("id":"piper-pt","kind":"voice","target":"pt","version":1,)"
+        R"("url":"https://example.invalid/piper-pt.zip","sha256":")" + GoodHash + R"(")";
+
+    const std::optional<FTCatalog> WithName = ParseCatalog(OnePackage(Named));
+    const std::optional<FTCatalog> WithoutName = ParseCatalog(OnePackage(Unnamed));
+
+    REQUIRE(WithName.has_value());
+    REQUIRE(WithoutName.has_value());
+    REQUIRE(WithName->Packages.size() == 1);
+    REQUIRE(WithoutName->Packages.size() == 1);
+
+    CHECK(WithName->Packages.front().Name == "Piper");
+    CHECK(WithoutName->Packages.front().Name.empty());
+}
+
 TEST_CASE("A package with no target language serves every language", "[catalog]")
 {
     const std::string Fields =

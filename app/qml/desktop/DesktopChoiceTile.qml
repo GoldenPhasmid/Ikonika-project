@@ -10,7 +10,11 @@ Button
     property string iconName: ""
     property bool selectable: false
     property bool selected: false
+    property bool filled: false
     property real progress: -1
+
+    readonly property color contentColour: root.filled ? AppTheme.colourPanel : AppTheme.colourText
+    readonly property color captionColour: root.filled ? AppTheme.colourPanel : (root.selected ? AppTheme.colourAccent : AppTheme.colourMuted)
 
     implicitHeight: Math.max(AppMetrics.buttonHeightLarge, contentRow.implicitHeight + root.topPadding + root.bottomPadding)
 
@@ -39,7 +43,7 @@ Button
         {
             visible: root.iconName.length > 0
             name: root.iconName
-            color: root.selected ? AppTheme.colourAccent : AppTheme.colourText
+            color: root.filled ? root.contentColour : (root.selected ? AppTheme.colourAccent : AppTheme.colourText)
         }
 
         ColumnLayout
@@ -52,6 +56,7 @@ Button
                 Layout.fillWidth: true
                 text: root.text
                 font.weight: Font.Medium
+                color: root.contentColour
                 elide: Text.ElideRight
             }
 
@@ -61,7 +66,8 @@ Button
                 visible: root.description.length > 0
                 text: root.description
                 font.pixelSize: AppMetrics.fontSmall
-                color: root.selected ? AppTheme.colourAccent : AppTheme.colourMuted
+                color: root.captionColour
+                opacity: root.filled ? AppTheme.opacitySecondary : 1.0
                 wrapMode: Text.WordWrap
             }
 
@@ -83,6 +89,13 @@ Button
 
         color:
         {
+            if (root.filled)
+            {
+                const veil = root.down ? AppTheme.alphaStrong : (root.hovered ? AppTheme.alphaSoft : 0)
+
+                return Qt.tint(AppTheme.colourText, AppTheme.faded(AppTheme.colourPanel, veil))
+            }
+
             if (root.selected)
             {
                 return Qt.tint(AppTheme.colourWell, AppTheme.faded(AppTheme.colourAccent, AppTheme.alphaSoft))

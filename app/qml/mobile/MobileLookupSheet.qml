@@ -5,12 +5,15 @@ MobileBottomSheet
 {
     id: root
 
+    required property DictionaryController lookup
+    required property int stageCount
+
     property bool shown: false
     property bool pending: false
     property bool focusWanted: false
 
     readonly property string term: (lookupField.text + lookupField.preeditText).trim()
-    readonly property alias dictionary: lookup
+    readonly property DictionaryController dictionary: root.lookup
 
     property string sourceSentence: ""
     property bool readAloudOffered: false
@@ -30,7 +33,7 @@ MobileBottomSheet
         {
             lookupField.cursorPosition = 0
         }
-        lookup.search(word)
+        root.lookup.search(word)
     }
 
     function close()
@@ -56,17 +59,16 @@ MobileBottomSheet
     visible: root.shown
 
     heading: qsTr("Dictionary")
-    maxHeightFraction: 0.85
     bottomInset: root.SafeArea.margins.bottom
     enabled: !grace.running
 
     onDismissed: root.close()
 
-    DictionaryController
+    Connections
     {
-        id: lookup
+        target: root.lookup
 
-        onResultsChanged: if (root.pending) root.reveal()
+        function onResultsChanged() { if (root.pending) root.reveal() }
     }
 
     Timer
@@ -80,14 +82,14 @@ MobileBottomSheet
     {
         id: lookupField
 
-        onTextChanged: lookup.search((lookupField.text + lookupField.preeditText).trim())
-        onPreeditTextChanged: lookup.search((lookupField.text + lookupField.preeditText).trim())
+        onTextChanged: root.lookup.search((lookupField.text + lookupField.preeditText).trim())
+        onPreeditTextChanged: root.lookup.search((lookupField.text + lookupField.preeditText).trim())
     }
 
     Item
     {
         readonly property real matchListHeight: 56 * 2 + AppMetrics.gapCompact
-        readonly property real resultsHeight: lookup.results.length > 0
+        readonly property real resultsHeight: root.lookup.results.length > 0
             ? matchListHeight : Math.max(matchListHeight, emptyResults.implicitHeight)
 
         Layout.fillWidth: true
@@ -102,7 +104,7 @@ MobileBottomSheet
             anchors.right: parent.right
             anchors.top: parent.top
 
-            visible: AppMachineTranslation.enabled && lookup.results.length > 0 && root.dictionary.formTerm.length > 0
+            visible: AppMachineTranslation.enabled && root.lookup.results.length > 0 && root.dictionary.formTerm.length > 0
             lookup: root.dictionary
             term: root.term
 
@@ -117,10 +119,10 @@ MobileBottomSheet
         {
             anchors.fill: parent
             anchors.topMargin: formTranslation.visible ? formTranslation.height + AppMetrics.gapSmall : 0
-            visible: lookup.results.length > 0
+            visible: root.lookup.results.length > 0
 
-            model: lookup.results
-            maxStage: 1
+            model: root.lookup.results
+            maxStage: root.stageCount
 
             showAddAction: true
             showEditAction: false
@@ -128,19 +130,19 @@ MobileBottomSheet
 
             onWordClicked: function(index)
             {
-                const row = lookup.results[index]
+                const row = root.lookup.results[index]
                 root.close()
                 root.entryOpened(row.word, "", root.sourceSentence)
             }
 
             onVoicePlayRequested: function(index)
             {
-                lookup.speak(lookup.results[index].word)
+                root.lookup.speak(root.lookup.results[index].word)
             }
 
             onAddRequested: function(index)
             {
-                const row = lookup.results[index]
+                const row = root.lookup.results[index]
                 root.close()
                 root.addWordRequested(row.word, row.translation.split(", ")[0] || "", row.partOfSpeech, root.sourceSentence)
             }
@@ -149,7 +151,7 @@ MobileBottomSheet
         Flickable
         {
             anchors.fill: parent
-            visible: lookup.results.length === 0
+            visible: root.lookup.results.length === 0
             contentWidth: width
             contentHeight: emptyResults.implicitHeight
             clip: true
@@ -165,7 +167,7 @@ MobileBottomSheet
                 MobileMachineTranslation
                 {
                     Layout.fillWidth: true
-                    visible: AppMachineTranslation.enabled && lookup.results.length === 0 && root.term.length > 0
+                    visible: AppMachineTranslation.enabled && root.lookup.results.length === 0 && root.term.length > 0
                     lookup: root.dictionary
                     term: root.term
 
@@ -179,7 +181,7 @@ MobileBottomSheet
                 MobileWideButton
                 {
                     Layout.fillWidth: true
-                    visible: lookup.results.length === 0 && root.term.length > 0 && !lookup.translating && lookup.machineTranslation.length === 0
+                    visible: root.lookup.results.length === 0 && root.term.length > 0 && !root.lookup.translating && root.lookup.machineTranslation.length === 0
 
                     label: qsTr("Add as a word")
 

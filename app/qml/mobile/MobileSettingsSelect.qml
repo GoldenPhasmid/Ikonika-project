@@ -28,9 +28,12 @@ Rectangle
 
         anchors.left: parent.left
         anchors.leftMargin: AppMetrics.gapCompact
+        anchors.right: chevron.left
+        anchors.rightMargin: AppMetrics.gapSmall
         anchors.verticalCenter: parent.verticalCenter
 
         text: root.label
+        elide: Text.ElideRight
         font.pixelSize: AppMetrics.fontLabel
         font.weight: Font.Medium
         font.family: AppMetrics.fontFamily

@@ -6,6 +6,8 @@ Item
 {
     id: root
 
+    required property DictionaryController dictionary
+
     property var controller: null
     property var card: null
     property int stageCount: 1
@@ -227,6 +229,8 @@ Item
         {
             id: form
 
+            dictionary: root.dictionary
+
             controller: root.controller
             expanded: true
 
@@ -236,7 +240,7 @@ Item
 
         RowLayout
         {
-            Layout.alignment: Qt.AlignRight
+            Layout.alignment: Qt.AlignHCenter
             spacing: AppMetrics.gapSmall
 
             DesktopButton

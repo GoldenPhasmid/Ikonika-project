@@ -6,9 +6,7 @@ MobileBottomSheet
     id: root
 
     property string exerciseKey: ""
-    property string exerciseIconSvg: ""
     property string exerciseLabel: ""
-    property string exerciseSubtitle: ""
     property var vocabulary: null
 
     readonly property int cardStep: 5
@@ -29,40 +27,6 @@ MobileBottomSheet
     signal startRequested(bool reverse, int cardCount, int repetitionCount, var filterKeys)
 
     Component.onCompleted: root.selection.reset()
-
-    RowLayout
-    {
-        Layout.fillWidth: true
-        spacing: AppMetrics.gapMedium
-
-        Rectangle
-        {
-            Layout.preferredWidth: 40
-            Layout.preferredHeight: 40
-            radius: AppMetrics.radiusMedium
-            color: AppTheme.colourFaint
-
-            MobileVectorIcon
-            {
-                anchors.centerIn: parent
-                visible: root.exerciseIconSvg.length > 0
-                width: 20
-                height: 20
-                svgPath: root.exerciseIconSvg
-                color: AppTheme.colourText
-            }
-        }
-
-        Text
-        {
-            Layout.fillWidth: true
-            text: root.exerciseSubtitle
-            font.pixelSize: AppMetrics.fontSmall
-            font.family: AppMetrics.fontFamily
-            color: AppTheme.colourMuted
-            wrapMode: Text.WordWrap
-        }
-    }
 
     MobileOptionListPanel
     {
@@ -123,7 +87,7 @@ MobileBottomSheet
         }
     }
 
-    MobileWideButton
+    footer: MobileWideButton
     {
         label: qsTr("Start · %1 cards · %2 reps").arg(root.selection.cardCount).arg(root.selection.repetitionCount)
         interactive: root.selection.wordCount > 0

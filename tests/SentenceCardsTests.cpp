@@ -313,3 +313,35 @@ TEST_CASE("A noun gap prefers the occurrence after a determiner", "[sentencecard
     REQUIRE(PlaceGap(Sentence, {"train"}, true));
     CHECK(MakeGapPrompt(Sentence) == "Il est en ___ de partir.");
 }
+
+TEST_CASE("Gap matching treats ligatures as their expanded spelling and preserves text offsets", "[sentencecards]")
+{
+    FTTreeSentence Sentence;
+    Sentence.Text = "Son cœur et son œil.";
+
+    REQUIRE(PlaceGap(Sentence, {"coeur"}, true));
+    CHECK(GetGapWord(Sentence) == "cœur");
+    CHECK(MakeGapPrompt(Sentence) == "Son ___ et son œil.");
+    CHECK(Sentence.GapLength == 4);
+
+    REQUIRE(PlaceGap(Sentence, {"oeil"}, true));
+    CHECK(GetGapWord(Sentence) == "œil");
+    CHECK(MakeGapPrompt(Sentence) == "Son cœur et son ___.");
+    CHECK(Sentence.GapStart == 16);
+    CHECK(Sentence.GapLength == 3);
+
+    Sentence.Text = "Son coeur et son oeil.";
+    REQUIRE(PlaceGap(Sentence, {"cœur"}, true));
+    CHECK(GetGapWord(Sentence) == "coeur");
+    CHECK(Sentence.GapLength == 5);
+    REQUIRE(PlaceGap(Sentence, {"œil"}, true));
+    CHECK(MakeGapPrompt(Sentence) == "Son coeur et son ___.");
+
+    Sentence.Text = "Un ŒIL ouvert.";
+    REQUIRE(PlaceGap(Sentence, {"oeil"}, true));
+    CHECK(GetGapWord(Sentence) == "ŒIL");
+
+    Sentence.Text = "Des cœurs et des yeux.";
+    CHECK_FALSE(PlaceGap(Sentence, {"coeur"}, true));
+    CHECK_FALSE(PlaceGap(Sentence, {"œil"}, true));
+}

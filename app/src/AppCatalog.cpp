@@ -477,6 +477,8 @@ QVariantList AppCatalog::GetPackages() const
         QVariantMap Entry;
         Entry[QStringLiteral("id")] = Id;
         Entry[QStringLiteral("kind")] = QString::fromStdString(Package.Kind);
+        Entry[QStringLiteral("name")] = QString::fromStdString(Package.Name);
+        Entry[QStringLiteral("unpackTo")] = QString::fromStdString(Package.UnpackTo);
         Entry[QStringLiteral("target")] = QString::fromStdString(Package.TargetLanguage);
         Entry[QStringLiteral("version")] = Package.Version;
         Entry[QStringLiteral("installedVersion")] = Installed;
@@ -569,7 +571,8 @@ QString AppCatalog::FindVoicePackage(const std::string& TargetLanguage) const
 
     for (const FTCatalogPackage& Package : Catalog->Packages)
     {
-        if (Package.Kind == CatalogKindVoice && Package.IsCompatible() && Package.ServesTarget(TargetLanguage))
+        if (Package.Kind == CatalogKindVoice && Package.TargetLanguage.empty() && Package.IsCompatible()
+            && Package.ServesTarget(TargetLanguage))
         {
             return QString::fromStdString(Package.Id);
         }

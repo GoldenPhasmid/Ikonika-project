@@ -199,6 +199,18 @@ Item
 
                 Accessible.role: Accessible.Heading
                 Accessible.name: root.controller ? root.controller.prompt : ""
+            },
+            DesktopLabel
+            {
+                objectName: "choice_phonetic"
+
+                visible: !root.voiceHidden
+                text: root.controller && root.controller.showsTargetLanguage && root.controller.phonetic.length > 0
+                    ? root.controller.phonetic : " "
+                font.pixelSize: AppMetrics.fontTitle
+                color: AppTheme.colourMuted
+                Layout.fillWidth: true
+                horizontalAlignment: Text.AlignHCenter
             }
         ]
 

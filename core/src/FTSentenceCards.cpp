@@ -1,5 +1,6 @@
 #include "core/FTSentenceCards.h"
 
+#include <QRegularExpression>
 #include <QString>
 #include <QStringList>
 
@@ -218,6 +219,7 @@ bool PlaceGap(FTTreeSentence& Sentence, const std::vector<std::string>& Spelling
     Sentence.GapLength = 0;
 
     const QString Text = QString::fromStdString(Sentence.Text);
+    qsizetype BestSpellingLength = 0;
 
     const auto IsWordCharacter = [&Text](qsizetype Index)
     {
@@ -226,26 +228,44 @@ bool PlaceGap(FTTreeSentence& Sentence, const std::vector<std::string>& Spelling
 
     for (const std::string& Spelling : Spellings)
     {
-        const QString Word = QString::fromStdString(Spelling);
+        const QString Word = QString::fromStdString(ExpandLigatures(Spelling)).toLower();
 
-        if (Word.isEmpty() || Word.size() <= Sentence.GapLength)
+        if (Word.isEmpty() || Word.size() <= BestSpellingLength)
         {
             continue;
         }
 
-        std::optional<qsizetype> Chosen;
+        const bool bMatchesLigatures = Word.contains(QStringLiteral("oe")) || Word.contains(QStringLiteral("ae"));
+        QString Pattern = QRegularExpression::escape(Word);
+        Pattern.replace(QStringLiteral("oe"), QStringLiteral("(?:oe|œ)"));
+        Pattern.replace(QStringLiteral("ae"), QStringLiteral("(?:ae|æ)"));
+        const QRegularExpression Expression{Pattern, QRegularExpression::CaseInsensitiveOption};
 
-        for (qsizetype Found = Text.indexOf(Word, 0, Qt::CaseInsensitive); Found >= 0;
-             Found = Text.indexOf(Word, Found + 1, Qt::CaseInsensitive))
+        const auto FindNext = [&](qsizetype Start)
         {
-            if (IsWordCharacter(Found - 1) || IsWordCharacter(Found + Word.size()))
+            if (bMatchesLigatures)
+            {
+                const QRegularExpressionMatch Match = Expression.match(Text, Start);
+                return std::pair{Match.capturedStart(), Match.capturedLength()};
+            }
+
+            return std::pair{Text.indexOf(Word, Start, Qt::CaseInsensitive), Word.size()};
+        };
+
+        std::optional<std::pair<qsizetype, qsizetype>> Chosen;
+
+        for (auto Match = FindNext(0); Match.first >= 0; Match = FindNext(Match.first + 1))
+        {
+            const auto [Found, Length] = Match;
+
+            if (IsWordCharacter(Found - 1) || IsWordCharacter(Found + Length))
             {
                 continue;
             }
 
             if (!Chosen.has_value() || FollowsDeterminer(Text, Found))
             {
-                Chosen = Found;
+                Chosen = Match;
             }
 
             if (!bNoun || FollowsDeterminer(Text, Found))
@@ -256,8 +276,9 @@ bool PlaceGap(FTTreeSentence& Sentence, const std::vector<std::string>& Spelling
 
         if (Chosen.has_value())
         {
-            Sentence.GapStart = static_cast<int>(*Chosen);
-            Sentence.GapLength = static_cast<int>(Word.size());
+            Sentence.GapStart = static_cast<int>(Chosen->first);
+            Sentence.GapLength = static_cast<int>(Chosen->second);
+            BestSpellingLength = Word.size();
         }
     }
 

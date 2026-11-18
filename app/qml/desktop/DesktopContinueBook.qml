@@ -9,8 +9,17 @@ Button
     property string author: ""
     property string coverSource: ""
     property real progress: 0
+    property string level: ""
+    property bool needsDownload: false
+    property real downloadProgress: -1
+    property string iconName: ""
 
-    readonly property int percent: Math.ceil(Math.max(0, root.progress) * 100)
+    readonly property bool opener: root.iconName.length > 0
+    readonly property bool starting: root.level.length > 0
+    readonly property bool reading: !root.starting && !root.opener
+    readonly property bool downloading: root.downloadProgress >= 0
+    readonly property real barProgress: root.downloading ? root.downloadProgress : root.progress
+    readonly property int percent: Math.ceil(Math.max(0, root.barProgress) * 100)
 
     padding: AppMetrics.gapCompact
 
@@ -22,17 +31,43 @@ Button
 
     Behavior on scale { NumberAnimation { duration: AppMetrics.motionBase; easing.type: Easing.OutCubic } }
 
-    Accessible.name: qsTr("Continue %1, %2% read").arg(root.text).arg(root.percent)
+    Accessible.name:
+    {
+        if (root.opener)
+        {
+            return root.text
+        }
+
+        return root.starting ? qsTr("Start %1, %2").arg(root.text).arg(root.level)
+                             : qsTr("Continue %1, %2% read").arg(root.text).arg(root.percent)
+    }
     Accessible.description: root.author
 
     contentItem: RowLayout
     {
         spacing: AppMetrics.gapMedium
 
+        Rectangle
+        {
+            Layout.fillHeight: true
+            Layout.preferredWidth: Math.round(height / AppMetrics.bookCoverAspect)
+            visible: root.opener
+            radius: AppMetrics.coverRadius
+            color: AppTheme.colourFaint
+
+            DesktopIcon
+            {
+                anchors.centerIn: parent
+                name: root.iconName
+                color: AppTheme.colourSubtle
+            }
+        }
+
         DesktopBookCover
         {
             Layout.fillHeight: true
             Layout.preferredWidth: Math.round(height / AppMetrics.bookCoverAspect)
+            visible: !root.opener
             title: root.text
             author: root.author
             imageSource: root.coverSource
@@ -78,12 +113,29 @@ Button
                 DesktopProgressBar
                 {
                     Layout.fillWidth: true
-                    progress: root.progress
+                    visible: root.reading || root.downloading
+                    progress: root.barProgress
                     fill: AppTheme.colourAccent
                 }
 
                 DesktopLabel
                 {
+                    Layout.fillWidth: true
+                    visible: root.starting && !root.downloading
+                    text: root.level
+                    font.pixelSize: AppMetrics.fontSmall
+                    color: AppTheme.colourMuted
+                }
+
+                Item
+                {
+                    Layout.fillWidth: true
+                    visible: root.opener
+                }
+
+                DesktopLabel
+                {
+                    visible: root.reading || root.downloading
                     text: qsTr("%1%").arg(root.percent)
                     font.pixelSize: AppMetrics.fontSmall
                     font.features: { "tnum": 1 }
@@ -92,7 +144,7 @@ Button
 
                 DesktopIcon
                 {
-                    name: "arrow_right"
+                    name: root.needsDownload && !root.downloading ? "download" : "arrow_right"
                     color: root.hovered ? AppTheme.colourText : AppTheme.colourSubtle
                     width: AppMetrics.iconSizeSmall
                     height: AppMetrics.iconSizeSmall
@@ -103,12 +155,26 @@ Button
 
     background: Rectangle
     {
+        id: plate
+
         radius: AppMetrics.radiusLarge
         color: root.down ? AppTheme.colourFaint : (root.hovered ? AppTheme.colourSunken : AppTheme.colourPanel)
         border.width: AppMetrics.borderWidth
         border.color: root.hovered ? AppTheme.colourOutline : AppTheme.colourBorder
 
         Behavior on color { ColorAnimation { duration: AppMetrics.motionFast } }
+
+        DesktopTileShadow
+        {
+            plateColour: plate.color
+            radius: plate.radius
+        }
+
+        DesktopTileSheen
+        {
+            colour: plate.color
+            radius: plate.radius
+        }
 
         DesktopFocusRing
         {

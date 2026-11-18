@@ -6,6 +6,7 @@ Item
     id: root
 
     required property var store
+    required property WordListController controller
 
     property string source: "history"
 
@@ -16,17 +17,12 @@ Item
     function open(newSource)
     {
         root.source = newSource
-        controller.load(newSource)
+        root.controller.load(newSource)
     }
 
     function refresh()
     {
-        controller.load(root.source)
-    }
-
-    WordListController
-    {
-        id: controller
+        root.controller.load(root.source)
     }
 
     readonly property bool dueSource: root.source.indexOf("due:") === 0
@@ -56,10 +52,10 @@ Item
 
         if (term.length === 0)
         {
-            return controller.entries
+            return root.controller.entries
         }
 
-        return controller.entries.filter(function(entry)
+        return root.controller.entries.filter(function(entry)
         {
             return entry.word.toLowerCase().indexOf(term) >= 0
                 || entry.translation.toLowerCase().indexOf(term) >= 0
@@ -102,7 +98,7 @@ Item
 
             onVoicePlayRequested: function(index)
             {
-                controller.speakWord(root.filteredEntries[index].targetWord)
+                root.controller.speakWord(root.filteredEntries[index].targetWord)
             }
         }
     }

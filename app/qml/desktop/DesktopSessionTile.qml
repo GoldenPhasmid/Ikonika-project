@@ -1,6 +1,7 @@
 ﻿import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Layouts
+import QtQuick.Shapes
 
 Button
 {
@@ -245,6 +246,8 @@ Button
 
     background: Rectangle
     {
+        id: plate
+
         radius: root.compact ? AppMetrics.radiusMedium : AppMetrics.radiusLarge
 
         color:
@@ -273,6 +276,50 @@ Button
         border.color: root.revealed ? AppTheme.colourOutline : AppTheme.colourBorder
 
         Behavior on color { ColorAnimation { duration: AppMetrics.motionFast } }
+
+        DesktopTileShadow
+        {
+            plateColour: plate.color
+            radius: plate.radius
+        }
+
+        DesktopTileSheen
+        {
+            colour: plate.color
+            radius: plate.radius
+        }
+
+        Shape
+        {
+            id: band
+
+            readonly property real cornerRadius: parent.radius - AppMetrics.borderWidth
+            readonly property real innerHeight: parent.height - 2 * AppMetrics.borderWidth
+
+            anchors.right: parent.right
+            anchors.bottom: parent.bottom
+            anchors.margins: AppMetrics.borderWidth
+            width: Math.min(parent.width * AppMetrics.sessionTileBandWidth,
+                            band.innerHeight * (1 - AppMetrics.sessionTileBandTop) * AppMetrics.sessionTileBandSlope)
+            height: band.width / AppMetrics.sessionTileBandSlope
+            visible: !root.blocked
+
+            preferredRendererType: Shape.CurveRenderer
+
+            ShapePath
+            {
+                strokeWidth: -1
+                fillColor: plate.color.hslLightness > 0.5 ? AppTheme.colourTileWedge : AppTheme.colourCoverStripe
+
+                startX: 0
+                startY: band.height
+
+                PathLine { x: band.width; y: 0 }
+                PathLine { x: band.width; y: band.height - band.cornerRadius }
+                PathArc { x: band.width - band.cornerRadius; y: band.height; radiusX: band.cornerRadius; radiusY: band.cornerRadius }
+                PathLine { x: 0; y: band.height }
+            }
+        }
 
         DesktopDashedBox
         {

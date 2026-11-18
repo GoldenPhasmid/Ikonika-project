@@ -15,6 +15,8 @@ Item
 
     readonly property bool finished: root.controller.finished
     readonly property bool voiceHidden: root.controller.voicePrompt && !root.controller.answered
+    readonly property var options: root.controller.options ?? []
+    readonly property var optionVerbGroups: root.controller.optionVerbGroups ?? []
 
     signal done()
     signal endSessionRequested()
@@ -145,6 +147,40 @@ Item
                         ? AppMetrics.sessionWordSize
                         : AppMetrics.sessionTranslationSize
                 },
+                Text
+                {
+                    objectName: "choice_phonetic"
+
+                    visible: !root.voiceHidden
+                    text: root.controller.showsTargetLanguage && root.controller.phonetic.length > 0
+                        ? root.controller.phonetic : " "
+                    font.pixelSize: AppMetrics.fontTitle
+                    font.family: AppMetrics.fontFamily
+                    color: AppTheme.colourMuted
+                    Layout.fillWidth: true
+                    Layout.topMargin: -13
+                    horizontalAlignment: Text.AlignHCenter
+                }
+            ]
+
+            secondaryContent: [
+                MobileOptionGrid
+                {
+                    id: optionGrid
+
+                    Layout.fillWidth: true
+
+                    rowSpacing: AppMetrics.gapSmall
+                    columnSpacing: AppMetrics.gapSmall
+
+                    cardModel: root.options
+                    verbGroups: root.optionVerbGroups
+                    interactive: !root.controller.finished && !root.controller.answered
+
+                    borderColours: root.optionBorderColours
+
+                    onOptionClicked: function(index) { root.controller.choose(index) }
+                },
                 MobileGhostLink
                 {
                     interactive: !root.controller.finished && !root.controller.answered
@@ -152,24 +188,6 @@ Item
                     onClicked: root.controller.skip()
                 }
             ]
-
-            secondaryContent: MobileOptionGrid
-            {
-                id: optionGrid
-
-                Layout.fillWidth: true
-
-                rowSpacing: AppMetrics.gapSmall
-                columnSpacing: AppMetrics.gapSmall
-
-                cardModel: root.controller.options
-                verbGroups: root.controller.optionVerbGroups
-                interactive: !root.controller.finished && !root.controller.answered
-
-                borderColours: root.optionBorderColours
-
-                onOptionClicked: function(index) { root.controller.choose(index) }
-            }
         }
     }
 
@@ -188,7 +206,7 @@ Item
     {
         const colours = []
 
-        for (let i = 0; i < root.controller.options.length; i++)
+        for (let i = 0; i < root.options.length; i++)
         {
             if (root.controller.finished || !root.controller.answered)
             {

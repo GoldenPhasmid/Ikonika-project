@@ -18,48 +18,34 @@ MobileBottomSheet
         return root.selectedKeys.indexOf(key) >= 0
     }
 
-    Flickable
+    MobileOptionListPanel
     {
-        Layout.fillWidth: true
-        Layout.preferredHeight: Math.min(panel.implicitHeight, 280)
-
-        contentWidth: width
-        contentHeight: panel.implicitHeight
-        clip: true
-
-        MobileOptionListPanel
+        Repeater
         {
-            id: panel
+            model: root.model
 
-            width: parent.width
-
-            Repeater
+            delegate: MobileSettingsRow
             {
-                model: root.model
+                id: optionRow
 
-                delegate: MobileSettingsRow
+                required property var modelData
+                required property int index
+
+                title: optionRow.modelData.label
+                lastRow: optionRow.index === root.model.length - 1
+
+                onClicked: root.toggled(optionRow.modelData.key)
+
+                MobileCheckbox
                 {
-                    id: optionRow
-
-                    required property var modelData
-                    required property int index
-
-                    title: optionRow.modelData.label
-                    lastRow: optionRow.index === root.model.length - 1
-
-                    onClicked: root.toggled(optionRow.modelData.key)
-
-                    MobileCheckbox
-                    {
-                        checked: root.isSelected(optionRow.modelData.key)
-                        onToggled: root.toggled(optionRow.modelData.key)
-                    }
+                    checked: root.isSelected(optionRow.modelData.key)
+                    onToggled: root.toggled(optionRow.modelData.key)
                 }
             }
         }
     }
 
-    MobileWideButton
+    footer: MobileWideButton
     {
         label: qsTr("Clear")
         filled: false

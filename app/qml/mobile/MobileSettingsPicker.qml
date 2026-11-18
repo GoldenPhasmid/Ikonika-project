@@ -61,6 +61,8 @@ MobileBottomSheet
                     required property var modelData
                     required property int index
 
+                    objectName: "picker_option_" + choice.index
+
                     Layout.fillWidth: true
                     Layout.preferredHeight: root.rowHeight
 

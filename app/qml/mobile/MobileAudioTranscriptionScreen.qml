@@ -155,8 +155,6 @@ Item
                 return
             }
 
-            Qt.inputMethod.hide()
-
             if (root.manualAdvance || !(root.controller.lastAnswerCorrect || root.retyped) || correctAdvanceDelay.running)
             {
                 return
@@ -295,8 +293,8 @@ Item
 
                     placeholderText: qsTr("Type what you hear...")
 
-                    focus: root.visible && root.typing
-                    readOnly: !root.typing
+                    focus: root.visible && !root.controller.finished
+                    locked: !root.typing
 
                     marked: root.revealed && (!root.retyping || answerField.holdingMiss)
                     correct: root.controller.lastAnswerCorrect || root.retyped

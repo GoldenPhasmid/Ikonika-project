@@ -27,8 +27,10 @@ class SettingsStore : public QObject
     Q_PROPERTY(bool audioEnabled READ IsAudioEnabled WRITE SetAudioEnabled NOTIFY audioSettingsChanged)
 
     Q_PROPERTY(int speakerCount READ GetSpeakerCount NOTIFY audioSettingsChanged)
-    Q_PROPERTY(bool supertonicActive READ IsSupertonicActive NOTIFY audioSettingsChanged)
     Q_PROPERTY(int speakerId READ GetSpeakerId WRITE SetSpeakerId NOTIFY audioSettingsChanged)
+    Q_PROPERTY(QVariantList speechModels READ GetSpeechModels NOTIFY audioSettingsChanged)
+    Q_PROPERTY(int speechModelIndex READ GetSpeechModelIndex WRITE SetSpeechModelIndex NOTIFY audioSettingsChanged)
+    Q_PROPERTY(bool defaultSpeechModelActive READ IsDefaultSpeechModelActive NOTIFY audioSettingsChanged)
 
     Q_PROPERTY(qreal speechSpeed READ GetSpeechSpeed WRITE SetSpeechSpeed NOTIFY audioSettingsChanged)
     Q_PROPERTY(qreal sentenceSpeechSpeed READ GetSentenceSpeechSpeed WRITE SetSentenceSpeechSpeed NOTIFY audioSettingsChanged)
@@ -147,9 +149,12 @@ public:
     void SetAudioEnabled(bool bValue);
 
     int GetSpeakerCount() const;
-    bool IsSupertonicActive() const;
     int GetSpeakerId() const;
     void SetSpeakerId(int Value);
+    QVariantList GetSpeechModels() const;
+    int GetSpeechModelIndex() const;
+    void SetSpeechModelIndex(int Value);
+    bool IsDefaultSpeechModelActive() const;
 
     qreal GetSpeechSpeed() const;
     void SetSpeechSpeed(qreal Value);
@@ -274,6 +279,17 @@ signals:
     void debugTimeChanged();
 
 private:
+    struct FSpeechModel
+    {
+        QString Name;
+        QString VoiceName;
+        QString PackageId;
+        bool bInstalled = false;
+        qint64 Bytes = 0;
+    };
+
+    std::vector<FSpeechModel> ListSpeechModels() const;
+
     void SetLastError(const QString& Message);
 
     void ApplyLanguagePair(const std::string& TargetLanguage, const std::string& NativeLanguage);

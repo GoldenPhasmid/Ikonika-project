@@ -361,6 +361,7 @@ Button
     TapHandler
     {
         acceptedButtons: Qt.RightButton
+        acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
 
         onTapped: root.openOverview()
     }

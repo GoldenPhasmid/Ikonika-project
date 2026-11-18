@@ -18,6 +18,8 @@ Item
     signal currentPageChanged(int page)
     signal currentZoomChanged(real zoom)
     signal currentScrollChanged(point scroll)
+    signal doubleTapped()
+    signal blankTapped()
 
     property int current: 0
     property real renderScale: 1
@@ -286,6 +288,11 @@ Item
                         (viewport.contentY + viewportPoint.y - root.currentTop) / root.renderScale)
     }
 
+    function viewportPointOf(scenePoint)
+    {
+        return viewport.mapFromItem(null, scenePoint.x, scenePoint.y)
+    }
+
     function placeAt(scale, pagePoint, viewportPoint)
     {
         root.anchoring = true
@@ -313,6 +320,32 @@ Item
         root.placeAt(root.renderScale * factor, root.pagePointUnder(viewportPoint), viewportPoint)
         root.fitting = false
         root.currentZoomChanged(root.renderScale)
+    }
+
+    function holdsPage(spot)
+    {
+        return root.sheets.some(sheet => sheet.inUse && spot.x >= sheet.x
+            && spot.x < sheet.x + sheet.width && spot.y >= sheet.y && spot.y < sheet.y + sheet.height)
+    }
+
+    function toggleZoom(scenePoint)
+    {
+        if (!root.ready || root.currentSheet.pageSize.width <= 0)
+        {
+            return
+        }
+
+        root.scrollRestorePending = false
+
+        const fit = root.fitScale()
+        const zoomed = Math.min(AppMetrics.readerMaximumZoom, fit * 2.2)
+        const target = root.renderScale < fit * 1.3 ? zoomed : fit
+        const viewportPoint = root.viewportPointOf(scenePoint)
+
+        root.placeAt(target, root.pagePointUnder(viewportPoint), viewportPoint)
+        root.fitting = target === fit
+        root.currentZoomChanged(root.fitting ? 0 : root.renderScale)
+        root.reportScroll()
     }
 
     function zoomBy(factor)
@@ -365,7 +398,8 @@ Item
 
         anchors.fill: parent
         clip: true
-        interactive: false
+        acceptedButtons: Qt.NoButton
+        flickableDirection: Flickable.HorizontalAndVerticalFlick
         boundsBehavior: Flickable.StopAtBounds
 
         contentWidth: Math.max(width, root.fitPoints * root.renderScale + root.gap * 2)
@@ -373,7 +407,16 @@ Item
 
         onWidthChanged: if (root.fitting) root.fitWidth()
         onContentXChanged: root.reportScroll()
-        onContentYChanged: root.reportScroll()
+        onContentYChanged:
+        {
+            if (!root.anchoring)
+            {
+                Qt.callLater(root.followScroll)
+            }
+
+            root.reportScroll()
+        }
+        onMovementStarted: root.scrollRestorePending = false
 
         ScrollBar.horizontal: DesktopScrollBar
         {
@@ -406,44 +449,104 @@ Item
             view: root
             viewport: viewport
         }
-    }
 
-    WheelHandler
-    {
-        acceptedModifiers: Qt.ControlModifier
-        target: null
-
-        onWheel: function(wheel)
+        WheelHandler
         {
-            root.zoomAbout(wheel.angleDelta.y > 0 ? AppMetrics.readerZoomStep : 1 / AppMetrics.readerZoomStep,
-                           Qt.point(wheel.x, wheel.y))
-            wheel.accepted = true
+            acceptedModifiers: Qt.ControlModifier
+            target: null
+
+            onWheel: function(wheel)
+            {
+                root.zoomAbout(wheel.angleDelta.y > 0 ? AppMetrics.readerZoomStep : 1 / AppMetrics.readerZoomStep,
+                               Qt.point(wheel.x, wheel.y))
+                wheel.accepted = true
+            }
         }
-    }
 
-    WheelHandler
-    {
-        acceptedModifiers: Qt.NoModifier
-        target: null
-
-        onWheel: function(wheel)
+        WheelHandler
         {
-            root.scrollBy(wheel.angleDelta.y > 0 ? -AppMetrics.readerWheelStep : AppMetrics.readerWheelStep)
-            wheel.accepted = true
+            acceptedModifiers: Qt.NoModifier
+            target: null
+
+            onWheel: function(wheel)
+            {
+                root.scrollBy(wheel.angleDelta.y > 0 ? -AppMetrics.readerWheelStep : AppMetrics.readerWheelStep)
+                wheel.accepted = true
+            }
         }
-    }
 
-    WheelHandler
-    {
-        acceptedModifiers: Qt.ShiftModifier
-        target: null
-
-        onWheel: function(wheel)
+        WheelHandler
         {
-            viewport.contentX = root.clamp(viewport.contentX + (wheel.angleDelta.y > 0 ? -AppMetrics.readerWheelStep
-                                                                                       : AppMetrics.readerWheelStep),
-                                           viewport.contentWidth - viewport.width)
-            wheel.accepted = true
+            acceptedModifiers: Qt.ShiftModifier
+            target: null
+
+            onWheel: function(wheel)
+            {
+                viewport.contentX = root.clamp(viewport.contentX + (wheel.angleDelta.y > 0 ? -AppMetrics.readerWheelStep
+                                                                                           : AppMetrics.readerWheelStep),
+                                               viewport.contentWidth - viewport.width)
+                wheel.accepted = true
+            }
+        }
+
+        TapHandler
+        {
+            acceptedDevices: PointerDevice.TouchScreen
+
+            onSingleTapped: function(eventPoint)
+            {
+                if (!root.holdsPage(eventPoint.position))
+                {
+                    root.blankTapped()
+                }
+            }
+        }
+
+        PinchHandler
+        {
+            id: pinch
+
+            target: null
+            grabPermissions: PointerHandler.CanTakeOverFromAnything
+
+            property real gestureStartScale: 1
+            property point gesturePagePoint
+
+            function follow()
+            {
+                if (!pinch.active)
+                {
+                    return
+                }
+
+                root.placeAt(pinch.gestureStartScale * pinch.activeScale, pinch.gesturePagePoint,
+                             root.viewportPointOf(pinch.centroid.scenePosition))
+            }
+
+            onActiveChanged:
+            {
+                if (pinch.active)
+                {
+                    root.scrollRestorePending = false
+                    root.fitting = false
+                    viewport.cancelFlick()
+                    viewport.interactive = false
+                    pinch.gestureStartScale = root.renderScale
+                    pinch.gesturePagePoint = root.pagePointUnder(root.viewportPointOf(pinch.centroid.scenePosition))
+
+                    return
+                }
+
+                viewport.interactive = true
+                viewport.returnToBounds()
+                root.fitting = root.renderScale <= root.fitScale()
+                root.currentZoomChanged(root.fitting ? 0 : root.renderScale)
+                root.followScroll()
+                root.reportScroll()
+            }
+
+            onActiveScaleChanged: pinch.follow()
+            onCentroidChanged: pinch.follow()
         }
     }
 }

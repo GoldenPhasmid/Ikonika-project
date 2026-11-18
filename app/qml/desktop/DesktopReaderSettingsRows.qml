@@ -8,6 +8,7 @@ ColumnLayout
 
     property bool showPdf: true
     property bool showText: true
+    property bool compact: false
     property real inset: AppMetrics.gapLarge
     property ReaderReadAloud readAloud: null
 
@@ -18,32 +19,77 @@ ColumnLayout
     Layout.fillWidth: true
     spacing: 0
 
+    component PageColourSelect: DesktopSelect
+    {
+        id: pageColourSelect
+
+        required property var owner
+
+        objectName: "reader_page_colour"
+
+        heading: qsTr("Page colour")
+        options: pageColourSelect.owner.pageTones.map(Tone => Tone.label)
+        currentIndex: pageColourSelect.owner.pageToneIndex
+
+        onChosen: function(index)
+        {
+            if (pageColourSelect.owner.showPdf)
+            {
+                AppReaderSettings.pageTone = pageColourSelect.owner.pageTones[index].key
+
+                return
+            }
+
+            AppReaderSettings.textTone = pageColourSelect.owner.pageTones[index].key
+        }
+    }
+
+    component FontSelect: DesktopSelect
+    {
+        objectName: "reader_font"
+
+        heading: qsTr("Font")
+        options: [AppMetrics.fontFamily].concat(AppReaderSettings.textFonts)
+        currentIndex: AppReaderSettings.textFont.length > 0 ? AppReaderSettings.textFonts.indexOf(AppReaderSettings.textFont) + 1 : 0
+        visibleRows: 8
+
+        onChosen: function(index) { AppReaderSettings.textFont = index > 0 ? AppReaderSettings.textFonts[index - 1] : "" }
+    }
+
     DesktopSettingsRow
     {
+        visible: root.compact
+        leftPadding: root.inset
+        rightPadding: root.inset
+
+        PageColourSelect
+        {
+            owner: root
+
+            Layout.fillWidth: true
+            Layout.preferredWidth: 1
+        }
+
+        FontSelect
+        {
+            visible: root.showText
+            Layout.fillWidth: true
+            Layout.preferredWidth: 1
+        }
+    }
+
+    DesktopSettingsRow
+    {
+        visible: !root.compact
         leftPadding: root.inset
         rightPadding: root.inset
         text: qsTr("Page colour")
 
-        DesktopSelect
+        PageColourSelect
         {
-            objectName: "reader_page_colour"
+            owner: root
 
             Layout.fillWidth: false
-            heading: qsTr("Page colour")
-            options: root.pageTones.map(Tone => Tone.label)
-            currentIndex: root.pageToneIndex
-
-            onChosen: function(index)
-            {
-                if (root.showPdf)
-                {
-                    AppReaderSettings.pageTone = root.pageTones[index].key
-
-                    return
-                }
-
-                AppReaderSettings.textTone = root.pageTones[index].key
-            }
         }
     }
 
@@ -68,22 +114,14 @@ ColumnLayout
 
     DesktopSettingsRow
     {
-        visible: root.showText
+        visible: root.showText && !root.compact
         leftPadding: root.inset
         rightPadding: root.inset
         text: qsTr("Font")
 
-        DesktopSelect
+        FontSelect
         {
-            objectName: "reader_font"
-
             Layout.fillWidth: false
-            heading: qsTr("Font")
-            options: [AppMetrics.fontFamily].concat(AppReaderSettings.textFonts)
-            currentIndex: AppReaderSettings.textFont.length > 0 ? AppReaderSettings.textFonts.indexOf(AppReaderSettings.textFont) + 1 : 0
-            visibleRows: 8
-
-            onChosen: function(index) { AppReaderSettings.textFont = index > 0 ? AppReaderSettings.textFonts[index - 1] : "" }
         }
     }
 
@@ -163,34 +201,24 @@ ColumnLayout
         visible: root.showText
         leftPadding: root.inset
         rightPadding: root.inset
-        text: qsTr("Highlight vocabulary")
-        lastRow: !AppReaderSettings.highlightVocabulary
-
-        DesktopToggle
-        {
-            objectName: "reader_highlight_vocabulary"
-
-            accessibleName: qsTr("Highlight vocabulary")
-            on: AppReaderSettings.highlightVocabulary
-
-            onClicked: AppReaderSettings.highlightVocabulary = !AppReaderSettings.highlightVocabulary
-        }
-    }
-
-    DesktopSettingsRow
-    {
-        visible: root.showText && AppReaderSettings.highlightVocabulary
-        leftPadding: root.inset
-        rightPadding: root.inset
-        text: qsTr("Highlight unknown words")
+        text: root.compact ? "" : qsTr("Word highlighting")
+        description: root.compact ? "" : qsTr("Vocabulary marks the words you are learning. New words marks common words you have not added yet.")
         lastRow: true
 
-        DesktopToggle
+        DesktopSegmentedPill
         {
-            objectName: "reader_highlight_unknown_words"
-            accessibleName: qsTr("Highlight unknown words")
-            on: AppReaderSettings.highlightUnknownWords
-            onClicked: AppReaderSettings.highlightUnknownWords = !AppReaderSettings.highlightUnknownWords
+            objectName: "reader_highlight_mode"
+
+            Layout.fillWidth: root.compact
+            accessibleName: qsTr("Highlight")
+            options: [qsTr("Off"), qsTr("Vocabulary"), qsTr("New words")]
+            currentIndex: !AppReaderSettings.highlightVocabulary ? 0 : (AppReaderSettings.highlightUnknownWords ? 2 : 1)
+
+            onChosen: function(index)
+            {
+                AppReaderSettings.highlightVocabulary = index > 0
+                AppReaderSettings.highlightUnknownWords = index === 2
+            }
         }
     }
 }

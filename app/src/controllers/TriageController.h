@@ -20,6 +20,7 @@ class TriageController : public QObject
 {
     Q_OBJECT
     QML_ELEMENT
+    QML_UNCREATABLE("The screens are given their controllers")
 
     Q_PROPERTY(QString word READ GetWord NOTIFY currentChanged)
     Q_PROPERTY(QString displayWord READ GetDisplayWord NOTIFY currentChanged)

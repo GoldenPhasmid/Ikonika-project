@@ -23,6 +23,7 @@ class SentenceTrainingController : public StageSessionControllerBase
 {
     Q_OBJECT
     QML_ELEMENT
+    QML_UNCREATABLE("The screens are given their controllers")
 
     Q_PROPERTY(bool available READ IsAvailable NOTIFY availabilityChanged)
     Q_PROPERTY(bool refreshing READ IsRefreshing NOTIFY availabilityChanged)

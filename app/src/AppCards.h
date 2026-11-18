@@ -4,6 +4,7 @@
 #include "core/FTWordForms.h"
 #include "core/FTDictionaryRepository.h"
 
+#include <QObject>
 #include <QString>
 #include <QStringList>
 #include <QVariantList>
@@ -14,6 +15,17 @@
 #include <vector>
 
 class FTCardRepository;
+
+class AppCardNotifier : public QObject
+{
+    Q_OBJECT
+
+public:
+    using QObject::QObject;
+
+signals:
+    void cardAdded(const QString& CardId);
+};
 
 struct FTenseOffer
 {
@@ -37,6 +49,8 @@ struct FTenseOffer
  */
 namespace AppCards
 {
+    AppCardNotifier& Notifier();
+
     std::vector<FTCardHandle> LoadCards();
 
     std::optional<FTCardHandle> LoadCard(FTCardRepository& CardRepository, const std::string& CardId);

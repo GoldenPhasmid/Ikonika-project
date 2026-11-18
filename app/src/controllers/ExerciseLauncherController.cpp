@@ -154,6 +154,7 @@ bool ExerciseLauncherController::startExercise(const QString& Exercise, bool bRe
     }
 
     ActiveController = NewController;
+    ActiveExercise = Exercise;
 
     emit activeControllerChanged();
 
@@ -163,4 +164,9 @@ bool ExerciseLauncherController::startExercise(const QString& Exercise, bool bRe
 ExerciseControllerBase* ExerciseLauncherController::GetActiveController() const
 {
     return ActiveController;
+}
+
+QString ExerciseLauncherController::GetExercise() const
+{
+    return ActiveExercise;
 }

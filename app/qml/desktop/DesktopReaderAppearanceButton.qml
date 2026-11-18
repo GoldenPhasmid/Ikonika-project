@@ -74,6 +74,7 @@ Button
             showPdf: root.pdf
             showText: !root.pdf
             readAloud: root.pdf ? null : root.readAloud
+            compact: true
             inset: AppMetrics.gapCompact
         }
     }

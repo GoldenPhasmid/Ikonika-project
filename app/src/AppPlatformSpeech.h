@@ -25,6 +25,8 @@ public:
     bool CanNarrate() const override;
     void QueueNarration(int Id, const QString& Text, const QString& LanguageCode) override;
     void StopNarration() override;
+    bool PauseNarration() override;
+    bool ResumeNarration() override;
     void UpdateNarrationSession(const QString& Title, bool bStarted, bool bPlaying) override;
 
 protected:

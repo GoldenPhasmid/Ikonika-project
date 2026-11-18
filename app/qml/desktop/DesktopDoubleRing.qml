@@ -29,7 +29,7 @@ Item
 
         progress: root.outerProgress
         fill: root.outerColour
-        track: AppTheme.faded(root.outerColour, AppTheme.alphaSoft)
+        track: AppTheme.faded(root.outerColour, AppTheme.alphaRingTrack)
         sweepDuration: root.sweepDuration
         stroke: root.stroke
         showRing: root.showOuter
@@ -44,7 +44,7 @@ Item
 
         progress: root.innerProgress
         fill: root.innerColour
-        track: AppTheme.faded(root.innerColour, AppTheme.alphaSoft)
+        track: AppTheme.faded(root.innerColour, AppTheme.alphaRingTrack)
         sweepDuration: root.sweepDuration
         stroke: root.stroke
         showRing: root.showInner

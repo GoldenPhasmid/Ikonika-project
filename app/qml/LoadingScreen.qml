@@ -4,7 +4,7 @@ Rectangle
 {
     id: root
 
-    required property string message
+    property string message
 
     color: AppTheme.colourPanel
 
@@ -74,6 +74,7 @@ Rectangle
         Text
         {
             width: parent.width
+            visible: root.message.length > 0
 
             text: root.message
             color: AppTheme.colourText

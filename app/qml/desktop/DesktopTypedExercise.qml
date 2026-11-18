@@ -197,7 +197,7 @@ Item
                 return
             }
 
-            if (!root.sentenceMode && (root.controller.lastAnswerCorrect || root.retyped) && !correctAdvanceDelay.running)
+            if ((!root.sentenceMode || !root.listening) && (root.controller.lastAnswerCorrect || root.retyped) && !correctAdvanceDelay.running)
             {
                 correctAdvanceDelay.start()
             }

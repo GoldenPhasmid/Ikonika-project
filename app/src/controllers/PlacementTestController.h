@@ -11,6 +11,7 @@ class PlacementTestController : public QObject
 {
     Q_OBJECT
     QML_ELEMENT
+    QML_UNCREATABLE("The screens are given their controllers")
 
     Q_PROPERTY(QString prompt READ GetPrompt NOTIFY stateChanged)
     Q_PROPERTY(QString lastRevealedAnswer READ GetLastRevealedAnswer NOTIFY stateChanged)

@@ -84,9 +84,7 @@ Item
             sourceComponent: MobileExercisePracticeSheet
             {
                 exerciseKey: root.selectedExercise ? root.selectedExercise.key : ""
-                exerciseIconSvg: root.selectedExercise ? (root.selectedExercise.iconSvg || "") : ""
                 exerciseLabel: root.selectedExercise ? root.selectedExercise.label : ""
-                exerciseSubtitle: root.selectedExercise ? root.selectedExercise.subtitle : ""
                 vocabulary: root.vocabulary
 
                 onDismissed: root.practiceSheetOpen = false

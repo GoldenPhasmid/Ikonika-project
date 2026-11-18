@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Layouts
 import QtQuick.Templates as T
+import "../TextInsertion.js" as TextInsertion
 
 TextField
 {
@@ -46,13 +47,7 @@ TextField
             return
         }
 
-        if (root.selectedText.length > 0)
-        {
-            root.remove(root.selectionStart, root.selectionEnd)
-        }
-
-        root.insert(root.cursorPosition, character)
-        root.forceActiveFocus()
+        TextInsertion.insertAtCursor(root, character)
     }
 
     function shake()

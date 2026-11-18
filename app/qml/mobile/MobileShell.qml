@@ -9,6 +9,7 @@ Rectangle
     property string headerTitle: qsTr("Ikonika")
     property bool headerTitleTappable: false
     property bool showBack: false
+    property string leadingIcon: ""
     property string trailingIcon: ""
     property bool showOptions: false
     property bool showSearch: false
@@ -24,6 +25,7 @@ Rectangle
 
     signal tabSelected(string key)
     signal backRequested()
+    signal leadingActivated()
     signal trailingActivated()
     signal optionsRequested()
     signal searchRequested()
@@ -54,6 +56,7 @@ Rectangle
 
             title: root.headerTitle
             showBack: root.showBack
+            leadingIcon: root.leadingIcon
             trailingIcon: root.trailingIcon
             showOptions: root.showOptions
             showSearch: root.showSearch
@@ -63,6 +66,7 @@ Rectangle
             contentMaximumWidth: root.contentMaximumWidth
 
             onBackRequested: root.backRequested()
+            onLeadingActivated: root.leadingActivated()
             onTrailingActivated: root.trailingActivated()
             onOptionsRequested: root.optionsRequested()
             onSearchRequested: root.searchRequested()

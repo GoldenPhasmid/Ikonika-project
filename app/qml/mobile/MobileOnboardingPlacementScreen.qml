@@ -98,6 +98,8 @@ Rectangle
         ColumnLayout
         {
             Layout.fillWidth: true
+            Layout.maximumWidth: AppMetrics.columnMaximumWidth
+            Layout.alignment: Qt.AlignHCenter
             Layout.fillHeight: true
             Layout.margins: AppMetrics.gapLarge
             spacing: AppMetrics.gapLarge
@@ -252,7 +254,12 @@ Rectangle
                 }
             }
 
-            Item { Layout.fillHeight: true }
+            Item
+            {
+                Layout.fillHeight: true
+
+                visible: root.showsResult
+            }
 
             MobileWideButton
             {
@@ -301,6 +308,13 @@ Rectangle
                 label: qsTr("Continue")
 
                 onClicked: root.leave()
+            }
+
+            Item
+            {
+                Layout.fillHeight: true
+
+                visible: !root.showsResult
             }
         }
     }

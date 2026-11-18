@@ -7,9 +7,12 @@
 #include "core/FTCard.h"
 #include "core/FTDeckProgress.h"
 #include "core/FTLog.h"
+#include "core/FTSettings.h"
 
 #include <QElapsedTimer>
 #include <QVariantMap>
+
+#include <algorithm>
 
 namespace
 {
@@ -124,6 +127,33 @@ void DecksController::LoadDeckData()
 bool DecksController::IsAvailable() const
 {
     return !Decks.isEmpty();
+}
+
+bool DecksController::HasCategories() const
+{
+    return std::any_of(Decks.begin(), Decks.end(), [](const QVariant& Deck)
+    {
+        return !Deck.toMap().value(QStringLiteral("category")).toString().isEmpty();
+    });
+}
+
+QString DecksController::GetDiscoverBlockedReason() const
+{
+    if (HasCategories())
+    {
+        return {};
+    }
+
+    const FTLanguageRules& Rules = FTSettings::Get().GetLanguageRules();
+    const AppDictionary& Dictionary = AppDictionary::Get();
+
+    if (Dictionary.IsOutdated(Rules.TargetLanguage, Rules.NativeLanguage)
+        || Dictionary.IsInstalled(Rules.TargetLanguage, Rules.NativeLanguage))
+    {
+        return tr("Update the dictionary");
+    }
+
+    return tr("Needs a dictionary");
 }
 
 QVariantList DecksController::GetDecks() const

@@ -52,6 +52,7 @@ var Icons = {
     smartphone: { path: "M8 2h8a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z M11 18h2", minX: 0, minY: 0, width: 24, height: 24 },
     monitor: { path: "M4 3h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z M8 21h8 M12 17v4", minX: 0, minY: 0, width: 24, height: 24 },
     contents: { path: "M9 6h11M9 12h11M9 18h11M4 6h1M4 12h1M4 18h1", minX: 0, minY: 0, width: 24, height: 24 },
+    menu: { path: "M4 6h16M4 12h16M4 18h16", minX: 0, minY: 0, width: 24, height: 24 },
     chevron_down: { path: "M2 4l4 4 4-4", minX: 0, minY: 0, width: 12, height: 12 },
     chevron_up: { path: "M2 8l4-4 4 4", minX: 0, minY: 0, width: 12, height: 12 },
     close: { path: "M18 6 6 18M6 6l12 12", minX: 0, minY: 0, width: 24, height: 24 },

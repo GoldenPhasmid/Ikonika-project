@@ -36,7 +36,7 @@ Button
             anchors.right: parent.right
             anchors.rightMargin: AppMetrics.gapMedium
             anchors.verticalCenter: parent.verticalCenter
-            visible: root.keyHint.length > 0
+            visible: root.keyHint.length > 0 && !AppMetrics.touchInput
             key: root.keyHint
         }
     }

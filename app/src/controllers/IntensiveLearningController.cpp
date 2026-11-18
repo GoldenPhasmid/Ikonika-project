@@ -190,7 +190,7 @@ bool IntensiveLearningController::IsActiveFor(const QString& InSessionKey) const
 
 bool IntensiveLearningController::HasFormsRulesChanged(bool bSavedOptionalPronoun) const
 {
-    return IsFormsSession() && bSavedOptionalPronoun != FTSettings::Get().GetFormsRules().bOptionalPronoun;
+    return IsFormsSession() && bSavedOptionalPronoun != FTSettings::Get().IsOptionalPronounLearned();
 }
 
 void IntensiveLearningController::RebuildForChangedSettings()
@@ -365,7 +365,7 @@ void IntensiveLearningController::BuildStages()
     std::optional<FGapSentences> GapSentences = std::exchange(SavedGapSentences, std::nullopt);
     FlipStage = nullptr;
     ResetOptionalStages();
-    bBuiltWithOptionalPronoun = FTSettings::Get().GetFormsRules().bOptionalPronoun;
+    bBuiltWithOptionalPronoun = FTSettings::Get().IsOptionalPronounLearned();
 
     SessionSettings& Options = SessionSettings::Training();
     const FTSessionExerciseRules& Rules = Options.GetRules();
@@ -630,7 +630,7 @@ bool IntensiveLearningController::LoadCheckpoint(const std::string& Json)
     IExerciseFlowStage* ActiveStage = Saved.bRestoreExercise ? GetCurrentStage() : nullptr;
 
     const bool bFormsRulesChanged =
-        HasFormsRulesChanged(Root["optionalPronoun"].toBool(FTSettings::Get().GetFormsRules().bOptionalPronoun));
+        HasFormsRulesChanged(Root["optionalPronoun"].toBool(FTSettings::Get().IsOptionalPronounLearned()));
 
     if (bFormsRulesChanged)
     {

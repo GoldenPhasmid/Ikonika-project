@@ -7,6 +7,7 @@
 
 #include "core/FTLog.h"
 #include "core/FTSchema.h"
+#include "core/FTScheduleManager.h"
 #include "core/FTSettings.h"
 
 #include <QAction>
@@ -300,7 +301,7 @@ bool AppReminder::IsTodayDone() const
         return false;
     }
 
-    const int Due = AppDatabase::Get().GetCardRepository().CountDueCards(GetTodayDayNumber());
+    const int Due = FTScheduleManager(AppDatabase::Get().GetCardRepository()).CountDueCardsForToday(GetTodayDayNumber());
     const int Pool = AppDatabase::Get().GetCardRepository().CountUnlearnedCards();
 
     return (Due == 0 && Pool == 0) || DayRequirementMet(Due);
@@ -363,7 +364,7 @@ QString AppReminder::debugTriggerCheck()
 
     if (AppDatabase::Get().IsReady())
     {
-        const int Due = AppDatabase::Get().GetCardRepository().CountDueCards(GetTodayDayNumber());
+        const int Due = FTScheduleManager(AppDatabase::Get().GetCardRepository()).CountDueCardsForToday(GetTodayDayNumber());
         const int Pool = AppDatabase::Get().GetCardRepository().CountUnlearnedCards();
 
         if (Due == 0 && Pool == 0)
@@ -407,7 +408,7 @@ void AppReminder::syncDailyProgress()
         return;
     }
 
-    const int Due = AppDatabase::Get().GetCardRepository().CountDueCards(GetTodayDayNumber());
+    const int Due = FTScheduleManager(AppDatabase::Get().GetCardRepository()).CountDueCardsForToday(GetTodayDayNumber());
 
     if (!DayRequirementMet(Due))
     {

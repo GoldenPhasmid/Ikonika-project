@@ -20,6 +20,8 @@ class DecksController : public QObject
 
     Q_PROPERTY(bool available READ IsAvailable NOTIFY decksChanged)
     Q_PROPERTY(QVariantList decks READ GetDecks NOTIFY decksChanged)
+    Q_PROPERTY(bool categorised READ HasCategories NOTIFY decksChanged)
+    Q_PROPERTY(QString discoverBlockedReason READ GetDiscoverBlockedReason NOTIFY decksChanged)
 
 public:
     explicit DecksController(QObject* Parent = nullptr);
@@ -27,6 +29,8 @@ public:
     Q_INVOKABLE void refresh();
 
     bool IsAvailable() const;
+    bool HasCategories() const;
+    QString GetDiscoverBlockedReason() const;
     QVariantList GetDecks() const;
 
 signals:

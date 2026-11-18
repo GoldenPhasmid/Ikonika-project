@@ -229,7 +229,7 @@ static constexpr std::array<FTFormsLanguage, 5> FormsLanguages{{
     {
         "pt",
         {"eu", "tu", "ele", "nós", "vós", "eles"},
-        {"eu", "tu", "ele/ela", "nós", "vós", "eles/elas"},
+        {"eu", "tu", "ele/ela/você", "nós", "vós", "eles/elas/vocês"},
         "",
         {{
             {FormsTensePresent, "presente", "", TensePresent, false,
@@ -262,7 +262,7 @@ static constexpr std::array<FTFormsLanguage, 5> FormsLanguages{{
         {"eu", "tu", "ele ela você", "nós", "vós", "eles elas vocês"},
         "não me te se o a lhe nos vos os as lhes",
         true,
-        ""
+        "vós"
     },
     {
         "it",

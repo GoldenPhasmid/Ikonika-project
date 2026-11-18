@@ -137,10 +137,12 @@ DesktopSidePane
             count: modelData.count
 
             onClicked: root.sectionChosen("collection:" + modelData.id)
+            onPressAndHold: collectionMenu.popup(collectionItem, collectionItem.pressX, collectionItem.pressY)
 
             TapHandler
             {
                 acceptedButtons: Qt.RightButton
+                acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
 
                 onTapped: function(point) { collectionMenu.popup(collectionItem, point.position.x, point.position.y) }
             }

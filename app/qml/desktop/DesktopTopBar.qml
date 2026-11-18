@@ -52,7 +52,33 @@ Rectangle
     property real dragShift: 0
     property bool reordering: false
 
-    readonly property real slotWidth: AppMetrics.navItemHeight + navRow.spacing
+    readonly property real navBadgeWidth: root.dueCount > 0
+                                          ? Math.max(AppMetrics.badgeHeight, badgeFont.advanceWidth(String(root.dueCount)) + AppMetrics.gapCompact) + AppMetrics.gapCompact
+                                          : 0
+    readonly property real navLabelWidth: root.destinations.reduce(
+        (Widest, Destination) => Math.max(Widest, navFont.advanceWidth(Destination.label) + (Destination.key === "today" ? root.navBadgeWidth : 0)), 0)
+    readonly property real navItemWidth: AppMetrics.touchInput
+                                         ? Math.ceil(root.navLabelWidth) + AppMetrics.iconSize + AppMetrics.gapCompact * 2 + AppMetrics.gapSmall * 2
+                                         : AppMetrics.navItemHeight
+    readonly property real slotWidth: root.navItemWidth + navRow.spacing
+
+    FontMetrics
+    {
+        id: navFont
+
+        font.family: AppMetrics.fontFamily
+        font.pixelSize: AppMetrics.fontBody
+        font.weight: Font.DemiBold
+    }
+
+    FontMetrics
+    {
+        id: badgeFont
+
+        font.family: AppMetrics.fontFamily
+        font.pixelSize: AppMetrics.fontMicro
+        font.weight: Font.DemiBold
+    }
 
     readonly property int dropIndex: root.dragIndex < 0
                                      ? -1
@@ -326,12 +352,12 @@ Rectangle
                 objectName: "nav_" + modelData.key
 
                 Layout.fillWidth: false
-                Layout.preferredWidth: AppMetrics.navItemHeight
+                Layout.preferredWidth: root.navItemWidth
                 z: navItem.index === root.dragIndex ? 1 : 0
                 text: modelData.label
                 iconName: modelData.icon
                 shortcutKey: String(navItem.index + 1)
-                collapsed: true
+                collapsed: !AppMetrics.touchInput
                 selected: root.destination === modelData.key
                 count: modelData.key === "today" ? root.dueCount : 0
                 emphasiseCount: modelData.key === "today"

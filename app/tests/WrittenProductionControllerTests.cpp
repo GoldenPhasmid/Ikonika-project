@@ -1,4 +1,5 @@
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/generators/catch_generators.hpp>
 
 #include "CatchQtTypes.h"
 
@@ -693,6 +694,84 @@ TEST_CASE("Gap sentences survive a round trip through the checkpoint JSON", "[wr
     CHECK(Saved.GapStart == 14);
     CHECK(Saved.GapLength == 5);
     CHECK(Saved.Level == 2);
+}
+
+TEST_CASE("A verb gap accepts its sentence form or its card infinitive", "[writtenproduction][gap]")
+{
+    FAppSpeechGuard SpeechGuard;
+    FTCard Card = MakeCard("renifler", "to sniff");
+    Card.PartOfSpeech = "verb";
+
+    FTTreeSentence Sentence;
+    Sentence.Text = "Le chien renifle.";
+    Sentence.Translation = "The dog sniffs.";
+    REQUIRE(PlaceGap(Sentence, {"renifle"}, false));
+
+    WordGapController Controller;
+    Controller.SetSentenceLookup(MakeGapSentenceLookup(
+        std::make_shared<const FGapSentences>(FGapSentences{{Card.Id, Sentence}})));
+    Controller.Start(MakeParams({MakeCardHandle(Card)}));
+
+    CHECK(Controller.GetPrompt() == "Le chien ___.");
+
+    SECTION("The sentence form is accepted")
+    {
+        Controller.submitAnswer("renifle");
+        CHECK(Controller.WasLastAnswerCorrect());
+    }
+
+    SECTION("The infinitive is accepted")
+    {
+        Controller.submitAnswer("renifler");
+        CHECK(Controller.WasLastAnswerCorrect());
+        CHECK(Controller.GetLastRevealedAnswer() == "Le chien renifle.");
+        CHECK(SpeechGuard.Mock.LastText == "renifle");
+    }
+
+    SECTION("Another conjugation is rejected")
+    {
+        Controller.submitAnswer("renifles");
+        CHECK_FALSE(Controller.WasLastAnswerCorrect());
+    }
+}
+
+TEST_CASE("Noun and adjective gaps accept the sentence form or card headword", "[writtenproduction][gap]")
+{
+    FAppSpeechGuard SpeechGuard;
+    const bool bNoun = GENERATE(true, false);
+    FTCard Card = MakeCard(bNoun ? "cheval" : "heureux", bNoun ? "horse" : "happy");
+    Card.PartOfSpeech = bNoun ? "noun" : "adj";
+
+    FTTreeSentence Sentence;
+    Sentence.Text = bNoun ? "Les chevaux courent." : "Elle est heureuse.";
+    Sentence.Translation = bNoun ? "The horses run." : "She is happy.";
+    const std::string SentenceForm = bNoun ? "chevaux" : "heureuse";
+    REQUIRE(PlaceGap(Sentence, {SentenceForm}, bNoun));
+
+    WordGapController Controller;
+    Controller.SetSentenceLookup(MakeGapSentenceLookup(
+        std::make_shared<const FGapSentences>(FGapSentences{{Card.Id, Sentence}})));
+    Controller.Start(MakeParams({MakeCardHandle(Card)}));
+
+    SECTION("The sentence form is accepted")
+    {
+        Controller.submitAnswer(QString::fromStdString(SentenceForm));
+        CHECK(Controller.WasLastAnswerCorrect());
+    }
+
+    SECTION("The headword is accepted")
+    {
+        Controller.submitAnswer(QString::fromStdString(Card.TargetWord));
+        CHECK(Controller.WasLastAnswerCorrect());
+        CHECK(Controller.GetLastRevealedAnswer() == QString::fromStdString(Sentence.Text));
+        CHECK(SpeechGuard.Mock.LastText == QString::fromStdString(SentenceForm));
+    }
+
+    SECTION("A different form is rejected")
+    {
+        Controller.submitAnswer(bNoun ? "chevaux-là" : "heureuses");
+        CHECK_FALSE(Controller.WasLastAnswerCorrect());
+    }
 }
 
 TEST_CASE("A gendered word typed without its article is accepted in every language when allowed",

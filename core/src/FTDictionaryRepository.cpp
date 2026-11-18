@@ -2510,7 +2510,7 @@ std::vector<std::vector<FTTreeSentence>> FTDictionaryRepository::FindSentencesWi
 
     std::vector<std::vector<FTTreeSentence>> Found(Phrases.size());
 
-    if (Phrases.empty() || Phrases.size() > MaxIdsPerStatement)
+    if (Phrases.empty() || Phrases.size() > MaxIdsPerStatement || LimitPerPhrase == 0)
     {
         return Found;
     }
@@ -2540,7 +2540,9 @@ std::vector<std::vector<FTTreeSentence>> FTDictionaryRepository::FindSentencesWi
         FoldedPhrases.push_back(FoldPhraseText(Phrases[Index]));
     }
 
-    while (Query.Step())
+    size_t UnfilledPhraseCount = Phrases.size();
+
+    while (UnfilledPhraseCount > 0 && Query.Step())
     {
         const FTTreeSentence Sentence = ReadTreeSentence(Query);
         const QString Text = FoldPhraseText(Sentence.Text);
@@ -2550,6 +2552,11 @@ std::vector<std::vector<FTTreeSentence>> FTDictionaryRepository::FindSentencesWi
             if (Found[Index].size() < LimitPerPhrase && ContainsPhrase(Text, FoldedPhrases[Index]))
             {
                 Found[Index].push_back(Sentence);
+
+                if (Found[Index].size() == LimitPerPhrase)
+                {
+                    --UnfilledPhraseCount;
+                }
             }
         }
     }

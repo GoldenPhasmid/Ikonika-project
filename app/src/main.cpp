@@ -4,6 +4,7 @@
 #include "AppFreeBooks.h"
 #include "AppCatalog.h"
 #include "AppCloudStore.h"
+#include "AppControllers.h"
 #include "AppCredentialStore.h"
 #include "AppDatabase.h"
 #include "AppDatabaseService.h"
@@ -12,6 +13,7 @@
 #include "AppLocalization.h"
 #include "AppLog.h"
 #include "AppMetrics.h"
+#include "AppHostWindow.h"
 #include "AppOnboarding.h"
 #include "AppPackageDownloader.h"
 #include "AppPaths.h"
@@ -32,21 +34,29 @@
 
 #include <QApplication>
 #include <QDir>
+#include <QEventLoop>
 #include <QFile>
 #include <QFileInfo>
 #include <QFont>
 #include <QFontDatabase>
 #include <QIcon>
+#include <QJSValue>
+#include <QtGui/private/qhighdpiscaling_p.h>
+#include <qpa/qplatformwindow.h>
+#include <qpa/qwindowsysteminterface.h>
+#include <cmath>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QNetworkInformation>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
+#include <QQuickItem>
 #include <QQuickStyle>
 #include <QPointer>
 #include <QQuickWindow>
 #include <QScopeGuard>
+#include <QScreen>
 #include <QStringList>
 #include <QTimer>
 #include <memory>
@@ -117,6 +127,77 @@ namespace
         }
 
         return QString();
+    }
+
+#if defined(IKONIKA_DESKTOP)
+    void ApplyForcedWindowSize(QQuickWindow& Window, const QStringList& Arguments)
+    {
+        const QString Value = FindArgumentValue(Arguments, QStringLiteral("-window="));
+
+        if (Value.isEmpty())
+        {
+            return;
+        }
+
+        const QStringList Parts = Value.split(QLatin1Char('x'));
+        bool bWidthValid{false};
+        bool bHeightValid{false};
+        const int Width = Parts.size() == 2 ? Parts[0].toInt(&bWidthValid) : 0;
+        const int Height = Parts.size() == 2 ? Parts[1].toInt(&bHeightValid) : 0;
+
+        if (!bWidthValid || !bHeightValid || Width <= 0 || Height <= 0)
+        {
+            qCWarning(LogApp) << "Ignoring -window, expected WIDTHxHEIGHT, got" << Value;
+
+            return;
+        }
+
+        const QSize Size{Width, Height};
+        Window.setMinimumSize(Size);
+        Window.setMaximumSize(Size);
+        Window.resize(Size);
+
+        qCInfo(LogApp) << "Window forced to" << Width << "x" << Height << "logical pixels";
+    }
+#endif
+
+    constexpr qreal MobileDesignWidth{560.0};
+    constexpr qreal MobileDesignHeight{900.0};
+    constexpr qreal MobileScaleStep{0.05};
+    constexpr int TabletShortestSide{600};
+
+    void ApplyMobileScale(QQuickWindow& Window, qreal& AppliedFactor)
+    {
+        if (Window.screen() == nullptr || Window.width() <= 0 || Window.height() <= 0)
+        {
+            return;
+        }
+
+        static const qreal ScreenFactor{QHighDpiScaling::factor(Window.screen())};
+
+        const qreal BaseWidth{Window.width() * AppliedFactor};
+        const qreal BaseHeight{Window.height() * AppliedFactor};
+        const qreal Fit{std::min(BaseWidth / MobileDesignWidth, BaseHeight / MobileDesignHeight)};
+        const qreal Wanted{IsMobileLayoutEnabled() ? std::max(1.0, std::floor(Fit / MobileScaleStep) * MobileScaleStep) : 1.0};
+
+        if (qFuzzyCompare(Wanted, AppliedFactor))
+        {
+            return;
+        }
+
+        qCInfo(LogApp) << "Window is" << BaseWidth << "x" << BaseHeight << "unscaled, scaling the interface by" << Wanted;
+
+        AppliedFactor = Wanted;
+        QHighDpiScaling::setScreenFactor(Window.screen(), ScreenFactor * Wanted);
+
+        if (QPlatformWindow* Platform = Window.handle())
+        {
+            const QRect NativeGeometry{Platform->geometry()};
+
+            QWindowSystemInterface::handleWindowDevicePixelRatioChanged(&Window);
+            QWindowSystemInterface::handleGeometryChange(&Window, NativeGeometry);
+            QWindowSystemInterface::handleExposeEvent(&Window, QRect{QPoint{}, NativeGeometry.size()});
+        }
     }
 
     bool CopyDatabaseIntoSandbox(const QString& SourceFile)
@@ -495,72 +576,163 @@ int main(int ArgumentCount, char* Arguments[])
 #endif
 
     std::unique_ptr<QQmlApplicationEngine> Engine;
+    std::unique_ptr<AppControllers> Controllers;
+    AppHostWindow HostWindow;
     AppSwitchCover SwitchCover;
     QPointer<QQuickWindow> CurrentWindow;
+    QPointer<QObject> CurrentRoot;
     AppReminder& Reminder = AppReminder::Get();
 
-    const auto LoadInterface = [&](bool bStartHidden, bool bStayInTray = false) -> QQuickWindow*
+#if defined(IKONIKA_DESKTOP)
+    const bool bAdaptiveLayout{Application.arguments().contains(QStringLiteral("-adaptive"))};
+    const bool bForcedWindowSize{!FindArgumentValue(Application.arguments(), QStringLiteral("-window=")).isEmpty()};
+#else
+    const QSize ScreenSize{QGuiApplication::primaryScreen()->size()};
+    const bool bAdaptiveLayout{std::min(ScreenSize.width(), ScreenSize.height()) >= TabletShortestSide};
+    const bool bForcedWindowSize{false};
+
+    if (bAdaptiveLayout)
+    {
+        SetMobileLayoutEnabled(ScreenSize.height() > ScreenSize.width());
+
+        qCInfo(LogApp) << "Tablet screen" << ScreenSize << ", starting with the"
+                       << (IsMobileLayoutEnabled() ? "mobile" : "desktop") << "layout";
+    }
+#endif
+
+    QTimer LayoutSettle;
+    LayoutSettle.setSingleShot(true);
+    LayoutSettle.setInterval(300);
+    qreal AppliedScreenFactor{1.0};
+
+    const auto CloseInterface = [&Engine, &HostWindow]()
+    {
+        HostWindow.Unload();
+        AppLocalization::Get().SetEngine(nullptr);
+        Engine.reset();
+    };
+
+    const auto LoadInterface = [&](bool bStartHidden, const QVariantMap& LayoutState = {}) -> QQuickWindow*
     {
         Engine = std::make_unique<QQmlApplicationEngine>();
         Engine->rootContext()->setContextProperty(QStringLiteral("quickLookupService"), QuickLookupService);
         Engine->addImageProvider(QStringLiteral("book"), new AppBookImageProvider);
+        QObject::connect(Engine.get(), &QQmlEngine::quit, &Application, &QCoreApplication::quit, Qt::QueuedConnection);
+        QObject::connect(Engine.get(), &QQmlEngine::exit, &Application, &QCoreApplication::exit, Qt::QueuedConnection);
         AppLocalization::Get().SetEngine(Engine.get());
 
-        if (bStayInTray)
-        {
-            Engine->setInitialProperties({{QStringLiteral("visible"), false}, {QStringLiteral("startInTray"), true}});
-        }
-        else if (bStartHidden)
-        {
-            Engine->setInitialProperties({{QStringLiteral("visible"), false}});
-        }
+        const bool bFreshWindow{!HostWindow.IsCreated()};
+        const bool bMobile{IsMobileLayoutEnabled()};
+        QQuickWindow* Loaded{&HostWindow.EnsureWindow()};
+        bool bStartupCover{false};
 
-        Engine->loadFromModule("Ikonika", IsMobileLayoutEnabled() ? "MobileMain" : "Main");
-
-        if (Engine->rootObjects().isEmpty())
-        {
-            return nullptr;
-        }
-
-        QQuickWindow* Loaded = qobject_cast<QQuickWindow*>(Engine->rootObjects().constFirst());
-
-        if (Loaded == nullptr)
-        {
-            return nullptr;
-        }
-
-        Loaded->setIcon(QApplication::windowIcon());
         CurrentWindow = Loaded;
 
-        QObject::connect(&Reminder, &AppReminder::showWindowRequested, Loaded, [Loaded]()
-        {
-            Loaded->show();
-            Loaded->raise();
-            Loaded->requestActivate();
-        });
-
 #if defined(IKONIKA_DESKTOP)
-        QObject::connect(&SingleInstance, &AppSingleInstance::activationRequested, Loaded, [Loaded]()
-        {
-            Loaded->show();
-            Loaded->setWindowState(Qt::WindowMaximized);
-            Loaded->raise();
-            Loaded->requestActivate();
-        });
+        const AppMetrics Metrics;
 #endif
 
-        QObject::connect(Loaded, &QWindow::visibleChanged, Loaded, [&SyncController](bool bVisible)
+        if (bFreshWindow)
         {
-            if (bVisible)
-            {
-                AppSpeech::Get().Prewarm();
+#if defined(IKONIKA_DESKTOP)
+            Loaded->resize(bMobile ? QSize{412, 887} : QSize{Metrics.GetWindowWidth(), Metrics.GetWindowHeight()});
+            ApplyForcedWindowSize(*Loaded, QCoreApplication::arguments());
+#endif
 
-                return;
+            if (!bForcedWindowSize)
+            {
+                QObject::connect(Loaded, &QWindow::widthChanged, &LayoutSettle, qOverload<>(&QTimer::start));
+                QObject::connect(Loaded, &QWindow::heightChanged, &LayoutSettle, qOverload<>(&QTimer::start));
             }
 
-            AppSpeech::Get().Unload();
-            SyncController.OnApplicationStateChanged(Qt::ApplicationHidden);
-        });
+            QObject::connect(&Reminder, &AppReminder::showWindowRequested, Loaded, [Loaded]()
+            {
+                Loaded->show();
+                Loaded->raise();
+                Loaded->requestActivate();
+            });
+
+#if defined(IKONIKA_DESKTOP)
+            QObject::connect(&SingleInstance, &AppSingleInstance::activationRequested, Loaded, [Loaded]()
+            {
+                Loaded->show();
+                Loaded->setWindowState(Qt::WindowMaximized);
+                Loaded->raise();
+                Loaded->requestActivate();
+            });
+#endif
+
+            QObject::connect(Loaded, &QWindow::visibleChanged, Loaded, [&SyncController](bool bVisible)
+            {
+                if (bVisible)
+                {
+                    AppSpeech::Get().Prewarm();
+
+                    return;
+                }
+
+                AppSpeech::Get().Unload();
+                SyncController.OnApplicationStateChanged(Qt::ApplicationHidden);
+            });
+
+            AppStartup::ReportFirstFrame(Loaded);
+
+            if (!bStartHidden)
+            {
+                Loaded->show();
+
+                bool bCoverDrawn{false};
+                QEventLoop CoverDrawn;
+
+                SwitchCover.Show(*Loaded, [&bCoverDrawn, &CoverDrawn]()
+                {
+                    bCoverDrawn = true;
+                    CoverDrawn.quit();
+                });
+
+                if (!bCoverDrawn)
+                {
+                    CoverDrawn.exec();
+                }
+
+                bStartupCover = true;
+            }
+        }
+
+        ApplyMobileScale(*Loaded, AppliedScreenFactor);
+
+#if defined(IKONIKA_DESKTOP)
+        if (!bForcedWindowSize)
+        {
+            Loaded->setMinimumSize(bMobile ? QSize{360, 640} : QSize{Metrics.GetWindowMinimumWidth(), Metrics.GetWindowMinimumHeight()});
+        }
+#endif
+
+        if (Controllers == nullptr)
+        {
+            Controllers = std::make_unique<AppControllers>();
+            QQmlEngine::setObjectOwnership(Controllers.get(), QQmlEngine::CppOwnership);
+        }
+
+        const QVariantMap InitialProperties{{QStringLiteral("controllers"), QVariant::fromValue(Controllers.get())},
+                                            {QStringLiteral("layoutState"), LayoutState}};
+
+        if (HostWindow.Load(*Engine, bMobile ? QStringLiteral("MobileMain") : QStringLiteral("Main"), InitialProperties) == nullptr)
+        {
+            return nullptr;
+        }
+
+        CurrentRoot = HostWindow.GetRoot();
+
+        if (!bForcedWindowSize)
+        {
+            LayoutSettle.start();
+        }
+
+        if (bStartupCover)
+        {
+            SwitchCover.HandOver(*Loaded);
+        }
 
         return Loaded;
     };
@@ -579,7 +751,7 @@ int main(int ArgumentCount, char* Arguments[])
 
     bStartHidden = bStartHidden && Reminder.ShouldHideOnClose();
 
-    QQuickWindow* Window = LoadInterface(bStartHidden, bStartHidden && !IsMobileLayoutEnabled());
+    QQuickWindow* Window = LoadInterface(bStartHidden);
 
 #if defined(IKONIKA_DESKTOP)
     if (!BookPath.isEmpty())
@@ -588,7 +760,7 @@ int main(int ArgumentCount, char* Arguments[])
     }
 #endif
 
-    if (Engine->rootObjects().isEmpty())
+    if (Window == nullptr)
     {
         qCCritical(LogApp) << "QML failed to load, exiting";
 
@@ -609,12 +781,12 @@ int main(int ArgumentCount, char* Arguments[])
         SwitchCover.Show(*CurrentWindow, std::move(Switch));
     });
 
-    QObject::connect(&WorkspaceHost, &AppWorkspaceHost::aboutToSwitch, &WorkspaceHost, [&Engine]()
+    QObject::connect(&WorkspaceHost, &AppWorkspaceHost::aboutToSwitch, &WorkspaceHost, [&CloseInterface, &Controllers]()
     {
-        qCInfo(LogApp) << "Closing the screens before the workspace switch";
+        qCInfo(LogApp) << "Closing the screens and their controllers before the workspace switch";
 
-        AppLocalization::Get().SetEngine(nullptr);
-        Engine.reset();
+        CloseInterface();
+        Controllers.reset();
     });
 
     QObject::connect(&WorkspaceHost, &AppWorkspaceHost::switched, &WorkspaceHost,
@@ -647,6 +819,72 @@ int main(int ArgumentCount, char* Arguments[])
         SwitchCover.HandOver(*Reloaded);
 
         Reloaded->requestActivate();
+    });
+
+    QObject::connect(&LayoutSettle, &QTimer::timeout, &LayoutSettle,
+                     [&CurrentWindow, &CurrentRoot, &SwitchCover, &CloseInterface, &LoadInterface, &AppliedScreenFactor, &LayoutSettle, bAdaptiveLayout]()
+    {
+        if (CurrentWindow == nullptr)
+        {
+            return;
+        }
+
+        if (SwitchCover.IsShown())
+        {
+            LayoutSettle.start();
+
+            return;
+        }
+
+        const bool bWantsMobile{CurrentWindow->height() > CurrentWindow->width()};
+
+        if (!bAdaptiveLayout || bWantsMobile == IsMobileLayoutEnabled())
+        {
+            ApplyMobileScale(*CurrentWindow, AppliedScreenFactor);
+
+            return;
+        }
+
+        qCInfo(LogApp) << "Window is now" << CurrentWindow->width() << "x" << CurrentWindow->height()
+                       << ", switching to the" << (bWantsMobile ? "mobile" : "desktop") << "layout";
+
+        SetMobileLayoutEnabled(bWantsMobile);
+
+        SwitchCover.Show(*CurrentWindow, [&SwitchCover, &CloseInterface, &LoadInterface, &CurrentRoot]()
+        {
+            QVariant LayoutState;
+
+            if (CurrentRoot != nullptr)
+            {
+                QMetaObject::invokeMethod(CurrentRoot, "captureLayoutState", Q_RETURN_ARG(QVariant, LayoutState));
+            }
+
+            if (LayoutState.metaType() == QMetaType::fromType<QJSValue>())
+            {
+                LayoutState = LayoutState.value<QJSValue>().toVariant();
+            }
+
+            CloseInterface();
+
+            QQuickWindow* Reloaded = LoadInterface(true, LayoutState.toMap());
+
+            if (Reloaded == nullptr)
+            {
+                qCCritical(LogApp) << "QML failed to load after the layout switch, exiting";
+
+                QApplication::exit(-1);
+
+                return;
+            }
+
+            AppLocalization::Get().ApplySavedLanguage();
+
+            SwitchCover.HandOver(*Reloaded);
+
+            Reloaded->requestActivate();
+
+            qCInfo(LogApp) << "Screens rebuilt for the" << (IsMobileLayoutEnabled() ? "mobile" : "desktop") << "layout";
+        });
     });
 
     QObject::connect(&Application, &QGuiApplication::applicationStateChanged, &SyncController,
@@ -709,7 +947,6 @@ int main(int ArgumentCount, char* Arguments[])
 
     AppStartup::Mark("window");
     AppStartup::ReportReady();
-    AppStartup::ReportFirstFrame(Window);
 
     // Read after the window is up: an offline machine would otherwise pay a connection timeout
     // before its first frame.
@@ -772,14 +1009,15 @@ int main(int ArgumentCount, char* Arguments[])
 
     Catalog.Refresh();
 
-    QObject::connect(&Application, &QCoreApplication::aboutToQuit, &Application, [&Engine]()
+    QObject::connect(&Application, &QCoreApplication::aboutToQuit, &Application, [&CloseInterface, &Controllers]()
     {
         // Destroy the QML tree - with it the WebEngine views - while the event loop can
         // still service the teardown. Left until main returns, the tree is destroyed after
         // exec() and after the loop has stopped, and QtWebEngine's profile/context teardown
         // then runs as a post-routine with no loop to deliver its deletions: a debug DCHECK
         // crash on exit. aboutToQuit is emitted before the loop stops.
-        Engine.reset();
+        CloseInterface();
+        Controllers.reset();
     });
 
     const int ExitCode = Application.exec();

@@ -8,13 +8,15 @@ Item
 
     property alias heading: headingLabel.text
     property bool showClose: true
-    property real maxHeightFraction: 0.85
+    property real maxHeightFraction: 0.5
     property real bottomInset: 0
 
+    readonly property real footerSpace: footerHolder.visible ? footerHolder.implicitHeight + sheetColumn.spacing : 0
     readonly property real maximumBodyHeight: Math.max(0, height * maxHeightFraction
-        - headingRow.implicitHeight - sheetColumn.spacing - AppMetrics.contentPadding * 3 - bottomInset)
+        - headingRow.implicitHeight - sheetColumn.spacing - AppMetrics.contentPadding * 3 - bottomInset - root.footerSpace)
 
     default property alias content: body.data
+    property alias footer: footerHolder.data
     property alias overlays: overlayLayer.data
 
     signal dismissed()
@@ -234,11 +236,33 @@ Item
                 }
             }
 
-            ColumnLayout
+            Flickable
             {
-                id: body
+                id: bodyScroll
 
                 Layout.fillWidth: true
+                Layout.preferredHeight: Math.min(body.implicitHeight, root.maximumBodyHeight)
+
+                contentWidth: width
+                contentHeight: body.implicitHeight
+                clip: true
+                boundsBehavior: Flickable.StopAtBounds
+
+                ColumnLayout
+                {
+                    id: body
+
+                    width: bodyScroll.width
+                    spacing: AppMetrics.gapWide
+                }
+            }
+
+            ColumnLayout
+            {
+                id: footerHolder
+
+                Layout.fillWidth: true
+                visible: footerHolder.children.length > 0
                 spacing: AppMetrics.gapWide
             }
         }

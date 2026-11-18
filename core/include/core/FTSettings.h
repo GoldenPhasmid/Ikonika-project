@@ -9,6 +9,7 @@
 #include <QVariant>
 
 #include <functional>
+#include <map>
 #include <string>
 #include <utility>
 #include <vector>
@@ -87,7 +88,7 @@ struct FTExerciseDisplayRules
 
 struct FTFormsRules
 {
-    bool bOptionalPronoun = true;
+    std::map<std::string, bool> OptionalPronounLearned;
 };
 
 struct FTReminderRules
@@ -224,7 +225,7 @@ public:
     void SetQuestionSide(int Side);
     void SetShowArticle(bool bValue);
 
-    const FTFormsRules& GetFormsRules() const;
+    bool IsOptionalPronounLearned() const;
     void SetOptionalPronoun(bool bValue);
 
     void SetReminderEnabled(bool bValue);
@@ -280,7 +281,7 @@ private:
     FTSpeechRules SpeechRules;
 
     FTExerciseDisplayRules ExerciseDisplayRules;
-    FTFormsRules FormsRules;
+    mutable FTFormsRules FormsRules;
 
 #ifdef QT_DEBUG
     bool bDebugContinueForced = false;

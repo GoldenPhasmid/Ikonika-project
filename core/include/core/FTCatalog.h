@@ -20,6 +20,7 @@ struct FTCatalogPackage
 {
     std::string Id;
     std::string Kind;
+    std::string Name;
     std::string TargetLanguage;
     std::vector<std::string> NativeLanguages;
 

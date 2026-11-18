@@ -14,6 +14,7 @@ class VocabularyController : public QObject
 {
     Q_OBJECT
     QML_ELEMENT
+    QML_UNCREATABLE("The screens are given their controllers")
 
     Q_PROPERTY(int notLearnedCount READ GetNotLearnedCount NOTIFY vocabularyChanged)
     Q_PROPERTY(int learningCount READ GetLearningCount NOTIFY vocabularyChanged)
@@ -92,6 +93,7 @@ signals:
     void viewChanged();
 
 private:
+    void HandleLanguagesChanged();
     void Load();
     void ShowCards();
     void LoadDeck();

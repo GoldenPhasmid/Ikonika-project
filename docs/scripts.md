@@ -21,6 +21,7 @@ argument shapes on the pipeline drivers.
 | `walk-android.py` | Runs the screen walk and the navigation walk on the installed Debug build on the emulator, then exits 1 if a walk step failed or a screen logged a warning. The walk switches reach the app as Qt's `extraenvvars` launch extra, which only a debuggable build reads. `--serial` picks another device. |
 | `build-book-catalog.py` | Builds a language's book catalog, `books-<lang>.json`, and writes each book under its asset name with every Project Gutenberg mention stripped, from a TSV with `id`, `title`, `author`, `level` and `path` columns. `--target`, `--base-url` (where the files are published), `--out`. See [releases.md](releases.md#book-catalogs). |
 | `publish-snapshot.py` | Replaces the working tree of a local `Ikonika-project` clone, the public source repository, with a commit of this private repository. It exports tracked files only with `git archive`, leaves out the dictionary pipeline, and scans the result with gitleaks. It refuses a clone that holds `catalog.json`, and never commits or pushes; it prints the commands to commit by hand. `--revision` (default `HEAD`, which must be clean), `--skip-scan`. See [ios.md](ios.md#repositories). |
+| `convert-piper-voice.py` | Turns a Piper `.onnx` and `.onnx.json` into a voice directory sherpa-onnx loads: model metadata, `tokens.txt`, `espeak-ng-data`, and the `<locale>-<name>-<quality>.onnx` name the app reads the speaker name from. Needs the `onnx` package. See [voice.md](voice.md#european-portuguese). |
 | `make-sound-effects.py` | Synthesises the three sound effects (wrong answer, session complete, daily goal) into `app/android/res/raw` as 16-bit mono WAV. The files are committed; run it only to change a sound. |
 
 ## OPUS corpus alignment (`scripts/opus/*.py`)
@@ -42,7 +43,7 @@ argument shapes on the pipeline drivers.
 | `generate_definitions_foreign.py` (ikonika-llm only) | Offline pass one of two: writes each reading's meanings in the language being learned, a gist and a definition, from the dictionary's source senses, with no translations involved. Produces `*.meanings.jsonl`, once per language. |
 | `map_translations_native.py` (ikonika-llm only) | Offline pass two of two: attaches a pair's translations to the meanings and writes the native definition and the example with its translation. A meaning with a trusted translation gets an example translation that contains one of them. Produces `*.<native>.mapping.jsonl`, once per language pair. |
 | `split_artifact.py` (ikonika-llm only) | Splits a legacy `*.llm.jsonl` artifact into the meanings and mapping artifacts, no model call. |
-| `llm_deck_gists.py` (ikonika-llm only) | Offline pass: picks the one meaning each topic deck word with several meanings teaches, given the deck's scope. Produces the `*.deck-gists.jsonl` artifact `build_decks.py` reads. |
+| `llm_deck_gists.py` (ikonika-llm only) | Offline pass: picks the one meaning each topic deck word with several meanings teaches, given the deck's scope. Writes the gist into the `gist` column of the language's topic deck TSV, which `build_decks.py` reads. |
 
 ## Dictionary pipeline drivers (`scripts/dictionary/*.py`)
 

@@ -8,32 +8,12 @@ Steps to ship a new Android release to Play Console. For the one-time setup this
 
 | | |
 | --- | --- |
-| Git tag | `0.8.3` |
-| Version name | `0.8.3` |
-| Version code | `21` |
-| Built | 2026-11-08 |
+| Git tag | `0.9.1` |
+| Version name | `0.9.1` |
+| Version code | `23` |
+| Built | 2026-11-15 |
 
-The next upload needs a version code above 21.
-
-## Prepared release
-
-Version `0.9.1`, version code `23`, was built on 2026-11-15 from tag `0.9.1`. The signed arm64
-bundle passed `jarsigner` verification with the Ikonika upload certificate. It is not uploaded to
-Play Console yet.
-
-Release notes for Google Play (under 500 characters):
-
-```text
-New Features
-Tiles exercise: word tiles are dragged into place and reordered.
-Discover meaning screen is split into a question area and a details area, with slide transitions.
-Library separates My books from the free catalogue, and Today lists the books being read under Continue reading.
-Phone reader pads the text with half a screen above and below.
-
-Fixes
-Keyboard rises when a focused text field is tapped.
-Language flag shows after an account switch.
-```
+The next upload needs a version code above 23.
 
 ## Prerequisites (one-time, not per release)
 

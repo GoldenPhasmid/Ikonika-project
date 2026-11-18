@@ -11,8 +11,10 @@ class DictionaryController : public QObject
 {
     Q_OBJECT
     QML_ELEMENT
+    QML_UNCREATABLE("The screens are given their controllers")
 
     Q_PROPERTY(QVariantList results READ GetResults NOTIFY resultsChanged)
+    Q_PROPERTY(QString query READ GetQuery NOTIFY resultsChanged)
     Q_PROPERTY(bool nativeSearch READ IsNativeSearch WRITE SetNativeSearch NOTIFY nativeSearchChanged)
     Q_PROPERTY(QString targetLanguageCode READ GetTargetLanguageCode NOTIFY languagesChanged)
     Q_PROPERTY(QString nativeLanguageCode READ GetNativeLanguageCode NOTIFY languagesChanged)
@@ -51,6 +53,7 @@ public:
     Q_INVOKABLE QString sentenceAt(const QString& Text, int Position) const;
 
     QVariantList GetResults() const;
+    QString GetQuery() const;
     bool IsNativeSearch() const;
     void SetNativeSearch(bool bInNativeSearch);
     QString GetTargetLanguageCode() const;

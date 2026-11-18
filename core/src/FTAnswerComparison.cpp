@@ -379,18 +379,6 @@ namespace
         return ExpandSequences(Text, ExpandedUmlaut);
     }
 
-    /**
-     * Every ligature written out in full.
-     *
-     * Applied to both sides of a comparison and to neither side of anything shown to the learner:
-     * a card that spells the word "cœur" goes on saying so, and the correction the interface
-     * displays is the real spelling rather than the one that was easy to type.
-     */
-    std::string ExpandLigatures(std::string_view Text)
-    {
-        return ExpandSequences(Text, ExpandedLigature);
-    }
-
     /** Drops whitespace and hyphens per the rules. Accents are handled separately. */
     std::string StripSpacing(std::string_view Text, const FTAnswerComparisonRules& Rules)
     {
@@ -440,6 +428,11 @@ namespace
 
         return Result;
     }
+}
+
+std::string ExpandLigatures(std::string_view Text)
+{
+    return ExpandSequences(Text, ExpandedLigature);
 }
 
 bool IsCorrectGrade(EFTAnswerGrade Grade)

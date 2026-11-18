@@ -1779,8 +1779,8 @@ struct FSpanishFormsBed : FFormsTestBed
 
     ~FSpanishFormsBed()
     {
+        FTSettings::Get().SetOptionalPronoun(false);
         FTSettings::Get().SetTargetLanguage("fr");
-        FTSettings::Get().SetOptionalPronoun(true);
     }
 };
 

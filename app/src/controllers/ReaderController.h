@@ -30,6 +30,7 @@ class ReaderController : public QObject
 {
     Q_OBJECT
     QML_ELEMENT
+    QML_UNCREATABLE("The screens are given their controllers")
 
     /** The library as a list of {id, title, format, path, exists}. */
     Q_PROPERTY(QVariantList documents READ GetDocuments NOTIFY documentsChanged)

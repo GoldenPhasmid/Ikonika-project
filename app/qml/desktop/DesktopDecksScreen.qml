@@ -6,13 +6,14 @@ Item
 {
     id: root
 
+    required property DictionaryController cardDictionary
     required property var store
+    required property VocabularyController vocabulary
 
     property var deckId: 0
     readonly property bool deckOpen: root.deckId > 0
     readonly property var deckVocabulary: deckLoader.item ? deckLoader.item.vocabulary : null
     readonly property string deckName: root.deckVocabulary ? root.deckVocabulary.deckName : ""
-    readonly property int deckNewCount: root.deckVocabulary ? root.deckVocabulary.deckNewCount : 0
 
     signal dictionaryRequested(string word, string partOfSpeech)
     signal removeCardRequested(string cardId, string word)
@@ -49,8 +50,22 @@ Item
         }
     }
 
-    function openDeck(deckId)
+    property string pendingWord: ""
+    property string pendingPartOfSpeech: ""
+
+    function openDeck(deckId, word, partOfSpeech)
     {
+        root.pendingWord = word ?? ""
+        root.pendingPartOfSpeech = partOfSpeech ?? ""
+
+        if (root.deckId === deckId && deckLoader.item)
+        {
+            deckLoader.item.focusEntry(root.pendingWord, root.pendingPartOfSpeech)
+            root.pendingWord = ""
+
+            return
+        }
+
         root.deckId = deckId
     }
 
@@ -261,10 +276,17 @@ Item
         anchors.fill: parent
         active: root.deckOpen
 
-        onLoaded: deckLoader.item.resetView()
+        onLoaded:
+        {
+            deckLoader.item.resetView()
+            deckLoader.item.focusEntry(root.pendingWord, root.pendingPartOfSpeech)
+            root.pendingWord = ""
+        }
 
         sourceComponent: DesktopVocabularyScreen
         {
+            controller: root.vocabulary
+            cardDictionary: root.cardDictionary
             store: root.store
             deckId: root.deckId
 

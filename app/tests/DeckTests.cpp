@@ -7,6 +7,7 @@
 #include "TriageController.h"
 #include "VocabularyController.h"
 
+#include "AppCards.h"
 #include "AppDatabase.h"
 #include "AppDictionary.h"
 #include "AppPaths.h"
@@ -432,4 +433,125 @@ TEST_CASE("Discover adds a card for Learn and marks the meaning known for Know",
 
     CHECK(Controller.GetAskedCount() <= Controller.GetQuestionCount());
     CHECK(Controller.GetResults().size() >= 2);
+}
+
+TEST_CASE("Discover shows the answer on request and defaults the word to Learn", "[decks][discovery]")
+{
+    FDeckFixture Fixture;
+
+    if (!Fixture.HasDeck())
+    {
+        SKIP("The built dictionary has no decks");
+    }
+
+    REQUIRE(AppDatabase::Get().GetCardRepository().SetPlacementCutoff("en", FTDiscoveryPlanner::BeginnerWordCount));
+
+    DiscoveryController Controller;
+    REQUIRE(Controller.startDeck(Fixture.Deck.Id));
+    REQUIRE_FALSE(Controller.IsAnswered());
+
+    Controller.showAnswer();
+
+    CHECK(Controller.IsAnswered());
+    CHECK(Controller.GetChosenOptionIndex() == -1);
+    CHECK(Controller.GetCorrectOptionIndex() >= 0);
+    CHECK(Controller.IsLearn());
+    CHECK(Controller.GetResults().size() == 1);
+
+    Controller.showAnswer();
+
+    CHECK(Controller.GetResults().size() == 1);
+}
+
+TEST_CASE("Discover lists every card added to My Vocabulary during the round", "[decks][discovery]")
+{
+    FDeckFixture Fixture;
+
+    if (!Fixture.HasDeck())
+    {
+        SKIP("The built dictionary has no decks");
+    }
+
+    REQUIRE(AppDatabase::Get().GetCardRepository().SetPlacementCutoff("en", FTDiscoveryPlanner::BeginnerWordCount));
+
+    FTCard Elsewhere;
+    Elsewhere.TargetWord = "elsewhere";
+    Elsewhere.Translation = "інде";
+
+    const std::optional<std::string> BeforeRound = AppDatabase::Get().GetCardRepository().AddCard(Elsewhere);
+    REQUIRE(BeforeRound.has_value());
+
+    DiscoveryController Controller;
+    AppCards::Notifier().cardAdded(QString::fromStdString(*BeforeRound));
+
+    REQUIRE(Controller.startDeck(Fixture.Deck.Id));
+    CHECK(Controller.GetAddedCards().isEmpty());
+
+    Controller.showAnswer();
+    Controller.commit(true);
+
+    REQUIRE(Controller.GetAddedCards().size() == 1);
+
+    FTCard Looked;
+    Looked.TargetWord = "lookedup";
+    Looked.Translation = "знайдене";
+
+    const std::optional<std::string> DuringRound = AppDatabase::Get().GetCardRepository().AddCard(Looked);
+    REQUIRE(DuringRound.has_value());
+
+    AppCards::Notifier().cardAdded(QString::fromStdString(*DuringRound));
+
+    const QVariantList Added = Controller.GetAddedCards();
+    REQUIRE(Added.size() == 2);
+
+    QStringList Ids;
+
+    for (const QVariant& Entry : Added)
+    {
+        Ids.append(Entry.toMap().value("card").toMap().value("id").toString());
+    }
+
+    CHECK(Ids.contains(QString::fromStdString(*DuringRound)));
+    CHECK_FALSE(Ids.contains(QString::fromStdString(*BeforeRound)));
+
+    Controller.endSession();
+    CHECK(Controller.GetAddedCards().isEmpty());
+}
+
+TEST_CASE("Discover is blocked while the dictionary has no deck categories", "[decks][discovery]")
+{
+    FTestDeckFixture Fixture;
+
+    if (!Fixture.bReady)
+    {
+        SKIP("The built English dictionary is missing");
+    }
+
+    DecksController Controller;
+
+    REQUIRE(Controller.IsAvailable());
+    CHECK_FALSE(Controller.HasCategories());
+    CHECK(Controller.GetDiscoverBlockedReason() == QStringLiteral("Update the dictionary"));
+}
+
+TEST_CASE("Discover drops its round when the dictionary changes", "[decks][discovery]")
+{
+    FDeckFixture Fixture;
+
+    if (!Fixture.HasDeck())
+    {
+        SKIP("The built dictionary has no decks");
+    }
+
+    REQUIRE(AppDatabase::Get().GetCardRepository().SetPlacementCutoff("en", FTDiscoveryPlanner::BeginnerWordCount));
+
+    DiscoveryController Controller;
+    REQUIRE(Controller.startDeck(Fixture.Deck.Id));
+    REQUIRE(Controller.HasActiveSession());
+
+    AppDictionary::Notifier().languagesChanged();
+
+    CHECK_FALSE(Controller.HasActiveSession());
+    CHECK(Controller.GetResults().isEmpty());
+    CHECK(Controller.GetAddedCards().isEmpty());
 }

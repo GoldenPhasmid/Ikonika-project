@@ -6,6 +6,8 @@ DesktopDialog
 {
     id: root
 
+    required property DictionaryController dictionary
+
     property var store: null
     property alias controller: form.controller
 
@@ -59,6 +61,8 @@ DesktopDialog
     DesktopCardForm
     {
         id: form
+
+        dictionary: root.dictionary
 
         onAccepted: root.commit()
 

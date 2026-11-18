@@ -8,6 +8,7 @@ TextInput
     property color placeholderTextColor: AppTheme.colourMuted
 
     MobileKeyboardTap { editor: root }
+    MobileKeyboardRelease { editor: root }
 
     Text
     {
@@ -19,19 +20,5 @@ TextInput
         color: root.placeholderTextColor
         verticalAlignment: root.verticalAlignment
         horizontalAlignment: root.horizontalAlignment
-    }
-
-    Connections
-    {
-        target: Qt.inputMethod
-
-        function onVisibleChanged()
-        {
-            if (!Qt.inputMethod.visible && root.activeFocus)
-            {
-                Qt.inputMethod.reset()
-                root.focus = false
-            }
-        }
     }
 }

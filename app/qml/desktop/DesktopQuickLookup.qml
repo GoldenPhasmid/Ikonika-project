@@ -7,6 +7,8 @@ Window
 {
     id: root
 
+    required property DictionaryController wordLookup
+    required property DictionaryController lookup
     required property QtObject service
     required property VocabularyController vocabulary
     required property var store
@@ -24,7 +26,7 @@ Window
 
     readonly property TextArea input: queryArea.input
     readonly property string text: root.input.text.trim()
-    readonly property bool reverse: lookup.nativeSearch
+    readonly property bool reverse: root.lookup.nativeSearch
     readonly property bool wordShown: mainResult.translationShown && root.pickedWord.length > 0
     readonly property DesktopQuickAddResult target: root.wordShown ? wordResult : mainResult
     readonly property string speechText: root.reverse ? ""
@@ -57,7 +59,7 @@ Window
 
     function prepare(text)
     {
-        lookup.nativeSearch = false
+        root.lookup.nativeSearch = false
         root.input.text = text
         root.input.cursorPosition = root.input.length
         root.refresh()
@@ -99,7 +101,7 @@ Window
     {
         console.info("Quick Add opened", word, "in the language learned")
 
-        lookup.nativeSearch = false
+        root.lookup.nativeSearch = false
         root.input.text = word
         root.input.cursorPosition = root.input.length
         root.refresh()
@@ -143,7 +145,7 @@ Window
 
     function add()
     {
-        const hint = root.wordShown ? lookup.sentenceAt(root.input.text, Math.max(0, root.pickedPosition)) : ""
+        const hint = root.wordShown ? root.lookup.sentenceAt(root.input.text, Math.max(0, root.pickedPosition)) : ""
 
         root.errorText = root.target.add(root.vocabulary, hint) ? "" : qsTr("Could not add this word")
     }
@@ -313,20 +315,20 @@ Window
         function onSelectedTextChanged() { root.pickFromSelection() }
     }
 
-    DictionaryController
+    Connections
     {
-        id: lookup
+        target: root.lookup
 
-        onNativeSearchChanged:
+        function onNativeSearchChanged()
         {
             if (root.visible)
             {
-                console.info("Quick Add searches in", lookup.nativeSearch ? "the native language" : "the language learned")
+                console.info("Quick Add searches in", root.lookup.nativeSearch ? "the native language" : "the language learned")
                 root.refresh()
             }
         }
 
-        onLanguagesChanged:
+        function onLanguagesChanged()
         {
             if (root.visible)
             {
@@ -334,11 +336,6 @@ Window
                 root.refresh()
             }
         }
-    }
-
-    DictionaryController
-    {
-        id: wordLookup
     }
 
     Timer
@@ -421,7 +418,7 @@ Window
                         objectName: "quick_add_language"
 
                         focusPolicy: Qt.NoFocus
-                        text: lookup.targetLanguageCode
+                        text: root.lookup.targetLanguageCode
                         trailingIconName: "chevron_down"
 
                         Accessible.name: root.store.targetLanguageName
@@ -449,13 +446,13 @@ Window
                         iconColour: AppTheme.colourMuted
                         text: qsTr("Swap languages")
 
-                        onClicked: lookup.nativeSearch = !lookup.nativeSearch
+                        onClicked: root.lookup.nativeSearch = !root.lookup.nativeSearch
                     }
 
                     DesktopLabel
                     {
                         visible: root.store.nativeLanguageCodes.length < 2
-                        text: lookup.nativeLanguageCode
+                        text: root.lookup.nativeLanguageCode
                         font.weight: Font.DemiBold
                         color: AppTheme.colourSubtle
                     }
@@ -468,7 +465,7 @@ Window
 
                         visible: root.store.nativeLanguageCodes.length > 1
                         focusPolicy: Qt.NoFocus
-                        text: lookup.nativeLanguageCode
+                        text: root.lookup.nativeLanguageCode
                         trailingIconName: "chevron_down"
 
                         Accessible.name: root.store.nativeLanguageName
@@ -502,7 +499,7 @@ Window
                         iconColour: AppTheme.colourMuted
                         text: qsTr("Listen (Ctrl+Space)")
 
-                        onSpeakRequested: lookup.speak(root.speechText)
+                        onSpeakRequested: root.lookup.speak(root.speechText)
                     }
 
                     DesktopIconButton
@@ -515,7 +512,7 @@ Window
                         iconColour: AppTheme.colourMuted
                         text: qsTr("Copy translation")
 
-                        onClicked: lookup.copyToClipboard(lookup.machineTranslation)
+                        onClicked: root.lookup.copyToClipboard(root.lookup.machineTranslation)
                     }
 
                     DesktopButton
@@ -633,7 +630,7 @@ Window
 
                             Layout.fillWidth: true
                             visible: !root.reverse
-                            lookup: lookup
+                            lookup: root.lookup
                             store: root.store
                             term: root.text
                             reverse: root.reverse
@@ -656,7 +653,7 @@ Window
 
                             Layout.fillWidth: true
                             visible: root.wordShown
-                            lookup: wordLookup
+                            lookup: root.wordLookup
                             store: root.store
                             term: root.pickedWord
                             downloadTone: "secondary"
@@ -675,14 +672,14 @@ Window
                             {
                                 Layout.fillWidth: true
                                 Layout.leftMargin: AppMetrics.gapCompact
-                                visible: !mainResult.searching && lookup.results.length === 0
+                                visible: !mainResult.searching && root.lookup.results.length === 0
                                 text: qsTr("Nothing found")
                                 color: AppTheme.colourMuted
                             }
 
                             Repeater
                             {
-                                model: root.reverse ? lookup.results : []
+                                model: root.reverse ? root.lookup.results : []
 
                                 delegate: DesktopWordRow
                                 {

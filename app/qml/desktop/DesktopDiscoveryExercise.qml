@@ -31,7 +31,7 @@ Item
     readonly property bool showsSentence: !!root.controller
         && (root.controller.sentencePrompt || root.controller.beginnerPrompt || root.controller.showsExample)
     readonly property var results: root.controller ? root.controller.results : []
-    readonly property var addedResults: root.results.filter(Row => Row.learn)
+    readonly property var addedResults: root.controller ? root.controller.addedCards : []
     readonly property Item headword: root.revealed ? revealedWord.item : promptWord.item
     readonly property int resultColumns: Math.max(1, Math.floor((resultArea.width - AppMetrics.contentPadding * 2 + AppMetrics.gapMedium)
                                                                 / (AppMetrics.resultTileMinimumWidth + AppMetrics.gapMedium)))
@@ -132,6 +132,17 @@ Item
         }
 
         root.controller.askClue()
+    }
+
+    function showAnswer()
+    {
+        if (!root.awaiting)
+        {
+            return
+        }
+
+        optionGrid.armFeedback(false)
+        root.controller.showAnswer()
     }
 
     function showReveal()
@@ -366,6 +377,23 @@ Item
 
         onPrimaryClicked: root.playVoice()
 
+        controls: [
+            DesktopButton
+            {
+                objectName: "discovery_show_answer"
+
+                visible: root.awaiting
+                Layout.preferredWidth: AppMetrics.actionButtonWidth
+                large: true
+                tone: "secondary"
+                text: qsTr("Show answer")
+                keyHint: qsTr("Ctrl+D")
+                focusPolicy: Qt.NoFocus
+
+                onClicked: root.showAnswer()
+            }
+        ]
+
         primary: [
             Loader
             {
@@ -596,7 +624,7 @@ Item
                 objectName: "discovery_added_count"
 
                 Layout.fillWidth: true
-                text: qsTr("%1 / %2").arg(root.addedResults.length).arg(root.results.length)
+                text: root.addedResults.length
                 horizontalAlignment: Text.AlignHCenter
                 font.pixelSize: AppMetrics.fontPickTitle
                 font.weight: Font.Medium
@@ -645,7 +673,7 @@ Item
                             }
                         }
 
-                        objectName: "discovery_result_" + resultTile.modelData.index
+                        objectName: "discovery_result_" + resultTile.modelData.card.id
 
                         width: root.resultTileWidth
                         height: wordArea.height + translationBand.height
@@ -763,9 +791,6 @@ Item
                             height: AppMetrics.iconSize
                             name: "edit"
                             color: AppTheme.colourSubtle
-                            opacity: resultTile.hovered || resultTile.activeFocus ? 1 : 0
-
-                            Behavior on opacity { NumberAnimation { duration: AppMetrics.motionFast } }
                         }
 
                         DesktopFocusRing

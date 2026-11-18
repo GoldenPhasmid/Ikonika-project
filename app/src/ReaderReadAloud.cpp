@@ -17,7 +17,7 @@ static constexpr double NarrationLookaheadSeconds = 15.0;
 static constexpr size_t MinimumQueuedSentences = 2;
 static constexpr qint64 ReplayWindowMilliseconds = 2000;
 static constexpr int SpeedRestartMilliseconds = 400;
-static constexpr std::array<float, 2> SpeedSteps{1.0f, 1.25f};
+static constexpr std::array<float, 3> SpeedSteps{0.8f, 1.0f, 1.2f};
 
 ReaderReadAloud::ReaderReadAloud(const FTParagraphModel& InParagraphs, QObject* Parent)
     : QObject(Parent)
@@ -90,14 +90,35 @@ void ReaderReadAloud::startAt(int Paragraph, int Character)
 
 void ReaderReadAloud::pause()
 {
+    Pause(true);
+}
+
+void ReaderReadAloud::pauseForLookup()
+{
+    Pause(false);
+}
+
+void ReaderReadAloud::Pause(bool bKeepPlace)
+{
     if (!bPlaying)
     {
         return;
     }
 
-    qCInfo(LogSpeech) << "read aloud paused at paragraph" << GetParagraph();
+    const bool bSpeedPending{SpeedRestart.isActive()};
+    SpeedRestart.stop();
 
-    Silence();
+    if (!bKeepPlace || bSpeedPending || !AppSpeech::Get().PauseNarration())
+    {
+        Silence();
+    }
+    else
+    {
+        bPausedInPlace = true;
+    }
+
+    qCInfo(LogSpeech) << "read aloud paused at paragraph" << GetParagraph() << "in place =" << bPausedInPlace;
+
     bPlaying = false;
 
     emit stateChanged();
@@ -107,6 +128,18 @@ void ReaderReadAloud::resume()
 {
     if (bPlaying || !Current.has_value())
     {
+        return;
+    }
+
+    if (bPausedInPlace && AppSpeech::Get().ResumeNarration())
+    {
+        qCInfo(LogSpeech) << "read aloud resumed in place at paragraph" << GetParagraph();
+
+        bPausedInPlace = false;
+        bPlaying = true;
+
+        emit stateChanged();
+
         return;
     }
 
@@ -340,6 +373,7 @@ void ReaderReadAloud::Silence()
 {
     AppSpeech::Get().StopNarration();
 
+    bPausedInPlace = false;
     FirstLiveId = NextId;
     Queued.clear();
     LastQueued.reset();
@@ -348,7 +382,7 @@ void ReaderReadAloud::Silence()
 
 void ReaderReadAloud::OnStarted(int Id)
 {
-    if (!bPlaying || Id < FirstLiveId)
+    if ((!bPlaying && !bPausedInPlace) || Id < FirstLiveId)
     {
         return;
     }
@@ -369,7 +403,7 @@ void ReaderReadAloud::OnStarted(int Id)
 
 void ReaderReadAloud::OnFinished(int Id)
 {
-    if (!bPlaying || Id < FirstLiveId)
+    if ((!bPlaying && !bPausedInPlace) || Id < FirstLiveId)
     {
         return;
     }
@@ -410,6 +444,13 @@ void ReaderReadAloud::OnFailed()
 void ReaderReadAloud::OnSpeedChanged()
 {
     emit speedChanged();
+
+    if (bPausedInPlace)
+    {
+        qCInfo(LogSpeech) << "read aloud drops the paused sentence, the speed changed";
+
+        Silence();
+    }
 
     if (bPlaying)
     {

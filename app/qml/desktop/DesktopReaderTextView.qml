@@ -24,9 +24,10 @@ ListView
     signal wordPicked(string word, string sentence)
     signal translationWanted()
     signal readAloudJumpRequested()
+    signal blankTapped()
     signal zoomRequested(bool closer)
 
-    DictionaryController { id: contextLookup }
+    required property DictionaryController contextLookup
 
     readonly property int topParagraph:
     {
@@ -39,6 +40,9 @@ ListView
     readonly property real textWidth: root.columnWidth - root.textMargin * 2
 
     property var selectedText: null
+    property var touchSelectingText: null
+    property int touchAnchorStart: 0
+    property int touchAnchorEnd: 0
 
     readonly property bool styled: root.model !== null && root.model !== undefined && root.model.styled === true
 
@@ -347,6 +351,22 @@ ListView
         easing.type: Easing.OutCubic
     }
 
+    TapHandler
+    {
+        acceptedDevices: PointerDevice.TouchScreen
+
+        onSingleTapped: function(eventPoint)
+        {
+            if (root.isOverText(eventPoint.position))
+            {
+                return
+            }
+
+            root.clearSelection()
+            root.blankTapped()
+        }
+    }
+
     WheelHandler
     {
         acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
@@ -620,7 +640,7 @@ ListView
             wrapMode: TextEdit.Wrap
             readOnly: true
             activeFocusOnPress: false
-            selectByMouse: true
+            selectByMouse: !AppMetrics.touchInput
             persistentSelection: true
             cursorVisible: false
             selectionColor: AppTheme.colourAccent
@@ -663,7 +683,7 @@ ListView
 
                     if (wasReading)
                     {
-                        root.readAloud.pause()
+                        root.readAloud.pauseForLookup()
                     }
 
                     return wasReading
@@ -713,7 +733,7 @@ ListView
                         }
 
                         paragraphText.select(start, end)
-                        root.wordPicked(paragraph.display.substring(start, end).trim(), contextLookup.sentenceAt(paragraph.display, start))
+                        root.wordPicked(paragraph.display.substring(start, end).trim(), root.contextLookup.sentenceAt(paragraph.display, start))
 
                         if (wasReading)
                         {
@@ -735,7 +755,7 @@ ListView
 
                     root.pickedPlace = { paragraph: paragraph.index, character: range.start }
                     paragraphText.select(range.start, range.end)
-                    root.wordPicked(paragraph.display.substring(range.start, range.end), contextLookup.sentenceAt(paragraph.display, range.start))
+                    root.wordPicked(paragraph.display.substring(range.start, range.end), root.contextLookup.sentenceAt(paragraph.display, range.start))
                     root.translationWanted()
                 }
             }
@@ -747,6 +767,101 @@ ListView
                 acceptedButtons: Qt.LeftButton
 
                 onDoubleTapped: pointer.doubleTapped = true
+            }
+
+            TapHandler
+            {
+                enabled: !root.autoscrolling
+                acceptedDevices: PointerDevice.TouchScreen
+                longPressThreshold: 0.4
+
+                onTapped: function(eventPoint)
+                {
+                    const range = root.wordRange(paragraph.display,
+                                                 hitTest.characterAt(eventPoint.position.x, eventPoint.position.y))
+
+                    if (range === null)
+                    {
+                        root.clearSelection()
+                        root.blankTapped()
+
+                        return
+                    }
+
+                    pointer.pauseReading()
+
+                    root.claimSelection(paragraphText)
+                    root.pickedPlace = { paragraph: paragraph.index, character: range.start }
+                    paragraphText.select(range.start, range.end)
+                    root.wordPicked(paragraph.display.substring(range.start, range.end), root.contextLookup.sentenceAt(paragraph.display, range.start))
+                    root.translationWanted()
+                }
+
+                onLongPressed:
+                {
+                    const range = root.wordRange(paragraph.display,
+                                                 hitTest.characterAt(touchTracker.point.position.x, touchTracker.point.position.y))
+
+                    if (range === null)
+                    {
+                        return
+                    }
+
+                    pointer.pauseReading()
+
+                    root.interactive = false
+                    root.selecting = true
+                    root.claimSelection(paragraphText)
+                    root.touchSelectingText = paragraphText
+                    root.touchAnchorStart = range.start
+                    root.touchAnchorEnd = range.end
+                    paragraphText.select(range.start, range.end)
+                }
+            }
+
+            PointHandler
+            {
+                id: touchTracker
+
+                acceptedDevices: PointerDevice.TouchScreen
+
+                readonly property point livePoint: touchTracker.point.position
+
+                onLivePointChanged:
+                {
+                    if (root.touchSelectingText !== paragraphText)
+                    {
+                        return
+                    }
+
+                    const index = hitTest.positionNear(touchTracker.livePoint.x, touchTracker.livePoint.y)
+                    const range = root.wordRange(paragraph.display, index) || { start: index, end: index }
+
+                    paragraphText.select(Math.min(root.touchAnchorStart, range.start), Math.max(root.touchAnchorEnd, range.end))
+                }
+
+                onActiveChanged:
+                {
+                    if (touchTracker.active || root.touchSelectingText !== paragraphText)
+                    {
+                        return
+                    }
+
+                    root.touchSelectingText = null
+                    root.interactive = true
+                    root.selecting = false
+
+                    const start = paragraphText.selectionStart
+                    const phrase = paragraph.display.substring(start, paragraphText.selectionEnd).trim()
+
+                    if (phrase.length === 0)
+                    {
+                        return
+                    }
+
+                    root.pickedPlace = { paragraph: paragraph.index, character: start }
+                    root.wordPicked(phrase, root.contextLookup.sentenceAt(paragraph.display, start))
+                }
             }
 
             ReaderTextHitTest

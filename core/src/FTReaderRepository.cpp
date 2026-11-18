@@ -428,7 +428,7 @@ std::optional<FTReaderDocumentDetails> FTReaderRepository::FindDetails(const std
     Details.WordCount = Query.GetInt64(2);
     Details.PageCount = Query.GetInt64(3);
 
-    const QJsonArray Chapters{QJsonDocument::fromJson(QByteArray::fromStdString(Query.GetText(4))).array()};
+    const QJsonArray Chapters = QJsonDocument::fromJson(QByteArray::fromStdString(Query.GetText(4))).array();
 
     for (const QJsonValue& Value : Chapters)
     {

@@ -7,6 +7,7 @@ FocusScope
 {
     id: root
 
+    required property DictionaryController dictionary
     required property var store
     property var controller: null
 
@@ -26,7 +27,7 @@ FocusScope
     readonly property var meanings: root.controller ? root.controller.meaningOptions : []
     readonly property bool hasMeanings: root.meanings.length > 0
     readonly property string enteredTranslation: translationField.text.trim()
-    readonly property var entry: dictionary.entry.headword ? dictionary.entry : null
+    readonly property var entry: root.dictionary.entry.headword ? root.dictionary.entry : null
 
     readonly property var pickedTranslations: MeaningPicks.parts(root.meaningTranslation)
 
@@ -154,7 +155,7 @@ FocusScope
         root.highlightedTranslation = -1
         meaningArea.contentY = 0
 
-        dictionary.openEntry(root.hasWord ? root.controller.word : "",
+        root.dictionary.openEntry(root.hasWord ? root.controller.word : "",
                              root.hasWord ? root.controller.partOfSpeech : "")
 
         if (root.hasMeanings)
@@ -186,11 +187,6 @@ FocusScope
         {
             Qt.callLater(root.resetWord)
         }
-    }
-
-    DictionaryController
-    {
-        id: dictionary
     }
 
     DesktopSessionBar

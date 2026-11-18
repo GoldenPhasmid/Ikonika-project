@@ -127,6 +127,91 @@ ReaderPdfPage
         }
     }
 
+    TapHandler
+    {
+        id: touchTap
+
+        acceptedDevices: PointerDevice.TouchScreen
+        longPressThreshold: 0.4
+
+        property bool selecting: false
+        property point anchorPoint
+        readonly property point livePoint: touchTap.point.position
+
+        onSingleTapped: function(eventPoint)
+        {
+            const found = root.selectWordAt(eventPoint.position)
+
+            if (found.text.length === 0)
+            {
+                root.view.blankTapped()
+
+                return
+            }
+
+            root.view.clearSelection()
+            root.showSelection(found)
+            root.view.wordPicked(found.text, root.selectionSentence)
+            root.view.translationWanted()
+        }
+
+        onDoubleTapped: function(eventPoint)
+        {
+            root.view.doubleTapped()
+            root.view.toggleZoom(eventPoint.scenePosition)
+        }
+
+        onLongPressed:
+        {
+            touchTap.selecting = true
+            touchTap.anchorPoint = touchTap.point.position
+            root.viewport.interactive = false
+            root.view.selecting = true
+
+            const found = root.selectWordAt(touchTap.anchorPoint)
+
+            root.view.clearSelection()
+            root.showSelection(found)
+        }
+
+        onLivePointChanged:
+        {
+            if (!touchTap.selecting)
+            {
+                return
+            }
+
+            const found = root.selectionBetween(touchTap.anchorPoint, touchTap.livePoint)
+
+            if (found.text.length === 0)
+            {
+                return
+            }
+
+            root.view.clearSelection()
+            root.showSelection(found)
+        }
+
+        onPressedChanged:
+        {
+            if (touchTap.pressed || !touchTap.selecting)
+            {
+                return
+            }
+
+            touchTap.selecting = false
+            root.viewport.interactive = true
+            root.view.selecting = false
+
+            const picked = root.selectionText.trim()
+
+            if (picked.length > 0)
+            {
+                root.view.wordPicked(picked, root.selectionSentence)
+            }
+        }
+    }
+
     HoverHandler
     {
         cursorShape: Qt.IBeamCursor

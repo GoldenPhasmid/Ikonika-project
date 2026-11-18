@@ -1,10 +1,13 @@
 import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Layouts
+import "../ReaderShelf.js" as Shelf
 
 Item
 {
     id: root
+
+    required property DailySessionController daily
 
     required property var store
     property var training: null
@@ -21,64 +24,72 @@ Item
     signal wordListRequested(string source)
     signal messageRequested(string message)
     signal bookRequested(string documentId)
+    signal freeBookRequested(string freeId)
+    signal openFileRequested()
 
     property bool hasLearnSession: false
     property var books: []
+    property var freeBooks: []
+    property var freeTransfers: ({})
+
+    readonly property bool continuing: root.books.length > 0
+    readonly property var startBooks: root.continuing ? [] : Shelf.startBooks(root.freeBooks, root.vocabularyTotal).slice(0, 2)
+
+    function startFreeBook(book)
+    {
+        if (book.local)
+        {
+            root.bookRequested(book.id)
+
+            return
+        }
+
+        if (root.freeTransfers[book.freeId] !== undefined)
+        {
+            return
+        }
+
+        console.info("Today: downloading free book", book.freeId)
+        root.freeBookRequested(book.freeId)
+    }
     readonly property bool hasReviewSession: root.review ? root.review.hasActiveSession : false
     readonly property bool hasDiscoverSession: root.discovery ? root.discovery.hasActiveSession : false
 
-    readonly property int wordsLeftForGoal: daily.wordsLeftForGoal
+    readonly property int wordsLeftForGoal: root.daily.wordsLeftForGoal
 
-    readonly property int reviewCount: root.hasReviewSession ? root.review.cardCount : daily.dueCount
+    readonly property int reviewCount: root.hasReviewSession ? root.review.cardCount : root.daily.dueCount
 
     readonly property bool sentencesReady: !!root.sentences
         && (root.sentences.savedExercises.length > 0 || root.sentences.unlocked)
 
     readonly property Item goalRing: ring
-    readonly property int dailyGoal: daily.dailyGoal
-    readonly property int doneToday: daily.learnedToday
-    readonly property real goalRatio: daily.dailyGoal > 0 ? Math.min(root.doneToday / daily.dailyGoal, 1.0) : 0.0
+    readonly property int dailyGoal: root.daily.dailyGoal
+    readonly property int doneToday: root.daily.learnedToday
+    readonly property real goalRatio: root.daily.dailyGoal > 0 ? Math.min(root.doneToday / root.daily.dailyGoal, 1.0) : 0.0
 
-    readonly property bool reviewDone: !root.hasReviewSession && daily.dueCount === 0
+    readonly property bool reviewDone: !root.hasReviewSession && root.daily.dueCount === 0
     readonly property bool hasLearnGoal: root.dailyGoal > 0
     readonly property bool learnDone: !root.hasLearnGoal || root.goalRatio >= 1
-    readonly property int reviewTotal: daily.reviewedToday + daily.dueCount
-    readonly property real reviewRatio: root.reviewTotal > 0 ? daily.reviewedToday / root.reviewTotal : 1.0
+    readonly property int reviewTotal: root.daily.reviewedToday + root.daily.dueCount
+    readonly property real reviewRatio: root.reviewTotal > 0 ? root.daily.reviewedToday / root.reviewTotal : 1.0
     readonly property bool hasReviewGoal: root.reviewTotal > 0
-    readonly property int ringDone: root.hasLearnGoal ? root.doneToday : daily.reviewedToday
+    readonly property int ringDone: root.hasLearnGoal ? root.doneToday : root.daily.reviewedToday
     readonly property int ringGoal: root.hasLearnGoal ? root.dailyGoal : root.reviewTotal
 
-    readonly property var comingDays: daily.reviewTimeline.filter(Day => Day.daysFromToday > 0).slice(0, 4)
+    readonly property var comingDays: root.daily.reviewTimeline.filter(Day => Day.daysFromToday > 0).slice(0, 4)
 
-    readonly property int vocabularyTotal: daily.ladder.reduce((Sum, Entry) => Sum + Entry.count, 0)
-
-    readonly property bool conjugationReady: root.formsTrainings.some(Training => Training.key === "conjugation" && Training.ready)
-
-    readonly property string nextPractice:
-    {
-        if (!root.reviewDone || !root.learnDone)
-        {
-            return ""
-        }
-
-        if (root.conjugationReady)
-        {
-            return "conjugation"
-        }
-
-        return root.sentencesReady ? "sentences" : ""
-    }
+    readonly property int vocabularyTotal: root.daily.ladder.reduce((Sum, Entry) => Sum + Entry.count, 0)
 
     function weekdayIndex()
     {
-        return daily.weekday - Qt.Monday
+        return root.daily.weekday - Qt.Monday
     }
 
     readonly property int learnedThisWeek:
     {
         const todayIndex = root.weekdayIndex()
 
-        return daily.recentProgress.filter(Entry => Entry.daysAgo <= todayIndex)
+        return root.daily.recentProgress.filter(Entry => Entry.daysAgo <= todayIndex)
                                    .reduce((Sum, Entry) => Sum + Entry.learnedCount, 0)
     }
 
@@ -91,7 +102,7 @@ Item
         for (let index = 0; index < 7; ++index)
         {
             const today = index === todayIndex
-            const recorded = daily.recentProgress.find(Entry => Entry.daysAgo === todayIndex - index)
+            const recorded = root.daily.recentProgress.find(Entry => Entry.daysAgo === todayIndex - index)
 
             days.push({
                 name: locale.dayName((Qt.Monday + index) % 7, Locale.ShortFormat),
@@ -106,6 +117,7 @@ Item
     }
 
     property var formsTrainings: []
+    property var formsTrainingKeys: []
 
     readonly property var formsTrainingKinds: [
         { key: "conjugation", icon: "session_conjugation", label: qsTr("Conjugations"),
@@ -122,7 +134,7 @@ Item
 
         for (const kind of root.formsTrainingKinds)
         {
-            const trainingId = daily.formsTrainingId(kind.key)
+            const trainingId = root.daily.formsTrainingId(kind.key)
 
             if (trainingId.length === 0)
             {
@@ -138,19 +150,31 @@ Item
                 resumable: resumable,
                 lockedCaption: kind.lockedCaption,
                 blockedReason: kind.blockedReason,
-                wordCount: daily.formsWordCount(trainingId),
-                ready: resumable || daily.canStartFormsTraining(trainingId)
+                wordCount: root.daily.formsWordCount(trainingId),
+                ready: resumable || root.daily.canStartFormsTraining(trainingId)
             })
         }
 
         return offered
     }
 
+    function applyFormsTrainings(offered)
+    {
+        const keys = offered.map(Training => Training.key)
+
+        root.formsTrainings = offered
+
+        if (JSON.stringify(keys) !== JSON.stringify(root.formsTrainingKeys))
+        {
+            root.formsTrainingKeys = keys
+        }
+    }
+
     function refresh()
     {
-        daily.refresh()
+        root.daily.refresh()
         root.hasLearnSession = root.training ? root.training.hasSessionFor(root.training.vocabularyKey) : false
-        root.formsTrainings = root.listFormsTrainings()
+        root.applyFormsTrainings(root.listFormsTrainings())
 
         if (root.sentences)
         {
@@ -172,7 +196,7 @@ Item
         {
             const tile = formsTiles.itemAt(index)
 
-            if (tile && tile.modelData.key === key)
+            if (tile && tile.modelData === key)
             {
                 return tile
             }
@@ -254,7 +278,7 @@ Item
             return qsTr("Tomorrow")
         }
 
-        const date = new Date(daily.learningDate)
+        const date = new Date(root.daily.learningDate)
         date.setDate(date.getDate() + daysFromToday)
 
         return Qt.locale(AppLocalization.localeName).toString(date, "dddd")
@@ -262,7 +286,7 @@ Item
 
     function shortDayLabel(daysFromToday)
     {
-        const date = new Date(daily.learningDate)
+        const date = new Date(root.daily.learningDate)
         date.setDate(date.getDate() + daysFromToday)
 
         return Qt.locale(AppLocalization.localeName).toString(date, "ddd")
@@ -288,7 +312,7 @@ Item
         function onStateChanged()
         {
             root.hasLearnSession = root.training.hasSessionFor(root.training.vocabularyKey)
-            root.formsTrainings = root.listFormsTrainings()
+            root.applyFormsTrainings(root.listFormsTrainings())
         }
     }
 
@@ -304,11 +328,11 @@ Item
         AppSoundEffects.celebrateDailyGoal()
     }
 
-    DailySessionController
+    Connections
     {
-        id: daily
+        target: root.daily
 
-        onFormsCountsChanged: root.formsTrainings = root.listFormsTrainings()
+        function onFormsCountsChanged() { root.applyFormsTrainings(root.listFormsTrainings()) }
     }
 
     Rectangle
@@ -520,12 +544,12 @@ Item
                         dotColour: AppTheme.colourAccent
                         text: root.hasReviewSession ? qsTr("Continue") : qsTr("Review")
                         caption: root.reviewDone ? qsTr("Done for today") : ""
-                        count: daily.dueCount.toString()
+                        count: root.daily.dueCount.toString()
                         completed: root.reviewDone
                         blocked: root.reviewDone
 
                         onActivated: root.reviewRequested()
-                        onBlockedClicked: root.messageRequested(daily.reviewedToday > 0 ? qsTr("All reviewed for today")
+                        onBlockedClicked: root.messageRequested(root.daily.reviewedToday > 0 ? qsTr("All reviewed for today")
                                                                                         : qsTr("Nothing is due for review yet"))
                     }
 
@@ -545,7 +569,7 @@ Item
                                  : root.learnDone ? qsTr("Goal reached")
                                  : (root.hasLearnSession ? qsTr("%1 of %2 learned").arg(root.doneToday).arg(root.dailyGoal) : "")
                         count: root.hasLearnSession ? root.training.wordCountFor(root.training.vocabularyKey).toString()
-                                                   : (root.hasLearnGoal ? daily.wordsLeftForGoal.toString() : "")
+                                                   : (root.hasLearnGoal ? root.daily.wordsLeftForGoal.toString() : "")
                         completed: !root.hasLearnSession && root.hasLearnGoal && root.learnDone
 
                         onActivated: root.learnRequested()
@@ -578,9 +602,12 @@ Item
                         primary: root.hasDiscoverSession
                         iconName: "nav_decks"
                         text: qsTr("Discover")
-                        caption: root.hasDiscoverSession ? qsTr("Continue") : qsTr("Find new words")
+                        caption: !DecksController.categorised ? DecksController.discoverBlockedReason
+                               : root.hasDiscoverSession ? qsTr("Continue") : qsTr("Find new words")
+                        blocked: !DecksController.categorised
 
                         onActivated: root.discoverRequested()
+                        onBlockedClicked: root.messageRequested(DecksController.discoverBlockedReason)
                     }
 
                     DesktopSessionTile
@@ -593,7 +620,7 @@ Item
                         Layout.bottomMargin: root.formsTrainings.length > 0 ? 0 : AppMetrics.gapSmall
 
                         compact: true
-                        primary: (root.sentences && root.sentences.savedExercises.length > 0) || root.nextPractice === "sentences"
+                        primary: !!root.sentences && root.sentences.savedExercises.length > 0
                         iconName: "session_sentences"
                         text: qsTr("Sentences")
                         caption: root.sentencesCaption()
@@ -610,28 +637,30 @@ Item
                     {
                         id: formsTiles
 
-                        model: root.formsTrainings
+                        model: root.formsTrainingKeys
 
                         delegate: DesktopSessionTile
                         {
-                            required property var modelData
+                            required property string modelData
                             required property int index
 
-                            objectName: "today_" + modelData.key
+                            readonly property var training: root.formsTrainings.find(Training => Training.key === modelData) || ({})
+
+                            objectName: "today_" + modelData
 
                             Layout.preferredHeight: sessions.unit
                             Layout.bottomMargin: index === root.formsTrainings.length - 1 ? AppMetrics.gapSmall : 0
 
                             compact: true
-                            primary: modelData.resumable || root.nextPractice === modelData.key
-                            iconName: modelData.icon
-                            text: modelData.label
-                            caption: root.formsCaption(modelData)
-                            count: root.formsCount(modelData)
-                            blocked: !modelData.ready
+                            primary: !!training.resumable
+                            iconName: training.icon || ""
+                            text: training.label || ""
+                            caption: root.formsCaption(training)
+                            count: root.formsCount(training)
+                            blocked: !training.ready
 
-                            onActivated: root.formsTrainingRequested(modelData.key)
-                            onBlockedClicked: root.messageRequested(modelData.blockedReason)
+                            onActivated: root.formsTrainingRequested(modelData)
+                            onBlockedClicked: root.messageRequested(training.blockedReason)
                         }
                     }
 
@@ -672,7 +701,7 @@ Item
                         {
                             anchors.verticalCenter: parent.verticalCenter
                             width: parent.width
-                            text: qsTr("Continue reading")
+                            text: root.continuing ? qsTr("Continue reading") : qsTr("Start reading")
                         }
                     }
 
@@ -690,15 +719,63 @@ Item
 
                                 required property int index
 
-                                readonly property var book: bookSlot.index < root.books.length ? root.books[bookSlot.index] : null
+                                readonly property var book: root.continuing && bookSlot.index < root.books.length ? root.books[bookSlot.index] : null
+                                readonly property var freeBook: bookSlot.index < root.startBooks.length ? root.startBooks[bookSlot.index] : null
+                                readonly property bool opensFile: !root.continuing && bookSlot.freeBook === null
+                                readonly property bool wide: bookSlot.opensFile && root.startBooks.length === 0
+                                readonly property real downloadProgress:
+                                {
+                                    if (bookSlot.freeBook === null || bookSlot.freeBook.local)
+                                    {
+                                        return -1
+                                    }
 
-                                Layout.preferredWidth: board.bookWidth
+                                    const value = root.freeTransfers[bookSlot.freeBook.freeId]
+
+                                    return value === undefined ? -1 : value
+                                }
+
+                                visible: !(bookSlot.index > 0 && !root.continuing && root.startBooks.length === 0)
+                                Layout.preferredWidth: bookSlot.wide ? board.bookWidth * 2 + AppMetrics.todayTileGap : board.bookWidth
                                 Layout.preferredHeight: board.bookWidth / AppMetrics.todayBookAspect
 
                                 DesktopDashedBox
                                 {
                                     anchors.fill: parent
-                                    visible: bookSlot.book === null
+                                    visible: root.continuing && bookSlot.book === null
+                                }
+
+                                DesktopContinueBook
+                                {
+                                    objectName: "today_start_book_" + bookSlot.index
+
+                                    anchors.fill: parent
+                                    visible: bookSlot.freeBook !== null
+                                    text: bookSlot.freeBook ? bookSlot.freeBook.title : ""
+                                    author: bookSlot.freeBook ? bookSlot.freeBook.author || "" : ""
+                                    coverSource: bookSlot.freeBook ? bookSlot.freeBook.cover || "" : ""
+                                    level: bookSlot.freeBook ? Shelf.levelLabel(bookSlot.freeBook.level) || qsTr("Free book") : ""
+                                    needsDownload: bookSlot.freeBook ? !bookSlot.freeBook.local : false
+                                    downloadProgress: bookSlot.downloadProgress
+
+                                    onClicked: root.startFreeBook(bookSlot.freeBook)
+                                }
+
+                                DesktopContinueBook
+                                {
+                                    objectName: "today_open_book"
+
+                                    anchors.fill: parent
+                                    visible: bookSlot.opensFile
+                                    iconName: "folder_plus"
+                                    text: qsTr("Open a book")
+                                    author: qsTr("PDF, EPUB or FB2 from your computer")
+
+                                    onClicked:
+                                    {
+                                        console.info("Today: opening a book from the computer")
+                                        root.openFileRequested()
+                                    }
                                 }
 
                                 DesktopContinueBook

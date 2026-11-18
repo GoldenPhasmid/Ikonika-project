@@ -21,7 +21,7 @@ DesktopDialog
 
         if (!tense.enabled)
         {
-            return tense.count === 0 ? qsTr("Train the present tense of a verb first")
+            return tense.count === 0 ? qsTr("No verbs available")
                                      : qsTr("%1 of %2 verbs ready").arg(tense.count).arg(tense.wanted)
         }
 
@@ -42,8 +42,7 @@ DesktopDialog
                 key: tense.key,
                 label: tense.label,
                 caption: root.describe(tense),
-                enabled: tense.enabled,
-                progress: tense.enabled ? -1 : tense.count / Math.max(1, tense.wanted)
+                enabled: tense.enabled
             }
         })
 

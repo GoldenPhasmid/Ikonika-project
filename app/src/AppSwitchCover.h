@@ -1,9 +1,12 @@
 #pragma once
 
+#include <QPointer>
+
 #include <functional>
 #include <memory>
 
-class QQmlApplicationEngine;
+class QQmlEngine;
+class QQuickItem;
 class QQuickWindow;
 
 class AppSwitchCover
@@ -17,7 +20,8 @@ public:
     void HandOver(QQuickWindow& To);
 
 private:
-    QQuickWindow* GetWindow() const;
+    void Hide();
 
-    std::unique_ptr<QQmlApplicationEngine> Engine;
+    std::unique_ptr<QQmlEngine> Engine;
+    QPointer<QQuickItem> Overlay;
 };

@@ -7,10 +7,12 @@ Item
 
     required property var store
 
+    required property VocabularyController controller
+
     property var deckId: 0
     readonly property bool deckMode: root.deckId > 0
 
-    readonly property var vocabulary: controller
+    readonly property var vocabulary: root.controller
 
     property real pendingScrollPosition: -1
 
@@ -27,7 +29,7 @@ Item
 
     function resetView()
     {
-        controller.resetView()
+        root.controller.resetView()
         searchFilterBar.searchText = ""
     }
 
@@ -38,15 +40,15 @@ Item
 
         root.pendingScrollPosition = -1
 
-        controller.refresh()
+        root.controller.refresh()
         Qt.callLater(function() { wordList.contentY = scrollPosition })
     }
 
-    VocabularyController
+    Binding
     {
-        id: controller
-
-        deckId: root.deckId
+        target: root.controller
+        property: "deckId"
+        value: root.deckId
     }
 
     readonly property var filterOptions: [
@@ -55,34 +57,34 @@ Item
         { key: "completed", label: qsTr("Learned") }
     ]
 
-    readonly property string selectedFilterKey: controller.filterKeys.length === 1 ? controller.filterKeys[0] : ""
+    readonly property string selectedFilterKey: root.controller.filterKeys.length === 1 ? root.controller.filterKeys[0] : ""
 
     property bool filterSheetOpen: false
 
     readonly property string filterLabel:
     {
-        if (controller.filterKeys.length === 0)
+        if (root.controller.filterKeys.length === 0)
         {
             return qsTr("All")
         }
 
-        if (controller.filterKeys.length === 1)
+        if (root.controller.filterKeys.length === 1)
         {
             for (const option of root.filterOptions)
             {
-                if (option.key === controller.filterKeys[0])
+                if (option.key === root.controller.filterKeys[0])
                 {
                     return option.label
                 }
             }
         }
 
-        return qsTr("%n selected", "", controller.filterKeys.length)
+        return qsTr("%n selected", "", root.controller.filterKeys.length)
     }
 
     function toggleFilterKey(key)
     {
-        const next = controller.filterKeys.slice()
+        const next = root.controller.filterKeys.slice()
         const index = next.indexOf(key)
 
         if (index >= 0)
@@ -94,7 +96,7 @@ Item
             next.push(key)
         }
 
-        controller.filterKeys = next
+        root.controller.filterKeys = next
     }
 
     readonly property var sortOptions: root.deckMode ? [
@@ -115,9 +117,9 @@ Item
     {
         for (const option of root.sortOptions)
         {
-            if (option.key === controller.sortKey)
+            if (option.key === root.controller.sortKey)
             {
-                return controller.sortDescending ? option.inverted : option.primary
+                return root.controller.sortDescending ? option.inverted : option.primary
             }
         }
 
@@ -128,7 +130,7 @@ Item
     {
         const rows = []
 
-        for (const card of controller.visibleCards)
+        for (const card of root.controller.visibleCards)
         {
             const row = {
                 word: card.word,
@@ -160,7 +162,7 @@ Item
 
         activeTab: root.deckMode ? "decks" : "vocabulary"
         contentMaximumWidth: root.deckMode ? Number.POSITIVE_INFINITY : 672
-        headerTitle: root.deckMode ? controller.deckName : qsTr("My Vocabulary")
+        headerTitle: root.deckMode ? root.controller.deckName : qsTr("My Vocabulary")
         showBack: root.deckMode
         showSearch: true
         showTabBar: true
@@ -192,31 +194,31 @@ Item
                 filterLabel: root.filterLabel
                 showFilter: false
                 sortLabel: root.sortLabel
-                counterText: qsTr("%n words", "", controller.filteredCount)
+                counterText: qsTr("%n words", "", root.controller.filteredCount)
 
-                onSearchTextChanged: controller.search = searchText + searchPreeditText
-                onSearchPreeditTextChanged: controller.search = searchText + searchPreeditText
+                onSearchTextChanged: root.controller.search = searchText + searchPreeditText
+                onSearchPreeditTextChanged: root.controller.search = searchText + searchPreeditText
                 onFilterRequested: root.filterSheetOpen = true
                 onSortRequested: root.sortSheetOpen = true
 
                 MobileVocabularyBar
                 {
-                    notStartedCount: controller.notLearnedCount
-                    learningCount: controller.learningCount
-                    learnedCount: controller.learnedCount
+                    notStartedCount: root.controller.notLearnedCount
+                    learningCount: root.controller.learningCount
+                    learnedCount: root.controller.learnedCount
                     selectedKey: root.selectedFilterKey
 
                     onStageOpened: function(filterKey)
                     {
-                        controller.filterKeys = filterKey === root.selectedFilterKey ? [] : [filterKey]
+                        root.controller.filterKeys = filterKey === root.selectedFilterKey ? [] : [filterKey]
                     }
                 }
 
                 Connections
                 {
-                    target: controller
+                    target: root.controller
 
-                    function onVocabularyChanged() { searchFilterBar.searchText = controller.search }
+                    function onVocabularyChanged() { searchFilterBar.searchText = root.controller.search }
                 }
             }
 
@@ -237,7 +239,7 @@ Item
 
                 onWordClicked: function(index)
                 {
-                    const card = controller.visibleCards[index]
+                    const card = root.controller.visibleCards[index]
 
                     if (!card.inVocabulary)
                     {
@@ -253,18 +255,18 @@ Item
 
                 onLookRequested: function(index)
                 {
-                    const card = controller.visibleCards[index]
+                    const card = root.controller.visibleCards[index]
                     root.wordOpened(card.targetWord, card.partOfSpeech)
                 }
 
                 onVoicePlayRequested: function(index)
                 {
-                    controller.speakWord(controller.visibleCards[index].targetWord)
+                    root.controller.speakWord(root.controller.visibleCards[index].targetWord)
                 }
 
                 onEditRequested: function(index)
                 {
-                    const card = controller.visibleCards[index]
+                    const card = root.controller.visibleCards[index]
                     root.pendingScrollPosition = wordList.contentY
                     root.editWordRequested(card.id, card.targetWord, card.translation,
                                            card.gender, card.partOfSpeech, card.box)
@@ -272,10 +274,10 @@ Item
 
                 onDeleteRequested: function(index)
                 {
-                    const card = controller.visibleCards[index]
+                    const card = root.controller.visibleCards[index]
                     const scrollPosition = wordList.contentY
 
-                    if (controller.removeCard(card.id))
+                    if (root.controller.removeCard(card.id))
                     {
                         root.cardRemoved(card.id)
                         Qt.callLater(function() { wordList.contentY = scrollPosition })
@@ -286,7 +288,7 @@ Item
                 {
                     const scrollPosition = wordList.contentY
 
-                    controller.completeCardProgress(controller.visibleCards[index].id)
+                    root.controller.completeCardProgress(root.controller.visibleCards[index].id)
                     Qt.callLater(function() { wordList.contentY = scrollPosition })
                 }
 
@@ -294,7 +296,7 @@ Item
                 {
                     const scrollPosition = wordList.contentY
 
-                    controller.resetCardProgress(controller.visibleCards[index].id)
+                    root.controller.resetCardProgress(root.controller.visibleCards[index].id)
                     Qt.callLater(function() { wordList.contentY = scrollPosition })
                 }
             }
@@ -316,7 +318,7 @@ Item
                 visible: root.deckMode
 
                 label: qsTr("Learn")
-                interactive: controller.deckNewCount > 0
+                interactive: root.controller.deckNewCount > 0
 
                 onClicked: root.learnRequested(root.deckId)
             }
@@ -354,11 +356,11 @@ Item
             sourceComponent: MobileFilterSheet
             {
                 model: root.filterOptions
-                selectedKeys: controller.filterKeys
+                selectedKeys: root.controller.filterKeys
 
                 onDismissed: root.filterSheetOpen = false
                 onToggled: function(key) { root.toggleFilterKey(key) }
-                onCleared: controller.filterKeys = []
+                onCleared: root.controller.filterKeys = []
             }
         }
 
@@ -374,15 +376,15 @@ Item
             sourceComponent: MobileSortSheet
             {
                 model: root.sortOptions
-                currentKey: controller.sortKey
-                descending: controller.sortDescending
+                currentKey: root.controller.sortKey
+                descending: root.controller.sortDescending
 
                 onDismissed: root.sortSheetOpen = false
 
                 onChosen: function(key, desc)
                 {
-                    controller.sortKey = key
-                    controller.sortDescending = desc
+                    root.controller.sortKey = key
+                    root.controller.sortDescending = desc
                 }
             }
         }

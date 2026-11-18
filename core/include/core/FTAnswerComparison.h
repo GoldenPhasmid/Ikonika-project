@@ -44,6 +44,8 @@ EFTAnswerGrade CompareAnswer(std::string_view Given,
 
 std::string NormalizeAnswer(std::string_view Text, const FTAnswerComparisonRules& Rules = {});
 
+std::string ExpandLigatures(std::string_view Text);
+
 /**
  * The translation without the reading aid the interface puts in front of it: "to need" and "the
  * need" both become "need".

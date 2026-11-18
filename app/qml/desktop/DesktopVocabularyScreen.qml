@@ -6,17 +6,20 @@ Item
 {
     id: root
 
+    required property DictionaryController cardDictionary
     required property var store
+
+    required property VocabularyController controller
 
     property var deckId: 0
     readonly property bool deckMode: root.deckId > 0
 
-    readonly property alias vocabulary: controller
+    readonly property alias vocabulary: root.controller
 
     property int selectedIndex: -1
 
-    readonly property var selectedCard: root.selectedIndex >= 0 && root.selectedIndex < controller.visibleCards.length
-        ? controller.visibleCards[root.selectedIndex] : null
+    readonly property var selectedCard: root.selectedIndex >= 0 && root.selectedIndex < root.controller.visibleCards.length
+        ? root.controller.visibleCards[root.selectedIndex] : null
     readonly property bool selectedInVocabulary: root.selectedCard !== null && root.selectedCard.inVocabulary
 
     signal dictionaryRequested(string word, string partOfSpeech)
@@ -37,9 +40,9 @@ Item
     {
         for (const option of root.sortOptions)
         {
-            if (option.key === controller.sortKey)
+            if (option.key === root.controller.sortKey)
             {
-                return controller.sortDescending ? option.inverted : option.primary
+                return root.controller.sortDescending ? option.inverted : option.primary
             }
         }
 
@@ -48,10 +51,26 @@ Item
 
     function resetView()
     {
-        controller.resetView()
+        root.controller.resetView()
         searchField.text = ""
-        root.selectedIndex = controller.visibleCards.length > 0 ? 0 : -1
+        root.selectedIndex = root.controller.visibleCards.length > 0 ? 0 : -1
         root.showSelected()
+    }
+
+    function focusEntry(word, partOfSpeech)
+    {
+        if (word.length === 0)
+        {
+            return
+        }
+
+        searchField.text = word
+
+        const cards = root.controller.visibleCards
+        const exact = cards.findIndex(Card => Card.targetWord === word && Card.partOfSpeech === partOfSpeech)
+        const sameWord = cards.findIndex(Card => Card.targetWord === word)
+
+        root.select(exact >= 0 ? exact : sameWord)
     }
 
     function refresh()
@@ -59,7 +78,7 @@ Item
         const keptId = root.selectedCard ? root.selectedCard.id : ""
         const scrollPosition = list.contentY
 
-        controller.refresh()
+        root.controller.refresh()
 
         root.reselect(keptId)
         root.showSelected(true)
@@ -68,9 +87,9 @@ Item
 
     function reselect(cardId)
     {
-        const found = controller.visibleCards.findIndex(Card => Card.id === cardId)
+        const found = root.controller.visibleCards.findIndex(Card => Card.id === cardId)
 
-        root.selectedIndex = found >= 0 ? found : Math.min(root.selectedIndex, controller.visibleCards.length - 1)
+        root.selectedIndex = found >= 0 ? found : Math.min(root.selectedIndex, root.controller.visibleCards.length - 1)
         root.showSelected()
     }
 
@@ -81,7 +100,7 @@ Item
 
     function select(index)
     {
-        if (index < 0 || index >= controller.visibleCards.length)
+        if (index < 0 || index >= root.controller.visibleCards.length)
         {
             return
         }
@@ -105,33 +124,41 @@ Item
 
     function removeCard(cardId)
     {
-        if (controller.removeCard(cardId))
+        if (root.controller.removeCard(cardId))
         {
             root.cardRemoved(cardId)
             root.reselect("")
         }
     }
 
-    VocabularyController
+    Binding
     {
-        id: controller
+        target: root.controller
+        property: "deckId"
+        value: root.deckId
+    }
 
-        deckId: root.deckId
+    Connections
+    {
+        target: root.controller
 
-        onViewChanged: Qt.callLater(function()
+        function onViewChanged()
         {
-            if (root.selectedIndex >= controller.visibleCards.length)
+            Qt.callLater(function()
             {
-                root.selectedIndex = controller.visibleCards.length - 1
-            }
+                if (root.selectedIndex >= root.controller.visibleCards.length)
+                {
+                    root.selectedIndex = root.controller.visibleCards.length - 1
+                }
 
-            if (root.selectedIndex < 0 && controller.visibleCards.length > 0)
-            {
-                root.selectedIndex = 0
-            }
+                if (root.selectedIndex < 0 && root.controller.visibleCards.length > 0)
+                {
+                    root.selectedIndex = 0
+                }
 
-            root.showSelected()
-        })
+                root.showSelected()
+            })
+        }
     }
 
     DesktopSidePane
@@ -151,9 +178,9 @@ Item
             objectName: "vocabulary_search"
 
             Layout.fillWidth: true
-            placeholderText: root.deckMode ? qsTr("Search %1").arg(controller.deckName) : qsTr("Search My Vocabulary")
+            placeholderText: root.deckMode ? qsTr("Search %1").arg(root.controller.deckName) : qsTr("Search My Vocabulary")
 
-            onTermChanged: controller.search = searchField.text + searchField.preeditText
+            onTermChanged: root.controller.search = searchField.text + searchField.preeditText
 
             Keys.onDownPressed: root.select(root.selectedIndex + 1)
             Keys.onUpPressed: root.select(root.selectedIndex - 1)
@@ -161,24 +188,24 @@ Item
 
             Connections
             {
-                target: controller
+                target: root.controller
 
-                function onVocabularyChanged() { searchField.text = controller.search }
+                function onVocabularyChanged() { searchField.text = root.controller.search }
             }
         }
 
         MobileVocabularyBar
         {
-            readonly property string selectedFilterKey: controller.filterKeys.length === 1 ? controller.filterKeys[0] : ""
+            readonly property string selectedFilterKey: root.controller.filterKeys.length === 1 ? root.controller.filterKeys[0] : ""
 
-            notStartedCount: controller.notLearnedCount
-            learningCount: controller.learningCount
-            learnedCount: controller.learnedCount
+            notStartedCount: root.controller.notLearnedCount
+            learningCount: root.controller.learningCount
+            learnedCount: root.controller.learnedCount
             selectedKey: selectedFilterKey
 
             onStageOpened: function(filterKey)
             {
-                controller.filterKeys = filterKey === selectedFilterKey ? [] : [filterKey]
+                root.controller.filterKeys = filterKey === selectedFilterKey ? [] : [filterKey]
             }
         }
 
@@ -190,7 +217,7 @@ Item
             DesktopLabel
             {
                 Layout.fillWidth: true
-                text: qsTr("%n words", "", controller.filteredCount)
+                text: qsTr("%n words", "", root.controller.filteredCount)
                 font.pixelSize: AppMetrics.fontSmall
                 color: AppTheme.colourMuted
             }
@@ -228,12 +255,12 @@ Item
                             {
                                 text: modelData.primary
                                 showsCheck: true
-                                selected: controller.sortKey === modelData.key && !controller.sortDescending
+                                selected: root.controller.sortKey === modelData.key && !root.controller.sortDescending
 
                                 onClicked:
                                 {
-                                    controller.sortKey = modelData.key
-                                    controller.sortDescending = false
+                                    root.controller.sortKey = modelData.key
+                                    root.controller.sortDescending = false
                                     sortPopover.close()
                                 }
                             }
@@ -242,12 +269,12 @@ Item
                             {
                                 text: modelData.inverted
                                 showsCheck: true
-                                selected: controller.sortKey === modelData.key && controller.sortDescending
+                                selected: root.controller.sortKey === modelData.key && root.controller.sortDescending
 
                                 onClicked:
                                 {
-                                    controller.sortKey = modelData.key
-                                    controller.sortDescending = true
+                                    root.controller.sortKey = modelData.key
+                                    root.controller.sortDescending = true
                                     sortPopover.close()
                                 }
                             }
@@ -267,7 +294,7 @@ Item
 
             Accessible.name: qsTr("Words in My Vocabulary")
 
-            model: controller.visibleCards
+            model: root.controller.visibleCards
 
             delegate: DesktopWordRow
             {
@@ -283,17 +310,8 @@ Item
                 maxStage: root.store.stageCount
                 selected: index === root.selectedIndex
 
-                canEdit: modelData.inVocabulary
-                canComplete: modelData.inVocabulary && !modelData.completed
-                canReset: modelData.inVocabulary && (modelData.box > 0 || modelData.completed)
-                canRemove: modelData.inVocabulary
-
                 onClicked: root.select(index)
                 onDoubleClicked: root.editCard(index)
-                onEditRequested: root.editCard(index)
-                onCompleteRequested: controller.completeCardProgress(modelData.id)
-                onResetRequested: controller.resetCardProgress(modelData.id)
-                onRemoveRequested: root.removeCardRequested(modelData.id, modelData.targetWord)
             }
         }
     }
@@ -302,15 +320,17 @@ Item
     {
         id: pane
 
+        dictionary: root.cardDictionary
+
         anchors.left: listPane.right
         anchors.right: parent.right
         anchors.top: parent.top
         anchors.bottom: parent.bottom
 
-        controller: controller
+        controller: root.controller
         card: root.selectedCard
         stageCount: root.store.stageCount
-        emptyText: controller.visibleCards.length === 0 ? qsTr("Add words to My Vocabulary from Words.")
+        emptyText: root.controller.visibleCards.length === 0 ? qsTr("Add words to My Vocabulary from Words.")
                                                          : ""
 
         onSaved: root.refresh()

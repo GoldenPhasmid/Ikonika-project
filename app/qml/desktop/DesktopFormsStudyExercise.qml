@@ -102,6 +102,9 @@ Item
         {
             Layout.fillWidth: true
             forms: root.controller ? root.controller.forms : []
+            speakable: true
+
+            onFormClicked: function(form) { root.controller.speakForm(form) }
         }
 
         controls: [

@@ -6,6 +6,8 @@ Item
 {
     id: root
 
+    required property DailySessionController daily
+
     required property var store
     property var repetition: null
     property var intensive: null
@@ -59,7 +61,7 @@ Item
 
     property var formsTrainings: []
 
-    readonly property int vocabularyTotal: daily.ladder.reduce((Sum, Entry) => Sum + Entry.count, 0)
+    readonly property int vocabularyTotal: root.daily.ladder.reduce((Sum, Entry) => Sum + Entry.count, 0)
 
     readonly property var practiceItems:
     {
@@ -132,7 +134,7 @@ Item
 
         for (const kind of root.formsTrainingKinds)
         {
-            const trainingId = daily.formsTrainingId(kind.key)
+            const trainingId = root.daily.formsTrainingId(kind.key)
 
             if (trainingId.length === 0)
             {
@@ -147,8 +149,8 @@ Item
                 label: kind.label,
                 resumable: resumable,
                 wordCount: resumable ? root.intensive.controller.wordCountFor(trainingId)
-                                     : daily.formsWordCount(trainingId),
-                ready: resumable || daily.canStartFormsTraining(trainingId)
+                                     : root.daily.formsWordCount(trainingId),
+                ready: resumable || root.daily.canStartFormsTraining(trainingId)
             })
         }
 
@@ -157,7 +159,7 @@ Item
 
     function refresh()
     {
-        daily.refresh()
+        root.daily.refresh()
         root.hasLearnSession = root.findLearnSession()
         root.formsTrainings = root.listFormsTrainings()
 
@@ -191,12 +193,12 @@ Item
         }
     }
 
-    DailySessionController
+    Connections
     {
-        id: daily
+        target: root.daily
 
-        onCountsChanged: root.publishWidget()
-        onFormsCountsChanged: root.formsTrainings = root.listFormsTrainings()
+        function onCountsChanged() { root.publishWidget() }
+        function onFormsCountsChanged() { root.formsTrainings = root.listFormsTrainings() }
     }
 
     Connections
@@ -211,21 +213,21 @@ Item
 
     function publishWidget()
     {
-        const tomorrow = daily.reviewTimeline.find(Entry => Entry.daysFromToday === 1)
+        const tomorrow = root.daily.reviewTimeline.find(Entry => Entry.daysFromToday === 1)
 
-        AppHomeWidget.publish(root.doneToday, daily.dailyGoal, daily.reviewedToday, daily.dueCount,
+        AppHomeWidget.publish(root.doneToday, root.daily.dailyGoal, root.daily.reviewedToday, root.daily.dueCount,
                               tomorrow ? tomorrow.count : 0, AppTheme.colourPanel, AppTheme.colourMuted,
                               root.reviewColour, root.learnColour)
     }
 
-    readonly property int doneToday: daily.learnedToday
+    readonly property int doneToday: root.daily.learnedToday
 
-    readonly property real goalRatio: daily.dailyGoal > 0
-        ? Math.min(root.doneToday / daily.dailyGoal, 1.0)
+    readonly property real goalRatio: root.daily.dailyGoal > 0
+        ? Math.min(root.doneToday / root.daily.dailyGoal, 1.0)
         : 0.0
 
     readonly property bool goalReached: root.goalRatio >= 1
-    readonly property bool reviewReady: root.hasReviewSession || daily.dueCount > 0
+    readonly property bool reviewReady: root.hasReviewSession || root.daily.dueCount > 0
 
     readonly property color reviewColour: AppTheme.colourAccent
     readonly property color learnColour: AppTheme.colourCorrect
@@ -233,13 +235,13 @@ Item
     readonly property var weekDays:
     {
         const locale = Qt.locale(AppLocalization.localeName)
-        const todayIndex = daily.weekday - Qt.Monday
+        const todayIndex = root.daily.weekday - Qt.Monday
         const days = []
 
         for (let index = 0; index < 7; ++index)
         {
             const today = index === todayIndex
-            const recorded = daily.recentProgress.find(Entry => Entry.daysAgo === todayIndex - index)
+            const recorded = root.daily.recentProgress.find(Entry => Entry.daysAgo === todayIndex - index)
 
             days.push({
                 letter: locale.dayName((Qt.Monday + index) % 7, Locale.NarrowFormat),
@@ -253,10 +255,10 @@ Item
         return days
     }
 
-    readonly property int reviewTotal: daily.reviewedToday + daily.dueCount
-    readonly property int dueCount: daily.dueCount
-    readonly property int wordsLeftForGoal: daily.wordsLeftForGoal
-    readonly property real reviewRatio: root.reviewTotal > 0 ? daily.reviewedToday / root.reviewTotal : 1.0
+    readonly property int reviewTotal: root.daily.reviewedToday + root.daily.dueCount
+    readonly property int dueCount: root.daily.dueCount
+    readonly property int wordsLeftForGoal: root.daily.wordsLeftForGoal
+    readonly property real reviewRatio: root.reviewTotal > 0 ? root.daily.reviewedToday / root.reviewTotal : 1.0
 
     property int shownDoneToday: root.doneToday
     property real shownGoalRatio: root.goalRatio
@@ -395,14 +397,14 @@ Item
                         outerProgress: root.reviewRatio
                         innerProgress: root.shownGoalRatio
                         showOuter: root.reviewTotal > 0
-                        showInner: daily.dailyGoal > 0
+                        showInner: root.daily.dailyGoal > 0
                         outerColour: root.reviewColour
                         innerColour: root.learnColour
 
                         ColumnLayout
                         {
                             anchors.centerIn: parent
-                            visible: daily.dailyGoal > 0
+                            visible: root.daily.dailyGoal > 0
                             spacing: 0
 
                             Text
@@ -418,7 +420,7 @@ Item
                             Text
                             {
                                 Layout.alignment: Qt.AlignHCenter
-                                text: qsTr("of %1").arg(daily.dailyGoal)
+                                text: qsTr("of %1").arg(root.daily.dailyGoal)
                                 font.family: AppMetrics.fontFamily
                                 font.pixelSize: AppMetrics.fontSmall
                                 color: AppTheme.colourMuted
@@ -437,8 +439,8 @@ Item
                             objectName: "today_review"
 
                             label: root.hasReviewSession ? qsTr("Continue") : qsTr("Review")
-                            remaining: daily.dueCount
-                            completed: !root.hasReviewSession && daily.dueCount === 0
+                            remaining: root.daily.dueCount
+                            completed: !root.hasReviewSession && root.daily.dueCount === 0
                             accent: root.reviewColour
                             interactive: root.reviewReady
 
@@ -451,8 +453,8 @@ Item
 
                             label: root.hasLearnSession ? qsTr("Continue") : qsTr("Learn")
                             remaining: root.hasLearnSession ? root.intensive.controller.wordCountFor(root.intensive.controller.vocabularyKey)
-                                                           : Math.max(daily.dailyGoal - root.shownDoneToday, 0)
-                            showRemaining: root.hasLearnSession || daily.dailyGoal > 0
+                                                           : Math.max(root.daily.dailyGoal - root.shownDoneToday, 0)
+                            showRemaining: root.hasLearnSession || root.daily.dailyGoal > 0
                             completed: !root.hasLearnSession && root.goalReached
                             accent: root.learnColour
 
@@ -468,9 +470,11 @@ Item
                     readonly property bool resumable: !!root.discovery && root.discovery.hasActiveSession
 
                     filled: resumable
+                    interactive: DecksController.categorised
                     iconSvg: Icons.Icons.nav_decks.path
                     label: qsTr("Discover")
-                    caption: resumable ? qsTr("Continue") : qsTr("Find new words")
+                    caption: !DecksController.categorised ? DecksController.discoverBlockedReason
+                           : resumable ? qsTr("Continue") : qsTr("Find new words")
 
                     onClicked: root.discoverRequested()
                 }
@@ -490,7 +494,7 @@ Item
 
                         Repeater
                         {
-                            model: daily.reviewTimeline.slice(0, 5)
+                            model: root.daily.reviewTimeline.slice(0, 5)
 
                             delegate: Rectangle
                             {
@@ -547,7 +551,7 @@ Item
                                         {
                                             if (modelData.daysFromToday === 0) return qsTr("Today")
 
-                                            const date = new Date(daily.learningDate)
+                                            const date = new Date(root.daily.learningDate)
                                             date.setDate(date.getDate() + modelData.daysFromToday)
 
                                             return Qt.locale(AppLocalization.localeName).toString(date, "ddd")

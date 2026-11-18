@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Layouts
+import "../TextInsertion.js" as TextInsertion
 
 Item
 {
@@ -81,7 +82,7 @@ Item
 
     function folded(word)
     {
-        return root.normalised(word).normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        return root.normalised(word).normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\u0153/g, "oe").replace(/\u00e6/g, "ae")
     }
 
     function findTile(typed, matches)
@@ -352,12 +353,6 @@ Item
 
             }
 
-            DesktopAccentBar
-            {
-                languageCode: !!root.store && root.typing && !root.buildsTranslation ? root.store.targetLanguageCode : ""
-                field: answerField
-            }
-
             Rectangle
             {
                 id: answerWell
@@ -496,6 +491,11 @@ Item
 
                             Accessible.name: qsTr("Type a word")
 
+                            function typeCharacter(character)
+                            {
+                                TextInsertion.insertAtCursor(tileInput, character)
+                            }
+
                             Keys.onSpacePressed: function(event)
                             {
                                 event.accepted = event.text === " " && !(event.modifiers & Qt.ControlModifier)
@@ -519,6 +519,13 @@ Item
                 }
             }
 
+            DesktopAccentBar
+            {
+                readonly property string nativeCode: !!root.store ? (root.store.nativeLanguageCodes[root.store.nativeLanguageIndex] ?? "") : ""
+
+                languageCode: !root.store ? "" : (root.buildsTranslation ? nativeCode : root.store.targetLanguageCode)
+                field: root.typing ? answerField : tileInput
+            }
         }
 
         controls: [

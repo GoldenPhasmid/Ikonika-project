@@ -14,7 +14,7 @@ if (IOS)
     enable_language(Swift)
 endif()
 
-set(IKONIKA_QT_COMPONENTS Qml Quick QuickControls2 Sql Widgets Network LinguistTools Pdf)
+set(IKONIKA_QT_COMPONENTS Qml Quick QuickControls2 Sql Widgets Network LinguistTools Pdf GuiPrivate ShaderTools)
 
 if (NOT IOS)
     list(APPEND IKONIKA_QT_COMPONENTS NetworkAuth)
@@ -212,6 +212,11 @@ qt_add_executable(IkonikaApp
     src/AppHeartbeat.h
     src/AppSoundEffects.cpp
     src/AppSwitchCover.cpp
+    src/AppSwitchCover.h
+    src/AppHostWindow.cpp
+    src/AppHostWindow.h
+    src/AppControllers.cpp
+    src/AppControllers.h
     src/AppSoundEffects.h
     src/AppSessionCheckpoints.cpp
     src/AppSessionCheckpoints.h
@@ -341,6 +346,7 @@ set(IKONIKA_MOBILE_QML_FILES
     qml/mobile/MobileWideButton.qml
     qml/mobile/MobileActionButton.qml
     qml/mobile/MobileToast.qml
+    qml/mobile/MobileKeyboardRelease.qml
     qml/mobile/MobileKeyboardTap.qml
     qml/mobile/MobileTextField.qml
     qml/mobile/MobileTextInput.qml
@@ -366,6 +372,7 @@ set(IKONIKA_MOBILE_QML_FILES
     qml/mobile/MobileSheetLoader.qml
     qml/mobile/MobileShake.qml
     qml/mobile/MobileScreenMotion.qml
+    qml/mobile/MobileScreenLoader.qml
     qml/mobile/MobileOptionListPanel.qml
     qml/mobile/MobileCheckbox.qml
     qml/mobile/MobileWideButtonRow.qml
@@ -380,6 +387,8 @@ set(IKONIKA_MOBILE_QML_FILES
     qml/mobile/MobileSectionLabel.qml
     qml/mobile/MobileSettingsRow.qml
     qml/mobile/MobileSettingsGroup.qml
+    qml/mobile/MobileSettingsWideRow.qml
+    qml/mobile/MobileSegmentedPill.qml
     qml/mobile/MobileSettingsToggle.qml
     qml/mobile/MobileSettingsSlider.qml
     qml/mobile/MobileSettingsTextField.qml
@@ -448,6 +457,7 @@ set(IKONIKA_MOBILE_QML_FILES
     qml/mobile/MobileSettingsSessionStages.qml
     qml/mobile/MobileSettingsSound.qml
     qml/mobile/MobileSettingsReader.qml
+    qml/mobile/MobileSettingsVolumeKeysRow.qml
     qml/mobile/MobileSettingsData.qml
     qml/mobile/MobileSettingsLanguages.qml
     qml/mobile/MobileRankBar.qml
@@ -468,8 +478,13 @@ set(IKONIKA_MOBILE_QML_FILES
     qml/mobile/MobileDeck.qml
     qml/mobile/MobileDiscoverPickScreen.qml
     qml/mobile/MobileDiscoveryScreen.qml
-    qml/mobile/MobileReaderOpen.qml
-    qml/mobile/MobileReaderBookSheet.qml
+    qml/mobile/MobileReaderBookPage.qml
+    qml/mobile/MobileReaderSectionsSheet.qml
+    qml/mobile/MobileReaderFilterSheet.qml
+    qml/mobile/MobileReaderSortSheet.qml
+    qml/mobile/MobileNameSheet.qml
+    qml/mobile/MobileActionTile.qml
+    qml/mobile/MobileIconButton.qml
     qml/mobile/MobileConfirmSheet.qml
     qml/mobile/MobileReaderPdfView.qml
     qml/mobile/MobileReaderPdfSheet.qml
@@ -497,10 +512,11 @@ set(IKONIKA_QML_FILES
     qml/TileDrag.qml
     qml/TileDragHandler.qml
     qml/Greeting.js
+    qml/TextInsertion.js
     qml/MeaningPicks.js
     qml/WelcomeScreen.qml
     qml/Main.qml
-    qml/SwitchingScreen.qml
+    qml/SwitchingOverlay.qml
     qml/LoadingScreen.qml
     qml/MetaLabel.qml
     qml/PracticeSelection.qml
@@ -533,6 +549,8 @@ set(IKONIKA_QML_FILES
     qml/desktop/DesktopDecksScreen.qml
     qml/desktop/DesktopDeckTile.qml
     qml/desktop/DesktopTileBackground.qml
+    qml/desktop/DesktopTileSheen.qml
+    qml/desktop/DesktopTileShadow.qml
     qml/desktop/DesktopDeleteDataDialog.qml
     qml/desktop/DesktopDialog.qml
     qml/desktop/DesktopDictionaryEntry.qml
@@ -654,6 +672,7 @@ set(IKONIKA_QML_FILES
     qml/desktop/DesktopSettingsReminders.qml
     qml/desktop/DesktopSettingsRow.qml
     qml/desktop/DesktopSettingsScreen.qml
+    qml/desktop/DesktopSegmentedPill.qml
     qml/desktop/DesktopSettingsSessionStages.qml
     qml/desktop/DesktopSettingsSlider.qml
     qml/desktop/DesktopSettingsSound.qml
@@ -752,6 +771,12 @@ qt_add_resources(IkonikaApp "icons"
     FILES icons/AppIcon.png icons/AppIconHover.png
 )
 
+qt_add_shaders(IkonikaApp "shaders"
+    PREFIX "/"
+    BASE ${CMAKE_CURRENT_SOURCE_DIR}
+    FILES ${CMAKE_CURRENT_SOURCE_DIR}/shaders/TileSheen.frag
+)
+
 qt_add_resources(IkonikaApp "fonts"
     PREFIX "/fonts"
     BASE fonts
@@ -810,6 +835,7 @@ target_compile_definitions(IkonikaApp PRIVATE
 target_link_libraries(IkonikaApp PRIVATE
     core
     miniz
+    Qt6::GuiPrivate
     Qt6::Quick
     Qt6::QuickControls2
     Qt6::Widgets
@@ -861,7 +887,7 @@ if (IOS)
         MACOSX_BUNDLE_SHORT_VERSION_STRING "${PROJECT_VERSION}"
         MACOSX_BUNDLE_BUNDLE_VERSION "${IKONIKA_IOS_BUILD_NUMBER}"
         XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER "com.goldenphasmid.ikonika"
-        XCODE_ATTRIBUTE_TARGETED_DEVICE_FAMILY "1"
+        XCODE_ATTRIBUTE_TARGETED_DEVICE_FAMILY "1,2"
         Swift_LANGUAGE_VERSION 5.0
         XCODE_ATTRIBUTE_SWIFT_VERSION 5.0
         XCODE_ATTRIBUTE_ASSETCATALOG_COMPILER_APPICON_NAME AppIcon

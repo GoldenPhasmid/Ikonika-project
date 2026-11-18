@@ -75,6 +75,15 @@ std::vector<FTCardHandle> FTScheduleManager::LoadDueCardsForToday(FTDayNumber To
     return Cards;
 }
 
+int FTScheduleManager::CountDueCardsForToday(FTDayNumber Today)
+{
+    std::vector<FTCardHandle> Cards = Repository.LoadDueCards(Today);
+
+    ApplyExpiryToAll(Repository, Cards, Today);
+
+    return static_cast<int>(Cards.size());
+}
+
 int FTScheduleManager::ReportSessionOutcomes(const std::vector<FTRepetitionOutcome>& Outcomes,
                                              FTDayNumber Today)
 {

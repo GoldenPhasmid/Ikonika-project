@@ -4,6 +4,7 @@ Item
 {
     id: root
 
+    required property DictionaryController explainLookup
     required property var controller
 
     property var store: null
@@ -29,7 +30,7 @@ Item
 
         root.explainedWord = word
         root.explainPending = true
-        explainLookup.search(word)
+        root.explainLookup.search(word)
     }
 
     function closeExplanation()
@@ -49,11 +50,11 @@ Item
         }
     }
 
-    DictionaryController
+    Connections
     {
-        id: explainLookup
+        target: root.explainLookup
 
-        onResultsChanged:
+        function onResultsChanged()
         {
             if (root.explainPending)
             {
@@ -134,7 +135,6 @@ Item
         {
             exerciseName: qsTr("Missing word")
             sentenceText: true
-            manualAdvance: true
         }
 
         Binding
@@ -224,7 +224,7 @@ Item
 
         sourceComponent: MobileWordExplainSheet
         {
-            lookup: explainLookup
+            lookup: root.explainLookup
             word: root.explainedWord
             maxStage: root.store ? root.store.stageCount : 0
 

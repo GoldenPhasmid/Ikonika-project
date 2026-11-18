@@ -75,7 +75,7 @@ Item
 
     function folded(word)
     {
-        return root.normalised(word).normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        return root.normalised(word).normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\u0153/g, "oe").replace(/\u00e6/g, "ae")
     }
 
     function findTile(typed, matches)
@@ -345,9 +345,9 @@ Item
                     id: answerField
 
                     visible: root.typing
-                    focus: root.visible && root.typing && root.awaiting
+                    focus: root.visible && root.typing && !root.finished
                     placeholderText: qsTr("Type the sentence...")
-                    readOnly: !root.awaiting
+                    locked: !root.awaiting
                     marked: root.revealed
                     correct: !!root.controller && root.controller.lastAnswerCorrect
 

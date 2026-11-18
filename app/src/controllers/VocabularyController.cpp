@@ -24,6 +24,19 @@
 VocabularyController::VocabularyController(QObject* Parent)
     : QObject(Parent)
 {
+    connect(&AppDictionary::Notifier(), &AppDictionaryNotifier::languagesChanged, this,
+            &VocabularyController::HandleLanguagesChanged);
+
+    Load();
+}
+
+void VocabularyController::HandleLanguagesChanged()
+{
+    qCInfo(LogApp) << "Vocabulary: languages changed, dropping deck" << DeckId;
+
+    DeckId = 0;
+
+    ClearView();
     Load();
 }
 
@@ -146,6 +159,7 @@ bool VocabularyController::addCard(const QString& Word, const QString& Translati
     Load();
 
     emit cardAdded(QString::fromStdString(*Added));
+    emit AppCards::Notifier().cardAdded(QString::fromStdString(*Added));
 
     return true;
 }

@@ -16,6 +16,7 @@ class DailySessionController : public QObject
 {
     Q_OBJECT
     QML_ELEMENT
+    QML_UNCREATABLE("The screens are given their controllers")
 
     Q_PROPERTY(QDate learningDate READ GetLearningDate NOTIFY countsChanged)
     Q_PROPERTY(int weekday READ GetWeekday NOTIFY countsChanged)

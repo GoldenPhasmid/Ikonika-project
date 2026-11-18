@@ -54,6 +54,11 @@ namespace
     constexpr const char* VoiceNameKey = "audio/voiceName";
     constexpr const char* SpeakerKey = "audio/speaker";
 
+    QString PreferredVoiceKey(const QString& LanguageCode)
+    {
+        return QStringLiteral("audio/preferredVoice/") + LanguageCode;
+    }
+
     constexpr unsigned long PlaybackPollMs = 50;
     constexpr unsigned long NarrationPollMs = 20;
 }
@@ -93,6 +98,7 @@ void AppSpeechService::ReloadFromSettings()
         if (Service.IsAvailable())
         {
             Service.SetActiveVoice(FindSavedVoice());
+            ApplyPreferredVoices();
         }
 
         Service.SetSpeakerId(Speaker);
@@ -115,18 +121,6 @@ bool AppSpeechService::LoadVoices()
 {
     std::vector<FTVoiceModel> Models{Service.CreateVoiceModels(DiscoverModelDirectories())};
 
-    std::erase_if(Models, [](const FTVoiceModel& Model)
-    {
-        if (Model.Synthesizer.GetEngine() == SupertonicEngine)
-        {
-            return false;
-        }
-
-        qCInfo(LogSpeech) << "voice skipped, only Supertonic is supported:" << QString::fromStdString(Model.Directory);
-
-        return true;
-    });
-
     const QSettings Settings(FTSettings::Get().OpenStore());
     const QMutexLocker Lock(&StateMutex);
 
@@ -139,8 +133,64 @@ bool AppSpeechService::LoadVoices()
 
     Service.SetActiveVoice(FindSavedVoice());
     Service.SetSpeakerId(Settings.value(SpeakerKey, 0).toInt());
+    ApplyPreferredVoices();
 
     return true;
+}
+
+void AppSpeechService::ApplyPreferredVoices()
+{
+    const QSettings Settings(FTSettings::Get().OpenStore());
+
+    for (int Index = 0; Index < Service.GetVoiceCount(); ++Index)
+    {
+        const FTVoiceInfo Info{Service.GetVoiceInfo(Index)};
+
+        if (Info.Engine == SupertonicEngine)
+        {
+            continue;
+        }
+
+        for (const std::string& Language : Info.Languages)
+        {
+            const QString LanguageCode{QString::fromStdString(Language)};
+            const int Preferred{FindVoiceByName(Settings.value(PreferredVoiceKey(LanguageCode)).toString())};
+
+            Service.SetPreferredVoice(Language, Preferred);
+
+            if (Preferred >= 0)
+            {
+                qCInfo(LogSpeech) << "preferred voice for" << LanguageCode << "is"
+                                  << QString::fromStdString(Service.GetVoiceInfo(Preferred).Name);
+            }
+        }
+    }
+}
+
+void AppSpeechService::SetPreferredVoiceName(const QString& LanguageCode, const QString& Name)
+{
+    QSettings Stored(FTSettings::Get().OpenStore());
+
+    if (Name.isEmpty())
+    {
+        Stored.remove(PreferredVoiceKey(LanguageCode));
+        qCInfo(LogSpeech) << "preferred voice for" << LanguageCode << "cleared, the default voice speaks it";
+    }
+    else
+    {
+        Stored.setValue(PreferredVoiceKey(LanguageCode), Name);
+        qCInfo(LogSpeech) << "preferred voice for" << LanguageCode << "set to" << Name;
+    }
+
+    ChangeOnWorker([this, LanguageCode, Name]()
+    {
+        Service.SetPreferredVoice(LanguageCode.toStdString(), FindVoiceByName(Name));
+    });
+}
+
+QString AppSpeechService::GetPreferredVoiceName(const QString& LanguageCode) const
+{
+    return FTSettings::Get().OpenStore().value(PreferredVoiceKey(LanguageCode)).toString();
 }
 
 void AppSpeechService::ChangeOnWorker(std::function<void()> Apply)
@@ -204,6 +254,13 @@ void AppSpeechService::Unload()
 
 void AppSpeechService::SpeakNow(const FSpeechRequest& Request)
 {
+    if (bNarrationPaused)
+    {
+        qCInfo(LogSpeech) << "speech during paused read aloud drops the paused sentence";
+
+        StopNarration();
+    }
+
     const float RateScale = Request.RateScale;
     const std::string Utf8 = Request.Text.toStdString();
     const std::string Language = Request.LanguageCode.toStdString();
@@ -263,17 +320,32 @@ void AppSpeechService::SetActiveVoice(int Index)
 
 int AppSpeechService::FindSavedVoice() const
 {
-    const QString SavedName = FTSettings::Get().OpenStore().value(VoiceNameKey).toString();
+    const int Saved{FindVoiceByName(FTSettings::Get().OpenStore().value(VoiceNameKey).toString())};
+
+    if (Saved >= 0 && Service.GetVoiceInfo(Saved).Engine == SupertonicEngine)
+    {
+        return Saved;
+    }
+
+    return Service.FindFallbackVoice();
+}
+
+int AppSpeechService::FindVoiceByName(const QString& Name) const
+{
+    if (Name.isEmpty())
+    {
+        return -1;
+    }
 
     for (int Index = 0; Index < Service.GetVoiceCount(); ++Index)
     {
-        if (QString::fromStdString(Service.GetVoiceInfo(Index).Name) == SavedName)
+        if (QString::fromStdString(Service.GetVoiceInfo(Index).Name) == Name)
         {
             return Index;
         }
     }
 
-    return Service.FindFallbackVoice();
+    return -1;
 }
 
 void AppSpeechService::SetSpeed(float Value)
@@ -390,9 +462,48 @@ void AppSpeechService::StopNarration()
         NarrationRequests.clear();
     }
 
+    bNarrationPaused = false;
+
     const QMutexLocker StateLock(&StateMutex);
 
+    Service.SetNarrationPaused(false);
     Service.Stop();
+}
+
+bool AppSpeechService::PauseNarration()
+{
+    {
+        const QMutexLocker Lock(&NarrationMutex);
+
+        if (!bNarrationRunning)
+        {
+            return false;
+        }
+    }
+
+    bNarrationPaused = true;
+
+    const QMutexLocker StateLock(&StateMutex);
+
+    Service.SetNarrationPaused(true);
+
+    return true;
+}
+
+bool AppSpeechService::ResumeNarration()
+{
+    if (!bNarrationPaused)
+    {
+        return false;
+    }
+
+    bNarrationPaused = false;
+
+    const QMutexLocker StateLock(&StateMutex);
+
+    Service.SetNarrationPaused(false);
+
+    return true;
 }
 
 void AppSpeechService::RunNarration()

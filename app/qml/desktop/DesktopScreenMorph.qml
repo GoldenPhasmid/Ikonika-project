@@ -116,6 +116,14 @@ Item
             return
         }
 
+        if (!root.morphTarget || !root.morphTargetSurface)
+        {
+            console.warn("Screen morph lost the item it closes into, finishing without the flight")
+            root.finish()
+
+            return
+        }
+
         root.morphFrom = root.rectInHost(surface)
         root.morphFromColour = surface.color
         root.morphFromBorder = root.borderOf(surface)

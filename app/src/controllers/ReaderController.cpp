@@ -942,7 +942,7 @@ void ReaderController::ReadMetadata(const QVariantList& Pending)
 
         for (const QVariant& Item : Pending)
         {
-            const QVariantList Pair{Item.toList()};
+            const QVariantList Pair = Item.toList();
             const QString Id{Pair.value(0).toString()};
 
             Authors.insert(Id, ReadAuthorAndCover(Pair.value(1).toString(), Directory + QLatin1Char('/') + Id));

@@ -21,6 +21,8 @@ public:
 
     std::vector<FTCardHandle> LoadDueCardsForToday(FTDayNumber Today);
 
+    int CountDueCardsForToday(FTDayNumber Today);
+
     bool ReportReviewAnswer(FTCard Subject, bool bRemembered, FTDayNumber Today);
     
     int ReportSessionOutcomes(const std::vector<FTRepetitionOutcome>& Outcomes, FTDayNumber Today);

@@ -88,6 +88,7 @@ namespace
         FTCatalogPackage Package;
         Package.Id = ReadString(Object, "id");
         Package.Kind = ReadString(Object, "kind");
+        Package.Name = ReadString(Object, "name");
         Package.TargetLanguage = ReadString(Object, "target");
         Package.NativeLanguages = ReadStringList(Object, "natives");
         Package.FileName = ReadString(Object, "file");

@@ -27,6 +27,8 @@ public:
     Q_INVOKABLE void next();
     Q_INVOKABLE void previous();
     Q_INVOKABLE void replay();
+    Q_INVOKABLE void speakForm(const QString& Form);
+    void speakSlowly() override;
 
     Q_PROPERTY(bool canGoNext READ CanGoNext NOTIFY stateChanged)
     bool CanGoNext() const;
@@ -50,4 +52,5 @@ private:
 
     mutable std::vector<int> History;
     int HistoryPosition = -1;
+    QString SpokenForm;
 };

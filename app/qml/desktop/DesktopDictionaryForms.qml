@@ -11,6 +11,8 @@ ColumnLayout
     property string conjugationUrl: ""
     property string synonymsUrl: ""
 
+    signal formSpeakRequested(string form)
+
     onFormsChanged: root.chosenKey = root.forms.matchedKey || ""
 
     readonly property string matchDescription:
@@ -233,6 +235,9 @@ ColumnLayout
     {
         Layout.fillWidth: true
         forms: root.rows
+        speakable: root.verb
+
+        onFormClicked: function(form) { root.formSpeakRequested(form.replace(/<[^>]+>/g, "").trim()) }
     }
 
     Flow

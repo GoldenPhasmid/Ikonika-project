@@ -10,6 +10,7 @@ TextEdit
     wrapMode: TextEdit.WordWrap
 
     MobileKeyboardTap { editor: root }
+    MobileKeyboardRelease { editor: root }
 
     Text
     {
@@ -22,19 +23,5 @@ TextEdit
         font: root.font
         color: root.placeholderTextColor
         wrapMode: Text.WordWrap
-    }
-
-    Connections
-    {
-        target: Qt.inputMethod
-
-        function onVisibleChanged()
-        {
-            if (!Qt.inputMethod.visible && root.activeFocus)
-            {
-                Qt.inputMethod.reset()
-                root.focus = false
-            }
-        }
     }
 }

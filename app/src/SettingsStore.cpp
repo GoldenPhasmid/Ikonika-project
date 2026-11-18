@@ -87,6 +87,7 @@ SettingsStore::SettingsStore(QObject* Parent)
     connect(&AppCatalog::Get(), &AppCatalog::catalogChanged, this,
             &SettingsStore::webSearchChanged);
     connect(this, &SettingsStore::languagesChanged, this, &SettingsStore::languageNamesChanged);
+    connect(this, &SettingsStore::languagesChanged, this, &SettingsStore::audioSettingsChanged);
     connect(this, &SettingsStore::languagesChanged, this, &SettingsStore::webSearchChanged);
     connect(&AppLocalization::Get(), &AppLocalization::languageChanged, this,
             &SettingsStore::languageNamesChanged);
@@ -189,11 +190,135 @@ int SettingsStore::GetSpeakerCount() const
     return AppSpeech::Get().GetVoiceInfo(AppSpeech::Get().GetActiveVoice()).SpeakerCount;
 }
 
-bool SettingsStore::IsSupertonicActive() const
+QVariantList SettingsStore::GetSpeechModels() const
 {
-    const QMutexLocker Guard(&AppSpeech::Get().Lock());
+    QVariantList Result;
 
-    return AppSpeech::Get().GetVoiceInfo(AppSpeech::Get().GetActiveVoice()).Engine == SupertonicEngine;
+    for (const FSpeechModel& Model : ListSpeechModels())
+    {
+        QVariantMap Entry;
+        Entry[QStringLiteral("name")] = Model.Name;
+        Entry[QStringLiteral("packageId")] = Model.PackageId;
+        Entry[QStringLiteral("installed")] = Model.bInstalled;
+        Entry[QStringLiteral("bytes")] = Model.Bytes;
+
+        Result.append(Entry);
+    }
+
+    return Result;
+}
+
+int SettingsStore::GetSpeechModelIndex() const
+{
+    const std::vector<FSpeechModel> Models{ListSpeechModels()};
+    const QString Preferred{AppSpeech::Get().GetPreferredVoiceName(GetTargetLanguageCode())};
+
+    for (int Index = 0; Index < static_cast<int>(Models.size()); ++Index)
+    {
+        if (Models[static_cast<size_t>(Index)].VoiceName == Preferred)
+        {
+            return Index;
+        }
+    }
+
+    return 0;
+}
+
+void SettingsStore::SetSpeechModelIndex(int Value)
+{
+    const std::vector<FSpeechModel> Models{ListSpeechModels()};
+
+    if (Value < 0 || Value >= static_cast<int>(Models.size()) || Value == GetSpeechModelIndex())
+    {
+        return;
+    }
+
+    const FSpeechModel& Model{Models[static_cast<size_t>(Value)]};
+    const QString Target{GetTargetLanguageCode()};
+
+    AppSpeech::Get().SetPreferredVoiceName(Target, Model.VoiceName);
+
+    qCInfo(LogApp) << "Setting changed: text to speech model for" << Target << "->" << Model.Name;
+
+    if (!Model.bInstalled && !Model.PackageId.isEmpty())
+    {
+        qCInfo(LogApp) << "Downloading text to speech model" << Model.PackageId;
+
+        AppPackageDownloader::Get().download(Model.PackageId);
+    }
+
+    emit audioSettingsChanged();
+}
+
+bool SettingsStore::IsDefaultSpeechModelActive() const
+{
+    return GetSpeechModelIndex() == 0;
+}
+
+std::vector<SettingsStore::FSpeechModel> SettingsStore::ListSpeechModels() const
+{
+    std::vector<FSpeechModel> Models{{tr("Supertonic"), QString(), QString(), true, 0}};
+
+#if defined(IKONIKA_DESKTOP)
+    const QString Target{GetTargetLanguageCode()};
+    const std::string TargetCode{Target.toStdString()};
+
+    std::vector<FTVoiceInfo> Loaded;
+
+    {
+        const QMutexLocker Guard(&AppSpeech::Get().Lock());
+
+        for (int Index = 0; Index < AppSpeech::Get().GetVoiceCount(); ++Index)
+        {
+            FTVoiceInfo Info{AppSpeech::Get().GetVoiceInfo(Index)};
+
+            if (Info.Engine != SupertonicEngine && IsLanguageSupported(Info, TargetCode))
+            {
+                Loaded.push_back(std::move(Info));
+            }
+        }
+    }
+
+    auto IsLoaded = [&Loaded](const QString& VoiceName)
+    {
+        return std::any_of(Loaded.begin(), Loaded.end(),
+                           [&VoiceName](const FTVoiceInfo& Info) { return QString::fromStdString(Info.Name) == VoiceName; });
+    };
+
+    for (const QVariant& Item : AppCatalog::Get().GetPackages())
+    {
+        const QVariantMap Package{Item.toMap()};
+        const QString VoiceName{Package.value(QStringLiteral("unpackTo")).toString()};
+
+        if (Package.value(QStringLiteral("kind")).toString() != QLatin1String(CatalogKindVoice)
+            || Package.value(QStringLiteral("target")).toString() != Target
+            || !Package.value(QStringLiteral("compatible")).toBool()
+            || VoiceName.isEmpty())
+        {
+            continue;
+        }
+
+        const QString Id{Package.value(QStringLiteral("id")).toString()};
+        const QString Name{Package.value(QStringLiteral("name")).toString()};
+
+        Models.push_back({Name.isEmpty() ? AppCatalog::Get().describePackage(Id) : Name, VoiceName, Id,
+                          IsLoaded(VoiceName), Package.value(QStringLiteral("bytes")).toLongLong()});
+    }
+
+    for (const FTVoiceInfo& Info : Loaded)
+    {
+        const QString VoiceName{QString::fromStdString(Info.Name)};
+
+        if (std::any_of(Models.begin(), Models.end(), [&VoiceName](const FSpeechModel& Model) { return Model.VoiceName == VoiceName; }))
+        {
+            continue;
+        }
+
+        Models.push_back({QString::fromStdString(Info.Engine + " " + Info.Speaker).trimmed(), VoiceName, QString(), true, 0});
+    }
+#endif
+
+    return Models;
 }
 
 int SettingsStore::GetSpeakerId() const
@@ -501,7 +626,7 @@ QString SettingsStore::GetOptionalPronoun() const
 
 bool SettingsStore::IsOptionalPronounLearned() const
 {
-    return FTSettings::Get().GetFormsRules().bOptionalPronoun;
+    return FTSettings::Get().IsOptionalPronounLearned();
 }
 
 void SettingsStore::SetLearnOptionalPronoun(bool bValue)
@@ -835,6 +960,7 @@ void SettingsStore::ApplyLanguagePair(const std::string& TargetLanguage,
     SetLastError({});
 
     emit languagesChanged();
+    emit learningSettingsChanged();
     emit audioSettingsChanged();
 }
 

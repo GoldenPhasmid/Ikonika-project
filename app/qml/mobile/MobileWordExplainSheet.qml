@@ -11,7 +11,6 @@ MobileBottomSheet
     property int maxStage: 0
 
     heading: root.word
-    maxHeightFraction: 0.6
 
     Text
     {

@@ -194,6 +194,8 @@ namespace
 DiscoveryController::DiscoveryController(QObject* Parent)
     : QObject(Parent)
 {
+    connect(&AppCards::Notifier(), &AppCardNotifier::cardAdded, this, &DiscoveryController::RecordAddedCard);
+    connect(&AppDictionary::Notifier(), &AppDictionaryNotifier::languagesChanged, this, &DiscoveryController::Abandon);
 }
 
 bool DiscoveryController::startDeck(qint64 InDeckId)
@@ -229,6 +231,7 @@ bool DiscoveryController::startDecks(const QVariantList& InDeckIds)
 
     Planner.reset();
     Written.clear();
+    ExternalCardIds.clear();
     DeckWords.clear();
     DeckIds.clear();
     DeckName.clear();
@@ -392,6 +395,56 @@ void DiscoveryController::askClue()
     emit resultsChanged();
 }
 
+void DiscoveryController::showAnswer()
+{
+    if (!Planner || !GetQuestion() || GetQuestion()->bAnswered)
+    {
+        return;
+    }
+
+    Planner->ShowAnswer();
+
+    qCInfo(LogApp) << "Discover: the answer to" << GetWord() << "shown on request, defaults to"
+                   << (IsLearn() ? "learn" : "know");
+
+    emit stateChanged();
+    emit resultsChanged();
+}
+
+void DiscoveryController::Abandon()
+{
+    if (!Planner)
+    {
+        return;
+    }
+
+    qCInfo(LogApp) << "Discover: the dictionary changed, dropping the round over decks" << DeckIds;
+
+    Planner.reset();
+    Written.clear();
+    ExternalCardIds.clear();
+    DeckWords.clear();
+    DeckIds.clear();
+    DeckName.clear();
+
+    emit stateChanged();
+    emit resultsChanged();
+}
+
+void DiscoveryController::RecordAddedCard(const QString& CardId)
+{
+    if (!Planner)
+    {
+        return;
+    }
+
+    ExternalCardIds.push_back(CardId.toStdString());
+
+    qCInfo(LogApp) << "Discover: the card" << CardId << "was added to My Vocabulary during the round";
+
+    emit resultsChanged();
+}
+
 void DiscoveryController::SpeakClue()
 {
     const FTDiscoveryQuestion* Question = GetQuestion();
@@ -477,6 +530,7 @@ void DiscoveryController::endSession()
 
     Planner.reset();
     Written.clear();
+    ExternalCardIds.clear();
 
     emit stateChanged();
     emit resultsChanged();
@@ -627,10 +681,16 @@ const FTDiscoveryRow* DiscoveryController::GetQuestionRow() const
 
 QString DiscoveryController::FormatHeadword(const FTDiscoveryRow& Row) const
 {
+    return FormatWord(Row.Headword, Row.PartOfSpeech, Row.Gender);
+}
+
+QString DiscoveryController::FormatWord(const std::string& Word, const std::string& PartOfSpeech,
+                                        std::optional<int> Gender) const
+{
     auto Card = std::make_shared<FTCard>();
-    Card->TargetWord = Row.Headword;
-    Card->PartOfSpeech = Row.PartOfSpeech;
-    Card->Gender = Row.Gender;
+    Card->TargetWord = Word;
+    Card->PartOfSpeech = PartOfSpeech;
+    Card->Gender = Gender;
 
     AppCards::Annotate(std::vector<FTCardHandle>{Card});
 
@@ -1098,14 +1158,55 @@ QVariantList DiscoveryController::GetResults() const
         Map[QStringLiteral("translation")] = QString::fromStdString(Entry.Translation);
         Map[QStringLiteral("learn")] = Entry.bLearn;
 
-        const std::optional<std::string>& CardId = Index < Written.size() ? Written[Index].CardId : std::nullopt;
-        const std::optional<FTCardHandle> Card = CardId ? AppDatabase::Get().GetCardRepository().LoadCard(*CardId) : std::nullopt;
+        Result.append(Map);
+    }
+
+    return Result;
+}
+
+QVariantList DiscoveryController::GetAddedCards() const
+{
+    QVariantList Result;
+
+    if (!Planner)
+    {
+        return Result;
+    }
+
+    std::vector<std::string> CardIds;
+
+    for (const FWritten& State : Written)
+    {
+        if (State.CardId)
+        {
+            CardIds.push_back(*State.CardId);
+        }
+    }
+
+    CardIds.insert(CardIds.end(), ExternalCardIds.begin(), ExternalCardIds.end());
+
+    std::vector<FTCardHandle> Cards;
+
+    for (const std::string& CardId : CardIds)
+    {
+        const std::optional<FTCardHandle> Card = AppDatabase::Get().GetCardRepository().LoadCard(CardId);
 
         if (Card && *Card)
         {
-            Map[QStringLiteral("card")] = AppCards::DescribeCard(**Card);
-            Map[QStringLiteral("translation")] = QString::fromStdString((*Card)->Translation);
+            Cards.push_back(*Card);
         }
+    }
+
+    std::stable_sort(Cards.begin(), Cards.end(),
+                     [](const FTCardHandle& Left, const FTCardHandle& Right) { return Left->CreatedDate < Right->CreatedDate; });
+
+    for (const FTCardHandle& Card : Cards)
+    {
+        QVariantMap Map;
+        Map[QStringLiteral("word")] = QString::fromStdString(Card->TargetWord);
+        Map[QStringLiteral("gender")] = Card->Gender.value_or(-1);
+        Map[QStringLiteral("translation")] = QString::fromStdString(Card->Translation);
+        Map[QStringLiteral("card")] = AppCards::DescribeCard(*Card);
 
         Result.append(Map);
     }

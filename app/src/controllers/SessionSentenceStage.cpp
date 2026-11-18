@@ -71,7 +71,28 @@ namespace
         return Found != Meanings.end() ? &*Found : nullptr;
     }
 
-    std::optional<FTTreeSentence> FindMeaningSentence(const FTCard& WordCard, const FTDictionaryRepository& Dictionary)
+    std::vector<std::string> ListGapSpellings(const FTCard& Card, const FTDictionaryRepository& Dictionary)
+    {
+        std::vector<std::string> Spellings{Card.TargetWord};
+
+        if (Card.PartOfSpeech != "verb" && Card.PartOfSpeech != "noun" && Card.PartOfSpeech != "adj")
+        {
+            return Spellings;
+        }
+
+        for (const FTHeadwordForm& Form : Dictionary.ListHeadwordForms({Card.TargetWord}))
+        {
+            if (Form.PartOfSpeech == Card.PartOfSpeech)
+            {
+                Spellings.push_back(Form.Form);
+            }
+        }
+
+        return Spellings;
+    }
+
+    std::optional<FTTreeSentence> FindMeaningSentence(const FTCard& WordCard, const FTDictionaryRepository& Dictionary,
+                                                     const std::vector<std::string>& Spellings)
     {
         const std::vector<FTDictionarySense> Meanings = Dictionary.LoadMeanings(WordCard.TargetWord, WordCard.PartOfSpeech);
         const FTDictionarySense* Meaning = WordCard.MeaningGist.empty() ? FindFirstMeaningWithExample(Meanings)
@@ -82,7 +103,7 @@ namespace
             return std::nullopt;
         }
 
-        FTTreeSentence Sentence = MakeMeaningSentence(*Meaning, {WordCard.TargetWord}, WordCard.PartOfSpeech == "noun");
+        FTTreeSentence Sentence = MakeMeaningSentence(*Meaning, Spellings, WordCard.PartOfSpeech == "noun");
 
         if (const char* Reason = FindUnusableSentenceReason(Sentence))
         {
@@ -113,7 +134,7 @@ namespace
                 continue;
             }
 
-            std::optional<FTTreeSentence> Sentence = FindMeaningSentence(*WordCard, Dictionary);
+            std::optional<FTTreeSentence> Sentence = FindMeaningSentence(*WordCard, Dictionary, {WordCard->TargetWord});
 
             if (!Sentence.has_value())
             {
@@ -338,34 +359,19 @@ namespace
         return Word.find_first_of(" '") != std::string::npos || Word.find("’") != std::string::npos;
     }
 
-    void PickPhraseSentences(const FCardState& WordCards, FSentencePicks& Picks)
+    std::vector<std::vector<FTTreeSentence>> FindPhraseSentences(const std::vector<const FTCard*>& PhraseCards)
     {
         const FTDictionaryRepository& Dictionary = AppDictionary::Get().GetRepository();
         const bool bChecksMeaning = Dictionary.GetNativeLanguage() == "en";
-
-        std::vector<const FTCard*> PhraseCards;
         std::vector<std::string> Phrases;
 
-        for (int Index = 0; Index < WordCards.GetCount(); ++Index)
+        for (const FTCard* Card : PhraseCards)
         {
-            const FTCard* WordCard = WordCards.GetCard(Index);
-
-            if (WordCard != nullptr && IsPhrase(WordCard->TargetWord) && !Picks.CoveredCardIds.contains(WordCard->Id))
-            {
-                PhraseCards.push_back(WordCard);
-                Phrases.push_back(WordCard->TargetWord);
-            }
-        }
-
-        if (PhraseCards.empty())
-        {
-            return;
+            Phrases.push_back(Card->TargetWord);
         }
 
         std::vector<std::vector<FTTreeSentence>> Found = Dictionary.FindSentencesWithPhrases(Phrases, PhraseCandidateLimit);
         std::mt19937 Generator{MakeRandomSeed()};
-
-        int UncoveredCount = 0;
 
         for (size_t Index = 0; Index < PhraseCards.size(); ++Index)
         {
@@ -382,7 +388,37 @@ namespace
             std::shuffle(Candidates.begin(), Candidates.end(), Generator);
             std::stable_sort(Candidates.begin(), Candidates.end(),
                              [](const FTTreeSentence& Left, const FTTreeSentence& Right) { return Left.Level < Right.Level; });
+        }
 
+        return Found;
+    }
+
+    void PickPhraseSentences(const FCardState& WordCards, FSentencePicks& Picks)
+    {
+        std::vector<const FTCard*> PhraseCards;
+
+        for (int Index = 0; Index < WordCards.GetCount(); ++Index)
+        {
+            const FTCard* WordCard = WordCards.GetCard(Index);
+
+            if (WordCard != nullptr && IsPhrase(WordCard->TargetWord) && !Picks.CoveredCardIds.contains(WordCard->Id))
+            {
+                PhraseCards.push_back(WordCard);
+            }
+        }
+
+        if (PhraseCards.empty())
+        {
+            return;
+        }
+
+        const std::vector<std::vector<FTTreeSentence>> Found = FindPhraseSentences(PhraseCards);
+
+        int UncoveredCount = 0;
+
+        for (size_t Index = 0; Index < PhraseCards.size(); ++Index)
+        {
+            const std::vector<FTTreeSentence>& Candidates = Found[Index];
             const std::string& PhraseCardId = PhraseCards[Index]->Id;
 
             const auto Picked = std::find_if(Candidates.begin(), Candidates.end(),
@@ -407,6 +443,46 @@ namespace
     }
 }
 
+std::optional<FTTreeSentence> PickGapSentence(const std::vector<FTTreeSentence>& Candidates, const FTCard& Card,
+                                             const std::vector<std::string>& Spellings, bool bPrioritizeTranslation)
+{
+    const std::vector<std::string> Translations = bPrioritizeTranslation ? SplitTranslations(Card.Translation)
+                                                                       : std::vector<std::string>{};
+    std::optional<FTTreeSentence> Picked;
+    int BestPriority = 4;
+
+    for (FTTreeSentence Sentence : Candidates)
+    {
+        if (Sentence.Translation.empty())
+        {
+            continue;
+        }
+
+        const bool bHeadword = PlaceGap(Sentence, {Card.TargetWord}, Card.PartOfSpeech == "noun");
+
+        if (!bHeadword && !PlaceGap(Sentence, Spellings, Card.PartOfSpeech == "noun"))
+        {
+            continue;
+        }
+
+        const bool bCardTranslation = !bPrioritizeTranslation || MentionsTranslation(Sentence.Translation, Translations);
+        const int Priority = (bCardTranslation ? 0 : 2) + (bHeadword ? 0 : 1);
+
+        if (Priority < BestPriority)
+        {
+            Picked = std::move(Sentence);
+            BestPriority = Priority;
+
+            if (BestPriority == 0)
+            {
+                return Picked;
+            }
+        }
+    }
+
+    return Picked;
+}
+
 FGapSentences PickGapSentences(const FCardState& WordCards)
 {
     FGapSentences Result;
@@ -417,10 +493,33 @@ FGapSentences PickGapSentences(const FCardState& WordCards)
     }
 
     const FTDictionaryRepository& Dictionary = AppDictionary::Get().GetRepository();
-    const FKnownWordCandidates Candidates =
+    FKnownWordCandidates Candidates =
         FindKnownWordSentences(WordCards, std::vector<bool>(static_cast<size_t>(WordCards.GetCount()), false));
 
-    int KnownWordCount = 0;
+    Candidates.ByWord.resize(static_cast<size_t>(WordCards.GetCount()));
+    std::vector<const FTCard*> PhraseCards;
+    std::vector<size_t> PhraseWordIndices;
+
+    for (int Index = 0; Index < WordCards.GetCount(); ++Index)
+    {
+        const FTCard* Card = WordCards.GetCard(Index);
+
+        if (Card != nullptr && IsPhrase(Card->TargetWord))
+        {
+            PhraseCards.push_back(Card);
+            PhraseWordIndices.push_back(static_cast<size_t>(Index));
+        }
+    }
+
+    const std::vector<std::vector<FTTreeSentence>> PhraseSentences = FindPhraseSentences(PhraseCards);
+
+    for (size_t Index = 0; Index < PhraseSentences.size(); ++Index)
+    {
+        std::vector<FTTreeSentence>& WordCandidates = Candidates.ByWord[PhraseWordIndices[Index]];
+        WordCandidates.insert(WordCandidates.end(), PhraseSentences[Index].begin(), PhraseSentences[Index].end());
+    }
+
+    int SentenceCount = 0;
     int MeaningCount = 0;
 
     for (int Index = 0; Index < WordCards.GetCount(); ++Index)
@@ -432,20 +531,18 @@ FGapSentences PickGapSentences(const FCardState& WordCards)
             continue;
         }
 
-        const std::vector<std::string> Spellings{WordCard->TargetWord};
+        const std::vector<std::string> Spellings = ListGapSpellings(*WordCard, Dictionary);
         const size_t Word = static_cast<size_t>(Index);
 
         if (Word < Candidates.ByWord.size())
         {
-            for (FTTreeSentence Sentence : Candidates.ByWord[Word])
-            {
-                if (!Sentence.Translation.empty() && PlaceGap(Sentence, Spellings, WordCard->PartOfSpeech == "noun"))
-                {
-                    Result.emplace(WordCard->Id, std::move(Sentence));
-                    ++KnownWordCount;
+            std::optional<FTTreeSentence> Sentence = PickGapSentence(
+                Candidates.ByWord[Word], *WordCard, Spellings, Dictionary.GetNativeLanguage() == "en");
 
-                    break;
-                }
+            if (Sentence.has_value())
+            {
+                Result.emplace(WordCard->Id, std::move(*Sentence));
+                ++SentenceCount;
             }
         }
 
@@ -454,7 +551,7 @@ FGapSentences PickGapSentences(const FCardState& WordCards)
             continue;
         }
 
-        std::optional<FTTreeSentence> Example = FindMeaningSentence(*WordCard, Dictionary);
+        std::optional<FTTreeSentence> Example = FindMeaningSentence(*WordCard, Dictionary, Spellings);
 
         if (Example.has_value() && !Example->Translation.empty() && HasGap(*Example))
         {
@@ -463,7 +560,7 @@ FGapSentences PickGapSentences(const FCardState& WordCards)
         }
     }
 
-    qCInfo(LogSession) << "Gap sentences:" << KnownWordCount << "known-word sentences and" << MeaningCount
+    qCInfo(LogSession) << "Gap sentences:" << SentenceCount << "tree or phrase sentences and" << MeaningCount
                        << "meaning examples for" << WordCards.GetCount() << "words";
 
     return Result;

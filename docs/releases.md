@@ -114,6 +114,7 @@ array, and an optional `books` object.
 | Package field | Purpose |
 | --- | --- |
 | `id` | Package identity |
+| `name` | Optional display name. Shown for an optional voice in the text to speech model list |
 | `kind` | `dictionary`, `voice` or `translation`. Decides which directory it unpacks into. |
 | `target`, `natives` | Language codes, for filtering before download. Null target serves every language. |
 | `version` | Compared against the recorded local version |
@@ -382,7 +383,7 @@ models compress at roughly 1.2:1.
 Built zips, published or not, sit in `D:\Projects\ikonika-releases\archives`, alongside the catalog
 repository. That directory is not source controlled.
 
-Supertonic is the only desktop voice: one package with no language target, so first-launch setup downloads it for every language. Piper packages were removed from the catalog. Android speaks through the platform's own TTS and downloads no voice. See [docs/voice.md](docs/voice.md) for the performance case.
+Supertonic is the default desktop voice: one package with no language target, so first-launch setup downloads it for every language. A voice package with a target language is optional and is offered only as a text to speech model in Settings → Sound. Its `name` field is the model name shown there. `piper-pt-voice3`, Piper for European Portuguese, is the one published. Android speaks through the platform's own TTS and downloads no voice. See [docs/voice.md](docs/voice.md) for the performance case.
 
 The catalog lists the full-precision package, `supertonic-3` version 2, 370 MB zipped, from release `voice-supertonic-3-2`. It replaced the INT8 package of version 1 with the 0.9.0 release. The 0.8.3 app loads only INT8 file names, and the catalog has no minimum app version, so a new voice package has to ship in the same catalog push as the app that loads it.
 

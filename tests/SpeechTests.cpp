@@ -253,6 +253,29 @@ TEST_CASE("Speed changes the amount of Supertonic audio", "[speech]")
     CHECK(Slow.size() > Natural.size());
 }
 
+TEST_CASE("Supertonic below its own speed range is slowed by stretching", "[speech]")
+{
+    const std::optional<FTSpeechSynthesizer> Synthesizer = FTSpeechSynthesizer::Create(SupertonicDirectory, "fr");
+
+    if (!Synthesizer.has_value())
+    {
+        WARN("the Supertonic model is absent, so it is untested here");
+
+        return;
+    }
+
+    const std::vector<int16_t> Floor = Synthesizer->Synthesize("chien", 0, 0.8f);
+    const std::vector<int16_t> Stretched = Synthesizer->Synthesize("chien", 0, 0.5f);
+
+    REQUIRE_FALSE(Floor.empty());
+    REQUIRE_FALSE(Stretched.empty());
+
+    const double Ratio = static_cast<double>(Stretched.size()) / static_cast<double>(Floor.size());
+
+    CHECK(Ratio > 1.5);
+    CHECK(Ratio < 1.7);
+}
+
 TEST_CASE("Supertonic renders the same text the same way twice", "[speech]")
 {
     const std::optional<FTSpeechSynthesizer> Synthesizer = FTSpeechSynthesizer::Create(SupertonicDirectory, "fr");
@@ -907,6 +930,54 @@ TEST_CASE("A language the chosen voice cannot speak goes to the wider voice", "[
     // Exactly one voice is the fallback, and it is the wider one.
     CHECK(Service.GetVoiceInfo(ForEnglish).bFallback);
     CHECK_FALSE(Service.GetVoiceInfo(Narrow).bFallback);
+}
+
+TEST_CASE("A preferred voice speaks its language over the wider active voice", "[speech]")
+{
+    FTSpeechService Service(BothModels());
+
+    if (Service.GetVoiceCount() < 2)
+    {
+        WARN("both models are needed to test a preferred voice");
+
+        return;
+    }
+
+    int Narrow = -1;
+    int Wide = -1;
+
+    for (int Index = 0; Index < Service.GetVoiceCount(); ++Index)
+    {
+        if (Service.GetVoiceInfo(Index).Languages.size() == 1)
+        {
+            Narrow = Index;
+        }
+        else
+        {
+            Wide = Index;
+        }
+    }
+
+    REQUIRE(Narrow >= 0);
+    REQUIRE(Wide >= 0);
+
+    Service.SetActiveVoice(Wide);
+    CHECK(Service.FindVoiceForLanguage("fr") == Wide);
+    CHECK(Service.GetVoiceInfo(Narrow).Speaker == "siwis");
+    CHECK(Service.GetVoiceInfo(Wide).Speaker.empty());
+
+    Service.SetPreferredVoice("fr", Narrow);
+    CHECK(Service.GetPreferredVoice("fr") == Narrow);
+    CHECK(Service.FindVoiceForLanguage("fr") == Narrow);
+    CHECK(Service.FindVoiceForLanguage("en") == Wide);
+
+    Service.SetPreferredVoice("en", Narrow);
+    CHECK(Service.GetPreferredVoice("en") == -1);
+    CHECK(Service.FindVoiceForLanguage("en") == Wide);
+
+    Service.SetPreferredVoice("fr", -1);
+    CHECK(Service.GetPreferredVoice("fr") == -1);
+    CHECK(Service.FindVoiceForLanguage("fr") == Wide);
 }
 
 TEST_CASE("Switching the requested language finds the matching voice among several single-language "

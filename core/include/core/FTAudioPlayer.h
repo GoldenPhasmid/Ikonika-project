@@ -27,6 +27,8 @@ public:
 
     void Stop();
 
+    void SetPaused(bool bValue);
+
     uint64_t GetQueuedFrames() const;
     uint64_t GetPlayedFrames() const;
 

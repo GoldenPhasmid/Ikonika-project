@@ -20,7 +20,7 @@ MobileBottomSheet
 
         if (!tense.enabled)
         {
-            return tense.count === 0 ? qsTr("Train the present tense of a verb first")
+            return tense.count === 0 ? qsTr("No verbs available")
                                      : qsTr("%1 of %2 verbs ready").arg(tense.count).arg(tense.wanted)
         }
 

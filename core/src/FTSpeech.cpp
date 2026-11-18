@@ -11,6 +11,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QString>
+#include <QStringList>
 
 #include <algorithm>
 #include <cmath>
@@ -34,6 +35,8 @@ namespace
 
     constexpr int SupertonicSteps = 8;
     constexpr int SupertonicSeed = 42;
+    constexpr float SupertonicMinimumSpeed = 0.8f;
+    constexpr float SupertonicMaximumSpeed = 1.3f;
 
     constexpr float StretchFrameSeconds = 0.040f;
     constexpr float StretchSearchSeconds = 0.012f;
@@ -98,6 +101,22 @@ namespace
         return std::filesystem::path(Directory).filename().string();
     }
 
+    std::string DerivePiperSpeaker(const std::string& OnnxPath)
+    {
+        const QString Stem = QString::fromStdString(std::filesystem::path(OnnxPath).stem().string());
+        QStringList Parts = Stem.split(QChar('-'));
+
+        if (Parts.size() < 3)
+        {
+            return Stem.toStdString();
+        }
+
+        Parts.removeFirst();
+        Parts.removeLast();
+
+        return Parts.join(QChar('-')).toStdString();
+    }
+
     std::string DerivePiperLanguage(const std::string& OnnxPath)
     {
         QFile File(QString::fromStdString(OnnxPath + ".json"));
@@ -135,6 +154,8 @@ struct FTSpeechSynthesizer::Impl
     bool bTakesLanguagePerCall = false;
 
     std::string Name;
+
+    std::string Speaker;
 
     std::vector<std::string> Languages;
 
@@ -517,6 +538,7 @@ std::optional<FTSpeechSynthesizer> FTSpeechSynthesizer::Create(const std::string
     Result.Data->Engine = bIsSupertonic ? SupertonicEngine : PiperEngine;
     Result.Data->bTakesLanguagePerCall = bIsSupertonic;
     Result.Data->Name = LastPathComponent(ModelDirectory);
+    Result.Data->Speaker = bIsSupertonic ? std::string() : DerivePiperSpeaker(PiperModel);
     Result.Data->Languages = bIsSupertonic ? SupertonicLanguages() : std::vector{PiperLanguage};
 
     if (bIsSupertonic)
@@ -552,6 +574,11 @@ std::string FTSpeechSynthesizer::GetName() const
     return Data->Name;
 }
 
+std::string FTSpeechSynthesizer::GetSpeaker() const
+{
+    return Data->Speaker;
+}
+
 const std::vector<std::string>& FTSpeechSynthesizer::GetLanguages() const
 {
     static const std::vector<std::string> None;
@@ -581,10 +608,13 @@ std::vector<int16_t> FTSpeechSynthesizer::Synthesize(std::string_view Text,
 
     const float Tempo = std::clamp(Speed, MinimumSpeechSpeed, MaximumSpeechSpeed);
     const bool bIsSupertonic = Data->Engine == SupertonicEngine;
+    const float RenderSpeed = bIsSupertonic
+        ? std::clamp(Tempo, SupertonicMinimumSpeed, SupertonicMaximumSpeed)
+        : Tempo;
 
     SherpaOnnxGenerationConfig Generation{};
     Generation.sid = SpeakerId;
-    Generation.speed = Tempo;
+    Generation.speed = RenderSpeed;
     Generation.num_steps = bIsSupertonic ? SupertonicSteps : 0;
     const int CaptureSteps = qEnvironmentVariableIntValue("IKONIKA_SPEECH_CAPTURE_STEPS");
 
@@ -615,8 +645,18 @@ std::vector<int16_t> FTSpeechSynthesizer::Synthesize(std::string_view Text,
     }
 
     const std::span<const float> Generated(Audio->samples, static_cast<size_t>(Audio->n));
+    const std::span<const float> Trimmed = Generated.subspan(FindSpeechStart(Generated, Audio->sample_rate));
 
-    const std::span<const float> Speech = Generated.subspan(FindSpeechStart(Generated, Audio->sample_rate));
+    std::vector<float> Stretched;
+    std::span<const float> Speech = Trimmed;
+
+    if (RenderSpeed != Tempo)
+    {
+        qCDebug(LogSpeech) << "Supertonic rendered at" << RenderSpeed << "and stretched to" << Tempo;
+        Stretched = StretchSpeechPhaseVocoder(Trimmed, Audio->sample_rate, Tempo / RenderSpeed);
+        Speech = Stretched;
+    }
+
     const float Gain = bIsSupertonic ? 1.0f : ComputeSpeechGain(Speech);
 
     Result.reserve(Speech.size());
@@ -722,6 +762,7 @@ void FTSpeechService::UnloadVoices()
 
     Voices.clear();
     LoadedDirectories.clear();
+    PreferredVoices.clear();
 
     qCInfo(LogSpeech) << "voices unloaded";
 
@@ -773,6 +814,7 @@ FTVoiceInfo FTSpeechService::GetVoiceInfo(int Index) const
     FTVoiceInfo Info;
     Info.Engine = Entry.Synthesizer.GetEngine();
     Info.Name = Entry.Synthesizer.GetName();
+    Info.Speaker = Entry.Synthesizer.GetSpeaker();
     Info.SampleRate = Entry.Synthesizer.GetSampleRate();
     Info.SpeakerCount = Entry.Synthesizer.GetSpeakerCount();
     Info.Languages = Entry.Synthesizer.GetLanguages();
@@ -814,6 +856,13 @@ int FTSpeechService::FindVoiceForLanguage(const std::string& LanguageCode) const
         return ActiveVoice;
     }
 
+    const int Preferred = GetPreferredVoice(LanguageCode);
+
+    if (Preferred >= 0)
+    {
+        return Preferred;
+    }
+
     const FTVoiceInfo Active = GetVoiceInfo(ActiveVoice);
 
     if (IsLanguageSupported(Active, LanguageCode))
@@ -830,6 +879,30 @@ int FTSpeechService::FindVoiceForLanguage(const std::string& LanguageCode) const
     }
 
     return ActiveVoice;
+}
+
+void FTSpeechService::SetPreferredVoice(const std::string& LanguageCode, int Index)
+{
+    if (Index < 0 || Index >= GetVoiceCount() || !IsLanguageSupported(GetVoiceInfo(Index), LanguageCode))
+    {
+        PreferredVoices.erase(LanguageCode);
+
+        return;
+    }
+
+    PreferredVoices[LanguageCode] = Index;
+}
+
+int FTSpeechService::GetPreferredVoice(const std::string& LanguageCode) const
+{
+    const auto Found = PreferredVoices.find(LanguageCode);
+
+    if (Found == PreferredVoices.end() || Found->second >= GetVoiceCount())
+    {
+        return -1;
+    }
+
+    return Found->second;
 }
 
 int FTSpeechService::GetActiveVoice() const
@@ -1072,6 +1145,8 @@ std::optional<FTNarrationChunk> FTSpeechService::PlayNarration(int VoiceIndex, s
             return std::nullopt;
         }
 
+        Chosen.Player->SetPaused(bNarrationPaused);
+
         return FTNarrationChunk{0, Chosen.Player->GetQueuedFrames()};
     }
 
@@ -1103,6 +1178,16 @@ bool FTSpeechService::IsNarrationPlaying(int VoiceIndex) const
     }
 
     return Voices[static_cast<size_t>(VoiceIndex)].Player->IsPlaying();
+}
+
+void FTSpeechService::SetNarrationPaused(bool bValue)
+{
+    bNarrationPaused = bValue;
+
+    for (Voice& Entry : Voices)
+    {
+        Entry.Player->SetPaused(bValue);
+    }
 }
 
 void FTSpeechService::Stop()

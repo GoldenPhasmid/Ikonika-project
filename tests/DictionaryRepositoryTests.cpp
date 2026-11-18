@@ -66,6 +66,50 @@ TEST_CASE("The seeded dictionary database opens", "[dictionaryrepository]")
     CHECK(Test.Target->IsOpen());
 }
 
+TEST_CASE("Phrase search fills every phrase before stopping at its limit", "[dictionaryrepository][phrasesearch]")
+{
+    std::optional<FTDatabase> Database = FTDatabase::OpenInMemory();
+    REQUIRE(Database.has_value());
+    REQUIRE(Database->Execute(
+        "CREATE TABLE sentences (id INTEGER PRIMARY KEY, text TEXT, translation TEXT, "
+        "gap_start INTEGER, gap_length INTEGER, level INTEGER DEFAULT 1, changed_count INTEGER DEFAULT 0);"
+        "INSERT INTO sentences (id,text,translation) VALUES "
+        "(1,'au revoir','goodbye'),(2,'au revoir encore','goodbye again'),"
+        "(3,'bonne nuit','good night'),(4,'bonne nuit encore','good night again'),"
+        "(5,'au revoir demain','goodbye tomorrow'),(6,'bonne nuit demain','good night tomorrow');"));
+    FTDictionaryRepository Repository(*Database, "en");
+
+    SECTION("Every phrase keeps its first matching rows")
+    {
+        const auto Found = Repository.FindSentencesWithPhrases({"au revoir", "bonne nuit"}, 2);
+        REQUIRE(Found.size() == 2);
+        REQUIRE(Found[0].size() == 2);
+        REQUIRE(Found[1].size() == 2);
+        CHECK(Found[0][0].Id == 1);
+        CHECK(Found[0][1].Id == 2);
+        CHECK(Found[1][0].Id == 3);
+        CHECK(Found[1][1].Id == 4);
+    }
+
+    SECTION("An unfilled phrase does not lose its later match")
+    {
+        const auto Found = Repository.FindSentencesWithPhrases({"au revoir", "nuit demain", "missing phrase"}, 2);
+        REQUIRE(Found.size() == 3);
+        CHECK(Found[0].size() == 2);
+        REQUIRE(Found[1].size() == 1);
+        CHECK(Found[1][0].Id == 6);
+        CHECK(Found[2].empty());
+    }
+
+    SECTION("A zero limit returns empty results")
+    {
+        const auto Found = Repository.FindSentencesWithPhrases({"au revoir", "bonne nuit"}, 0);
+        REQUIRE(Found.size() == 2);
+        CHECK(Found[0].empty());
+        CHECK(Found[1].empty());
+    }
+}
+
 TEST_CASE("Looking up a common word returns at least one entry", "[dictionaryrepository]")
 {
     Fixture Test;

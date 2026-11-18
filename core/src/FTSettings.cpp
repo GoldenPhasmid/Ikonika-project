@@ -40,7 +40,7 @@ namespace
     constexpr const char* QuestionSideKey = "exercises/askWith";
     constexpr const char* LegacyQuestionSideKey = "exercises/questionSide";
     constexpr const char* ShowArticleKey = "exercises/showArticle";
-    constexpr const char* OptionalPronounKey = "forms/optionalPronoun";
+    constexpr const char* OptionalPronounKey = "forms/optionalPronounByLanguage";
     constexpr const char* LegacySpeedMatchVoiceKey = "exercises/speedMatchVoicePrompt";
     constexpr const char* LegacyChoiceVoiceKey = "exercises/choiceVoicePrompt";
     constexpr const char* LegacySentenceTypingKey = "sessions/sentenceTyping";
@@ -921,16 +921,33 @@ void FTSettings::SetShowArticle(bool bValue)
     Write(QLatin1String(ShowArticleKey), bValue);
 }
 
-const FTFormsRules& FTSettings::GetFormsRules() const
+bool FTSettings::IsOptionalPronounLearned() const
 {
-    return FormsRules;
+    const std::string& Language = LanguageRules.TargetLanguage;
+
+    const auto Cached = FormsRules.OptionalPronounLearned.find(Language);
+
+    if (Cached != FormsRules.OptionalPronounLearned.end())
+    {
+        return Cached->second;
+    }
+
+    const QSettings Settings(OpenStore());
+    const QString LanguageKey = QLatin1String(OptionalPronounKey) + QLatin1Char('/') + QString::fromStdString(Language);
+    const bool bLearned = Settings.value(LanguageKey, ShippedDefault(LanguageKey, false)).toBool();
+
+    FormsRules.OptionalPronounLearned[Language] = bLearned;
+
+    return bLearned;
 }
 
 void FTSettings::SetOptionalPronoun(bool bValue)
 {
-    FormsRules.bOptionalPronoun = bValue;
+    const std::string& Language = LanguageRules.TargetLanguage;
 
-    Write(QLatin1String(OptionalPronounKey), bValue);
+    FormsRules.OptionalPronounLearned[Language] = bValue;
+
+    Write(QLatin1String(OptionalPronounKey) + QLatin1Char('/') + QString::fromStdString(Language), bValue);
 }
 
 const FTLanguageRules& FTSettings::GetLanguageRules() const
@@ -1060,8 +1077,7 @@ void FTSettings::ReloadFromDisk()
         .toString().toStdString();
     SpeechRules = ReadSpeechRules(Settings);
     ExerciseDisplayRules = ReadExerciseDisplayRules(Settings);
-    FormsRules.bOptionalPronoun = Settings.value(
-        OptionalPronounKey, ShippedDefault(OptionalPronounKey, FormsRules.bOptionalPronoun)).toBool();
+    FormsRules.OptionalPronounLearned.clear();
 
     RepetitionRules.ReviewWordCount =
         Settings.value(

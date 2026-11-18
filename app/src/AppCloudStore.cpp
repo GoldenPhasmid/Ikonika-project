@@ -41,7 +41,7 @@ namespace
     QString ReadFailureReason(const QByteArray& Body)
     {
         const QJsonObject Error{QJsonDocument::fromJson(Body).object().value(QStringLiteral("error")).toObject()};
-        const QJsonArray Details{Error.value(QStringLiteral("errors")).toArray()};
+        const QJsonArray Details = Error.value(QStringLiteral("errors")).toArray();
 
         if (!Details.isEmpty())
         {

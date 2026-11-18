@@ -1362,11 +1362,11 @@ TEST_CASE("Spanish labels the third persons with usted and ustedes, and accepts 
     CHECK(std::find(Accepted.begin(), Accepted.end(), "ustedes hablan") != Accepted.end());
 }
 
-TEST_CASE("Only the Spanish vosotros form is optional", "[conjugation][spanish]")
+TEST_CASE("Only the Spanish vosotros and Portuguese vós forms are optional", "[conjugation][spanish]")
 {
     CHECK(GetOptionalFormsPronoun("es") == "vosotros");
+    CHECK(GetOptionalFormsPronoun("pt") == "vós");
     CHECK(GetOptionalFormsPronoun("fr").empty());
-    CHECK(GetOptionalFormsPronoun("pt").empty());
 
     std::vector<std::string> Optional;
 

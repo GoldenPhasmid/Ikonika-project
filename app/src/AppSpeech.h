@@ -53,6 +53,7 @@ public:
     virtual void SetSpeakerId(int Value) { Q_UNUSED(Value); }
     virtual void SetEnabled(bool bValue) { Q_UNUSED(bValue); }
     virtual void SetCachedLineCount(int Value) { Q_UNUSED(Value); }
+    virtual void SetPreferredVoiceName(const QString& LanguageCode, const QString& Name) { Q_UNUSED(LanguageCode); Q_UNUSED(Name); }
 
     virtual bool IsAvailable() const { return false; }
     virtual bool IsEnabled() const { return true; }
@@ -60,6 +61,7 @@ public:
     virtual FTVoiceInfo GetVoiceInfo(int Index) const { Q_UNUSED(Index); return {}; }
     virtual int GetActiveVoice() const { return 0; }
     virtual int GetSpeakerId() const { return 0; }
+    virtual QString GetPreferredVoiceName(const QString& LanguageCode) const { Q_UNUSED(LanguageCode); return {}; }
     virtual float GetSpeed() const { return 1.0f; }
 
     /** Multiplier on the speech rate for whole sentences: sentence training and read aloud. Stored
@@ -77,6 +79,8 @@ public:
         Q_UNUSED(LanguageCode);
     }
     virtual void StopNarration() {}
+    virtual bool PauseNarration() { return false; }
+    virtual bool ResumeNarration() { return false; }
     virtual void UpdateNarrationSession(const QString& Title, bool bStarted, bool bPlaying)
     {
         Q_UNUSED(Title);

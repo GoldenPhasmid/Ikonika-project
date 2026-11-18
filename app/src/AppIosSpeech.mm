@@ -319,6 +319,16 @@ struct AppIosSpeech::Impl
         [Narrator stopSpeakingAtBoundary:AVSpeechBoundaryImmediate];
         [NarrationDelegate forgetAll];
     }
+
+    bool PauseNarration()
+    {
+        return [Narrator pauseSpeakingAtBoundary:AVSpeechBoundaryImmediate];
+    }
+
+    bool ResumeNarration()
+    {
+        return Narrator.paused && [Narrator continueSpeaking];
+    }
 };
 
 AppIosSpeech::AppIosSpeech()
@@ -410,4 +420,14 @@ void AppIosSpeech::QueueNarration(int Id, const QString& Text, const QString& La
 void AppIosSpeech::StopNarration()
 {
     Native->StopNarration();
+}
+
+bool AppIosSpeech::PauseNarration()
+{
+    return Native->PauseNarration();
+}
+
+bool AppIosSpeech::ResumeNarration()
+{
+    return Native->ResumeNarration();
 }

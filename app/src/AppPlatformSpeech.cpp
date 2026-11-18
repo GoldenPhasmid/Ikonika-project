@@ -60,6 +60,16 @@ namespace
         QJniObject::callStaticMethod<void>(PlatformSpeechClass, "stopNarration", "()V");
     }
 
+    bool PlatformPauseNarration()
+    {
+        return QJniObject::callStaticMethod<jboolean>(PlatformSpeechClass, "pauseNarration", "()Z") == JNI_TRUE;
+    }
+
+    bool PlatformResumeNarration()
+    {
+        return QJniObject::callStaticMethod<jboolean>(PlatformSpeechClass, "resumeNarration", "()Z") == JNI_TRUE;
+    }
+
     void PlatformUpdateNarrationSession(const QString& Title, bool bStarted, bool bPlaying)
     {
         QJniObject Context = QNativeInterface::QAndroidApplication::context();
@@ -244,6 +254,20 @@ void AppPlatformSpeech::QueueNarration(int Id, const QString& Text, const QStrin
 void AppPlatformSpeech::StopNarration()
 {
     NarrationPool.start([]() { PlatformStopNarration(); });
+}
+
+bool AppPlatformSpeech::PauseNarration()
+{
+    NarrationPool.waitForDone();
+
+    return PlatformPauseNarration();
+}
+
+bool AppPlatformSpeech::ResumeNarration()
+{
+    NarrationPool.waitForDone();
+
+    return PlatformResumeNarration();
 }
 
 void AppPlatformSpeech::UpdateNarrationSession(const QString& Title, bool bStarted, bool bPlaying)

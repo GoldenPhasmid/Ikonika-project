@@ -6,6 +6,8 @@ TextField
 {
     id: root
 
+    property bool showsFocus: root.activeFocus
+
     leftPadding: AppMetrics.contentPadding
     rightPadding: AppMetrics.contentPadding
 
@@ -19,6 +21,7 @@ TextField
     T.ContextMenu.menu: null
 
     MobileKeyboardTap { editor: root }
+    MobileKeyboardRelease { editor: root }
 
     background: Rectangle
     {
@@ -26,20 +29,6 @@ TextField
         color: "transparent"
 
         border.width: AppMetrics.borderWidth
-        border.color: root.activeFocus ? AppTheme.colourAccent : AppTheme.colourBorder
-    }
-
-    Connections
-    {
-        target: Qt.inputMethod
-
-        function onVisibleChanged()
-        {
-            if (!Qt.inputMethod.visible && root.activeFocus)
-            {
-                Qt.inputMethod.reset()
-                root.focus = false
-            }
-        }
+        border.color: root.showsFocus ? AppTheme.colourAccent : AppTheme.colourBorder
     }
 }

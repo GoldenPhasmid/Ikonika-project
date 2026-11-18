@@ -9,6 +9,7 @@ class WordListController : public QObject
 {
     Q_OBJECT
     QML_ELEMENT
+    QML_UNCREATABLE("The screens are given their controllers")
 
     Q_PROPERTY(QVariantList entries READ GetEntries NOTIFY entriesChanged)
 

@@ -43,6 +43,9 @@ namespace
         QColor CoverInk;
         QColor CoverMuted;
         QColor CoverStripe;
+        QColor TileWedge;
+        QColor TileShadow;
+        qreal RingTrackAlpha;
     };
 
     const FThemePalette LightPalette{
@@ -57,7 +60,7 @@ namespace
         .Sunken = QColor("#e9e6dd"),
         .Subtle = QColor("#57534b"),
         .Outline = QColor("#857f72"),
-        .Border = QColor("#d6d2c5"),
+        .Border = QColor("#cbc6b8"),
         .Correct = QColor("#3b7a53"),
         .Warn = QColor("#9e6c2c"),
         .Wrong = QColor("#a23a37"),
@@ -69,7 +72,10 @@ namespace
                          QColor("#4a5f8c"), QColor("#6b4c7c"), QColor("#7c5a6f"), QColor("#5a5652")},
         .CoverInk = QColor("#f2f0e9"),
         .CoverMuted = QColor("#6e6a64"),
-        .CoverStripe = QColor(0, 0, 0, 26)
+        .CoverStripe = QColor(0, 0, 0, 26),
+        .TileWedge = QColor(107, 74, 38, 52),
+        .TileShadow = QColor(74, 56, 34, 46),
+        .RingTrackAlpha = 0.24
     };
 
     const FThemePalette DarkPalette{
@@ -96,7 +102,10 @@ namespace
                          QColor("#3b4f7a"), QColor("#5b3e6b"), QColor("#6b4a5e"), QColor("#4a4744")},
         .CoverInk = QColor("#f2f0e9"),
         .CoverMuted = QColor("#45403d"),
-        .CoverStripe = QColor(0, 0, 0, 38)
+        .CoverStripe = QColor(0, 0, 0, 38),
+        .TileWedge = QColor(0, 0, 0, 38),
+        .TileShadow = QColor(0, 0, 0, 0),
+        .RingTrackAlpha = 0.12
     };
 
     const QVariantMap FrequencyColours{
@@ -377,6 +386,21 @@ QColor AppTheme::GetColourCoverStripe() const
     return GetPalette(Theme).CoverStripe;
 }
 
+QColor AppTheme::GetColourTileWedge() const
+{
+    return GetPalette(Theme).TileWedge;
+}
+
+QColor AppTheme::GetColourTileShadow() const
+{
+    return GetPalette(Theme).TileShadow;
+}
+
+qreal AppTheme::GetAlphaRingTrack() const
+{
+    return GetPalette(Theme).RingTrackAlpha;
+}
+
 QVariantMap AppTheme::GetFrequencyColours() const
 {
     return FrequencyColours;
@@ -415,6 +439,16 @@ qreal AppTheme::GetAlphaStrong() const
 qreal AppTheme::GetAlphaHalf() const
 {
     return 0.5;
+}
+
+qreal AppTheme::GetTileSheenLift() const
+{
+    return 1.25;
+}
+
+qreal AppTheme::GetTileRimLift() const
+{
+    return 1.6;
 }
 
 qreal AppTheme::GetOpacityDisabled() const

@@ -11,8 +11,8 @@ Item
     signal done()
     signal wordTapped(string word, string sentence)
 
-    readonly property alias controller: controller
-    readonly property var meanings: controller.meaningOptions
+    required property TriageController controller
+    readonly property var meanings: root.controller.meaningOptions
     readonly property bool hasMeanings: root.meanings.length > 0
 
     property string pickedGist: ""
@@ -27,19 +27,19 @@ Item
     readonly property int pickedOpenIndex: root.meanings.findIndex(Meaning => Meaning.gist === root.openGist)
     readonly property int openIndex: root.pickedOpenIndex >= 0 ? root.pickedOpenIndex : (root.hasMeanings ? root.defaultOpenIndex : -1)
 
-    readonly property bool canLearn: controller.word.length > 0
+    readonly property bool canLearn: root.controller.word.length > 0
                                      && (!root.hasMeanings || (root.pickedGist.length > 0 && root.meaningTranslation.trim().length > 0))
 
     function learn()
     {
         if (root.hasMeanings)
         {
-            controller.learnMeaning(root.pickedGist, root.meaningTranslation)
+            root.controller.learnMeaning(root.pickedGist, root.meaningTranslation)
 
             return
         }
 
-        controller.markUnknown()
+        root.controller.markUnknown()
     }
 
     function pickTranslation(gist, text)
@@ -74,7 +74,7 @@ Item
     {
         const wanted = text.trim().toLowerCase()
 
-        return controller.translationOptions.find(Option => Option.text.trim().toLowerCase() === wanted)
+        return root.controller.translationOptions.find(Option => Option.text.trim().toLowerCase() === wanted)
             || ({ text: text, relative: 0, hasProbability: false, learnedStage: -1 })
     }
 
@@ -122,15 +122,22 @@ Item
 
     function start(wantedCount)
     {
-        return controller.start(wantedCount)
+        return root.controller.start(wantedCount)
     }
 
-    TriageController
+    Connections
     {
-        id: controller
+        target: root.controller
 
-        onProgressChanged: if (controller.finished) Qt.callLater(root.completed)
-        onCurrentChanged: Qt.callLater(root.resetWord)
+        function onProgressChanged()
+        {
+            if (root.controller.finished)
+            {
+                Qt.callLater(root.completed)
+            }
+        }
+
+        function onCurrentChanged() { Qt.callLater(root.resetWord) }
     }
 
     Component.onCompleted: Qt.callLater(root.resetWord)
@@ -143,13 +150,13 @@ Item
 
         exerciseName: qsTr("New words")
         store: root.store
-        progress: controller.targetCount > 0 ? controller.progressCount / controller.targetCount : 0
+        progress: root.controller.targetCount > 0 ? root.controller.progressCount / root.controller.targetCount : 0
 
         showOptions: false
 
         onExitRequested: root.done()
 
-        swipeEnabled: controller.word.length > 0
+        swipeEnabled: root.controller.word.length > 0
         onSwiped: function(direction)
         {
             if (direction > 0 && !root.canLearn)
@@ -157,7 +164,7 @@ Item
                 return
             }
 
-            shell.swipeOut(direction > 0 ? function() { root.learn() } : function() { controller.markKnown() },
+            shell.swipeOut(direction > 0 ? function() { root.learn() } : function() { root.controller.markKnown() },
                            direction)
         }
 
@@ -168,15 +175,15 @@ Item
             primaryShare: 25
             primaryCentred: true
             primaryFitsContent: true
-            posText: controller.cardMeta
-            posVisible: controller.cardMeta.length > 0
-            counterText: qsTr("%1 / %2").arg(controller.progressCount).arg(controller.targetCount)
+            posText: root.controller.cardMeta
+            posVisible: root.controller.cardMeta.length > 0
+            counterText: qsTr("%1 / %2").arg(root.controller.progressCount).arg(root.controller.targetCount)
 
             primaryContent: [
                 MobilePromptText
                 {
-                    text: controller.displayWord
-                    gender: controller.headwordGender
+                    text: root.controller.displayWord
+                    gender: root.controller.headwordGender
                     maximumSize: AppMetrics.sessionAnswerSize
                 },
                 Rectangle
@@ -204,8 +211,8 @@ Item
                         font.family: AppMetrics.fontFamily
                         color: AppTheme.colourText
 
-                        text: controller.translation
-                        onTextEdited: if (text !== controller.translation) controller.translation = text
+                        text: root.controller.translation
+                        onTextEdited: if (text !== root.controller.translation) root.controller.translation = text
                     }
                 }
             ]
@@ -219,7 +226,7 @@ Item
 
                 Repeater
                 {
-                    model: root.hasMeanings ? [] : controller.translationOptions
+                    model: root.hasMeanings ? [] : root.controller.translationOptions
 
                     delegate: MobileTranslationChip
                     {
@@ -232,7 +239,7 @@ Item
                         learnedStage: modelData.learnedStage
                         inUse: modelData.selected
 
-                        onPicked: controller.toggleTranslation(index)
+                        onPicked: root.controller.toggleTranslation(index)
                     }
                 }
 
@@ -271,7 +278,7 @@ Item
                 label: qsTr("Skip")
                 leadingArrow: "left"
                 filled: false
-                onClicked: shell.swap(function() { controller.markKnown() })
+                onClicked: shell.swap(function() { root.controller.markKnown() })
             }
 
             MobileWideButton

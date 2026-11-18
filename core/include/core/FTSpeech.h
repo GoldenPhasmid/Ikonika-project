@@ -33,6 +33,7 @@ struct FTVoiceInfo
         A label rather than an enumeration, so a new family needs no code change outside the loader. */
     std::string Engine;
     std::string Name;
+    std::string Speaker;
     int SampleRate = 0;
     int SpeakerCount = 0;
 
@@ -97,6 +98,8 @@ public:
     int GetSampleRate() const;
 
     int GetSpeakerCount() const;
+
+    std::string GetSpeaker() const;
 
     /** A short label for the interface, derived from the engine and the model directory. */
     std::string GetName() const;
@@ -203,10 +206,14 @@ public:
 
     int FindFallbackVoice() const;
 
+    void SetPreferredVoice(const std::string& LanguageCode, int Index);
+    int GetPreferredVoice(const std::string& LanguageCode) const;
+
     std::vector<int16_t> RenderNarration(int VoiceIndex, std::string_view Text, const std::string& LanguageCode) const;
     std::optional<FTNarrationChunk> PlayNarration(int VoiceIndex, std::vector<int16_t> Samples, bool bContinues);
     uint64_t GetNarrationPosition(int VoiceIndex) const;
     bool IsNarrationPlaying(int VoiceIndex) const;
+    void SetNarrationPaused(bool bValue);
 
     void Stop();
 
@@ -277,9 +284,11 @@ private:
 
     std::vector<Voice> Voices;
     std::vector<std::string> LoadedDirectories;
+    std::unordered_map<std::string, int> PreferredVoices;
     int ActiveVoice = 0;
 
     bool bEnabled = true;
+    bool bNarrationPaused = false;
     float Speed = 1.0f;
     float SentenceSpeed = 1.0f;
 

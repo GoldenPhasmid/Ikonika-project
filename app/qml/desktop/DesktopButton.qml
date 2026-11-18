@@ -17,7 +17,7 @@ Button
     property bool hintOnControl: false
     property bool alignHintRight: false
 
-    readonly property bool showsHint: root.keyHint.length > 0 && !root.compactContent
+    readonly property bool showsHint: root.keyHint.length > 0 && !root.compactContent && !AppMetrics.touchInput
                                       && (!root.hintOnControl || AppModifierKeys.controlHeld)
 
     readonly property bool compactContent: root.iconOnly && root.iconName.length > 0
@@ -30,7 +30,7 @@ Button
             root.iconName.length > 0 ? leadingIcon.implicitWidth : -1,
             root.text.length > 0 ? label.implicitWidth : -1,
             root.trailingIconName.length > 0 ? trailingIcon.implicitWidth : -1,
-            root.keyHint.length > 0 && !root.hintOnControl ? hint.implicitWidth : -1
+            root.keyHint.length > 0 && !root.hintOnControl && !AppMetrics.touchInput ? hint.implicitWidth : -1
         ].filter(Width => Width >= 0)
 
         const content = widths.reduce((Sum, Width) => Sum + Width, 0) + Math.max(0, widths.length - 1) * contentRow.spacing

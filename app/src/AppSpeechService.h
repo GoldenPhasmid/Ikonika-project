@@ -27,6 +27,7 @@ public:
     void SetSpeakerId(int Value) override;
     void SetEnabled(bool bValue) override;
     void SetCachedLineCount(int Value) override;
+    void SetPreferredVoiceName(const QString& LanguageCode, const QString& Name) override;
 
     bool IsAvailable() const override;
     bool IsEnabled() const override;
@@ -34,6 +35,7 @@ public:
     FTVoiceInfo GetVoiceInfo(int Index) const override;
     int GetActiveVoice() const override;
     int GetSpeakerId() const override;
+    QString GetPreferredVoiceName(const QString& LanguageCode) const override;
     float GetSpeed() const override;
 
     QMutex& Lock() override;
@@ -41,6 +43,8 @@ public:
     bool CanNarrate() const override;
     void QueueNarration(int Id, const QString& Text, const QString& LanguageCode) override;
     void StopNarration() override;
+    bool PauseNarration() override;
+    bool ResumeNarration() override;
 
     void SetSentenceSpeed(float Value) override;
 
@@ -79,6 +83,8 @@ private:
     bool LoadVoices();
     bool IsServicePlaying();
     int FindSavedVoice() const;
+    int FindVoiceByName(const QString& Name) const;
+    void ApplyPreferredVoices();
     void ChangeOnWorker(std::function<void()> Apply);
 
     FTSpeechService Service;
@@ -91,4 +97,5 @@ private:
     std::deque<FNarrationRequest> NarrationRequests;
     QAtomicInteger<quint64> NarrationGeneration{0};
     bool bNarrationRunning = false;
+    bool bNarrationPaused = false;
 };

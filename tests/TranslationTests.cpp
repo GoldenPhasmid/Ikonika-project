@@ -146,7 +146,7 @@ TEST_CASE("Each sentence of a passage is translated", "[translation]")
     const std::vector<std::pair<std::string, std::string>> Cases = {
         {"Tu as vu Marie ? Oui, je l'ai vue hier.", "Did you see Marie? Yeah, I saw her yesterday."},
         {"Il pleut. Je reste à la maison. Et toi ?", "It's raining. I'll stay home. What about you?"},
-        {"M. Dupont est arrivé. Il est fatigué.", "Mr. Dupont's here. He's tired."},
+        {"M. Dupont est arrivé. Il est fatigué.", "Mr. Dupont has arrived. He's tired."},
         {"Le prix est de 3.5 euros... C'est cher !", "The price is 3.5 euros... It's expensive!"},
         {"Pommes ? J'en ai acheté trois.", "Apples? I bought three."},
         {"Oui. Je pars demain.", "Yes. I'm leaving tomorrow."},

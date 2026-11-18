@@ -3,20 +3,31 @@ import QtQuick.Controls.Basic
 import QtQuick.Layouts
 import QtQuick.Window
 
-ApplicationWindow
+Page
 {
     id: window
 
-    width: AppMetrics.windowWidth
-    height: AppMetrics.windowHeight
-    minimumWidth: AppMetrics.windowMinimumWidth
-    minimumHeight: AppMetrics.windowMinimumHeight
-    visible: false
-    title: qsTr("Ikonika")
+    anchors.fill: parent
+    focus: true
 
-    property bool startInTray: false
+    readonly property var hostWindow: window.Window.window
 
-    color: AppTheme.colourPanel
+    required property AppControllers controllers
+    property var layoutState: ({})
+
+    readonly property DailySessionController daily: window.controllers.daily
+    readonly property IntensiveLearningController training: window.controllers.training
+    readonly property RepetitionController review: window.controllers.review
+    readonly property TriageController triage: window.controllers.triage
+    readonly property SentenceTrainingController sentenceTraining: window.controllers.sentenceTraining
+    readonly property DiscoveryController discovery: window.controllers.discovery
+    readonly property PlacementTestController placementTest: window.controllers.placementTest
+    readonly property ExerciseLauncherController launcher: window.controllers.launcher
+
+    topPadding: window.immersive ? 0 : window.SafeArea.margins.top
+    bottomPadding: window.immersive ? 0 : window.SafeArea.margins.bottom
+    leftPadding: window.immersive ? 0 : window.SafeArea.margins.left
+    rightPadding: window.immersive ? 0 : window.SafeArea.margins.right
 
     font.family: AppMetrics.fontFamily
     font.pixelSize: AppMetrics.fontBody
@@ -36,15 +47,96 @@ ApplicationWindow
     palette.toolTipText: AppTheme.colourPanel
     palette.placeholderText: AppTheme.colourMuted
 
-    onClosing: function(close)
+    Binding
     {
-        if (!AppReminder.trayAvailable)
+        target: window.hostWindow
+        when: window.hostWindow !== null
+        property: "color"
+        value: AppTheme.colourPanel
+    }
+
+    function handleClose()
+    {
+        if (Qt.platform.os === "android")
         {
-            return
+            if (!window.androidBack())
+            {
+                AppReminder.moveToBackground()
+            }
+
+            return false
         }
 
-        close.accepted = false
-        window.hide()
+        if (!AppReminder.trayAvailable)
+        {
+            return true
+        }
+
+        window.hostWindow.hide()
+
+        return false
+    }
+
+    function androidBack()
+    {
+        if (window.onboarding)
+        {
+            return false
+        }
+
+        if (window.activeMorph.morphing)
+        {
+            return true
+        }
+
+        if (window.inSessionScreen)
+        {
+            if (sessionScreen.explainOpen)
+            {
+                sessionScreen.closeExplanation()
+
+                return true
+            }
+
+            sessionScreen.askToLeave()
+
+            return true
+        }
+
+        if (window.session.length > 0)
+        {
+            window.leaveSession()
+
+            return true
+        }
+
+        if (window.discoverPicking)
+        {
+            window.showDiscoverPick(false, true)
+
+            return true
+        }
+
+        if (window.screen === "reader" && readerScreen.dismiss())
+        {
+            return true
+        }
+
+        if (window.screen === "reader" && readerScreen.reading)
+        {
+            readerScreen.closeBook()
+
+            return true
+        }
+
+        if (window.screen === "decks" && decksScreen.deckOpen)
+        {
+            decksScreen.closeDeck()
+
+            return true
+        }
+
+        return false
     }
 
     readonly property SettingsStore store: SettingsStore {}
@@ -57,23 +149,26 @@ ApplicationWindow
         {
             DesktopQuickLookup
             {
+                lookup: window.controllers.dictionary("quickLookup")
+                wordLookup: window.controllers.dictionary("quickLookupWord")
+
                 service: quickLookupService
                 vocabulary: vocabularyScreen.vocabulary
                 store: window.store
 
                 onOpenEntryRequested: function(word, partOfSpeech)
                 {
-                    window.showMaximized()
-                    window.raise()
-                    window.requestActivate()
+                    window.hostWindow.showMaximized()
+                    window.hostWindow.raise()
+                    window.hostWindow.requestActivate()
                     window.openDictionary(word, partOfSpeech)
                 }
 
                 onLookUpRequested: function(text)
                 {
-                    window.showMaximized()
-                    window.raise()
-                    window.requestActivate()
+                    window.hostWindow.showMaximized()
+                    window.hostWindow.raise()
+                    window.hostWindow.requestActivate()
                     window.lookUpWord(text)
                 }
             }
@@ -98,12 +193,39 @@ ApplicationWindow
         welcome.forceActiveFocus()
     }
 
+    function captureLayoutState()
+    {
+        if (window.onboarding)
+        {
+            return {}
+        }
+
+        return { place: window.destination, session: window.session }
+    }
+
+    function restoreLayoutState(state)
+    {
+        if (window.onboarding || !state.place)
+        {
+            return
+        }
+
+        console.info("Layout switch: restoring", state.place, state.session)
+
+        welcome.shown = false
+        window.navigate(state.place)
+
+        if (state.session.length > 0)
+        {
+            window.enterSession(state.session)
+        }
+    }
+
     property string sessionOrigin: ""
     property Item morphSource: null
     property Item morphSurface: null
     property string returnOrigin: ""
     readonly property string deckOrigin: "deck:"
-    readonly property string deckLearnOrigin: "deckLearn"
 
     readonly property bool onboarding: AppOnboarding.required
     readonly property bool focusMode: window.session.length > 0 || window.onboarding
@@ -113,11 +235,11 @@ ApplicationWindow
     property int visibilityBeforeFullScreen: Window.Windowed
 
     readonly property var sessions: ({
-        "training": training,
-        "review": review,
-        "sentences": sentenceTraining,
+        "training": window.training,
+        "review": window.review,
+        "sentences": window.sentenceTraining,
         "practice": practice,
-        "discovery": discovery
+        "discovery": window.discovery
     })
 
     readonly property var activeSession: window.sessions[window.session] || null
@@ -180,10 +302,10 @@ ApplicationWindow
         reader: readerScreen,
         settings: settingsScreen,
         session: sessionScreen,
-        training: training,
-        review: review,
+        training: window.training,
+        review: window.review,
         triage: triageScreen,
-        sentences: sentenceTraining,
+        sentences: window.sentenceTraining,
         practice: practice,
         wordDialog: wordDialog
     })
@@ -387,6 +509,8 @@ ApplicationWindow
 
         if (window.readingBook)
         {
+            readerScreen.toggleLookup()
+
             return
         }
 
@@ -449,7 +573,7 @@ ApplicationWindow
     function refreshCurrentScreen(keepWordsScreen)
     {
         window.store.clearLastError()
-        daily.refresh()
+        window.daily.refresh()
 
         if (window.screen === "today")
         {
@@ -529,23 +653,7 @@ ApplicationWindow
             return face ? { item: face, surface: face } : null
         }
 
-        if (window.destination === "decks" && window.returnOrigin === window.deckLearnOrigin && decksScreen.deckOpen)
-        {
-            return { item: deckLearnButton, surface: deckLearnButton.background, rect: window.barRect(deckLearnButton) }
-        }
-
         return null
-    }
-
-    function barRect(button)
-    {
-        return function(host)
-        {
-            const inBar = button.mapToItem(topBar, 0, 0, button.width, button.height)
-            const bar = topBar.parent.mapToItem(host, topBar.x, topBar.y)
-
-            return Qt.rect(bar.x + inBar.x, bar.y + inBar.y, inBar.width, inBar.height)
-        }
     }
 
     function enterSession(kind)
@@ -615,14 +723,14 @@ ApplicationWindow
 
     function startTraining()
     {
-        if (training.resume(training.vocabularyKey))
+        if (window.training.resume(window.training.vocabularyKey))
         {
             window.enterSession("training")
 
             return
         }
 
-        if (daily.shortfall() > 0)
+        if (window.daily.shortfall() > 0)
         {
             console.info("Train: not enough words in My Vocabulary, opening Discover")
             window.startDiscoveryPick()
@@ -635,7 +743,15 @@ ApplicationWindow
 
     function startDiscoveryPick()
     {
-        if (discovery.hasActiveSession)
+        if (!DecksController.categorised)
+        {
+            console.info("Discover: blocked,", DecksController.discoverBlockedReason)
+            toast.show(DecksController.discoverBlockedReason)
+
+            return
+        }
+
+        if (window.discovery.hasActiveSession)
         {
             console.info("Discover: continuing the unfinished round")
             window.enterSession("discovery")
@@ -666,9 +782,9 @@ ApplicationWindow
 
     function startDiscoveryDecks(deckIds)
     {
-        discovery.saveDecks(deckIds)
+        window.discovery.saveDecks(deckIds)
 
-        if (!discovery.startDecks(deckIds))
+        if (!window.discovery.startDecks(deckIds))
         {
             toast.show(qsTr("Every word of these decks is already in My Vocabulary or known."))
 
@@ -686,7 +802,7 @@ ApplicationWindow
 
     function startDeckDiscovery(deckId)
     {
-        if (!discovery.startDeck(deckId))
+        if (!window.discovery.startDeck(deckId))
         {
             toast.show(qsTr("Every word of this deck is already in My Vocabulary or known."))
 
@@ -698,7 +814,7 @@ ApplicationWindow
 
     function startCollectedTraining()
     {
-        if (training.startCards(training.vocabularyKey, daily.collectSessionCards()))
+        if (window.training.startCards(window.training.vocabularyKey, window.daily.collectSessionCards()))
         {
             window.enterSession("training")
 
@@ -711,7 +827,7 @@ ApplicationWindow
 
     function startSentences(exercise)
     {
-        if (sentenceTraining.start(exercise))
+        if (window.sentenceTraining.start(exercise))
         {
             window.enterSession("sentences")
 
@@ -723,7 +839,7 @@ ApplicationWindow
 
     function startPractice(exercise, cardCount, repetitionCount, filterKeys, reverse)
     {
-        if (launcher.startExercise(exercise, reverse, cardCount, repetitionCount, filterKeys))
+        if (window.launcher.startExercise(exercise, reverse, cardCount, repetitionCount, filterKeys))
         {
             window.enterSession("practice")
 
@@ -735,7 +851,7 @@ ApplicationWindow
 
     function startReview()
     {
-        if (review.hasActiveSession || review.startDueToday())
+        if (window.review.hasActiveSession || window.review.startDueToday())
         {
             window.enterSession("review")
 
@@ -747,21 +863,21 @@ ApplicationWindow
 
     function startFormsTraining(kind)
     {
-        const trainingId = daily.formsTrainingId(kind)
+        const trainingId = window.daily.formsTrainingId(kind)
 
         if (trainingId.length === 0)
         {
             return
         }
 
-        if (training.resume(trainingId))
+        if (window.training.resume(trainingId))
         {
             window.enterSession("training")
 
             return
         }
 
-        const tenses = daily.formsTenses(trainingId)
+        const tenses = window.daily.formsTenses(trainingId)
 
         if (tenses.length > 1)
         {
@@ -778,10 +894,10 @@ ApplicationWindow
 
     function startTenseTraining(trainingId, tense)
     {
-        const cards = tense === "present" ? daily.collectFormsCards(trainingId)
-                                          : daily.collectTenseCards(trainingId, tense)
+        const cards = tense === "present" ? window.daily.collectFormsCards(trainingId)
+                                          : window.daily.collectTenseCards(trainingId, tense)
 
-        if (training.resume(trainingId) || training.startCards(trainingId, cards))
+        if (window.training.resume(trainingId) || window.training.startCards(trainingId, cards))
         {
             window.enterSession("training")
 
@@ -846,11 +962,11 @@ ApplicationWindow
     {
         window.shownPage = window.screen
 
-        const lastSession = training.lastActiveKey()
+        const lastSession = window.training.lastActiveKey()
 
-        if (lastSession.length > 0)
+        if (!window.layoutState.place && lastSession.length > 0)
         {
-            training.resume(lastSession)
+            window.training.resume(lastSession)
         }
 
         if (dictionaryBenchmark.requested)
@@ -865,9 +981,9 @@ ApplicationWindow
 
         window.openWelcome()
 
-        if (!window.startInTray)
+        if (window.layoutState.place)
         {
-            window.show()
+            window.restoreLayoutState(window.layoutState)
         }
 
         const snapshotDirectory = snapshotProbe.environmentVariable("IKONIKA_SNAPSHOT_DIR")
@@ -883,59 +999,24 @@ ApplicationWindow
         id: snapshotProbe
     }
 
-    DailySessionController
+    Connections
     {
-        id: daily
-    }
+        target: window.triage
 
-    IntensiveLearningController
-    {
-        id: training
-    }
-
-    RepetitionController
-    {
-        id: review
-    }
-
-    TriageController
-    {
-        id: triage
-
-        onProgressChanged:
+        function onProgressChanged()
         {
-            if (triage.finished && window.session === "triage")
+            if (window.triage.finished && window.session === "triage")
             {
-                Qt.callLater(triage.deckMode ? window.leaveSession : window.startCollectedTraining)
+                Qt.callLater(window.triage.deckMode ? window.leaveSession : window.startCollectedTraining)
             }
         }
-    }
-
-    SentenceTrainingController
-    {
-        id: sentenceTraining
-    }
-
-    DiscoveryController
-    {
-        id: discovery
-    }
-
-    PlacementTestController
-    {
-        id: placementTest
-    }
-
-    ExerciseLauncherController
-    {
-        id: launcher
     }
 
     QtObject
     {
         id: practice
 
-        readonly property var activeController: launcher.activeController
+        readonly property var activeController: window.launcher.activeController
         readonly property bool finished: !!practice.activeController && practice.activeController.finished
         readonly property int stage: 1
         readonly property int stageCount: 1
@@ -977,7 +1058,7 @@ ApplicationWindow
 
                 store: window.store
                 destination: window.destination
-                dueCount: daily.dueCount
+                dueCount: window.daily.dueCount
                 crumbs: window.crumbs
                 languageShortcut: languageSwitchShortcut.enabled
 
@@ -1034,22 +1115,6 @@ ApplicationWindow
                     onClicked: window.focusSearch()
                 }
 
-                DesktopButton
-                {
-                    id: deckLearnButton
-
-                    objectName: "topbar_deck_learn"
-
-                    visible: window.screen === "decks" && decksScreen.deckOpen
-                    tone: "primary"
-                    iconName: "today_learn"
-                    text: qsTr("Learn · %1").arg(decksScreen.deckNewCount)
-                    enabled: decksScreen.deckNewCount > 0
-
-                    onClicked: window.startFrom(window.deckLearnOrigin, deckLearnButton, deckLearnButton.background,
-                                                function() { window.startDeckDiscovery(decksScreen.deckId) })
-                }
-
                 DesktopIconButton
                 {
                     objectName: "topbar_reader_contents"
@@ -1062,6 +1127,20 @@ ApplicationWindow
                     text: qsTr("Contents (Ctrl+T)")
 
                     onClicked: readerScreen.toggleContents()
+                }
+
+                DesktopIconButton
+                {
+                    objectName: "topbar_reader_lookup"
+
+                    visible: window.readingBook
+                    opacity: readerScreen.chromeShown
+                    iconName: "search"
+                    shortcutKey: "F"
+                    active: readerScreen.lookupOpen
+                    text: qsTr("Look up a word (Ctrl+F)")
+
+                    onClicked: readerScreen.toggleLookup()
                 }
 
                 DesktopIconButton
@@ -1089,18 +1168,6 @@ ApplicationWindow
                     onDismissed: readerScreen.focusReading()
                 }
 
-                DesktopIconButton
-                {
-                    objectName: "topbar_reader_immersive"
-
-                    visible: window.readingBook
-                    opacity: readerScreen.chromeShown
-                    iconName: "fullscreen"
-                    shortcutKey: "F11"
-                    text: qsTr("Hide controls (Ctrl+F11)")
-
-                    onClicked: readerScreen.toggleImmersive()
-                }
             }
 
             Item
@@ -1122,16 +1189,20 @@ ApplicationWindow
                 {
                     id: todayScreen
 
+                    daily: window.daily
+
                     anchors.fill: parent
                     visible: window.pageShown("today") && window.discoverShift < 1
                     transform: Translate { x: window.pageOffset("today") - window.discoverShift * pages.width }
 
                     store: window.store
-                    training: training
-                    review: review
-                    sentences: sentenceTraining
-                    discovery: discovery
+                    training: window.training
+                    review: window.review
+                    sentences: window.sentenceTraining
+                    discovery: window.discovery
                     books: readerScreen.continueBooks
+                    freeBooks: window.controllers.reader.freeBooks
+                    freeTransfers: window.controllers.reader.freeTransfers
 
                     onLearnRequested: window.startFromTile("learn", window.startTraining)
                     onReviewRequested: window.startFromTile("review", window.startReview)
@@ -1145,6 +1216,12 @@ ApplicationWindow
                     {
                         window.navigate("reader")
                         readerScreen.openDocument(documentId)
+                    }
+                    onFreeBookRequested: function(freeId) { window.controllers.reader.downloadFreeBook(freeId) }
+                    onOpenFileRequested:
+                    {
+                        window.navigate("reader")
+                        readerScreen.openBook()
                     }
                 }
 
@@ -1164,7 +1241,7 @@ ApplicationWindow
                     {
                         DesktopDiscoverPick
                         {
-                            controller: discovery
+                            controller: window.discovery
 
                             onStartRequested: function(deckIds, face) { window.startFrom("discover", face, face, function() { window.startDiscoveryDecks(deckIds) }) }
                             onLeaveRequested: window.showDiscoverPick(false, true)
@@ -1178,6 +1255,10 @@ ApplicationWindow
                 {
                     id: vocabularyScreen
 
+                    cardDictionary: window.controllers.dictionary("vocabularyCard")
+
+                    controller: window.controllers.vocabulary
+
                     anchors.fill: parent
                     visible: window.pageShown("vocabulary")
                     transform: Translate { x: window.pageOffset("vocabulary") }
@@ -1189,8 +1270,8 @@ ApplicationWindow
 
                     onCardRemoved: function(cardId)
                     {
-                        training.removeCard(cardId)
-                        review.removeCard(cardId)
+                        window.training.removeCard(cardId)
+                        window.review.removeCard(cardId)
                     }
                 }
 
@@ -1199,6 +1280,10 @@ ApplicationWindow
                 DesktopDecksScreen
                 {
                     id: decksScreen
+
+                    cardDictionary: window.controllers.dictionary("deckCard")
+
+                    vocabulary: window.controllers.deckVocabulary
 
                     anchors.fill: parent
                     visible: window.pageShown("decks")
@@ -1212,8 +1297,8 @@ ApplicationWindow
 
                     onCardRemoved: function(cardId)
                     {
-                        training.removeCard(cardId)
-                        review.removeCard(cardId)
+                        window.training.removeCard(cardId)
+                        window.review.removeCard(cardId)
                     }
                 }
 
@@ -1228,7 +1313,7 @@ ApplicationWindow
                     transform: Translate { x: window.pageOffset("settings") }
 
                     store: window.store
-                    triageController: triage
+                    triageController: window.triage
 
                     onPlacementRequested:
                     {
@@ -1256,6 +1341,13 @@ ApplicationWindow
                 {
                     id: readerScreen
 
+                    translationLookup: window.controllers.dictionary("readerTranslation")
+                    lookup: window.controllers.dictionary("readerLookup")
+                    contextLookup: window.controllers.dictionary("readerContext")
+                    textLookup: window.controllers.dictionary("readerText")
+
+                    reader: window.controllers.reader
+
                     anchors.fill: parent
                     visible: window.pageShown("reader")
                     transform: Translate { x: window.pageOffset("reader") }
@@ -1274,6 +1366,11 @@ ApplicationWindow
                 {
                     id: wordsScreen
 
+                    dictionary: window.controllers.dictionary("words")
+                    entryDictionary: window.controllers.dictionary("wordEntry")
+
+                    wordList: window.controllers.wordList
+
                     anchors.fill: parent
                     visible: window.pageShown("words")
                     transform: Translate { x: window.pageOffset("words") }
@@ -1282,10 +1379,10 @@ ApplicationWindow
 
                     onAddWordRequested: function(word, translation, partOfSpeech, meaningGist) { window.addWord(word, translation, partOfSpeech, meaningGist) }
 
-                    onDeckOpenRequested: function(deckId)
+                    onDeckOpenRequested: function(deckId, word, partOfSpeech)
                     {
                         window.navigate("decks")
-                        decksScreen.openDeck(deckId)
+                        decksScreen.openDeck(deckId, word, partOfSpeech)
                     }
 
                     onEditWordRequested: function(cardId, word, translation, gender, partOfSpeech, box)
@@ -1303,6 +1400,10 @@ ApplicationWindow
     {
         id: sessionScreen
 
+        lookup: window.controllers.dictionary("sessionLookup")
+        translationLookup: window.controllers.dictionary("sessionTranslation")
+        contextLookup: window.controllers.dictionary("sessionContext")
+
         anchors.fill: parent
         visible: window.inSessionScreen
         focus: window.inSessionScreen
@@ -1319,7 +1420,7 @@ ApplicationWindow
             case "discovery": return qsTr("Discover")
             }
 
-            if (training.formsSession)
+            if (window.training.formsSession)
             {
                 return qsTr("Forms training")
             }
@@ -1330,23 +1431,23 @@ ApplicationWindow
         {
             switch (window.session)
             {
-            case "review": return review.cardCount
-            case "sentences": return sentenceTraining.sessionSentenceCount
+            case "review": return window.review.cardCount
+            case "sentences": return window.sentenceTraining.sessionSentenceCount
             case "practice": return practice.activeController ? practice.activeController.currentSessionCount : 0
             }
 
-            return training.sessionWordCount
+            return window.training.sessionWordCount
         }
         elapsedSeconds:
         {
             switch (window.session)
             {
-            case "review": return review.elapsedSeconds
-            case "sentences": return sentenceTraining.elapsedSeconds
+            case "review": return window.review.elapsedSeconds
+            case "sentences": return window.sentenceTraining.elapsedSeconds
             case "practice": return practice.activeController ? practice.activeController.elapsedSeconds : 0
             }
 
-            return training.elapsedSeconds
+            return window.training.elapsedSeconds
         }
         completeHeadline:
         {
@@ -1367,7 +1468,7 @@ ApplicationWindow
         {
             if (window.session === "discovery")
             {
-                discovery.leave()
+                window.discovery.leave()
             }
 
             window.leaveSession()
@@ -1377,7 +1478,7 @@ ApplicationWindow
         {
             if (window.session === "sentences")
             {
-                sentenceTraining.endSession()
+                window.sentenceTraining.endSession()
             }
 
             window.leaveSession()
@@ -1407,12 +1508,14 @@ ApplicationWindow
     {
         id: triageScreen
 
+        dictionary: window.controllers.dictionary("triage")
+
         anchors.fill: parent
         visible: !window.onboarding && window.session === "triage"
         focus: visible
 
         store: window.store
-        controller: triage
+        controller: window.triage
 
         onDictionaryRequested: function(word, partOfSpeech) { window.openDictionaryFromSession(word, partOfSpeech) }
 
@@ -1432,7 +1535,7 @@ ApplicationWindow
             {
                 focus: true
 
-                controller: placementTest
+                controller: window.placementTest
                 targetLanguage: window.store.targetLanguageCode
                 standalone: true
                 retake: window.placementRetake
@@ -1460,7 +1563,7 @@ ApplicationWindow
                 focus: true
 
                 store: window.store
-                placement: placementTest
+                placement: window.placementTest
 
                 onFinished:
                 {
@@ -1474,6 +1577,8 @@ ApplicationWindow
     DesktopCardDetailsDialog
     {
         id: wordDialog
+
+        dictionary: window.controllers.dictionary("addWord")
 
         store: window.store
 
@@ -1524,7 +1629,7 @@ ApplicationWindow
     {
         id: sentenceDialog
 
-        controller: sentenceTraining
+        controller: window.sentenceTraining
 
         onExerciseChosen: function(exercise)
         {
@@ -1555,7 +1660,7 @@ ApplicationWindow
 
         objectName: "today_tour"
 
-        readonly property bool due: AppOnboarding.todayTourPending && window.visible && !window.onboarding
+        readonly property bool due: AppOnboarding.todayTourPending && window.hostWindow !== null && window.hostWindow.visible && !window.onboarding
                                     && !welcome.shown && window.screen === "today" && window.session.length === 0
 
         anchors.fill: parent
@@ -1623,7 +1728,7 @@ ApplicationWindow
     {
         target: AppSyncController
         property: "mergesHeld"
-        value: welcome.shown && window.visible
+        value: welcome.shown && window.hostWindow !== null && window.hostWindow.visible
     }
 
     Shortcut
@@ -1665,17 +1770,17 @@ ApplicationWindow
 
     function toggleFullScreen()
     {
-        if (window.visibility === Window.FullScreen)
+        if (window.hostWindow.visibility === Window.FullScreen)
         {
             console.info("Leaving full screen")
-            window.visibility = window.visibilityBeforeFullScreen
+            window.hostWindow.visibility = window.visibilityBeforeFullScreen
 
             return
         }
 
         console.info("Entering full screen")
-        window.visibilityBeforeFullScreen = window.visibility
-        window.visibility = Window.FullScreen
+        window.visibilityBeforeFullScreen = window.hostWindow.visibility
+        window.hostWindow.visibility = Window.FullScreen
     }
 
     Shortcut
@@ -1785,17 +1890,17 @@ ApplicationWindow
 
         function onLocalDataChanged(replaced)
         {
-            if (training.hasActiveSession)
+            if (window.training.hasActiveSession)
             {
-                training.endSession()
+                window.training.endSession()
             }
 
-            if (review.hasActiveSession)
+            if (window.review.hasActiveSession)
             {
-                review.endSession()
+                window.review.endSession()
             }
 
-            sentenceTraining.forgetSessions()
+            window.sentenceTraining.forgetSessions()
 
             window.session = ""
             window.refreshCurrentScreen()
@@ -1815,12 +1920,12 @@ ApplicationWindow
 
         function onLanguagesChanged()
         {
-            if (training.hasActiveSession)
+            if (window.training.hasActiveSession)
             {
-                training.endSession()
+                window.training.endSession()
             }
 
-            sentenceTraining.forgetSessions()
+            window.sentenceTraining.forgetSessions()
 
             window.session = ""
             window.suspendedSession = ""
@@ -1833,7 +1938,7 @@ ApplicationWindow
                 return
             }
 
-            if (placementTest.isOffered(window.store.targetLanguageCode, ""))
+            if (window.placementTest.isOffered(window.store.targetLanguageCode, ""))
             {
                 window.enterSession("placement")
 

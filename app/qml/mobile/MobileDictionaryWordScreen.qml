@@ -6,6 +6,8 @@ Item
 {
     id: root
 
+    required property DictionaryController controller
+
     property string word: ""
     property string partOfSpeech: ""
     property string searchText: ""
@@ -19,7 +21,7 @@ Item
     signal searchRequested()
     signal wordTapped(string word)
 
-    readonly property var entry: controller.entry.headword ? controller.entry : null
+    readonly property var entry: root.controller.entry.headword ? root.controller.entry : null
     readonly property string phonetic: !root.entry || root.entry.phonetic.length === 0 ? ""
         : (root.entry.phonetic.startsWith("/") || root.entry.phonetic.startsWith("[")
            ? root.entry.phonetic : qsTr("/%1/").arg(root.entry.phonetic))
@@ -37,17 +39,17 @@ Item
     }, [])
 
     readonly property var otherTranslations: root.hasMeanings
-        ? controller.allTranslations.filter(function(translation)
+        ? root.controller.allTranslations.filter(function(translation)
         {
             return root.meaningTranslationKeys.indexOf(translation.text.trim().toLowerCase()) < 0
         })
-        : controller.allTranslations
+        : root.controller.allTranslations
 
     function findTranslationRow(text)
     {
         const wanted = text.trim().toLowerCase()
 
-        return controller.allTranslations.find(function(translation)
+        return root.controller.allTranslations.find(function(translation)
         {
             return translation.text.trim().toLowerCase() === wanted
         }) || ({ text: text, relative: 0, hasProbability: false, learnedStage: -1, cardId: "" })
@@ -74,9 +76,9 @@ Item
         root.partOfSpeech = pos
 
         root.searchText = query || ""
-        controller.openEntry(headword, pos, root.searchText)
-        controller.recordSearch()
-        controller.speakAutomatically(headword)
+        root.controller.openEntry(headword, pos, root.searchText)
+        root.controller.recordSearch()
+        root.controller.speakAutomatically(headword)
     }
 
     function selectPartOfSpeech(pos)
@@ -87,7 +89,7 @@ Item
         }
 
         root.partOfSpeech = pos
-        controller.openEntry(root.word, pos, root.searchText)
+        root.controller.openEntry(root.word, pos, root.searchText)
     }
 
     function editCard(card)
@@ -97,9 +99,9 @@ Item
 
     function editCards()
     {
-        if (controller.cards.length === 1)
+        if (root.controller.cards.length === 1)
         {
-            root.editCard(controller.cards[0])
+            root.editCard(root.controller.cards[0])
 
             return
         }
@@ -111,13 +113,8 @@ Item
     {
         if (root.word.length > 0)
         {
-            controller.openEntry(root.word, root.partOfSpeech)
+            root.controller.openEntry(root.word, root.partOfSpeech)
         }
-    }
-
-    DictionaryController
-    {
-        id: controller
     }
 
     MobileShell
@@ -135,7 +132,7 @@ Item
         onBackRequested: root.done()
         onTabSelected: function(key) { root.tabSelected(key) }
         onSearchRequested: root.searchRequested()
-        onTrailingActivated: controller.copyToClipboard(root.entry ? root.entry.headword : root.word)
+        onTrailingActivated: root.controller.copyToClipboard(root.entry ? root.entry.headword : root.word)
 
         Flickable
         {
@@ -187,7 +184,7 @@ Item
 
                             MobileActionIconButton
                             {
-                                visible: controller.cards.length > 0
+                                visible: root.controller.cards.length > 0
                                 iconSvg: Icons.Icons.edit.path
                                 onClicked: root.editCards()
                             }
@@ -195,7 +192,7 @@ Item
                             MobileActionIconButton
                             {
                                 iconSvg: Icons.Icons.speaker_on.path
-                                onClicked: controller.speak(root.entry ? root.entry.headword : root.word)
+                                onClicked: root.controller.speak(root.entry ? root.entry.headword : root.word)
                             }
                         }
                     }
@@ -275,7 +272,7 @@ Item
                 {
                     Layout.fillWidth: true
                     implicitHeight: tabRow.implicitHeight
-                    visible: controller.readings.length > 0
+                    visible: root.controller.readings.length > 0
 
                     Accessible.role: Accessible.PageTabList
                     Accessible.name: qsTr("Parts of speech")
@@ -298,7 +295,7 @@ Item
 
                         Repeater
                         {
-                            model: controller.readings
+                            model: root.controller.readings
 
                             delegate: MobileTab
                             {
@@ -535,7 +532,7 @@ Item
 
             sourceComponent: MobileCardPickSheet
             {
-                cards: controller.cards
+                cards: root.controller.cards
 
                 onDismissed: root.cardSheetOpen = false
 
@@ -612,6 +609,8 @@ Item
                 {
                     id: formsSection
                     forms: root.entry ? root.entry.forms : ({ kind: "none" })
+
+                    onFormSpeakRequested: function(form) { root.controller.speak(form) }
                 }
             }
         }

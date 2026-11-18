@@ -15,7 +15,9 @@ Speech synthesis has one job in this app: play a word or sentence back fast enou
 
 PC numbers come from a fresh run of the desktop scratch benchmark. Android numbers are ranges from the on-device investigation described below, not a per-length rerun.
 
-Desktop uses Supertonic 3 with the original ONNX weights. Listening comparisons found background noise in the INT8 output that disappeared with the original weights. The larger model is accepted for desktop speech quality. Piper is no longer offered or published, and the app loads only Supertonic voices. Android uses platform TTS and downloads no voice model.
+Desktop uses Supertonic 3 with the original ONNX weights. Listening comparisons found background noise in the INT8 output that disappeared with the original weights. The larger model is accepted for desktop speech quality. Supertonic is the default voice for every language. A Piper voice published for one language is an optional download, offered in Settings. Android uses platform TTS and downloads no voice model.
+
+Portuguese has one language tag in Supertonic 3. The model has no switch between Brazilian and European Portuguese, and its voice presets carry no accent. Supertone said in its issue tracker that the Portuguese training data may lean European, while Brazilian users hear a mix of both. The repository was archived in September 2026, so a regional control will not come. Android and iOS ask the platform engine for a European Portuguese voice explicitly, because a bare Portuguese request resolves to Brazilian. Android falls back to any offline Portuguese voice when no European one is installed.
 
 Memory cost of the original weights against INT8, from standalone CPU processes generating the same French sentence with Robert and Sarah at speed 1.0, 8 steps and seed 42. The figures include Python and ONNX Runtime and depend on text length.
 
@@ -32,7 +34,7 @@ The historical INT8 table records the earlier investigation. A later Debug run w
 
 | Engine | Type | Where it runs | Offered to users | Status |
 |---|---|---|---|---|
-| Piper (`vits-piper-fr_FR-siwis-medium`) | VITS, ONNX | Desktop, via sherpa-onnx | No, removed from the catalog and the settings | Retired; the loader stays in `core` for tests |
+| Piper | VITS, ONNX | Desktop, via sherpa-onnx | Optional, chosen as the text to speech model for one language | European Portuguese `voice3` published |
 | Android platform TTS | `android.speech.tts.TextToSpeech`, `com.google.android.tts` engine | Android only | No — uses whatever the device has installed | Shipping, Android's only voice |
 | Supertonic | Flow-matching, ~99M params, original ONNX | Desktop, via sherpa-onnx; measured on Android during this investigation | Desktop only, downloaded at setup | Desktop default; not offered on Android |
 
@@ -67,13 +69,13 @@ Reproduced on the emulator by force-stopping `com.google.android.tts` and then o
 
 ## Synthesis and playback
 
-Supertonic receives the requested speed directly, clamped to 0.5–1.5, with 8 denoising steps and seed 42. Its generated waveform starts with 230 to 590 ms of silence, 430 ms on average for Sarah and 290 ms for Robert, measured over 16 words. That silence was audible as a pause after tapping speak, so the loader cuts it down to a 20 ms margin before the first sound, the same trim Piper uses. Trailing silence stays. The app applies no time stretching or volume normalization to Supertonic. It converts samples to the playback PCM format, with range clamping for conversion safety. Device-rate conversion remains part of playback when required by the audio device.
+Supertonic renders with 8 denoising steps and seed 42. The requested speed is clamped to 0.5–1.5, and Supertonic receives it directly only inside 0.8–1.3. Outside that range the model repeats words or produces gibberish, so it renders at the nearest edge of the range and the trimmed audio is time-stretched with the Signalsmith phase vocoder for the rest. A single word at the turtle speed of 0.6 therefore renders at 0.8 and is stretched by another 0.75. The stretched audio can sound robotic, which is accepted. Its generated waveform starts with 230 to 590 ms of silence, 430 ms on average for Sarah and 290 ms for Robert, measured over 16 words. That silence was audible as a pause after tapping speak, so the loader cuts it down to a 20 ms margin before the first sound, the same trim Piper uses. Trailing silence stays. The app applies no volume normalization to Supertonic. It converts samples to the playback PCM format, with range clamping for conversion safety. Device-rate conversion remains part of playback when required by the audio device.
 
 Piper keeps its leading-silence trimming and loudness adjustment in the loader, which only the tests exercise.
 
 Two settings control speech speed. Speech rate applies to words. Sentence speech rate is a multiplier on the speech rate for whole sentences: sentence training, read aloud, and any other spoken text of four or more words, such as Quick Add, dictionary examples and Discover. Text of one to three words plays at the speech rate. Speech rate defaults to 100% and sentence speech rate to 85%. Both run from 50% to 150%, so a sentence plays at speech rate times sentence speech rate, clamped to the same range. At the defaults a sentence plays at 85% of the word speed. Both sliders are on the desktop and mobile sound settings, and the sentence slider plays a sample sentence at the sentence speed. The explicit slow-speech action multiplies its own factor on top of the sentence speed, so a sentence replayed slowly can reach the 0.5 floor. On Android the platform voice receives the same sentence multiplier for sentence training and for read aloud.
 
-The official browser demo adds 0.05 to its displayed speed before synthesis. Its displayed 1.00 therefore corresponds to native speed 1.05. The app passes its selected speed directly.
+The official browser demo adds 0.05 to its displayed speed before synthesis. Its displayed 1.00 therefore corresponds to native speed 1.05. The app passes its selected speed without that offset.
 
 ## Voice picker
 
@@ -94,7 +96,21 @@ Desktop Settings → Sound offers all ten Supertonic voices. The speaker IDs mat
 
 Sarah is the default when no speaker selection has been saved. Existing saved selections are preserved. Selecting a voice plays a sample.
 
-There is no model picker. A Piper model already on disk is skipped at load with a log line, so a learner who downloaded one earlier is never left on a voice they cannot change.
+The voice picker lists Supertonic's speakers only, and shows only while Supertonic speaks the language being learned.
+
+## Text to speech model
+
+Settings → Sound has a Text to speech model row. It lists Supertonic first. After it come the catalog voice packages published for the language being learned, under their catalog `name`, and then any other installed voice for that language. The row appears only when the list has more than one model.
+
+Choosing a model stores it for that language only, in `audio/preferredVoice/<language>`, as the folder the package unpacks into. Every other language keeps Supertonic. Choosing a model that is not installed starts its download, and the row shows the progress. The app loads the voice as soon as it lands and applies the stored choice then. Until it lands, Supertonic keeps speaking. Choosing Supertonic clears the stored choice.
+
+A catalog voice package with a `target` language is optional. First-launch setup and the reader download only the voice package with no target. Supertonic stays the active voice, so a stored active voice name that is not Supertonic falls back to it at load.
+
+## European Portuguese
+
+Supertonic has one Portuguese tag, and its accent leans towards Brazilian. The app's Piper option for European Portuguese is `voice3` from `Phoonnx/pipertts_pt-PT_voice3`, trained on a synthetic dataset. Its repository states no licence. It is published as package `piper-pt-voice3` version 1, release `voice-piper-pt-voice3-1`, 64 MB zipped. Every other European Portuguese Piper voice found is CC BY-NC or CC BY-NC-ND, except the official `tugão`.
+
+`scripts/tools/convert-piper-voice.py` turns a Piper voice into a directory sherpa-onnx loads. It writes the metadata, `tokens.txt` and `espeak-ng-data`, and renames the model to `<locale>-<name>-<quality>.onnx`. The app reads the middle part as the speaker name. To test the download locally, point `update/catalogUrl` at a catalog file whose entry has a `file:///` address to the zip.
 
 ## Model files and diagnostics
 
@@ -102,7 +118,7 @@ The fetch script downloads the four original ONNX models and tts.json from Super
 
 For a reproducible capture, set IKONIKA_SPEECH_CAPTURE to an existing output directory. Raw and final PCM WAV files are written per speed. IKONIKA_SPEECH_CAPTURE_SEED and IKONIKA_SPEECH_CAPTURE_STEPS override the seed and denoising count only while capture is enabled. Repeated captures at the same speed overwrite those diagnostic files.
 
-The hidden test "Capture Supertonic sentence audio" generates a fixed French sentence at 1.0 and 0.75. Signalsmith and WSOLA helpers remain in the source tree but are no longer used for Supertonic playback.
+The hidden test "Capture Supertonic sentence audio" generates a fixed French sentence at 1.0 and 0.75. The WSOLA stretcher stays only as the fallback when the Signalsmith stretch fails.
 
 ## Resampling
 

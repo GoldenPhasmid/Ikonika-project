@@ -64,6 +64,9 @@ class AppTheme : public QObject
     Q_PROPERTY(QColor colourCoverInk READ GetColourCoverInk NOTIFY themeChanged)
     Q_PROPERTY(QColor colourCoverMuted READ GetColourCoverMuted NOTIFY themeChanged)
     Q_PROPERTY(QColor colourCoverStripe READ GetColourCoverStripe NOTIFY themeChanged)
+    Q_PROPERTY(QColor colourTileWedge READ GetColourTileWedge NOTIFY themeChanged)
+    Q_PROPERTY(QColor colourTileShadow READ GetColourTileShadow NOTIFY themeChanged)
+    Q_PROPERTY(qreal alphaRingTrack READ GetAlphaRingTrack NOTIFY themeChanged)
 
     
     Q_PROPERTY(QVariantMap frequencyColours READ GetFrequencyColours CONSTANT)
@@ -76,6 +79,8 @@ class AppTheme : public QObject
     Q_PROPERTY(qreal alphaMedium READ GetAlphaMedium CONSTANT)
     Q_PROPERTY(qreal alphaStrong READ GetAlphaStrong CONSTANT)
     Q_PROPERTY(qreal alphaHalf READ GetAlphaHalf CONSTANT)
+    Q_PROPERTY(qreal tileSheenLift READ GetTileSheenLift CONSTANT)
+    Q_PROPERTY(qreal tileRimLift READ GetTileRimLift CONSTANT)
 
     Q_PROPERTY(qreal opacityDisabled READ GetOpacityDisabled CONSTANT)
     Q_PROPERTY(qreal opacitySecondary READ GetOpacitySecondary CONSTANT)
@@ -128,6 +133,9 @@ public:
     QColor GetColourCoverInk() const;
     QColor GetColourCoverMuted() const;
     QColor GetColourCoverStripe() const;
+    QColor GetColourTileWedge() const;
+    QColor GetColourTileShadow() const;
+    qreal GetAlphaRingTrack() const;
 
     QVariantMap GetFrequencyColours() const;
     QVariantMap GetCefrColours() const;
@@ -138,6 +146,8 @@ public:
     qreal GetAlphaMedium() const;
     qreal GetAlphaStrong() const;
     qreal GetAlphaHalf() const;
+    qreal GetTileSheenLift() const;
+    qreal GetTileRimLift() const;
 
     qreal GetOpacityDisabled() const;
     qreal GetOpacitySecondary() const;

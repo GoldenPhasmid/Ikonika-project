@@ -15,6 +15,7 @@ Rectangle
     signal stepRequested(bool forward)
     signal zoomRequested(bool closer)
     signal fitRequested()
+    signal immersiveRequested()
 
     readonly property int shownIndex: slider.pressed ? Math.round(slider.value) : root.index
 
@@ -187,6 +188,17 @@ Rectangle
             text: root.paged ? qsTr("Zoom in (Ctrl++)") : qsTr("Larger text (Ctrl++)")
 
             onClicked: root.zoomRequested(true)
+        }
+
+        DesktopIconButton
+        {
+            objectName: "reader_immersive"
+
+            iconName: "fullscreen"
+            shortcutKey: "F11"
+            text: qsTr("Hide controls (Ctrl+F11)")
+
+            onClicked: root.immersiveRequested()
         }
     }
 }

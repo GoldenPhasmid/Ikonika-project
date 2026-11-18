@@ -6,14 +6,16 @@ Item
 {
     id: root
 
+    required property DictionaryController dictionary
+
     property var store: null
     property var controller: null
 
     property string meaningGist: ""
 
-    readonly property var meanings: (dictionary.entry.headword || "").toLowerCase() === wordField.enteredText.trim().toLowerCase()
-        && (dictionary.entry.partOfSpeech || "") === root.shownPartOfSpeech
-        ? (dictionary.entry.meanings || []) : []
+    readonly property var meanings: (root.dictionary.entry.headword || "").toLowerCase() === wordField.enteredText.trim().toLowerCase()
+        && (root.dictionary.entry.partOfSpeech || "") === root.shownPartOfSpeech
+        ? (root.dictionary.entry.meanings || []) : []
     readonly property var meaning: root.meanings.find(function(item) { return item.gist === root.meaningGist }) || ({})
     readonly property bool hasMeaning: !!root.meaning.gist
     readonly property string committedGist: root.hasMeaning || (root.editingCardId.length > 0 && root.meanings.length === 0)
@@ -29,7 +31,7 @@ Item
     property string returnPartOfSpeech: ""
     property string returnHint: ""
     readonly property var editingCard: root.editingCardId.length > 0
-        ? (dictionary.cards.find(function(card) { return card.cardId === root.editingCardId }) || null) : null
+        ? (root.dictionary.cards.find(function(card) { return card.cardId === root.editingCardId }) || null) : null
 
     property bool startOnTranslation: false
     property int editingGender: -1
@@ -51,7 +53,7 @@ Item
 
     readonly property var genderByCode: ({ "m": 0, "f": 1, "m/f": 2, "n": 3 })
 
-    readonly property var genderOptions: (dictionary.targetLanguageCode === "DE"
+    readonly property var genderOptions: (root.dictionary.targetLanguageCode === "DE"
         ? [{ label: qsTr("Neuter"), value: 3 }] : []).concat([
         { label: qsTr("Masculine"), value: 0 },
         { label: qsTr("Feminine"), value: 1 },
@@ -61,7 +63,7 @@ Item
 
     function partOfSpeechLabel(value)
     {
-        const found = dictionary.partsOfSpeech.find(function(option) { return option.value === value })
+        const found = root.dictionary.partsOfSpeech.find(function(option) { return option.value === value })
 
         if (found)
         {
@@ -84,7 +86,7 @@ Item
             return
         }
 
-        dictionary.openEntry(wordField.enteredText.trim(), partOfSpeech)
+        root.dictionary.openEntry(wordField.enteredText.trim(), partOfSpeech)
 
         if (!root.hasMeaning)
         {
@@ -127,8 +129,8 @@ Item
         root.editingPartOfSpeech = partOfSpeech
         root.adoptedCardId = ""
         translationField.text = translation
-        root.meaningGist = dictionary.cardMeaningGist(cardId)
-        hintField.text = dictionary.cardHint(cardId)
+        root.meaningGist = root.dictionary.cardMeaningGist(cardId)
+        hintField.text = root.dictionary.cardHint(cardId)
         root.rebuildSuggestions()
     }
 
@@ -178,11 +180,11 @@ Item
             console.info("Card screen edits the card of meaning", chosen.gist, cardId)
 
             root.adoptedCardId = cardId
-            root.editingPartOfSpeech = dictionary.entry.partOfSpeech || ""
+            root.editingPartOfSpeech = root.dictionary.entry.partOfSpeech || ""
             root.editingStage = chosen.learnedStage
             root.editingGender = chosen.cardGender
             root.editingCardId = cardId
-            hintField.text = root.returnHint || dictionary.cardHint(cardId)
+            hintField.text = root.returnHint || root.dictionary.cardHint(cardId)
             translationField.replaceText(chosen.cardTranslation)
 
             return
@@ -262,11 +264,11 @@ Item
         hintField.text = hint || ""
         root.startOnTranslation = word.length > 0
         root.suggestions = []
-        dictionary.openEntry("", "")
+        root.dictionary.openEntry("", "")
 
         if (word.length > 0)
         {
-            dictionary.openEntry(word, partOfSpeech || "")
+            root.dictionary.openEntry(word, partOfSpeech || "")
             root.meaningGist = gist || root.findMeaningFor(translation)
 
             if (root.hasMeaning && root.meaning.gender >= 0 && root.dictionaryPartOfSpeech === "noun")
@@ -345,7 +347,7 @@ Item
         const meaningTranslations = root.hasMeaning
             ? root.meaning.translations.map(function(text) { return text.trim().toLowerCase() }) : []
 
-        for (const translation of dictionary.allTranslations)
+        for (const translation of root.dictionary.allTranslations)
         {
             if (root.hasMeaning && meaningTranslations.indexOf(translation.text.trim().toLowerCase()) < 0)
             {
@@ -366,8 +368,8 @@ Item
     }
 
     readonly property string dictionaryPartOfSpeech:
-        (dictionary.entry.headword || "").toLowerCase() === wordField.enteredText.trim().toLowerCase()
-            ? (dictionary.entry.partOfSpeech || "")
+        (root.dictionary.entry.headword || "").toLowerCase() === wordField.enteredText.trim().toLowerCase()
+            ? (root.dictionary.entry.partOfSpeech || "")
             : ""
 
     readonly property int dictionaryGender:
@@ -377,15 +379,10 @@ Item
             return -1
         }
 
-        const gendered = (dictionary.entry.senses || []).find(
+        const gendered = (root.dictionary.entry.senses || []).find(
             function(sense) { return sense.gender in root.genderByCode })
 
         return gendered ? root.genderByCode[gendered.gender] : -1
-    }
-
-    DictionaryController
-    {
-        id: dictionary
     }
 
     MobileShell
@@ -441,7 +438,7 @@ Item
 
                     onAccepted:
                     {
-                        dictionary.openEntry(wordField.text, root.editingCardId.length > 0 ? root.editingPartOfSpeech : "")
+                        root.dictionary.openEntry(wordField.text, root.editingCardId.length > 0 ? root.editingPartOfSpeech : "")
                         root.rebuildSuggestions()
                     }
                 }
@@ -543,13 +540,13 @@ Item
                     value: root.partOfSpeechLabel(root.shownPartOfSpeech)
 
                     onPicked: choiceSheet.open(qsTr("Part of speech"),
-                                              dictionary.partsOfSpeech.map(
+                                              root.dictionary.partsOfSpeech.map(
                                                   function(option) { return option.label }),
-                                              dictionary.partsOfSpeech.findIndex(
+                                              root.dictionary.partsOfSpeech.findIndex(
                                                   function(option) { return option.value === root.shownPartOfSpeech }),
                                               function(index)
                                               {
-                                                  root.chooseReading(dictionary.partsOfSpeech[index].value,
+                                                  root.chooseReading(root.dictionary.partsOfSpeech[index].value,
                                                                      root.shownGender)
                                               })
                 }

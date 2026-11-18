@@ -1946,6 +1946,11 @@ QVariantList DictionaryController::GetResults() const
     return Results;
 }
 
+QString DictionaryController::GetQuery() const
+{
+    return LastSearchText;
+}
+
 QVariantMap DictionaryController::GetEntry() const
 {
     return Entry;

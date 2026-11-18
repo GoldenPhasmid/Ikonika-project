@@ -22,10 +22,6 @@ Q_DECLARE_LOGGING_CATEGORY(LogYoutube)
  * function is the whole measurement: the cost of a query is almost always its first Step(), where
  * SQLite does the actual scan, so timing the function rather than any one statement inside it
  * catches that without having to know which statement it is.
- *
- * Logs through LogDatabase at qCDebug, one level below the qCInfo/qCWarning/qCCritical calls
- * LogDatabase's other messages use, so a build that only wants failures and real events can drop
- * to qCInfo without losing them, while a slow open still shows by default alongside them.
  */
 class FTQueryTimer
 {
@@ -37,6 +33,8 @@ public:
     FTQueryTimer& operator=(const FTQueryTimer&) = delete;
 
 private:
+    static constexpr qint64 SlowQueryMs = 10;
+
     const char* Label;
     QElapsedTimer Timer;
 };

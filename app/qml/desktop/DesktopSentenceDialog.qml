@@ -44,7 +44,8 @@ DesktopStartDialog
             key: exercise.key,
             iconName: exercise.iconName,
             label: exercise.label,
-            caption: root.saved.indexOf(exercise.key) >= 0 ? qsTr("Continue") : ""
+            caption: root.saved.indexOf(exercise.key) >= 0 ? qsTr("Continue") : "",
+            filled: root.saved.indexOf(exercise.key) >= 0
         }
     })
     canStart: !!root.controller && (root.saved.indexOf(root.chosenKey) >= 0 || root.controller.canStart)

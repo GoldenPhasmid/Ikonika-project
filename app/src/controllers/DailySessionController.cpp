@@ -11,6 +11,7 @@
 #include "core/FTLog.h"
 #include "core/FTRepetitionBatch.h"
 #include "core/FTSchedule.h"
+#include "core/FTScheduleManager.h"
 #include "core/FTSchema.h"
 #include "core/FTSettings.h"
 
@@ -126,7 +127,7 @@ void DailySessionController::refresh()
     {
         FTCardRepository& CardRepository = AppDatabase::Get().GetCardRepository();
 
-        DueCount = CardRepository.CountDueCards(Today);
+        DueCount = FTScheduleManager(CardRepository).CountDueCardsForToday(Today);
         PoolCount = CardRepository.CountUnlearnedCards();
 
         const std::vector<FTDailyStats> TodayStats = CardRepository.LoadDailyStats(Today, Today);

@@ -58,6 +58,10 @@ std::optional<FWrittenContent> WordGapController::BuildCardContent(const FTCard&
     Content.Heading = Sentence->Translation;
     Content.Prompt = MakeGapPrompt(*Sentence);
     Content.AcceptedAnswers = {GetGapWord(*Sentence)};
+    if (Card.PartOfSpeech == "verb" || Card.PartOfSpeech == "noun" || Card.PartOfSpeech == "adj")
+    {
+        Content.AcceptedAnswers.push_back(Card.TargetWord);
+    }
     Content.Translation = GetDisplayTranslation(Card, Params.NativeLanguage);
     Content.RevealedAnswer = Sentence->Text;
     Content.bSentence = true;

@@ -6,6 +6,8 @@ ColumnLayout
 {
     id: root
 
+    required property DictionaryController dictionary
+
     property var controller: null
     property bool expanded: false
 
@@ -30,17 +32,16 @@ ColumnLayout
     property string savedGist: ""
     property string savedHint: ""
 
-    readonly property alias dictionary: dictionary
 
     signal accepted()
     signal wordClicked(string word, string sentence)
 
     readonly property bool editing: root.editingCardId.length > 0
     readonly property var editingCard: root.editing
-        ? (dictionary.cards.find(Card => Card.cardId === root.editingCardId) || null) : null
-    readonly property var meanings: (dictionary.entry.headword || "").toLowerCase() === root.enteredWord.toLowerCase()
-        && (dictionary.entry.partOfSpeech || "") === root.editingPartOfSpeech
-        ? (dictionary.entry.meanings || []) : []
+        ? (root.dictionary.cards.find(Card => Card.cardId === root.editingCardId) || null) : null
+    readonly property var meanings: (root.dictionary.entry.headword || "").toLowerCase() === root.enteredWord.toLowerCase()
+        && (root.dictionary.entry.partOfSpeech || "") === root.editingPartOfSpeech
+        ? (root.dictionary.entry.meanings || []) : []
     readonly property var meaning: root.meanings.find(Meaning => Meaning.gist === root.meaningGist) || ({})
     readonly property bool hasMeaning: !!root.meaning.gist
     readonly property string committedGist: root.hasMeaning || (root.editing && root.meanings.length === 0) ? root.meaningGist : ""
@@ -61,7 +62,7 @@ ColumnLayout
         .map(Part => Part.trim().toLowerCase())
         .filter(Part => Part.length > 0)
 
-    readonly property var genderOptions: (dictionary.targetLanguageCode === "DE"
+    readonly property var genderOptions: (root.dictionary.targetLanguageCode === "DE"
         ? [{ label: qsTr("Neuter"), value: 3 }] : []).concat([
         { label: qsTr("Masculine"), value: 0 },
         { label: qsTr("Feminine"), value: 1 },
@@ -86,11 +87,11 @@ ColumnLayout
         translationField.text = translation
         hintField.text = hint || ""
         root.suggestions = []
-        dictionary.openEntry("", "")
+        root.dictionary.openEntry("", "")
 
         if (word.length > 0)
         {
-            dictionary.openEntry(word, partOfSpeech || "")
+            root.dictionary.openEntry(word, partOfSpeech || "")
             root.adoptDictionaryReading(partOfSpeech)
             root.meaningGist = gist || root.findMeaningFor(translation)
             root.followMeaningCard()
@@ -116,8 +117,8 @@ ColumnLayout
         root.editingPartOfSpeech = partOfSpeech
         root.adoptedCardId = ""
         translationField.text = translation
-        root.meaningGist = dictionary.cardMeaningGist(cardId)
-        hintField.text = dictionary.cardHint(cardId)
+        root.meaningGist = root.dictionary.cardMeaningGist(cardId)
+        hintField.text = root.dictionary.cardHint(cardId)
         root.rebuildSuggestions()
         root.markSaved()
     }
@@ -142,9 +143,9 @@ ColumnLayout
 
     function adoptDictionaryReading(fallbackPartOfSpeech)
     {
-        const known = (dictionary.entry.headword || "").toLowerCase() === root.enteredWord.toLowerCase()
+        const known = (root.dictionary.entry.headword || "").toLowerCase() === root.enteredWord.toLowerCase()
 
-        root.editingPartOfSpeech = known ? (dictionary.entry.partOfSpeech || "") : (fallbackPartOfSpeech || "")
+        root.editingPartOfSpeech = known ? (root.dictionary.entry.partOfSpeech || "") : (fallbackPartOfSpeech || "")
         root.editingGender = root.dictionaryGender()
     }
 
@@ -162,7 +163,7 @@ ColumnLayout
 
     function openWordEntry()
     {
-        dictionary.openEntry(root.enteredWord, root.editing ? root.editingPartOfSpeech : "")
+        root.dictionary.openEntry(root.enteredWord, root.editing ? root.editingPartOfSpeech : "")
 
         if (!root.editing)
         {
@@ -196,11 +197,11 @@ ColumnLayout
             console.info("Card form edits the card of meaning", chosen.gist, cardId)
 
             root.adoptedCardId = cardId
-            root.editingPartOfSpeech = dictionary.entry.partOfSpeech || ""
+            root.editingPartOfSpeech = root.dictionary.entry.partOfSpeech || ""
             root.editingStage = chosen.learnedStage
             root.editingGender = chosen.cardGender
             root.editingCardId = cardId
-            hintField.text = root.returnHint || dictionary.cardHint(cardId)
+            hintField.text = root.returnHint || root.dictionary.cardHint(cardId)
             translationField.text = chosen.cardTranslation
 
             return
@@ -289,7 +290,7 @@ ColumnLayout
         const meaningTranslations = root.hasMeaning
             ? root.meaning.translations.map(Text => Text.trim().toLowerCase()) : []
 
-        for (const translation of dictionary.allTranslations)
+        for (const translation of root.dictionary.allTranslations)
         {
             if (root.hasMeaning && meaningTranslations.indexOf(translation.text.trim().toLowerCase()) < 0)
             {
@@ -325,11 +326,6 @@ ColumnLayout
                                       root.editingGender, root.readingChosen || meaningGender >= 0, root.committedGist, hintField.text.trim())
     }
 
-    DictionaryController
-    {
-        id: dictionary
-    }
-
     RowLayout
     {
         Layout.fillWidth: true
@@ -358,7 +354,7 @@ ColumnLayout
 
                 onEditingFinished:
                 {
-                    if ((dictionary.entry.headword || "") !== root.enteredWord)
+                    if ((root.dictionary.entry.headword || "") !== root.enteredWord)
                     {
                         root.openWordEntry()
                     }
@@ -402,15 +398,15 @@ ColumnLayout
                 objectName: "word_dialog_part_of_speech"
 
                 heading: qsTr("Part of speech")
-                options: dictionary.partsOfSpeech.map(Option => Option.label)
-                currentIndex: dictionary.partsOfSpeech.findIndex(Option => Option.value === root.editingPartOfSpeech)
+                options: root.dictionary.partsOfSpeech.map(Option => Option.label)
+                currentIndex: root.dictionary.partsOfSpeech.findIndex(Option => Option.value === root.editingPartOfSpeech)
 
                 onChosen: function(index)
                 {
-                    root.editingPartOfSpeech = dictionary.partsOfSpeech[index].value
+                    root.editingPartOfSpeech = root.dictionary.partsOfSpeech[index].value
                     root.readingChosen = true
 
-                    dictionary.openEntry(root.enteredWord, root.editingPartOfSpeech)
+                    root.dictionary.openEntry(root.enteredWord, root.editingPartOfSpeech)
 
                     if (root.editingPartOfSpeech !== "noun" || root.editingGender < 0)
                     {

@@ -222,6 +222,7 @@ protected:
     void Speak(const QString& Text) const;
     void SpeakAutomatically(const QString& Text) const;
     void SpeakAtScale(const QString& Text, float RateScale) const;
+    void SpeakSlowlyText(const QString& Text) const;
     QString GetVoicedText(const QString& Text) const;
     const FTCard* FindCardByWord(const std::string& Word) const;
     void SpeakPromptIfTargetLanguage() const;

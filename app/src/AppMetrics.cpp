@@ -60,18 +60,41 @@ AppMetrics::AppMetrics(QObject* Parent)
 {
 }
 
+static bool& GetMobileLayoutState()
+{
+#if defined(IKONIKA_DESKTOP)
+    static bool bMobile{QCoreApplication::arguments().contains(QStringLiteral("-mobile"))};
+#else
+    static bool bMobile{true};
+#endif
+
+    return bMobile;
+}
+
 bool IsMobileLayoutEnabled()
 {
-#if !defined(IKONIKA_DESKTOP)
-    return true;
-#else
-    return QCoreApplication::arguments().contains(QStringLiteral("-mobile"));
-#endif
+    return GetMobileLayoutState();
+}
+
+void SetMobileLayoutEnabled(bool bEnabled)
+{
+    GetMobileLayoutState() = bEnabled;
 }
 
 bool AppMetrics::IsMobileLayout() const
 {
     return IsMobileLayoutEnabled();
+}
+
+bool AppMetrics::IsTouchInput() const
+{
+#if defined(IKONIKA_DESKTOP)
+    static const bool bTouch{QCoreApplication::arguments().contains(QStringLiteral("-touch"))};
+
+    return bTouch;
+#else
+    return true;
+#endif
 }
 
 int AppMetrics::GetRailWidth() const
@@ -91,7 +114,7 @@ int AppMetrics::GetTopBarHeight() const
 
 int AppMetrics::GetHeaderIconTapWidth() const
 {
-    return IsMobileLayout() ? 44 : 36;
+    return IsMobileLayout() || IsTouchInput() ? 44 : 36;
 }
 
 int AppMetrics::GetHeaderChevronSize() const
@@ -151,7 +174,7 @@ int AppMetrics::GetGapLarge() const
 
 int AppMetrics::GetButtonHeight() const
 {
-    return IsMobileLayout() ? 0 : 36;
+    return IsMobileLayout() ? 0 : IsTouchInput() ? 44 : 36;
 }
 
 int AppMetrics::GetButtonHeightLarge() const
@@ -514,6 +537,11 @@ int AppMetrics::GetContentWidthNarrow() const
     return IsMobileLayout() ? 0 : 720;
 }
 
+int AppMetrics::GetColumnMaximumWidth() const
+{
+    return 600;
+}
+
 int AppMetrics::GetListPaneWidth() const
 {
     return IsMobileLayout() ? 0 : 400;
@@ -521,7 +549,7 @@ int AppMetrics::GetListPaneWidth() const
 
 int AppMetrics::GetNavItemHeight() const
 {
-    return IsMobileLayout() ? 0 : 40;
+    return IsMobileLayout() ? 0 : IsTouchInput() ? 48 : 40;
 }
 
 int AppMetrics::GetIconSize() const
@@ -541,7 +569,7 @@ int AppMetrics::GetListRowHeight() const
 
 int AppMetrics::GetChipHeight() const
 {
-    return IsMobileLayout() ? 36 : 32;
+    return IsMobileLayout() ? 36 : IsTouchInput() ? 40 : 32;
 }
 
 int AppMetrics::GetBadgeHeight() const
@@ -597,6 +625,11 @@ int AppMetrics::GetQuickAddMinimumHeight() const
 int AppMetrics::GetQuickAddSearchDelay() const
 {
     return 300;
+}
+
+int AppMetrics::GetKeyboardReleaseDelay() const
+{
+    return 400;
 }
 
 qreal AppMetrics::GetQuickAddInputShare() const
@@ -972,6 +1005,36 @@ qreal AppMetrics::GetCoverStripeRightStart() const
 qreal AppMetrics::GetCoverStripeRightEnd() const
 {
     return 0.53;
+}
+
+qreal AppMetrics::GetSessionTileBandWidth() const
+{
+    return 0.6;
+}
+
+qreal AppMetrics::GetSessionTileBandTop() const
+{
+    return 0.14;
+}
+
+int AppMetrics::GetTileShadowOffsetX() const
+{
+    return 2;
+}
+
+int AppMetrics::GetTileShadowOffsetY() const
+{
+    return 4;
+}
+
+int AppMetrics::GetTileShadowBlur() const
+{
+    return 16;
+}
+
+qreal AppMetrics::GetSessionTileBandSlope() const
+{
+    return 2.0;
 }
 
 qreal AppMetrics::GetPickTopFill() const

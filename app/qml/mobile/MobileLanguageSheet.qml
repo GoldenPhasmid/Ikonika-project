@@ -65,7 +65,7 @@ MobileBottomSheet
     Flickable
     {
         Layout.fillWidth: true
-        Layout.preferredHeight: Math.min(panel.implicitHeight, 420)
+        Layout.preferredHeight: Math.min(panel.implicitHeight, root.maximumBodyHeight)
 
         contentWidth: width
         contentHeight: panel.implicitHeight

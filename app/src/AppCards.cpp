@@ -640,7 +640,7 @@ namespace AppCards
 
     bool IsFormSkipped(const FTCard& Form)
     {
-        return !FTSettings::Get().GetFormsRules().bOptionalPronoun && IsOptionalForm(Form);
+        return !FTSettings::Get().IsOptionalPronounLearned() && IsOptionalForm(Form);
     }
 
     std::vector<FTCardHandle> ExpandStudiedForms(const std::vector<FTCardHandle>& Cards)
@@ -1070,6 +1070,13 @@ namespace AppCards
         }
 
         return std::nullopt;
+    }
+
+    AppCardNotifier& Notifier()
+    {
+        static AppCardNotifier Instance;
+
+        return Instance;
     }
 
     std::vector<FTCardHandle> LoadCards()

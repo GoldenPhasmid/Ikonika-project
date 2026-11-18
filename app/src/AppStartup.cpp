@@ -7,6 +7,8 @@
 #include <QString>
 #include <QStringList>
 
+#include <memory>
+#include <utility>
 #include <vector>
 
 #ifdef Q_OS_WIN
@@ -132,11 +134,17 @@ namespace AppStartup
         // Held by shared pointer so the lambda can disconnect itself: the signal fires on every
         // frame for the life of the window and only the first one is a startup measurement.
         auto Connection = std::make_shared<QMetaObject::Connection>();
+        auto bReported = std::make_shared<bool>(false);
 
         *Connection = QObject::connect(Window, &QQuickWindow::frameSwapped, Window,
-            [Connection]()
+            [Connection, bReported]()
             {
                 QObject::disconnect(*Connection);
+
+                if (std::exchange(*bReported, true))
+                {
+                    return;
+                }
 
                 qCInfo(LogApp) << "Startup to first frame:" << TotalMilliseconds() << "ms |"
                                << Breakdown();

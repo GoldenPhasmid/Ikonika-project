@@ -132,6 +132,8 @@ Rectangle
         ColumnLayout
         {
             Layout.fillWidth: true
+            Layout.maximumWidth: AppMetrics.columnMaximumWidth
+            Layout.alignment: Qt.AlignHCenter
             Layout.fillHeight: true
             Layout.margins: AppMetrics.gapLarge
             spacing: AppMetrics.gapLarge

@@ -54,7 +54,7 @@ MobileBottomSheet
         }
     }
 
-    MobileWideButton
+    footer: MobileWideButton
     {
         label: qsTr("Start")
         interactive: root.controller.canStart

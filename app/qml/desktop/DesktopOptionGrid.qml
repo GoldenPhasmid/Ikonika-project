@@ -66,7 +66,7 @@ GridLayout
             Layout.preferredWidth: 1
             Layout.preferredHeight: root.cellHeight
 
-            leftPadding: AppMetrics.gapMedium + (cell.keyHint.length > 0 ? hintBox.implicitWidth + AppMetrics.gapCompact : 0)
+            leftPadding: AppMetrics.gapMedium + (hintBox.visible ? hintBox.implicitWidth + AppMetrics.gapCompact : 0)
             rightPadding: AppMetrics.gapMedium + AppMetrics.keyHintSize
 
             hoverEnabled: true
@@ -147,7 +147,7 @@ GridLayout
                 {
                     id: hintBox
 
-                    visible: cell.keyHint.length > 0
+                    visible: cell.keyHint.length > 0 && !AppMetrics.touchInput
                     anchors.left: parent.left
                     anchors.leftMargin: AppMetrics.gapMedium
                     anchors.verticalCenter: parent.verticalCenter

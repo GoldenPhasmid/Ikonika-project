@@ -8,6 +8,8 @@ Item
 {
     id: root
 
+    required property DictionaryController controller
+
     property string word: ""
     property string searchText: ""
     property string partOfSpeech: ""
@@ -21,12 +23,12 @@ Item
     signal editWordRequested(string cardId, string word, string translation, int gender,
                              string partOfSpeech, int box)
     signal wordClicked(string word)
-    signal deckOpenRequested(int deckId)
+    signal deckOpenRequested(int deckId, string word, string partOfSpeech)
 
-    readonly property var entry: controller.entry.headword ? controller.entry : null
+    readonly property var entry: root.controller.entry.headword ? root.controller.entry : null
     readonly property string headword: root.entry ? root.entry.headword : root.word
 
-    readonly property var addedTranslation: controller.allTranslations.find(Translation => Translation.learnedStage >= 0) || null
+    readonly property var addedTranslation: root.controller.allTranslations.find(Translation => Translation.learnedStage >= 0) || null
 
     readonly property string shownPartOfSpeech: root.entry ? root.entry.partOfSpeech : root.partOfSpeech
     readonly property var meanings: root.entry ? (root.entry.meanings || []) : []
@@ -80,7 +82,7 @@ Item
 
     function formTranslation(row)
     {
-        const translated = row.query ? controller.formTranslations[row.query] || "" : ""
+        const translated = row.query ? root.controller.formTranslations[row.query] || "" : ""
 
         return root.lowerFirst(translated)
     }
@@ -89,15 +91,15 @@ Item
         (Keys, Meaning) => Keys.concat(Meaning.translations.map(Text => Text.trim().toLowerCase())), [])
 
     readonly property var otherTranslations: root.hasMeanings
-        ? controller.allTranslations.filter(Translation =>
+        ? root.controller.allTranslations.filter(Translation =>
             root.meaningTranslationKeys.indexOf(Translation.text.trim().toLowerCase()) < 0)
-        : controller.allTranslations
+        : root.controller.allTranslations
 
     function findTranslationRow(text)
     {
         const wanted = text.trim().toLowerCase()
 
-        return controller.allTranslations.find(Translation => Translation.text.trim().toLowerCase() === wanted)
+        return root.controller.allTranslations.find(Translation => Translation.text.trim().toLowerCase() === wanted)
             || ({ text: text, relative: 0, hasProbability: false, learnedStage: -1, cardId: "" })
     }
 
@@ -120,11 +122,11 @@ Item
         root.word = headword
         root.partOfSpeech = pos || ""
 
-        controller.openEntry(headword, root.partOfSpeech, root.searchText)
+        root.controller.openEntry(headword, root.partOfSpeech, root.searchText)
 
         if (record)
         {
-            controller.recordSearch()
+            root.controller.recordSearch()
         }
 
         page.contentY = 0
@@ -134,14 +136,14 @@ Item
     {
         root.word = ""
         root.partOfSpeech = ""
-        controller.openEntry("", "")
+        root.controller.openEntry("", "")
     }
 
     function refresh()
     {
         if (root.word.length > 0)
         {
-            controller.openEntry(root.word, root.partOfSpeech, root.searchText)
+            root.controller.openEntry(root.word, root.partOfSpeech, root.searchText)
         }
     }
 
@@ -153,7 +155,7 @@ Item
         }
 
         root.partOfSpeech = pos
-        controller.openEntry(root.word, pos, root.searchText)
+        root.controller.openEntry(root.word, pos, root.searchText)
     }
 
     function editCard(card)
@@ -163,9 +165,9 @@ Item
 
     function editCards()
     {
-        if (controller.cards.length === 1)
+        if (root.controller.cards.length === 1)
         {
-            root.editCard(controller.cards[0])
+            root.editCard(root.controller.cards[0])
 
             return
         }
@@ -177,7 +179,7 @@ Item
     {
         if (root.headword.length > 0)
         {
-            controller.speak(root.headword)
+            root.controller.speak(root.headword)
         }
     }
 
@@ -190,15 +192,15 @@ Item
         onActivated: entryHeader.speak()
     }
 
-    DictionaryController
+    Connections
     {
-        id: controller
+        target: root.controller
 
-        onEntryChanged:
+        function onEntryChanged()
         {
-            const forms = controller.entry.forms ? controller.entry.forms.matchedForms || [] : []
+            const forms = root.controller.entry.forms ? root.controller.entry.forms.matchedForms || [] : []
 
-            controller.translateForms(forms.map(Form => Form.query))
+            root.controller.translateForms(forms.map(Form => Form.query))
         }
     }
 
@@ -244,8 +246,8 @@ Item
                 decks: root.deckChips
 
                 onSpeakRequested: root.speak()
-                onDeckOpenRequested: function(deckId) { root.deckOpenRequested(deckId) }
-                onWebSearchRequested: controller.openWebSearch(root.headword)
+                onDeckOpenRequested: function(deckId) { root.deckOpenRequested(deckId, root.headword, root.shownPartOfSpeech) }
+                onWebSearchRequested: root.controller.openWebSearch(root.headword)
 
                 actions: [
                     RowLayout
@@ -260,7 +262,7 @@ Item
                         id: editButton
 
                         objectName: "entry_edit"
-                        visible: root.showAdd && controller.cards.length > 0
+                        visible: root.showAdd && root.controller.cards.length > 0
                         iconName: "edit"
                         text: qsTr("Edit")
 
@@ -274,7 +276,7 @@ Item
 
                             Instantiator
                             {
-                                model: controller.cards
+                                model: root.controller.cards
 
                                 delegate: DesktopMenuItem
                                 {
@@ -351,16 +353,24 @@ Item
 
                         width: Math.min(chipContent.implicitWidth + AppMetrics.gapCompact * 2, formFlow.width)
                         height: chipContent.implicitHeight + AppMetrics.gapSmall * 2
-                        radius: AppMetrics.radiusSmall
-                        color: AppTheme.faded(root.formTint, chipHover.hovered ? AppTheme.alphaMedium : AppTheme.alphaFaint)
+                        radius: AppMetrics.radiusMedium
+                        color: chipArea.containsMouse ? AppTheme.colourHover : AppTheme.colourWell
                         border.width: AppMetrics.borderWidth
-                        border.color: AppTheme.faded(root.formTint, AppTheme.alphaMedium)
+                        border.color: chipArea.containsMouse ? AppTheme.colourOutline : AppTheme.colourBorder
 
-                        Behavior on color { ColorAnimation { duration: AppMetrics.motionFast } }
+                        Accessible.role: Accessible.Button
+                        Accessible.name: formChip.modelData.form
 
-                        HoverHandler
+                        MouseArea
                         {
-                            id: chipHover
+                            id: chipArea
+
+                            z: 1
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+
+                            onClicked: root.controller.speak(formChip.modelData.form)
                         }
 
                         ColumnLayout
@@ -393,7 +403,7 @@ Item
                                 {
                                     Layout.fillWidth: true
                                     visible: formChip.translation.length > 0
-                                    text: "— " + formChip.translation
+                                    text: "- " + formChip.translation
                                     textFormat: Text.PlainText
                                     color: AppTheme.colourText
                                     font.family: AppMetrics.fontFamily
@@ -401,15 +411,6 @@ Item
                                     elide: Text.ElideRight
 
                                     Accessible.name: formChip.translation
-                                }
-
-                                DesktopSpeakButton
-                                {
-                                    objectName: "entry_form_speak_" + formChip.index
-
-                                    text: qsTr("Pronounce %1").arg(formChip.modelData.form)
-
-                                    onSpeakRequested: controller.speak(formChip.modelData.form)
                                 }
                             }
 
@@ -465,7 +466,7 @@ Item
         {
             Layout.fillWidth: true
             implicitHeight: tabRow.implicitHeight
-            visible: controller.readings.length > 0
+            visible: root.controller.readings.length > 0
 
             Accessible.role: Accessible.PageTabList
             Accessible.name: qsTr("Parts of speech")
@@ -487,7 +488,7 @@ Item
 
                 Repeater
                 {
-                    model: controller.readings
+                    model: root.controller.readings
 
                     delegate: DesktopTab
                     {
@@ -647,6 +648,8 @@ Item
                     + "/" + encodeURIComponent(root.entry.headword)
                 : ""
             forms: root.entry ? root.entry.forms : ({ kind: "none" })
+
+            onFormSpeakRequested: function(form) { root.controller.speak(form) }
         }
 
         ColumnLayout

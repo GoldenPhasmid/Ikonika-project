@@ -21,7 +21,7 @@ Item
     readonly property var pickedTranslations: root.controller.translation.split(",")
         .map(Part => Part.trim().toLowerCase())
         .filter(Part => Part.length > 0)
-    readonly property var newCards: root.controller.results.filter(Row => Row.learn)
+    readonly property var newCards: root.controller.addedCards
     readonly property real resultTileWidth: Math.floor((root.width - AppMetrics.contentPadding * 2 - AppMetrics.gapSmall) / 2)
 
     property bool revealed: false
@@ -85,6 +85,17 @@ Item
         }
 
         root.controller.askClue()
+    }
+
+    function showAnswer()
+    {
+        if (!root.awaiting)
+        {
+            return
+        }
+
+        optionGrid.armFeedback(false)
+        root.controller.showAnswer()
     }
 
     function pickTranslation(text)
@@ -359,6 +370,16 @@ Item
 
                     onOptionClicked: function(index) { root.choose(index) }
                 },
+                MobileGhostLink
+                {
+                    objectName: "discovery_show_answer"
+
+                    visible: !root.revealed
+                    label: qsTr("Show answer")
+                    interactive: root.awaiting
+
+                    onClicked: root.showAnswer()
+                },
                 MobileTriageMeaning
                 {
                     objectName: "discovery_meaning"
@@ -425,7 +446,7 @@ Item
                         objectName: "discovery_added_count"
 
                         Layout.fillWidth: true
-                        text: qsTr("%1 / %2").arg(root.newCards.length).arg(root.controller.results.length)
+                        text: root.newCards.length
                         font.pixelSize: AppMetrics.fontPickTitle
                         font.weight: Font.DemiBold
                         font.family: AppMetrics.fontFamily
@@ -467,7 +488,7 @@ Item
 
                                 readonly property bool editable: !!resultTile.modelData.card
 
-                                objectName: "discovery_result_" + resultTile.modelData.index
+                                objectName: "discovery_result_" + resultTile.modelData.card.id
 
                                 width: root.resultTileWidth
                                 height: wordArea.height + translationBand.height

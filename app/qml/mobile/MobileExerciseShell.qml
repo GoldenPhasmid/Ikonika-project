@@ -327,6 +327,8 @@ Rectangle
             id: contentColumn
 
             Layout.fillWidth: true
+            Layout.maximumWidth: AppMetrics.columnMaximumWidth
+            Layout.alignment: Qt.AlignHCenter
             Layout.fillHeight: true
             Layout.leftMargin: root.contentLeftMargin
             Layout.rightMargin: root.contentRightMargin
@@ -397,6 +399,8 @@ Rectangle
         Item
         {
             Layout.fillWidth: true
+            Layout.maximumWidth: AppMetrics.columnMaximumWidth
+            Layout.alignment: Qt.AlignHCenter
             Layout.preferredHeight: root.hasActions ? root.actionsHeight : 0
             Layout.leftMargin: root.contentLeftMargin
             Layout.rightMargin: root.contentRightMargin

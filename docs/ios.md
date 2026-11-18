@@ -342,8 +342,15 @@ The rules most likely to cause a rejection, in order of risk:
   `false` in `Info.plist`, which skips the question on every upload.
 
 App Store Connect also needs a privacy policy URL, the privacy labels, an age rating, and
-screenshots for the 6.9-inch iPhone. The simulator job produces those screenshots. Declaring the app
-iPhone-only skips the iPad screenshots; iPads still run it in compatibility mode.
+screenshots for the 6.9-inch iPhone and the 13-inch iPad. The simulator job produces the iPhone
+screenshots.
+
+The app runs on iPad as a native app. iPhone stays portrait only, and iPad allows all four
+orientations, so the tablet layout switch in `main.cpp` picks the layout from the screen.
+`UIRequiresFullScreen` keeps the app out of Split View and Stage Manager. The layout follows the
+screen size, not the window size, so a narrow window beside another app would still get the tablet
+layout. Apple deprecated the key in iOS 26; supporting multitasking means switching the layout on
+the window size instead.
 
 ## Order of work
 

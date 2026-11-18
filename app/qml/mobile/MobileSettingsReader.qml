@@ -18,11 +18,75 @@ ColumnLayout
     readonly property var textTones: Tones.textList()
     readonly property var textTone: Tones.findText(AppReaderSettings.textTone)
     readonly property var fontChoices: [AppMetrics.fontFamily].concat(AppReaderSettings.textFonts)
+    readonly property bool volumeKeysAvailable: Qt.platform.os === "android"
+    readonly property string volumeKeysPlace: root.titled || !root.volumeKeysAvailable ? ""
+                                                                                      : root.showText ? "text" : "pdf"
     readonly property string fontChoice: AppReaderSettings.textFont.length > 0 ? AppReaderSettings.textFont
                                                                                : AppMetrics.fontFamily
 
     Layout.fillWidth: true
     spacing: root.titled ? AppMetrics.gapSmall : AppMetrics.gapLarge
+
+    component PdfColourSelect: MobileSettingsSelect
+    {
+        id: pdfColourSelect
+
+        required property var owner
+
+        label: pdfColourSelect.owner.pageTone.label
+
+        onClicked: pdfColourSelect.owner.optionPicker.open(qsTr("Page colour"),
+            pdfColourSelect.owner.pageTones.map(function(tone) { return tone.label }),
+            pdfColourSelect.owner.pageTones.findIndex(function(tone) { return tone.key === pdfColourSelect.owner.pageTone.key }),
+            function(index) { AppReaderSettings.pageTone = pdfColourSelect.owner.pageTones[index].key })
+    }
+
+    component TextColourSelect: MobileSettingsSelect
+    {
+        id: textColourSelect
+
+        required property var owner
+
+        objectName: "reader_text_colour"
+
+        label: textColourSelect.owner.textTone.label
+
+        onClicked: textColourSelect.owner.optionPicker.open(qsTr("Page colour"),
+            textColourSelect.owner.textTones.map(function(tone) { return tone.label }),
+            textColourSelect.owner.textTones.findIndex(function(tone) { return tone.key === textColourSelect.owner.textTone.key }),
+            function(index) { AppReaderSettings.textTone = textColourSelect.owner.textTones[index].key })
+    }
+
+    component FontSelect: MobileSettingsSelect
+    {
+        id: fontSelect
+
+        required property var owner
+
+        objectName: "reader_font"
+
+        label: fontSelect.owner.fontChoice
+
+        onClicked: fontSelect.owner.optionPicker.open(qsTr("Font"),
+            fontSelect.owner.fontChoices,
+            fontSelect.owner.fontChoices.indexOf(fontSelect.owner.fontChoice),
+            function(index) { AppReaderSettings.textFont = index > 0 ? AppReaderSettings.textFonts[index - 1] : "" })
+    }
+
+    component HighlightPill: MobileSegmentedPill
+    {
+        objectName: "reader_highlight_mode"
+
+        Layout.fillWidth: true
+        options: [qsTr("Off"), qsTr("Vocabulary"), qsTr("New words")]
+        currentIndex: !AppReaderSettings.highlightVocabulary ? 0 : (AppReaderSettings.highlightUnknownWords ? 2 : 1)
+
+        onChosen: function(index)
+        {
+            AppReaderSettings.highlightVocabulary = index > 0
+            AppReaderSettings.highlightUnknownWords = index === 2
+        }
+    }
 
     MobileSectionLabel
     {
@@ -34,25 +98,33 @@ ColumnLayout
     {
         visible: root.showPdf
 
+        MobileSettingsWideRow
+        {
+            visible: !root.titled
+
+            PdfColourSelect
+            {
+                owner: root
+
+                Layout.fillWidth: true
+            }
+        }
+
         MobileSettingsRow
         {
+            visible: root.titled
             title: qsTr("Page colour")
 
-            MobileSettingsSelect
+            PdfColourSelect
             {
-                label: root.pageTone.label
-
-                onClicked: root.optionPicker.open(qsTr("Page colour"),
-                    root.pageTones.map(function(tone) { return tone.label }),
-                    root.pageTones.findIndex(function(tone) { return tone.key === root.pageTone.key }),
-                    function(index) { AppReaderSettings.pageTone = root.pageTones[index].key })
+                owner: root
             }
         }
 
         MobileSettingsRow
         {
             title: qsTr("Page margins")
-            lastRow: true
+            lastRow: root.volumeKeysPlace !== "pdf"
 
             MobileSettingsToggle
             {
@@ -60,6 +132,12 @@ ColumnLayout
 
                 onToggled: AppReaderSettings.cropMargins = !AppReaderSettings.cropMargins
             }
+        }
+
+        MobileSettingsVolumeKeysRow
+        {
+            visible: root.volumeKeysPlace === "pdf"
+            lastRow: true
         }
     }
 
@@ -74,37 +152,46 @@ ColumnLayout
     {
         visible: root.showText
 
-        MobileSettingsRow
+        MobileSettingsWideRow
         {
-            title: qsTr("Page colour")
+            visible: !root.titled
 
-            MobileSettingsSelect
+            TextColourSelect
             {
-                objectName: "reader_text_colour"
+                owner: root
 
-                label: root.textTone.label
+                Layout.fillWidth: true
+                Layout.preferredWidth: 1
+            }
 
-                onClicked: root.optionPicker.open(qsTr("Page colour"),
-                    root.textTones.map(function(tone) { return tone.label }),
-                    root.textTones.findIndex(function(tone) { return tone.key === root.textTone.key }),
-                    function(index) { AppReaderSettings.textTone = root.textTones[index].key })
+            FontSelect
+            {
+                owner: root
+
+                Layout.fillWidth: true
+                Layout.preferredWidth: 1
             }
         }
 
         MobileSettingsRow
         {
+            visible: root.titled
+            title: qsTr("Page colour")
+
+            TextColourSelect
+            {
+                owner: root
+            }
+        }
+
+        MobileSettingsRow
+        {
+            visible: root.titled
             title: qsTr("Font")
 
-            MobileSettingsSelect
+            FontSelect
             {
-                objectName: "reader_font"
-
-                label: root.fontChoice
-
-                onClicked: root.optionPicker.open(qsTr("Font"),
-                    root.fontChoices,
-                    root.fontChoices.indexOf(root.fontChoice),
-                    function(index) { AppReaderSettings.textFont = index > 0 ? AppReaderSettings.textFonts[index - 1] : "" })
+                owner: root
             }
         }
 
@@ -160,56 +247,40 @@ ColumnLayout
 
         MobileSettingsRow
         {
-            title: qsTr("Highlight vocabulary")
-            lastRow: !AppReaderSettings.highlightVocabulary
-
-            MobileSettingsToggle
-            {
-                objectName: "reader_highlight_vocabulary"
-
-                checked: AppReaderSettings.highlightVocabulary
-
-                onToggled: AppReaderSettings.highlightVocabulary = !AppReaderSettings.highlightVocabulary
-            }
+            visible: root.titled
+            title: qsTr("Word highlighting")
+            description: qsTr("Vocabulary marks the words you are learning. New words marks common words you have not added yet.")
+            lastRow: true
         }
 
-        MobileSettingsRow
+        MobileSettingsWideRow
         {
-            visible: AppReaderSettings.highlightVocabulary
-            title: qsTr("Highlight unknown words")
-            lastRow: true
+            lastRow: root.volumeKeysPlace !== "text"
 
-            MobileSettingsToggle
-            {
-                objectName: "reader_highlight_unknown_words"
-                checked: AppReaderSettings.highlightUnknownWords
-                onToggled: AppReaderSettings.highlightUnknownWords = !AppReaderSettings.highlightUnknownWords
-            }
+            HighlightPill {}
+        }
+
+        MobileSettingsVolumeKeysRow
+        {
+            visible: root.volumeKeysPlace === "text"
+            lastRow: true
         }
     }
 
     MobileSectionLabel
     {
-        visible: root.titled && Qt.platform.os === "android"
+        visible: root.titled && root.volumeKeysAvailable
         Layout.topMargin: AppMetrics.gapMedium
         text: qsTr("KEYS")
     }
 
     MobileOptionListPanel
     {
-        visible: Qt.platform.os === "android"
+        visible: root.titled && root.volumeKeysAvailable
 
-        MobileSettingsRow
+        MobileSettingsVolumeKeysRow
         {
-            title: qsTr("Volume keys turn pages")
             lastRow: true
-
-            MobileSettingsToggle
-            {
-                checked: AppReaderSettings.volumeKeysTurnPages
-
-                onToggled: AppReaderSettings.volumeKeysTurnPages = !AppReaderSettings.volumeKeysTurnPages
-            }
         }
     }
 }

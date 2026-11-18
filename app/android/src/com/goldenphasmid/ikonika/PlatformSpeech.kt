@@ -45,6 +45,7 @@ object PlatformSpeech {
     @Volatile private var engineStartedAt = 0L
     @Volatile private var applicationContext: Context? = null
     private val voiceByLanguage = ConcurrentHashMap<String, Voice>()
+    private val preferredRegions = mapOf("pt" to "PT")
     private val mainHandler = Handler(Looper.getMainLooper())
 
     private class Request(val text: String, val languageCode: String, val rateScale: Float)
@@ -54,6 +55,9 @@ object PlatformSpeech {
     private val requestLock = Any()
     private var heldRequest: Request? = null
     private val heldNarration = ArrayList<Narration>()
+    private val spokenNarration = ArrayList<Narration>()
+    private var narrationPaused = false
+    private val narrationOffsets = ConcurrentHashMap<Int, Int>()
 
     @JvmStatic
     fun initialize(context: Context) {
@@ -184,8 +188,13 @@ object PlatformSpeech {
                 report("$id: speak() to audio start ${elapsedMs}ms")
             }
 
+            override fun onRangeStart(id: String?, start: Int, end: Int, frame: Int) {
+                narrationId(id)?.let { narrationOffsets[it] = start }
+            }
+
             override fun onDone(id: String?) {
                 narrationId(id)?.let {
+                    forgetNarration(it)
                     reportNarration { nativeOnNarrationFinished(it) }
 
                     return
@@ -312,8 +321,14 @@ object PlatformSpeech {
                 tts.voice = voice
             }
         } else {
-            tts.language = Locale(languageCode)
+            tts.language = localeFor(languageCode)
         }
+    }
+
+    private fun localeFor(languageCode: String): Locale {
+        val region = preferredRegions[languageCode] ?: return Locale(languageCode)
+
+        return Locale(languageCode, region)
     }
 
     private fun warmUp() {
@@ -340,15 +355,19 @@ object PlatformSpeech {
     private fun voiceFor(tts: TextToSpeech, languageCode: String): Voice? {
         voiceByLanguage[languageCode]?.let { return it }
 
-        val locale = Locale(languageCode)
+        val locale = localeFor(languageCode)
         tts.language = locale
 
-        val engineDefault = tts.voice?.takeIf {
+        val candidates = (listOfNotNull(tts.voice) + tts.voices.orEmpty()).filter {
             it.locale.language == locale.language && !it.isNetworkConnectionRequired
         }
-        val chosen = engineDefault ?: tts.voices?.firstOrNull {
-            it.locale.language == locale.language && !it.isNetworkConnectionRequired
-        } ?: return null
+        val chosen = candidates.firstOrNull {
+            locale.country.isEmpty() || it.locale.country == locale.country
+        } ?: candidates.firstOrNull() ?: return null
+
+        if (locale.country.isNotEmpty() && chosen.locale.country != locale.country) {
+            report("no offline ${locale.toLanguageTag()} voice, falling back to ${chosen.locale.toLanguageTag()}")
+        }
 
         report("voice for $languageCode: ${chosen.name}")
         voiceByLanguage[languageCode] = chosen
@@ -410,42 +429,118 @@ object PlatformSpeech {
 
     @JvmStatic
     fun narrate(id: Int, text: String, languageCode: String, rateScale: Float) {
+        val narration = Narration(id, text, languageCode, rateScale)
+
         synchronized(requestLock) {
             if (!warmupComplete) {
-                heldNarration.add(Narration(id, text, languageCode, rateScale))
+                heldNarration.add(narration)
 
+                return
+            }
+
+            spokenNarration.add(narration)
+
+            if (narrationPaused) {
                 return
             }
         }
 
+        speakNarration(narration)
+    }
+
+    private fun speakNarration(narration: Narration): Boolean {
         val tts = engine
 
         if (tts == null || !ready) {
             report("narration requested without a speech engine")
             reportNarration { nativeOnNarrationFailed() }
 
-            return
+            return false
         }
 
-        applyVoice(tts, languageCode)
-        tts.setSpeechRate(rate * rateScale)
+        applyVoice(tts, narration.languageCode)
+        tts.setSpeechRate(rate * narration.rateScale)
 
-        val result = tts.speak(text, TextToSpeech.QUEUE_ADD, Bundle(), "$NARRATION_PREFIX$id")
+        val result = tts.speak(narration.text, TextToSpeech.QUEUE_ADD, Bundle(), "$NARRATION_PREFIX${narration.id}")
 
         if (result != TextToSpeech.SUCCESS) {
             report("narration speak was rejected, result=$result")
             reportNarration { nativeOnNarrationFailed() }
             rebind("narration rejected with $result")
+
+            return false
         }
+
+        return true
+    }
+
+    private fun forgetNarration(id: Int) {
+        synchronized(requestLock) {
+            spokenNarration.removeAll { it.id == id }
+        }
+
+        narrationOffsets.remove(id)
     }
 
     @JvmStatic
     fun stopNarration() {
         synchronized(requestLock) {
             heldNarration.clear()
+            spokenNarration.clear()
+            narrationPaused = false
+        }
+
+        narrationOffsets.clear()
+        engine?.stop()
+    }
+
+    @JvmStatic
+    fun pauseNarration(): Boolean {
+        synchronized(requestLock) {
+            if (spokenNarration.isEmpty() || narrationPaused) {
+                return false
+            }
+
+            narrationPaused = true
         }
 
         engine?.stop()
+
+        return true
+    }
+
+    @JvmStatic
+    fun resumeNarration(): Boolean {
+        val pending = synchronized(requestLock) {
+            if (!narrationPaused) {
+                return false
+            }
+
+            narrationPaused = false
+
+            if (spokenNarration.isEmpty()) {
+                return false
+            }
+
+            val first = spokenNarration[0]
+            val offset = narrationOffsets.remove(first.id) ?: 0
+
+            if (offset > 0 && offset < first.text.length) {
+                spokenNarration[0] = Narration(first.id, first.text.substring(offset), first.languageCode, first.rateScale)
+            }
+
+            ArrayList(spokenNarration)
+        }
+
+        report("narration resumes ${pending.size} sentences, the first from \"${pending[0].text.take(24)}\"")
+
+        for (narration in pending) {
+            if (!speakNarration(narration)) {
+                break
+            }
+        }
+
+        return true
     }
 
     @JvmStatic

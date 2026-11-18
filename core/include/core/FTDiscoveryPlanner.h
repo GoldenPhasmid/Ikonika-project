@@ -139,6 +139,8 @@ public:
 
     void AskClue();
 
+    void ShowAnswer();
+
     void Advance();
 
     const std::vector<FTDiscoveryResult>& GetResults() const;

@@ -38,6 +38,7 @@ public:
 
     Q_INVOKABLE void startAt(int Paragraph, int Character);
     Q_INVOKABLE void pause();
+    Q_INVOKABLE void pauseForLookup();
     Q_INVOKABLE void resume();
     Q_INVOKABLE void stop();
     Q_INVOKABLE void previous();
@@ -77,6 +78,7 @@ private:
         double Seconds = 0.0;
     };
 
+    void Pause(bool bKeepPlace);
     void PlayFrom(const FTNarrationSentence& Sentence);
     void QueueAhead();
     void Silence();
@@ -102,6 +104,7 @@ private:
     int SavedParagraph = -1;
     int SavedCharacter = 0;
     bool bPlaying = false;
+    bool bPausedInPlace = false;
     bool bReachedEnd = false;
     bool bPublishedStarted = false;
     bool bPublishedPlaying = false;

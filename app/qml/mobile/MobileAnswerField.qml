@@ -9,6 +9,11 @@ MobileTextField
     property bool correct: false
     property string heldMiss: ""
     readonly property bool holdingMiss: root.heldMiss.length > 0
+    property bool locked: false
+    property string lockedText: ""
+
+    showsFocus: root.activeFocus && !root.locked
+    EnterKey.type: Qt.EnterKeyReturn
 
     function holdMiss()
     {
@@ -16,8 +21,24 @@ MobileTextField
         root.cursorPosition = root.text.length
     }
 
+    onLockedChanged:
+    {
+        root.lockedText = root.text
+        root.cursorVisible = root.activeFocus && !root.locked
+    }
+
+    onCursorVisibleChanged: if (root.locked && root.cursorVisible) root.cursorVisible = false
+
     onTextEdited:
     {
+        if (root.locked)
+        {
+            root.text = root.lockedText
+            root.cursorPosition = root.text.length
+
+            return
+        }
+
         if (!root.holdingMiss)
         {
             return

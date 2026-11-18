@@ -29,7 +29,9 @@ Item
             return
         }
 
-        if (!root.window.visible || item.width === 0)
+        const host = root.window.Window.window
+
+        if (host === null || !host.visible || item.width === 0)
         {
             item.clicked()
 

@@ -131,6 +131,11 @@ topic deck.
 
 ## Not sure
 
+Show answer sits under the options on mobile, and below the card on desktop with Ctrl+D. It reveals
+the answer at once and skips the clues, the same as Show me: the right option is marked, the example
+and its translation show, Learn is the default, and Continue opens the reveal. It does not open the
+reveal itself.
+
 Not sure is a fifth option, centred under the four. Each press gives the next clue. After the last
 clue it becomes Show me, which reveals the answer. A wrong answer before the sentence shows
 flashes red, is struck out, and shows the sentence. A wrong answer with the sentence on screen reveals
@@ -157,7 +162,7 @@ rank 400 with spread 2.0.
 | Answer | P(answer \| known) | P(answer \| unknown) |
 | --- | --- | --- |
 | Right with no clue | 0.97 | 0.25 |
-| Wrong with the sentence on screen, or Show me | 0.03 | 0.40 |
+| Wrong with the sentence on screen, Show me, or Show answer | 0.03 | 0.40 |
 | Right after a clue or a wrong answer | no update | |
 
 **Pick.** From the ticked decks' askable words above the placement cutoff, take the three with P(known) nearest 0.5 and pick
@@ -171,7 +176,7 @@ The answer sets which of Know and Learn the reveal highlights:
 | --- | --- |
 | Right, no clue | Know |
 | Right after a clue or a wrong answer | Learn |
-| Wrong with the sentence on screen, or Show me | Learn |
+| Wrong with the sentence on screen, Show me, or Show answer | Learn |
 
 Continue after a right answer with no clue moves straight to the next question with the default
 decision and shows no reveal. A Beginner question always shows the reveal. In beginner mode, a question
@@ -197,6 +202,16 @@ shows the revealed word's forms.
 The round ends after its last question or when the decks run out of askable words. Leaving keeps the
 round unfinished, to continue later; it lives in memory, so closing the app loses it. End session ends
 it. Answers given are kept either way.
+
+The results screen lists every card added to My Vocabulary while the round was open: the Learn
+decisions and any word added through the translation popup, the lookup pane or the add-word screen.
+Cards are listed in the order they were created, and a card deleted meanwhile drops out.
+
+A round belongs to the dictionary it was started in. When the dictionary changes, by switching language or by an update, the round is dropped, and mobile returns to Today if it was on a Discover screen.
+
+Discover is blocked while the dictionary has no deck categories: no dictionary at all, or one built
+before categories existed. The Discover tile on Today is dimmed and says why, and every entry point
+shows the same reason instead of opening an empty category pick.
 
 ## Data read
 

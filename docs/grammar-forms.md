@@ -182,8 +182,10 @@ either when typed.
 
 Spanish labels its third persons "él/usted" and "ellos/ustedes", because usted and ustedes take
 those forms. Vosotros is spoken only in Spain, so a setting leaves it out of conjugation trainings.
-The setting is on by default and shows only for Spanish. When it is off, a session never asks the
-vosotros form and the table leaves its cell blank. Progress is kept per verb and tense, so turning
+Portuguese does the same with vós, which survives only in the Bible, church and old literature, and
+labels its third persons "ele/ela/você" and "eles/elas/vocês", because você and vocês take those forms.
+The setting is kept per language, is off by default and shows only for Spanish and Portuguese. When it is off, a session never
+asks the optional form and the table leaves its cell blank. Progress is kept per verb and tense, so turning
 the setting on or off changes no stored data.
 
 | Person | Spelling shown |

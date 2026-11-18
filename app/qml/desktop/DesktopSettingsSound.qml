@@ -58,6 +58,64 @@ ColumnLayout
 
         DesktopSettingsRow
         {
+            id: speechModelRow
+
+            readonly property var selected: root.store.speechModels[root.store.speechModelIndex]
+            readonly property string packageId: speechModelRow.selected !== undefined ? speechModelRow.selected.packageId : ""
+            readonly property bool downloading: speechModelRow.packageId.length > 0
+                && AppPackageDownloader.activeId === speechModelRow.packageId
+            readonly property bool queued: speechModelRow.packageId.length > 0
+                && AppPackageDownloader.queue.indexOf(speechModelRow.packageId) >= 0
+
+            visible: root.store.speechModels.length > 1
+            text: qsTr("Text to speech model")
+            description:
+            {
+                if (speechModelRow.downloading)
+                {
+                    return AppPackageDownloader.totalBytes > 0
+                        ? qsTr("Downloading, %1%").arg(Math.round(AppPackageDownloader.receivedBytes * 100 / AppPackageDownloader.totalBytes))
+                        : qsTr("Downloading")
+                }
+
+                if (speechModelRow.queued)
+                {
+                    return qsTr("Queued")
+                }
+
+                if (speechModelRow.selected !== undefined && !speechModelRow.selected.installed)
+                {
+                    return qsTr("Not downloaded, %1 MB").arg(Math.round(speechModelRow.selected.bytes / (1024 * 1024)))
+                }
+
+                return ""
+            }
+
+            DesktopSelect
+            {
+                objectName: "settings_speech_model"
+
+                Layout.fillWidth: false
+                Layout.preferredWidth: AppMetrics.settingsControlWidth
+                heading: qsTr("Text to speech model")
+                options: root.store.speechModels.map(entry => entry.name)
+                currentIndex: root.store.speechModelIndex
+
+                onChosen: function(index)
+                {
+                    root.store.speechModelIndex = index
+
+                    if (root.store.speechModels[index].installed)
+                    {
+                        root.store.playVoiceSample()
+                    }
+                }
+            }
+        }
+
+        DesktopSettingsRow
+        {
+            visible: root.store.defaultSpeechModelActive
             text: qsTr("Voice")
 
             DesktopSelect
@@ -66,7 +124,7 @@ ColumnLayout
 
                 Layout.fillWidth: false
                 Layout.preferredWidth: AppMetrics.settingsControlWidth
-                enabled: root.store.supertonicActive && root.store.audioAvailable
+                enabled: root.store.audioAvailable
                 heading: qsTr("Voice")
                 options: ["Sarah", "Lily", "Jessica", "Olivia", "Emily",
                           "Alex", "James", "Robert", "Sam", "Daniel"]

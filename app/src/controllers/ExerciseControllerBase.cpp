@@ -596,6 +596,11 @@ void ExerciseControllerBase::speakSlowly()
 
     qCInfo(LogSpeech) << metaObject()->className() << "slow speech requested for" << Text;
 
+    SpeakSlowlyText(Text);
+}
+
+void ExerciseControllerBase::SpeakSlowlyText(const QString& Text) const
+{
     SpeakAtScale(Text, GetSpeechRateScale() * AppSpeech::SlowRateScale);
 }
 

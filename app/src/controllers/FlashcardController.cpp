@@ -1,8 +1,10 @@
 #include "FlashcardController.h"
 
+#include "core/FTLog.h"
 #include "core/FTSettings.h"
 
 #include <QJsonArray>
+#include <QRegularExpression>
 
 #include <memory>
 
@@ -24,6 +26,8 @@ void FlashcardController::InitializeSession()
         HistoryPosition = 0;
         Session->SetResult(History.front(), true);
     }
+
+    SpokenForm.clear();
 
     SpeakAutomatically(GetPrompt());
 }
@@ -60,6 +64,8 @@ void FlashcardController::next()
 
     Session->SetResult(History[HistoryPosition], true);
 
+    SpokenForm.clear();
+
     SpeakAutomatically(GetPrompt());
 
     emit stateChanged();
@@ -76,6 +82,8 @@ void FlashcardController::previous()
 
     Session->SetResult(History[HistoryPosition], true);
 
+    SpokenForm.clear();
+
     SpeakAutomatically(GetPrompt());
 
     emit stateChanged();
@@ -83,7 +91,38 @@ void FlashcardController::previous()
 
 void FlashcardController::replay()
 {
+    SpokenForm.clear();
+
     Speak(GetPrompt());
+}
+
+void FlashcardController::speakForm(const QString& Form)
+{
+    static const QRegularExpression MarkupPattern{"<[^>]+>"};
+
+    QString Plain = Form;
+    Plain.remove(MarkupPattern);
+    Plain = Plain.trimmed();
+
+    if (Plain.isEmpty())
+    {
+        return;
+    }
+
+    qCInfo(LogSpeech) << "FlashcardController form clicked to speak" << Plain;
+
+    SpokenForm = Plain;
+
+    Speak(Plain);
+}
+
+void FlashcardController::speakSlowly()
+{
+    const QString Text = SpokenForm.isEmpty() ? GetPrompt() : SpokenForm;
+
+    qCInfo(LogSpeech) << "FlashcardController slow speech requested for" << Text;
+
+    SpeakSlowlyText(Text);
 }
 
 const FTCard* FlashcardController::GetCurrentCard() const

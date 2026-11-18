@@ -5,6 +5,7 @@
 #include <QtQml/qqmlregistration.h>
 
 bool IsMobileLayoutEnabled();
+void SetMobileLayoutEnabled(bool bEnabled);
 
 /**
  * The non-colour half of the design tokens: sizes, spacing and font sizes taken from the v3
@@ -159,6 +160,7 @@ class AppMetrics : public QObject
 
     Q_PROPERTY(int contentWidthWide READ GetContentWidthWide CONSTANT)
     Q_PROPERTY(int contentWidthNarrow READ GetContentWidthNarrow CONSTANT)
+    Q_PROPERTY(int columnMaximumWidth READ GetColumnMaximumWidth CONSTANT)
 
     Q_PROPERTY(int listPaneWidth READ GetListPaneWidth CONSTANT)
 
@@ -180,6 +182,7 @@ class AppMetrics : public QObject
     Q_PROPERTY(int quickAddMinimumWidth READ GetQuickAddMinimumWidth CONSTANT)
     Q_PROPERTY(int quickAddMinimumHeight READ GetQuickAddMinimumHeight CONSTANT)
     Q_PROPERTY(int quickAddSearchDelay READ GetQuickAddSearchDelay CONSTANT)
+    Q_PROPERTY(int keyboardReleaseDelay READ GetKeyboardReleaseDelay CONSTANT)
     Q_PROPERTY(qreal quickAddInputShare READ GetQuickAddInputShare CONSTANT)
     Q_PROPERTY(int quickAddFocusGrace READ GetQuickAddFocusGrace CONSTANT)
 
@@ -261,6 +264,12 @@ class AppMetrics : public QObject
     Q_PROPERTY(qreal coverStripeBottomEnd READ GetCoverStripeBottomEnd CONSTANT)
     Q_PROPERTY(qreal coverStripeRightStart READ GetCoverStripeRightStart CONSTANT)
     Q_PROPERTY(qreal coverStripeRightEnd READ GetCoverStripeRightEnd CONSTANT)
+    Q_PROPERTY(qreal sessionTileBandWidth READ GetSessionTileBandWidth CONSTANT)
+    Q_PROPERTY(qreal sessionTileBandTop READ GetSessionTileBandTop CONSTANT)
+    Q_PROPERTY(qreal sessionTileBandSlope READ GetSessionTileBandSlope CONSTANT)
+    Q_PROPERTY(int tileShadowOffsetX READ GetTileShadowOffsetX CONSTANT)
+    Q_PROPERTY(int tileShadowOffsetY READ GetTileShadowOffsetY CONSTANT)
+    Q_PROPERTY(int tileShadowBlur READ GetTileShadowBlur CONSTANT)
     Q_PROPERTY(qreal pickTopFill READ GetPickTopFill CONSTANT)
     Q_PROPERTY(int resultTileMinimumWidth READ GetResultTileMinimumWidth CONSTANT)
     Q_PROPERTY(int fontPickTitle READ GetFontPickTitle CONSTANT)
@@ -347,6 +356,7 @@ class AppMetrics : public QObject
     Q_PROPERTY(int brandTitleSize READ GetBrandTitleSize CONSTANT)
 
     Q_PROPERTY(bool mobileLayout READ IsMobileLayout CONSTANT)
+    Q_PROPERTY(bool touchInput READ IsTouchInput CONSTANT)
 
 public:
     explicit AppMetrics(QObject* Parent = nullptr);
@@ -446,6 +456,7 @@ public:
     int GetWindowMinimumHeight() const;
     int GetContentWidthWide() const;
     int GetContentWidthNarrow() const;
+    int GetColumnMaximumWidth() const;
     int GetListPaneWidth() const;
     int GetNavItemHeight() const;
     int GetIconSize() const;
@@ -463,6 +474,7 @@ public:
     int GetQuickAddMinimumWidth() const;
     int GetQuickAddMinimumHeight() const;
     int GetQuickAddSearchDelay() const;
+    int GetKeyboardReleaseDelay() const;
     qreal GetQuickAddInputShare() const;
     int GetQuickAddFocusGrace() const;
     int GetHeroFigureSize() const;
@@ -538,6 +550,12 @@ public:
     qreal GetCoverStripeBottomEnd() const;
     qreal GetCoverStripeRightStart() const;
     qreal GetCoverStripeRightEnd() const;
+    qreal GetSessionTileBandWidth() const;
+    qreal GetSessionTileBandTop() const;
+    qreal GetSessionTileBandSlope() const;
+    int GetTileShadowOffsetX() const;
+    int GetTileShadowOffsetY() const;
+    int GetTileShadowBlur() const;
     qreal GetPickTopFill() const;
     int GetResultTileMinimumWidth() const;
     int GetFontPickTitle() const;
@@ -620,6 +638,7 @@ public:
     int GetBrandTitleSize() const;
 
     bool IsMobileLayout() const;
+    bool IsTouchInput() const;
 
 signals:
     void transitionsEnabledChanged();

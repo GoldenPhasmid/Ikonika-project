@@ -20,7 +20,7 @@ Rectangle
         text: root.level
         font.pixelSize: 11
         font.bold: true
-        font.family: AppMetrics.fontFamily
+        font.family: Qt.platform.os === "windows" ? "Consolas" : "monospace"
         color: "#16181d"
     }
 }

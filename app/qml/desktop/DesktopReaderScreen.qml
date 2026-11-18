@@ -8,26 +8,31 @@ Item
 {
     id: root
 
+    required property DictionaryController contextLookup
+    required property DictionaryController textLookup
+    required property DictionaryController lookup
+    required property DictionaryController translationLookup
     required property var store
+    required property ReaderController reader
 
     signal addWordRequested(string word, string translation, string partOfSpeech, string hint)
     signal lookUpRequested(string word)
     signal messageRequested(string message)
     signal crumbsChanging()
 
-    readonly property bool reading: reader.reading
-    readonly property string currentTitle: reader.currentTitle
-    readonly property bool isPdf: reader.isPdf
-    readonly property bool cannotRead: root.reading && (reader.unreadable || (reader.isPdf && pdfView.failed))
+    readonly property bool reading: root.reader.reading
+    readonly property string currentTitle: root.reader.currentTitle
+    readonly property bool isPdf: root.reader.isPdf
+    readonly property bool cannotRead: root.reading && (root.reader.unreadable || (root.reader.isPdf && pdfView.failed))
     readonly property bool readable: root.reading && !root.cannotRead
-    readonly property int bookCount: reader.documents.length
-    readonly property var continueBooks: Shelf.continueBooks(reader.documents)
-    readonly property bool freeAvailable: reader.freeBooks.length > 0
+    readonly property int bookCount: root.reader.documents.length
+    readonly property var continueBooks: Shelf.continueBooks(root.reader.documents)
+    readonly property bool freeAvailable: root.reader.freeBooks.length > 0
     property string section: "all"
-    property var filter: root.emptyFilter()
+    property var filter: Shelf.emptyFilter()
     readonly property real chromeShown: pageTransition.chromeShown
-    readonly property ReaderReadAloud readAloud: reader.readAloud
-    readonly property bool readAloudOffered: root.readable && !reader.isPdf
+    readonly property ReaderReadAloud readAloud: root.reader.readAloud
+    readonly property bool readAloudOffered: root.readable && !root.reader.isPdf
     property bool voiceNoticeShown: false
 
     property bool immersive: false
@@ -37,63 +42,18 @@ Item
     readonly property string groupMode: Shelf.libraryGroups.indexOf(AppReaderSettings.libraryGroup) >= 0
                                         ? AppReaderSettings.libraryGroup : Shelf.libraryGroups[0]
 
-    readonly property var sortDirections: ({
-        "recent": [qsTr("Newest first"), qsTr("Oldest first")],
-        "title": [qsTr("A to Z"), qsTr("Z to A")],
-        "author": [qsTr("A to Z"), qsTr("Z to A")],
-        "level": [qsTr("Easiest first"), qsTr("Hardest first")],
-        "progress": [qsTr("In progress first"), qsTr("Finished first")],
-        "added": [qsTr("Newest first"), qsTr("Oldest first")],
-        "size": [qsTr("Largest first"), qsTr("Smallest first")]
-    })
 
     readonly property string searchTerm: librarySearch.term
-    readonly property var sourceBooks: root.section === "free" ? reader.freeBooks : reader.documents
+    readonly property var sourceBooks: root.section === "free" ? root.reader.freeBooks : root.reader.documents
     readonly property var shelf: Shelf.shelve(root.sourceBooks, root.section, root.filter, root.searchTerm,
                                               root.sortOrder, root.sortReversed)
     readonly property var shelfGroups: Shelf.group(root.shelf, root.groupMode)
     readonly property var shelfRows: Shelf.rows(root.shelfGroups, root.tileColumns)
-    readonly property var formats: root.sourceBooks.map(function(book) { return (book.format || "").toLowerCase() })
-                                                 .filter(function(format, index, all) { return format.length > 0 && all.indexOf(format) === index })
-                                                 .sort()
+    readonly property var formats: Shelf.formats(root.sourceBooks)
 
-    readonly property var sectionCounts:
-    {
-        const counts = { "free": reader.freeBooks.length }
-        const keys = ["all", "reading", "finished", "favorites"]
+    readonly property var sectionCounts: Shelf.sectionCounts(root.reader.documents, root.reader.freeBooks, root.reader.collections)
 
-        for (const collection of reader.collections)
-        {
-            keys.push("collection:" + collection.id)
-        }
-
-        for (const key of keys)
-        {
-            counts[key] = reader.documents.filter(function(book) { return Shelf.inSection(book, key) }).length
-        }
-
-        return counts
-    }
-
-    readonly property string sectionTitle:
-    {
-        const titles = {
-            "all": qsTr("My books"),
-            "reading": qsTr("Reading"),
-            "finished": qsTr("Finished"),
-            "favorites": qsTr("Favorites"),
-            "free": qsTr("Free library")
-        }
-
-        if (titles[root.section] !== undefined)
-        {
-            return titles[root.section]
-        }
-
-        const collection = reader.collections.find(function(entry) { return "collection:" + entry.id === root.section })
-
-        return collection ? collection.name : titles["all"]
-    }
+    readonly property string sectionTitle: Shelf.sectionTitle(root.section, root.reader.collections)
 
     readonly property real shelfColumnWidth: Math.max(0, Math.min(AppMetrics.coverGridWidth,
                                                                   shelfArea.width - AppMetrics.contentPadding * 2))
@@ -102,91 +62,79 @@ Item
     readonly property real tileWidth: Math.floor((root.shelfColumnWidth - AppMetrics.gapLarge * (root.tileColumns - 1))
                                                  / root.tileColumns)
     property bool contentsOpen: false
+    property bool lookupOpen: false
 
     property int pdfPendingPage: 0
     property real pdfPendingZoom: 0
     property point pdfPendingScroll: Qt.point(0, 0)
 
-    readonly property int positionCount: reader.isPdf ? pdfView.pageCount : textView.count
-    readonly property int positionIndex: reader.isPdf ? pdfView.pageIndex : textView.topParagraph
+    readonly property int positionCount: root.reader.isPdf ? pdfView.pageCount : textView.count
+    readonly property int positionIndex: root.reader.isPdf ? pdfView.pageIndex : textView.topParagraph
 
     onPositionCountChanged:
     {
         if (root.readable && root.positionCount > 0)
         {
-            reader.savePositionCount(root.positionCount)
+            root.reader.savePositionCount(root.positionCount)
         }
     }
 
-    readonly property var contentsEntries: reader.isPdf ? pdfView.outlineEntries : reader.chapters
-    readonly property var pageTone: Tones.find(reader.pageTone)
+    readonly property var contentsEntries: root.reader.isPdf ? pdfView.outlineEntries : root.reader.chapters
+    readonly property var pageTone: Tones.find(root.reader.pageTone)
     readonly property var textTone: Tones.findText(AppReaderSettings.textTone)
     readonly property color textPaper: root.textTone.paper.length > 0 ? root.textTone.paper : AppTheme.colourPanel
     readonly property color textInk: root.textTone.ink.length > 0 ? root.textTone.ink : AppTheme.colourText
 
     function refresh()
     {
-        if (!reader.reading)
+        if (root.lookupOpen)
         {
-            reader.refresh()
+            lookupPane.refresh()
         }
-    }
 
-    function emptyFilter()
-    {
-        return { "levels": [], "statuses": [], "storage": [], "formats": [] }
+        if (!root.reader.reading)
+        {
+            root.reader.refresh()
+        }
     }
 
     function toggleFilter(key, value)
     {
-        const next = { "levels": root.filter.levels.slice(), "statuses": root.filter.statuses.slice(),
-                       "storage": root.filter.storage.slice(), "formats": root.filter.formats.slice() }
-        const index = next[key].indexOf(value)
-
-        if (index >= 0)
-        {
-            next[key].splice(index, 1)
-        }
-        else
-        {
-            next[key].push(value)
-        }
-
-        root.filter = next
+        root.filter = Shelf.toggledFilter(root.filter, key, value)
     }
 
     function download(book)
     {
         if (book.freeId !== undefined && !book.cloudId)
         {
-            reader.downloadFreeBook(book.freeId)
+            root.reader.downloadFreeBook(book.freeId)
 
             return
         }
 
-        reader.downloadBook(book.cloudId)
+        root.reader.downloadBook(book.cloudId)
     }
 
     function openBook()
     {
-        reader.pickAndOpen()
+        root.reader.pickAndOpen()
     }
 
     function openPath(path)
     {
         root.savePosition()
-        reader.openPath(path)
+        root.reader.openPath(path)
     }
 
     function recordAddedCard(cardId)
     {
-        reader.recordAddedCard(cardId)
+        root.reader.recordAddedCard(cardId)
     }
 
     function openDocument(id)
     {
         root.savePosition()
-        reader.openDocument(id)
+        root.reader.openDocument(id)
     }
 
     function focusSearch()
@@ -205,28 +153,28 @@ Item
                                       : document.free ? qsTr("You can download it again from Free books.")
                                                       : qsTr("The file stays where it is on your computer."),
                               qsTr("Remove"),
-                              function() { reader.removeDocument(document.id) })
+                              function() { root.reader.removeDocument(document.id) })
     }
 
     function savePosition()
     {
-        if (!reader.reading)
+        if (!root.reader.reading)
         {
             return
         }
 
-        if (reader.isPdf)
+        if (root.reader.isPdf)
         {
-            reader.savePosition(root.pdfPendingPage)
-            reader.saveZoom(root.pdfPendingZoom)
-            reader.saveScroll(root.pdfPendingScroll)
+            root.reader.savePosition(root.pdfPendingPage)
+            root.reader.saveZoom(root.pdfPendingZoom)
+            root.reader.saveScroll(root.pdfPendingScroll)
 
             return
         }
 
-        if (!reader.loading)
+        if (!root.reader.loading)
         {
-            reader.savePosition(textView.topParagraph)
+            root.reader.savePosition(textView.topParagraph)
         }
     }
 
@@ -236,14 +184,14 @@ Item
 
         if (position === undefined)
         {
-            reader.openDocument(document.id)
+            root.reader.openDocument(document.id)
         }
         else
         {
-            reader.openDocumentAt(document.id, position)
+            root.reader.openDocumentAt(document.id, position)
         }
 
-        if (pageTransition.running && !reader.reading)
+        if (pageTransition.running && !root.reader.reading)
         {
             pageTransition.finishOpen()
         }
@@ -251,6 +199,7 @@ Item
 
     function closeBook()
     {
+        root.lookupOpen = false
         root.contentsOpen = false
         root.immersive = false
 
@@ -264,11 +213,12 @@ Item
     {
         root.savePosition()
 
+        root.lookupOpen = false
         root.contentsOpen = false
         root.immersive = false
 
-        reader.closeDocument()
-        reader.refresh()
+        root.reader.closeDocument()
+        root.reader.refresh()
 
         if (pageTransition.running)
         {
@@ -278,15 +228,15 @@ Item
 
     function removeCurrentBook()
     {
-        const id = reader.currentId
+        const id = root.reader.currentId
 
         root.closeNow()
-        reader.removeDocument(id)
+        root.reader.removeDocument(id)
     }
 
     function goToPosition(index)
     {
-        if (reader.isPdf)
+        if (root.reader.isPdf)
         {
             pdfView.goToPage(index)
 
@@ -298,7 +248,7 @@ Item
 
     function turnPage(forward)
     {
-        if (reader.isPdf)
+        if (root.reader.isPdf)
         {
             pdfView.goToPage(pdfView.pageIndex + (forward ? 1 : -1))
 
@@ -310,7 +260,7 @@ Item
 
     function zoom(closer)
     {
-        if (reader.isPdf)
+        if (root.reader.isPdf)
         {
             pdfView.zoomBy(closer ? AppMetrics.readerZoomStep : 1 / AppMetrics.readerZoomStep)
 
@@ -322,7 +272,7 @@ Item
 
     function scrollBy(pixels)
     {
-        if (reader.isPdf)
+        if (root.reader.isPdf)
         {
             pdfView.scrollBy(pixels)
 
@@ -336,7 +286,7 @@ Item
     {
         root.contentsOpen = !root.contentsOpen
 
-        if (root.contentsOpen && reader.isPdf && pdfView.outlineEntries.length === 0)
+        if (root.contentsOpen && root.reader.isPdf && pdfView.outlineEntries.length === 0)
         {
             pdfView.requestOutline()
         }
@@ -346,14 +296,14 @@ Item
     {
         keys.forceActiveFocus()
 
-        if (reader.readAloud.started)
+        if (root.reader.readAloud.started)
         {
-            reader.readAloud.stop()
+            root.reader.readAloud.stop()
 
             return
         }
 
-        if (!reader.readAloud.available)
+        if (!root.reader.readAloud.available)
         {
             root.voiceNoticeShown = !root.voiceNoticeShown
 
@@ -380,16 +330,16 @@ Item
 
     function handleReadAloudKey(event)
     {
-        if (reader.isPdf || !reader.readAloud.started)
+        if (root.reader.isPdf || !root.reader.readAloud.started)
         {
             return false
         }
 
         if (event.key === Qt.Key_Space && event.modifiers === Qt.NoModifier)
         {
-            if (reader.readAloud.playing)
+            if (root.reader.readAloud.playing)
             {
-                reader.readAloud.pause()
+                root.reader.readAloud.pause()
             }
             else
             {
@@ -406,14 +356,14 @@ Item
 
         if (event.key === Qt.Key_Left)
         {
-            reader.readAloud.previous()
+            root.reader.readAloud.previous()
 
             return true
         }
 
         if (event.key === Qt.Key_Right)
         {
-            reader.readAloud.next()
+            root.reader.readAloud.next()
 
             return true
         }
@@ -428,6 +378,30 @@ Item
         translation.text = text
     }
 
+    function openLookup(term, focusField, sentence)
+    {
+        root.lookupOpen = true
+        lookupPane.show(term, focusField, sentence)
+    }
+
+    function closeLookup()
+    {
+        root.lookupOpen = false
+        keys.forceActiveFocus()
+    }
+
+    function toggleLookup()
+    {
+        if (root.lookupOpen)
+        {
+            root.closeLookup()
+
+            return
+        }
+
+        root.openLookup("", true)
+    }
+
     function toggleImmersive()
     {
         root.immersive = !root.immersive
@@ -438,6 +412,13 @@ Item
     {
         if (translation.dismiss())
         {
+            return true
+        }
+
+        if (root.lookupOpen)
+        {
+            root.closeLookup()
+
             return true
         }
 
@@ -483,11 +464,11 @@ Item
 
         if (event.matches(StandardKey.Copy))
         {
-            const selection = reader.isPdf ? pdfView.selectionText() : textView.selectionText()
+            const selection = root.reader.isPdf ? pdfView.selectionText() : textView.selectionText()
 
             if (selection.length > 0)
             {
-                translationLookup.copyToClipboard(selection)
+                root.translationLookup.copyToClipboard(selection)
             }
 
             return
@@ -548,7 +529,7 @@ Item
         case Qt.Key_0:
             if (zooming)
             {
-                if (reader.isPdf)
+                if (root.reader.isPdf)
                 {
                     pdfView.fitWidth()
                 }
@@ -570,12 +551,12 @@ Item
     {
         if (root.visible)
         {
-            reader.vocabulary.refresh()
+            root.reader.vocabulary.refresh()
 
             return
         }
 
-        reader.readAloud.pause()
+        root.reader.readAloud.pause()
     }
 
     Connections
@@ -586,51 +567,47 @@ Item
         {
             if (Qt.application.state === Qt.ApplicationActive && root.visible)
             {
-                reader.vocabulary.refresh()
+                root.reader.vocabulary.refresh()
             }
         }
-    }
-
-    ReaderController
-    {
-        id: reader
-
-        onCloudFailed: function(message) { root.messageRequested(message) }
-        onFreeBookFailed: function(message) { root.messageRequested(message) }
-
-        onCurrentDocumentChanged:
-        {
-            root.pdfPendingPage = reader.currentPosition
-            root.pdfPendingZoom = reader.currentZoom
-            root.pdfPendingScroll = reader.currentScroll
-            root.voiceNoticeShown = false
-
-            if (!reader.reading)
-            {
-                return
-            }
-
-            keys.forceActiveFocus()
-
-            if (!reader.loading && !reader.isPdf)
-            {
-                Qt.callLater(function() { textView.goTo(reader.currentPosition) })
-            }
-        }
-    }
-
-    DictionaryController
-    {
-        id: translationLookup
     }
 
     Connections
     {
-        target: reader.readAloud
+        target: root.reader
+
+        function onCloudFailed(message) { root.messageRequested(message) }
+        function onFreeBookFailed(message) { root.messageRequested(message) }
+        function onCurrentDocumentChanged() { root.showCurrentDocument() }
+    }
+
+    function showCurrentDocument()
+    {
+        root.pdfPendingPage = root.reader.currentPosition
+        root.pdfPendingZoom = root.reader.currentZoom
+        root.pdfPendingScroll = root.reader.currentScroll
+        root.voiceNoticeShown = false
+
+        if (!root.reader.reading)
+        {
+            return
+        }
+
+        keys.forceActiveFocus()
+
+        if (!root.reader.loading && !root.reader.isPdf)
+        {
+            Qt.callLater(function() { textView.goTo(root.reader.currentPosition) })
+        }
+    }
+
+    Connections
+    {
+        target: root.reader.readAloud
 
         function onAvailableChanged()
         {
-            if (!root.voiceNoticeShown || !reader.readAloud.available)
+            if (!root.voiceNoticeShown || !root.reader.readAloud.available)
             {
                 return
             }
@@ -649,7 +626,11 @@ Item
         onTriggered: root.savePosition()
     }
 
-    Component.onCompleted: root.refresh()
+    Component.onCompleted:
+    {
+        root.refresh()
+        root.showCurrentDocument()
+    }
 
     Item
     {
@@ -670,7 +651,7 @@ Item
 
             section: root.section
             counts: root.sectionCounts
-            collections: reader.collections
+            collections: root.reader.collections
             freeShown: root.freeAvailable
 
             onSectionChosen: function(section)
@@ -679,20 +660,20 @@ Item
 
                 if (section === "free")
                 {
-                    reader.refreshFreeBooks()
+                    root.reader.refreshFreeBooks()
                 }
             }
-            onNewCollectionRequested: collectionDialog.create(function(name, colour) { reader.createCollection(name, colour) })
+            onNewCollectionRequested: collectionDialog.create(function(name, colour) { root.reader.createCollection(name, colour) })
             onRenameCollectionRequested: function(collectionId, name)
             {
-                collectionDialog.rename(collectionId, name, function(newName) { reader.renameCollection(collectionId, newName) })
+                collectionDialog.rename(collectionId, name, function(newName) { root.reader.renameCollection(collectionId, newName) })
             }
             onDeleteCollectionRequested: function(collectionId, name)
             {
                 cloudDeleteDialog.ask(qsTr("Delete the collection \"%1\"?").arg(name),
                                       qsTr("The books stay in your library."),
                                       qsTr("Delete"),
-                                      function() { reader.deleteCollection(collectionId) })
+                                      function() { root.reader.deleteCollection(collectionId) })
             }
             onImportRequested: root.openBook()
         }
@@ -721,14 +702,6 @@ Item
                     text: root.sectionTitle
                     font.pixelSize: AppMetrics.fontTitle
                     font.weight: Font.DemiBold
-                }
-
-                DesktopLabel
-                {
-                    Layout.leftMargin: AppMetrics.gapTight
-                    text: root.shelf.length === 1 ? qsTr("1 book") : qsTr("%1 books").arg(root.shelf.length)
-                    font.pixelSize: AppMetrics.fontSmall
-                    color: AppTheme.colourMuted
                 }
 
                 Item
@@ -859,7 +832,7 @@ Item
                             enabled: Shelf.filterCount(root.filter) > 0
                             text: qsTr("Reset")
 
-                            onClicked: root.filter = root.emptyFilter()
+                            onClicked: root.filter = Shelf.emptyFilter()
                         }
                     }
                 }
@@ -920,7 +893,7 @@ Item
 
                                 objectName: "reader_sort_direction_" + index
                                 Layout.fillWidth: true
-                                text: root.sortDirections[root.sortOrder][index]
+                                text: Shelf.libraryOrderDirections()[root.sortOrder][index]
                                 showsCheck: true
                                 selected: root.sortReversed === (index === 1)
 
@@ -1075,7 +1048,7 @@ Item
                                 exists: modelData.exists
                                 local: modelData.local
                                 free: modelData.free || modelData.freeId !== undefined
-                                cloudAvailable: reader.cloudAvailable
+                                cloudAvailable: root.reader.cloudAvailable
                                 favorite: modelData.favorite || false
                                 finished: modelData.finished || false
                                 size: modelData.size || 0
@@ -1083,8 +1056,8 @@ Item
                                 progress:
                                 {
                                     const value = !modelData.local && modelData.freeId !== undefined
-                                                ? reader.freeTransfers[modelData.freeId]
-                                                : reader.transfers[modelData.local ? modelData.id : modelData.cloudId]
+                                                ? root.reader.freeTransfers[modelData.freeId]
+                                                : root.reader.transfers[modelData.local ? modelData.id : modelData.cloudId]
 
                                     return value === undefined ? -1 : value
                                 }
@@ -1105,7 +1078,7 @@ Item
 
                                     if (!modelData.exists)
                                     {
-                                        reader.locateDocument(modelData.id)
+                                        root.reader.locateDocument(modelData.id)
 
                                         return
                                     }
@@ -1118,12 +1091,12 @@ Item
                                 {
                                     if (!modelData.local && modelData.freeId !== undefined)
                                     {
-                                        reader.cancelFreeBook(modelData.freeId)
+                                        root.reader.cancelFreeBook(modelData.freeId)
 
                                         return
                                     }
 
-                                    reader.cancelTransfer(modelData.local ? modelData.id : modelData.cloudId)
+                                    root.reader.cancelTransfer(modelData.local ? modelData.id : modelData.cloudId)
                                 }
                             }
                         }
@@ -1175,7 +1148,7 @@ Item
     {
         id: bookOverview
 
-        controller: reader
+        controller: root.reader
         maxStage: root.store.stageCount
 
         onReadRequested: function(book) { root.openFromTile(book) }
@@ -1184,11 +1157,11 @@ Item
         {
             collectionDialog.create(function(name, colour)
             {
-                const collectionId = reader.createCollection(name, colour)
+                const collectionId = root.reader.createCollection(name, colour)
 
                 if (collectionId.length > 0)
                 {
-                    reader.addToCollection(collectionId, key)
+                    root.reader.addToCollection(collectionId, key)
                 }
             })
         }
@@ -1215,7 +1188,7 @@ Item
 
             for (const url of drop.urls)
             {
-                reader.openPath(url)
+                root.reader.openPath(url)
             }
 
             drop.accept()
@@ -1248,8 +1221,8 @@ Item
                 visible: root.contentsOpen && !root.immersive
 
                 entries: root.contentsEntries
-                loading: reader.isPdf && pdfView.outlineLoading
-                paged: reader.isPdf
+                loading: root.reader.isPdf && pdfView.outlineLoading
+                paged: root.reader.isPdf
                 positionCount: root.positionCount
 
                 onEntryActivated: function(position)
@@ -1258,6 +1231,25 @@ Item
                     keys.forceActiveFocus()
                 }
                 onCloseRequested: root.contentsOpen = false
+            }
+
+            DesktopLookupPane
+            {
+                id: lookupPane
+
+                anchors.right: parent.right
+                anchors.top: parent.top
+                anchors.bottom: bar.visible ? bar.top : parent.bottom
+                z: 1
+                visible: root.lookupOpen
+
+                lookup: root.lookup
+                maxStage: root.store.stageCount
+
+                onAddWordRequested: function(word, translation, partOfSpeech, hint)
+                {
+                    root.addWordRequested(word, translation, partOfSpeech, hint)
+                }
             }
 
             Rectangle
@@ -1269,7 +1261,7 @@ Item
                 anchors.top: parent.top
                 anchors.bottom: bar.visible ? bar.top : parent.bottom
 
-                color: AppTheme.faded(reader.isPdf ? AppTheme.colourSunken : root.textPaper, pageTransition.pageShown)
+                color: AppTheme.faded(root.reader.isPdf ? AppTheme.colourSunken : root.textPaper, pageTransition.pageShown)
 
                 PointHandler
                 {
@@ -1283,14 +1275,14 @@ Item
                     objectName: "reader_pdf"
 
                     anchors.fill: parent
-                    visible: reader.isPdf
+                    visible: root.reader.isPdf
                     opacity: pageTransition.chromeShown
 
-                    source: reader.isPdf ? reader.currentPath : ""
-                    initialPage: reader.currentPosition
-                    initialZoom: reader.currentZoom
-                    initialScroll: reader.currentScroll
-                    cropMargins: reader.cropMargins
+                    source: root.reader.isPdf ? root.reader.currentPath : ""
+                    initialPage: root.reader.currentPosition
+                    initialZoom: root.reader.currentZoom
+                    initialScroll: root.reader.currentScroll
+                    cropMargins: root.reader.cropMargins
                     paperColour: root.pageTone.paper
                     inkColour: root.pageTone.ink
 
@@ -1300,6 +1292,8 @@ Item
                         translation.expect()
                         Qt.callLater(translation.show)
                     }
+                    onDoubleTapped: root.closeLookup()
+                    onBlankTapped: root.toggleImmersive()
                     onCurrentPageChanged: function(page)
                     {
                         root.pdfPendingPage = page
@@ -1321,23 +1315,25 @@ Item
                 {
                     id: textView
 
+                    contextLookup: root.textLookup
+
                     objectName: "reader_text"
 
                     anchors.fill: parent
-                    visible: !reader.isPdf && !reader.loading
+                    visible: !root.reader.isPdf && !root.reader.loading
                     opacity: pageTransition.chromeShown
                     transform: Translate { y: AppMetrics.gapTight * (1 - pageTransition.chromeShown) }
 
-                    model: reader.paragraphModel
-                    textSize: reader.textSize
-                    lineSpacing: reader.lineSpacing
-                    textMargin: reader.textMargin
+                    model: root.reader.paragraphModel
+                    textSize: root.reader.textSize
+                    lineSpacing: root.reader.lineSpacing
+                    textMargin: root.reader.textMargin
                     pageWidth: AppReaderSettings.pageWidth
                     fontFamily: AppReaderSettings.textFont.length > 0 ? AppReaderSettings.textFont : AppMetrics.fontFamily
                     inkColour: root.textInk
-                    bookPath: reader.currentPath
-                    vocabulary: reader.vocabulary
-                    readAloud: reader.readAloud
+                    bookPath: root.reader.currentPath
+                    vocabulary: root.reader.vocabulary
+                    readAloud: root.reader.readAloud
                     readAloudInset: playBar.visible ? playBar.height + AppMetrics.gapMedium * 2 : 0
 
                     onWordPicked: function(word, sentence) { root.pickText(word, sentence) }
@@ -1347,6 +1343,7 @@ Item
                         Qt.callLater(translation.show)
                     }
                     onReadAloudJumpRequested: root.readFromPicked()
+                    onBlankTapped: root.toggleImmersive()
                     onContentYChanged: positionSaveTimer.restart()
                     onZoomRequested: function(closer) { root.zoom(closer) }
                 }
@@ -1355,17 +1352,20 @@ Item
                 {
                     id: translation
 
+                    contextLookup: root.contextLookup
+
                     anchors.fill: parent
-                    visible: root.readable && !reader.loading
+                    anchors.rightMargin: lookupPane.visible ? lookupPane.width : 0
+                    visible: root.readable && !root.reader.loading
                     opacity: pageTransition.chromeShown
 
-                    lookup: translationLookup
+                    lookup: root.translationLookup
                     maxStage: root.store.stageCount
-                    selecting: reader.isPdf ? pdfView.selecting : textView.selecting
-                    darkPaper: !reader.isPdf && root.textPaper.hslLightness < 0.5
-                    contentWidth: reader.isPdf ? Math.min(pageArea.width, pdfView.fitPoints * pdfView.renderScale) : textView.textWidth
-                    geometry: reader.isPdf ? pdfView.selectionGeometry() : textView.selectionGeometry()
-                    readAloudOffered: !reader.isPdf && reader.readAloud.available && textView.pickedPlace !== null
+                    selecting: root.reader.isPdf ? pdfView.selecting : textView.selecting
+                    darkPaper: !root.reader.isPdf && root.textPaper.hslLightness < 0.5
+                    contentWidth: root.reader.isPdf ? Math.min(pageArea.width, pdfView.fitPoints * pdfView.renderScale) : textView.textWidth
+                    geometry: root.reader.isPdf ? pdfView.selectionGeometry() : textView.selectionGeometry()
+                    readAloudOffered: !root.reader.isPdf && root.reader.readAloud.available && textView.pickedPlace !== null
 
                     onAddWordRequested: function(word, translation, partOfSpeech, hint)
                     {
@@ -1411,10 +1411,10 @@ Item
                     anchors.horizontalCenter: parent.horizontalCenter
                     anchors.bottom: parent.bottom
                     anchors.bottomMargin: AppMetrics.gapMedium
-                    visible: root.readAloudOffered && reader.readAloud.started && !reader.loading
+                    visible: root.readAloudOffered && root.reader.readAloud.started && !root.reader.loading
                     opacity: pageTransition.chromeShown
 
-                    readAloud: reader.readAloud
+                    readAloud: root.reader.readAloud
 
                     onPlayRequested: textView.playReadAloud()
                 }
@@ -1424,10 +1424,10 @@ Item
                     anchors.horizontalCenter: parent.horizontalCenter
                     anchors.bottom: parent.bottom
                     anchors.bottomMargin: AppMetrics.gapMedium
-                    visible: root.voiceNoticeShown && root.readAloudOffered && !reader.loading && !reader.readAloud.available
+                    visible: root.voiceNoticeShown && root.readAloudOffered && !root.reader.loading && !root.reader.readAloud.available
                     opacity: pageTransition.chromeShown
 
-                    readAloud: reader.readAloud
+                    readAloud: root.reader.readAloud
 
                     onClosed: root.voiceNoticeShown = false
                 }
@@ -1435,7 +1435,7 @@ Item
                 DesktopLabel
                 {
                     anchors.centerIn: parent
-                    visible: reader.loading
+                    visible: root.reader.loading
                     opacity: pageTransition.chromeShown
                     text: qsTr("Loading")
                     color: AppTheme.colourMuted
@@ -1448,6 +1448,7 @@ Item
                     anchors.right: parent.right
                     anchors.top: parent.top
                     anchors.margins: AppMetrics.gapMedium
+                    anchors.rightMargin: AppMetrics.gapMedium + (lookupPane.visible ? lookupPane.width : 0)
                     visible: root.immersive
                     iconName: "close"
                     text: qsTr("Show controls (Esc)")
@@ -1469,13 +1470,14 @@ Item
 
                 count: root.positionCount
                 index: root.positionIndex
-                paged: reader.isPdf
+                paged: root.reader.isPdf
                 fitting: pdfView.fitting
 
                 onPositionRequested: function(index) { root.goToPosition(index) }
                 onStepRequested: function(forward) { root.turnPage(forward) }
                 onZoomRequested: function(closer) { root.zoom(closer) }
                 onFitRequested: pdfView.fitWidth()
+                onImmersiveRequested: root.toggleImmersive()
             }
         }
     }
@@ -1537,7 +1539,7 @@ Item
 
         anchors.fill: parent
 
-        contentReady: root.cannotRead || (root.readable && !reader.loading && (!reader.isPdf || pdfView.pageDrawn))
+        contentReady: root.cannotRead || (root.readable && !root.reader.loading && (!root.reader.isPdf || pdfView.pageDrawn))
 
         onOpenStarted: root.crumbsChanging()
     }

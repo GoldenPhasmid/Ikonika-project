@@ -42,6 +42,7 @@ ItemDelegate
         {
             id: textColumn
 
+            visible: root.text.length > 0 || root.description.length > 0
             Layout.fillWidth: true
             spacing: AppMetrics.gapTight
 
@@ -70,7 +71,7 @@ ItemDelegate
         {
             id: controlSlot
 
-            Layout.fillWidth: root.stacked
+            Layout.fillWidth: root.stacked || !textColumn.visible
             Layout.alignment: root.stacked ? Qt.AlignLeft : Qt.AlignVCenter
             spacing: AppMetrics.gapSmall
         }

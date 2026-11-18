@@ -20,6 +20,7 @@ class RepetitionController : public StageSessionControllerBase
 {
     Q_OBJECT
     QML_ELEMENT
+    QML_UNCREATABLE("The screens are given their controllers")
 
     Q_PROPERTY(int cardCount READ GetCardCount NOTIFY stateChanged)
     Q_PROPERTY(int elapsedSeconds READ GetElapsedSeconds NOTIFY stateChanged)

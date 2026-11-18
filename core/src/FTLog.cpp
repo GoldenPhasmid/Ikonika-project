@@ -18,5 +18,12 @@ FTQueryTimer::FTQueryTimer(const char* InLabel)
 
 FTQueryTimer::~FTQueryTimer()
 {
-    qCDebug(LogDatabase) << Label << Timer.elapsed() << "ms";
+    const qint64 Elapsed = Timer.elapsed();
+
+    if (Elapsed < SlowQueryMs)
+    {
+        return;
+    }
+
+    qCDebug(LogDatabase) << Label << Elapsed << "ms";
 }
