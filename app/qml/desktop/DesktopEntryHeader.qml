@@ -186,7 +186,6 @@ ColumnLayout
             DesktopLevelBadge
             {
                 label: root.cefrLevel
-                monospace: true
                 fill: AppTheme.cefrColours[label] || AppTheme.colourBorder
             }
         }

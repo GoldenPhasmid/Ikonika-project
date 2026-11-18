@@ -95,7 +95,6 @@ ItemDelegate
         {
             visible: root.cefrLevel.length > 0
             label: root.cefrLevel
-            monospace: true
             fill: AppTheme.cefrColours[label] || AppTheme.colourBorder
         }
     }

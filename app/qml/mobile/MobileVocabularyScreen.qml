@@ -33,6 +33,16 @@ Item
         searchFilterBar.searchText = ""
     }
 
+    function focusEntry(word)
+    {
+        if (word.length === 0)
+        {
+            return
+        }
+
+        searchFilterBar.searchText = word
+    }
+
     function refresh()
     {
         const scrollPosition = root.pendingScrollPosition >= 0

@@ -249,7 +249,6 @@ ColumnLayout
         {
             visible: root.titled
             title: qsTr("Word highlighting")
-            description: qsTr("Vocabulary marks the words you are learning. New words marks common words you have not added yet.")
             lastRow: true
         }
 

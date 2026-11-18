@@ -1165,6 +1165,12 @@ Page
 
             onSearchRequested: window.lookUpWord("")
             onWordTapped: function(word, sentence) { window.openLookup(word, sentence) }
+
+            onDeckOpenRequested: function(deckId, word, partOfSpeech)
+            {
+                deckMobile.open(deckId, word)
+                window.pushScreen("deck")
+            }
         }
     }
 
@@ -1339,18 +1345,20 @@ Page
         asynchronous: false
         sourceComponent: deckMobileComponent
 
-        function open(deckId)
+        function open(deckId, word)
         {
             deckMobile.active = true
 
             if (deckMobile.item.deckId === deckId)
             {
                 deckMobile.item.resetView()
+                deckMobile.item.focusEntry(word ?? "")
 
                 return
             }
 
             deckMobile.item.deckId = deckId
+            deckMobile.item.focusEntry(word ?? "")
             window.deckAlreadyFresh = true
         }
 

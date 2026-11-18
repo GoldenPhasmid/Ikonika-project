@@ -18,9 +18,10 @@ Rectangle
         anchors.centerIn: parent
 
         text: root.level
-        font.pixelSize: 11
+        font.pixelSize: AppMetrics.fontMicro
         font.bold: true
-        font.family: Qt.platform.os === "windows" ? "Consolas" : "monospace"
+        font.family: AppMetrics.fontFamily
+        font.features: { "tnum": 1 }
         color: "#16181d"
     }
 }

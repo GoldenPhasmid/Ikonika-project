@@ -338,6 +338,7 @@ set(IKONIKA_MOBILE_QML_FILES
     qml/mobile/MobileExerciseButton.qml
     qml/mobile/MobileVocabularyScreen.qml
     qml/mobile/MobileDecksScreen.qml
+    qml/mobile/MobileDeckChip.qml
     qml/mobile/MobileFilterChip.qml
     qml/mobile/MobileDotProgress.qml
     qml/mobile/MobileButtonPair.qml
@@ -386,9 +387,9 @@ set(IKONIKA_MOBILE_QML_FILES
     qml/mobile/MobileFilterChipRow.qml
     qml/mobile/MobileSectionLabel.qml
     qml/mobile/MobileSettingsRow.qml
-    qml/mobile/MobileSettingsGroup.qml
     qml/mobile/MobileSettingsWideRow.qml
     qml/mobile/MobileSegmentedPill.qml
+    qml/mobile/MobileSettingsGroup.qml
     qml/mobile/MobileSettingsToggle.qml
     qml/mobile/MobileSettingsSlider.qml
     qml/mobile/MobileSettingsTextField.qml
@@ -671,8 +672,8 @@ set(IKONIKA_QML_FILES
     qml/desktop/DesktopSettingsReader.qml
     qml/desktop/DesktopSettingsReminders.qml
     qml/desktop/DesktopSettingsRow.qml
-    qml/desktop/DesktopSettingsScreen.qml
     qml/desktop/DesktopSegmentedPill.qml
+    qml/desktop/DesktopSettingsScreen.qml
     qml/desktop/DesktopSettingsSessionStages.qml
     qml/desktop/DesktopSettingsSlider.qml
     qml/desktop/DesktopSettingsSound.qml

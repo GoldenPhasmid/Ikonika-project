@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import "MobileIcons.js" as Icons
+import "../Decks.js" as Decks
 
 Item
 {
@@ -20,11 +21,22 @@ Item
     signal tabSelected(string key)
     signal searchRequested()
     signal wordTapped(string word)
+    signal deckOpenRequested(int deckId, string word, string partOfSpeech)
 
     readonly property var entry: root.controller.entry.headword ? root.controller.entry : null
     readonly property string phonetic: !root.entry || root.entry.phonetic.length === 0 ? ""
         : (root.entry.phonetic.startsWith("/") || root.entry.phonetic.startsWith("[")
            ? root.entry.phonetic : qsTr("/%1/").arg(root.entry.phonetic))
+
+    readonly property var deckChips: (root.entry ? root.entry.decks || [] : []).map(Name =>
+    {
+        const deck = DecksController.decks.find(Deck => Deck.name === Name)
+
+        return deck
+            ? { id: deck.id, name: deck.name, icon: deck.icon,
+                tint: Decks.tint(Decks.categories(DecksController.decks), deck.category, AppTheme.coverColours) }
+            : null
+    }).filter(Chip => Chip !== null)
 
     property bool cardSheetOpen: false
     property bool conjugationOpen: false
@@ -232,6 +244,29 @@ Item
                         {
                             visible: root.entry !== null && root.entry.cefrLevel.length > 0
                             level: root.entry ? root.entry.cefrLevel : ""
+                        }
+                    }
+
+                    Flow
+                    {
+                        Layout.fillWidth: true
+                        visible: root.deckChips.length > 0
+                        spacing: AppMetrics.gapSmall
+
+                        Repeater
+                        {
+                            model: root.deckChips
+
+                            delegate: MobileDeckChip
+                            {
+                                required property var modelData
+
+                                text: modelData.name
+                                iconName: modelData.icon
+                                tint: modelData.tint
+
+                                onClicked: root.deckOpenRequested(modelData.id, root.entry.headword, root.shownPartOfSpeech)
+                            }
                         }
                     }
 

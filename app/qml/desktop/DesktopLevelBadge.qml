@@ -6,7 +6,6 @@ Rectangle
 
     property string label: ""
     property color fill: AppTheme.colourBorder
-    property bool monospace: false
 
     readonly property bool darkSurface: AppTheme.colourPanel.hslLightness < 0.5
 
@@ -29,7 +28,8 @@ Rectangle
         text: root.label
         font.pixelSize: AppMetrics.fontMicro
         font.weight: Font.Bold
-        font.family: root.monospace ? "Consolas" : AppMetrics.fontFamily
+        font.family: AppMetrics.fontFamily
+        font.features: { "tnum": 1 }
         color: root.darkSurface ? root.fill : Qt.darker(root.fill, 1.8)
     }
 }

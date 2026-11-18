@@ -17,7 +17,7 @@ runs:
       uses: actions/cache/restore@v4
       with:
         path: ${{ inputs.root }}
-        key: qt-${{ inputs.version }}-ios-${{ runner.os }}-1
+        key: qt-${{ inputs.version }}-ios-${{ runner.os }}-2
 
     - name: Install Qt
       if: steps.qt-cache.outputs.cache-hit != 'true'
@@ -27,8 +27,8 @@ runs:
         QT_ROOT: ${{ inputs.root }}
       run: |
         python3 -m pip install aqtinstall
-        MODULES=$(python3 -m aqt list-qt mac ios --modules "$QT_VERSION" ios | tr ' ' '\n' | grep -x -E 'qtpdf' | tr '\n' ' ')
-        python3 -m aqt install-qt mac desktop "$QT_VERSION" clang_64 --outputdir "$QT_ROOT"
+        MODULES=$(python3 -m aqt list-qt mac ios --modules "$QT_VERSION" ios | tr ' ' '\n' | grep -x -E 'qtpdf|qtshadertools' | tr '\n' ' ')
+        python3 -m aqt install-qt mac desktop "$QT_VERSION" clang_64 --outputdir "$QT_ROOT" -m qtshadertools
         python3 -m aqt install-qt mac ios "$QT_VERSION" ios --outputdir "$QT_ROOT" ${MODULES:+-m $MODULES}
 
     - name: Save Qt

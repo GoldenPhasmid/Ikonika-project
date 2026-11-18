@@ -202,7 +202,6 @@ ColumnLayout
         leftPadding: root.inset
         rightPadding: root.inset
         text: root.compact ? "" : qsTr("Word highlighting")
-        description: root.compact ? "" : qsTr("Vocabulary marks the words you are learning. New words marks common words you have not added yet.")
         lastRow: true
 
         DesktopSegmentedPill

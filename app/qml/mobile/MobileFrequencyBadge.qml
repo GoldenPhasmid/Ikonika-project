@@ -18,7 +18,7 @@ Rectangle
         anchors.centerIn: parent
 
         text: root.bucket
-        font.pixelSize: 11
+        font.pixelSize: AppMetrics.fontMicro
         font.bold: true
         font.family: AppMetrics.fontFamily
         color: "#16181d"
