@@ -222,31 +222,6 @@ TEST_CASE("GetCardMeta is empty when neither part of speech nor gender is set", 
     CHECK(Controller.GetCardMeta().isEmpty());
 }
 
-TEST_CASE("GetDefinition reads the current card's definition", "[exercisecontrollerbase]")
-{
-    FAppSpeechGuard SpeechGuard;
-
-    FTCard Card = MakeCard("word0", "translation0");
-    Card.Definition = "a small domesticated carnivore";
-
-    std::vector<FTCardHandle> Cards;
-    Cards.push_back(MakeCardHandle(std::move(Card)));
-
-    FlashcardController Controller;
-    Controller.Start(MakeParams(std::move(Cards)));
-
-    CHECK(Controller.GetDefinition() == "a small domesticated carnivore");
-}
-
-TEST_CASE("GetDefinition is empty when the card has none", "[exercisecontrollerbase]")
-{
-    FAppSpeechGuard SpeechGuard;
-
-    FlashcardController Controller;
-    Controller.Start(MakeParams(MakeCards(1)));
-
-    CHECK(Controller.GetDefinition().isEmpty());
-}
 
 TEST_CASE("A card with no meaning shows its hint as the example", "[exercisecontrollerbase][example]")
 {

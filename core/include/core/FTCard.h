@@ -11,7 +11,6 @@ enum class EFTCardField : uint32_t
 {
     None        = 0,
     Translation = 1u << 0,
-    Definition  = 1u << 1,
 
     /** Set when the user chose the gender themselves. The dictionary is wrong about a handful of
         nouns, and a card carries whatever it was given when it was made, so a later dictionary
@@ -53,7 +52,7 @@ struct FTCard
 
     std::string TargetWord;
     std::string Translation;
-    std::string Definition;
+    std::string FormMeaning;
     std::string Hint;
 
     /** 0 = masculine, 1 = feminine, unset for a card with no gender (not a noun, or gender was
@@ -112,6 +111,9 @@ struct FTCard
     std::optional<FTDayNumber> DueDate;
 
     std::optional<FTDayNumber> BoxChangedDate;
+
+    std::optional<double> Stability;
+    std::optional<double> Difficulty;
 
     /** Set once a card leaves the last stage, and the card is then out of the schedule. */
     std::optional<FTDayNumber> CompletedDate;

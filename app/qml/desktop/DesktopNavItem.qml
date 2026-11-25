@@ -54,6 +54,18 @@ Button
                 visible: !root.dotShown
                 name: root.iconName
                 color: root.selected ? AppTheme.colourText : AppTheme.colourSubtle
+
+                Rectangle
+                {
+                    visible: root.marked
+                    anchors.right: parent.right
+                    anchors.top: parent.top
+                    anchors.margins: -AppMetrics.gapTight
+                    width: AppMetrics.gapSmall
+                    height: AppMetrics.gapSmall
+                    radius: width / 2
+                    color: root.markColour
+                }
             }
 
             Item

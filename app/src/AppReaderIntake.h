@@ -10,11 +10,15 @@
 class AppReaderIntake : public QObject
 {
     Q_OBJECT
+    Q_PROPERTY(bool bookOpen READ IsBookOpen WRITE SetBookOpen NOTIFY bookOpenChanged)
 
 public:
     static AppReaderIntake& Get();
 
     explicit AppReaderIntake(QObject* Parent = nullptr);
+
+    bool IsBookOpen() const;
+    void SetBookOpen(bool bValue);
 
     Q_INVOKABLE QVariantMap takePending();
     void OpenPath(const QString& Path);
@@ -25,9 +29,11 @@ protected:
 
 signals:
     void bookArrived();
+    void bookOpenChanged();
 
 private:
     QVariantMap PendingBook;
+    bool bBookOpen = false;
 };
 
 struct AppReaderIntakeSingleton

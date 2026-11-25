@@ -46,6 +46,7 @@ class StageSessionControllerBase : public QObject
 
     Q_PROPERTY(bool hasActiveSession READ HasActiveSession NOTIFY stateChanged)
     Q_PROPERTY(bool finished READ IsFinished NOTIFY stateChanged)
+    Q_PROPERTY(bool followUpPending READ HasFollowUp NOTIFY stateChanged)
     Q_PROPERTY(int stage READ GetStage NOTIFY stateChanged)
     Q_PROPERTY(int stageCount READ GetStageCount NOTIFY stateChanged)
 
@@ -56,9 +57,11 @@ public:
 
     Q_INVOKABLE void completeStage();
     Q_INVOKABLE void restartStage();
+    Q_INVOKABLE virtual void continueToFollowUp();
 
     bool HasActiveSession() const;
     bool IsFinished() const;
+    virtual bool HasFollowUp() const;
     int GetStage() const;
     int GetStageCount() const;
 

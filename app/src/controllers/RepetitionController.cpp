@@ -14,6 +14,7 @@
 
 #include "core/FTLog.h"
 #include "core/FTRepetitionBatch.h"
+#include "core/FTSchedule.h"
 #include "core/FTScheduleManager.h"
 #include "core/FTSchema.h"
 #include "core/FTSettings.h"
@@ -60,12 +61,10 @@ namespace
         return Result;
     }
 
-    constexpr int QuickPassFirstStage = 4;
-
     std::vector<FTCardHandle> TakeQuickPassCards(std::vector<FTCardHandle>& DueCards)
     {
         const auto FirstLate = std::stable_partition(DueCards.begin(), DueCards.end(),
-            [](const FTCardHandle& Card) { return Card->LeitnerStage < QuickPassFirstStage; });
+            [](const FTCardHandle& Card) { return !IsQuickReviewCard(*Card); });
 
         std::vector<FTCardHandle> Late(std::make_move_iterator(FirstLate), std::make_move_iterator(DueCards.end()));
         DueCards.erase(FirstLate, DueCards.end());
@@ -151,8 +150,8 @@ bool RepetitionController::startDueToday()
 
     if (!QuickPassCards.empty())
     {
-        qCInfo(LogSession) << "Quick pass over" << QuickPassCards.size() << "cards from box" << QuickPassFirstStage
-                           << "and up," << DueCards.size() << "earlier cards wait for the review after it";
+        qCInfo(LogSession) << "Quick pass over" << QuickPassCards.size() << "cards with stability of at least"
+                           << FTSettings::Get().GetScheduleRules().GetIntensity().QuickReviewStability << "while" << DueCards.size() << "earlier cards wait for the review after it";
 
         BeginNewSession(std::move(QuickPassCards), true, {});
 
@@ -173,11 +172,46 @@ bool RepetitionController::startDueToday()
     return true;
 }
 
-void RepetitionController::StartAfterQuickPass(const std::unordered_set<std::string>& Forgotten)
+bool RepetitionController::HasFollowUp() const
 {
-    if (!bFinished || !AppDatabase::Get().IsReady())
+    return bFinished && bFollowUpPending;
+}
+
+void RepetitionController::continueToFollowUp()
+{
+    if (!HasFollowUp())
     {
         return;
+    }
+
+    std::unordered_set<std::string> Carried;
+    std::vector<FTCardHandle> Cards = LoadFollowUpCards(ForgottenInQuickPass, Carried);
+
+    if (Cards.empty())
+    {
+        qCInfo(LogSession) << "Quick pass left nothing to review today";
+
+        bFollowUpPending = false;
+        ForgottenInQuickPass.clear();
+
+        emit stateChanged();
+        emit sessionEnded();
+
+        return;
+    }
+
+    qCInfo(LogSession) << "Review follows the quick pass -" << Carried.size() << "forgotten cards and"
+                       << Cards.size() - Carried.size() << "earlier cards";
+
+    BeginNewSession(std::move(Cards), false, std::move(Carried));
+}
+
+std::vector<FTCardHandle> RepetitionController::LoadFollowUpCards(const std::unordered_set<std::string>& Forgotten,
+                                                                  std::unordered_set<std::string>& OutCarried) const
+{
+    if (!AppDatabase::Get().IsReady())
+    {
+        return {};
     }
 
     FTScheduleManager Schedule(AppDatabase::Get().GetCardRepository());
@@ -186,14 +220,13 @@ void RepetitionController::StartAfterQuickPass(const std::unordered_set<std::str
     AppCards::Prepare(DueCards);
 
     std::vector<FTCardHandle> Cards;
-    std::unordered_set<std::string> Carried;
 
     for (const FTCardHandle& Card : TakeQuickPassCards(DueCards))
     {
         if (Forgotten.count(Card->Id) > 0)
         {
             Cards.push_back(Card);
-            Carried.insert(Card->Id);
+            OutCarried.insert(Card->Id);
         }
     }
 
@@ -214,19 +247,7 @@ void RepetitionController::StartAfterQuickPass(const std::unordered_set<std::str
         }
     }
 
-    if (Cards.empty())
-    {
-        qCInfo(LogSession) << "Quick pass left nothing to review today";
-
-        emit sessionEnded();
-
-        return;
-    }
-
-    qCInfo(LogSession) << "Review follows the quick pass -" << Carried.size() << "forgotten cards and"
-                       << Cards.size() - Carried.size() << "earlier cards";
-
-    BeginNewSession(std::move(Cards), false, std::move(Carried));
+    return Cards;
 }
 
 void RepetitionController::restartSession()
@@ -352,6 +373,8 @@ void RepetitionController::DiscardSession()
     ReviewedYes.clear();
     CarriedCardIds.clear();
     bQuickPass = false;
+    bFollowUpPending = false;
+    ForgottenInQuickPass.clear();
     AccumulatedElapsedMs = 0;
     SessionTimer.invalidate();
 
@@ -375,6 +398,8 @@ void RepetitionController::BeginNewSession(std::vector<FTCardHandle> Cards, bool
     *Batch = std::move(Cards);
     ReviewedYes.clear();
     bQuickPass = bInQuickPass;
+    bFollowUpPending = false;
+    ForgottenInQuickPass.clear();
     CarriedCardIds = std::move(InCarriedCardIds);
 
     AccumulatedElapsedMs = 0;
@@ -529,7 +554,17 @@ void RepetitionController::ApplyOutcomes()
 
     if (bQuickPass)
     {
-        QTimer::singleShot(0, this, [this, Forgotten] { StartAfterQuickPass(Forgotten); });
+        std::unordered_set<std::string> Carried;
+
+        ForgottenInQuickPass = Forgotten;
+        bFollowUpPending = !LoadFollowUpCards(ForgottenInQuickPass, Carried).empty();
+
+        qCInfo(LogSession) << "Quick pass complete -" << (bFollowUpPending ? "a review follows on Continue" : "nothing else to review today");
+
+        if (!bFollowUpPending)
+        {
+            emit sessionEnded();
+        }
 
         return;
     }

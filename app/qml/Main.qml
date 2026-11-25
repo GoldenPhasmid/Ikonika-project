@@ -200,6 +200,8 @@ Page
             return {}
         }
 
+        readerScreen.savePosition()
+
         return { place: window.destination, session: window.session }
     }
 
@@ -277,7 +279,7 @@ Page
 
         if (window.destination === "reader")
         {
-            return readerScreen.reading ? [qsTr("Reader"), readerScreen.currentTitle] : [qsTr("Reader")]
+            return readerScreen.reading ? [qsTr("Library"), readerScreen.currentTitle] : [qsTr("Library")]
         }
 
         if (window.destination === "settings")
@@ -334,6 +336,11 @@ Page
             decksScreen.closeDeck()
         }
 
+        if (key === "words")
+        {
+            wordsScreen.setLanguage("")
+        }
+
         window.refreshCurrentScreen()
     }
 
@@ -361,6 +368,13 @@ Page
     {
         target: AppReaderIntake
         function onBookArrived() { window.openPendingBook() }
+    }
+
+    Binding
+    {
+        target: AppReaderIntake
+        property: "bookOpen"
+        value: window.controllers.reader.reading
     }
 
     function pageShown(key)
@@ -486,10 +500,10 @@ Page
         window.enterSession(suspended)
     }
 
-    function lookUpWord(term)
+    function lookUpWord(term, language)
     {
         window.navigate("words")
-        wordsScreen.searchTerm(term)
+        wordsScreen.searchTerm(term, language || "")
         wordsScreen.focusSearch()
     }
 
@@ -521,6 +535,13 @@ Page
             return
         }
 
+        if (window.screen === "decks" && !decksScreen.deckOpen)
+        {
+            decksScreen.focusSearch()
+
+            return
+        }
+
         window.navigate("words")
         wordsScreen.focusSearch()
     }
@@ -539,6 +560,13 @@ Page
             return
         }
 
+        if (window.screen === "decks" && decksScreen.userDeckId.length > 0)
+        {
+            window.addWordToDeck()
+
+            return
+        }
+
         if (window.screen === "words")
         {
             window.addWord(wordsScreen.term, "", "")
@@ -552,10 +580,10 @@ Page
         }
     }
 
-    function addWord(word, translation, partOfSpeech, meaningGist, hint)
+    function addWord(word, translation, partOfSpeech, meaningGist, hint, language)
     {
         wordDialog.controller = vocabularyScreen.vocabulary
-        wordDialog.openWith(word, translation, partOfSpeech, meaningGist || "", hint || "")
+        wordDialog.openWith(word, translation, partOfSpeech, meaningGist || "", hint || "", language || "")
     }
 
     function addWordToVocabulary()
@@ -564,10 +592,16 @@ Page
         wordDialog.openWith("", "", "")
     }
 
-    function editWord(controller, cardId, word, translation, gender, partOfSpeech, box)
+    function addWordToDeck()
+    {
+        wordDialog.controller = decksScreen.vocabulary
+        wordDialog.openWith("", "", "")
+    }
+
+    function editWord(controller, cardId, word, translation, gender, partOfSpeech, box, language)
     {
         wordDialog.controller = controller
-        wordDialog.openForEdit(cardId, word, translation, gender, partOfSpeech, box)
+        wordDialog.openForEdit(cardId, word, translation, gender, partOfSpeech, box, language)
     }
 
     function refreshCurrentScreen(keepWordsScreen)
@@ -837,9 +871,23 @@ Page
         toast.show(qsTr("There are not enough sentences for these settings yet."))
     }
 
-    function startPractice(exercise, cardCount, repetitionCount, filterKeys, reverse)
+    function startDeckTraining(userDeckId)
     {
-        if (window.launcher.startExercise(exercise, reverse, cardCount, repetitionCount, filterKeys))
+        const key = UserDecksController.sessionKey(userDeckId)
+
+        if (window.training.resume(key) || window.training.startCards(key, UserDecksController.collectSessionCards(userDeckId)))
+        {
+            window.enterSession("training")
+
+            return
+        }
+
+        toast.show(qsTr("There are not enough words to start a session. Add more words first."))
+    }
+
+    function startPractice(exercise, cardCount, repetitionCount, filterKeys, reverse, userDeckId)
+    {
+        if (window.launcher.startExercise(exercise, reverse, cardCount, repetitionCount, filterKeys, userDeckId))
         {
             window.enterSession("practice")
 
@@ -1052,6 +1100,7 @@ Page
                 id: topBar
 
                 Layout.fillWidth: true
+                z: 1
                 visible: !window.immersive
                 opacity: window.activeMorph.morphing ? 1 - window.activeMorph.shellBarHidden : 1
                 transform: Translate { y: window.activeMorph.morphing ? -topBar.height * window.activeMorph.shellBarHidden : 0 }
@@ -1105,7 +1154,7 @@ Page
 
                 DesktopButton
                 {
-                    visible: window.pageOrder.indexOf(window.screen) >= 0 && !window.readingBook
+                    visible: window.screen === "today" && !window.readingBook
                     tone: "ghost"
                     iconName: "search"
                     text: qsTr("Search")
@@ -1176,6 +1225,7 @@ Page
 
                 Layout.fillWidth: true
                 Layout.fillHeight: true
+                Layout.topMargin: window.readingBook && !window.immersive ? -topBar.height : 0
                 opacity: window.activeMorph.morphing ? 1 - window.activeMorph.shellContentHidden : 1
                 clip: window.sliding || discoverSlide.running
 
@@ -1194,6 +1244,10 @@ Page
                     anchors.fill: parent
                     visible: window.pageShown("today") && window.discoverShift < 1
                     transform: Translate { x: window.pageOffset("today") - window.discoverShift * pages.width }
+                    lufiActive: window.screen === "today" && !window.focusMode && !welcome.shown
+                                && !window.discoverPicking && window.discoverShift === 0
+                                && window.hostWindow !== null && window.hostWindow.visible
+                                && window.hostWindow.visibility !== Window.Minimized
 
                     store: window.store
                     training: window.training
@@ -1259,6 +1313,8 @@ Page
 
                     controller: window.controllers.vocabulary
 
+                    onAddCardRequested: window.addWordToVocabulary()
+
                     anchors.fill: parent
                     visible: window.pageShown("vocabulary")
                     transform: Translate { x: window.pageOffset("vocabulary") }
@@ -1291,9 +1347,14 @@ Page
 
                     store: window.store
 
+                    onMessageRequested: function(message) { toast.show(message) }
+
                     onDictionaryRequested: function(word, partOfSpeech) { window.openDictionary(word, partOfSpeech) }
                     onRemoveCardRequested: function(cardId, word) { window.askToRemoveCard(cardId, word) }
-                    onTrainRequested: function(deckId, source) { window.startFromDeck(deckId, source) }
+                    onDiscoverRequested: function(deckId, source) { window.startFromDeck(deckId, source) }
+                    onLearnRequested: function(userDeckId) { window.startDeckTraining(userDeckId) }
+                    onPracticeRequested: function(userDeckId) { practiceDialog.openFor(userDeckId) }
+                    onAddCardRequested: window.addWordToDeck()
 
                     onCardRemoved: function(cardId)
                     {
@@ -1347,6 +1408,8 @@ Page
                     textLookup: window.controllers.dictionary("readerText")
 
                     reader: window.controllers.reader
+                    topBarHeight: topBar.height
+                    topBarShown: !window.immersive
 
                     anchors.fill: parent
                     visible: window.pageShown("reader")
@@ -1354,8 +1417,11 @@ Page
 
                     store: window.store
 
-                    onAddWordRequested: function(word, translation, partOfSpeech, hint) { window.addWord(word, translation, partOfSpeech, "", hint) }
-                    onLookUpRequested: function(word) { window.lookUpWord(word) }
+                    onAddWordRequested: function(word, translation, partOfSpeech, hint)
+                    {
+                        window.addWord(word, translation, partOfSpeech, "", hint, window.controllers.reader.bookLanguage.code)
+                    }
+                    onLookUpRequested: function(word) { window.lookUpWord(word, window.controllers.reader.bookLanguage.code) }
                     onMessageRequested: function(message) { toast.show(message) }
                     onCrumbsChanging: topBar.revealCrumbs()
                 }
@@ -1387,7 +1453,8 @@ Page
 
                     onEditWordRequested: function(cardId, word, translation, gender, partOfSpeech, box)
                     {
-                        window.editWord(vocabularyScreen.vocabulary, cardId, word, translation, gender, partOfSpeech, box)
+                        window.editWord(vocabularyScreen.vocabulary, cardId, word, translation, gender, partOfSpeech, box,
+                                        window.controllers.dictionary("wordEntry").language)
                     }
                 }
             }
@@ -1474,6 +1541,7 @@ Page
             window.leaveSession()
         }
         onEndRequested: window.endSession()
+        onDictionaryRequested: function(word, partOfSpeech) { window.openDictionaryFromSession(word, partOfSpeech) }
         onFinishedClicked:
         {
             if (window.session === "sentences")
@@ -1642,9 +1710,12 @@ Page
     {
         id: practiceDialog
 
-        vocabulary: vocabularyScreen.vocabulary
+        vocabulary: practiceDialog.userDeckId.length > 0 ? decksScreen.vocabulary : vocabularyScreen.vocabulary
 
-        onExerciseChosen: function(exercise, cardCount, repetitionCount, filterKeys, reverse) { window.startPractice(exercise, cardCount, repetitionCount, filterKeys, reverse) }
+        onExerciseChosen: function(exercise, cardCount, repetitionCount, filterKeys, reverse)
+        {
+            window.startPractice(exercise, cardCount, repetitionCount, filterKeys, reverse, practiceDialog.userDeckId)
+        }
     }
 
     DesktopToast
@@ -1671,11 +1742,9 @@ Page
                 ? qsTr("Learn %n new words a day here.", "", todayScreen.dailyGoal)
                 : qsTr("Learn new words here.") },
             { target: "today_review", icon: "session_review", title: qsTr("Review"), text: qsTr("Words you learned come back here, a little further apart each time.") },
-            { target: "today_coming_up", icon: "nav_today", title: qsTr("Coming up"), text: window.store.missedReviewDemotes
-                ? qsTr("Reviews due in the next days. Skip a day and those words drop back a step.")
-                : qsTr("Reviews due in the next days.") },
+            { target: "today_coming_up", icon: "nav_today", title: qsTr("Coming up"), text: qsTr("Reviews due in the next days.") },
             { target: "nav_words", icon: "nav_words", title: qsTr("Words"), text: qsTr("Look up any word and add it.") },
-            { target: "nav_reader", icon: "nav_reader", title: qsTr("Reader"), text: qsTr("Read books and tap a word to add it.") },
+            { target: "nav_reader", icon: "nav_reader", title: qsTr("Library"), text: qsTr("Read books and tap a word to add it.") },
             { target: "nav_decks", icon: "nav_decks", title: qsTr("Decks"), text: qsTr("Topic word lists for finding new words.") },
             { target: "nav_vocabulary", icon: "nav_vocabulary", title: qsTr("Vocabulary"), text: qsTr("Every word you have added.") }
         ]

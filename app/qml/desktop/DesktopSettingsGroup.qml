@@ -6,6 +6,10 @@ ColumnLayout
     id: root
 
     property string title: ""
+    property color outlineColour: AppTheme.colourBorder
+    property real outlineWidth: AppMetrics.borderWidth
+    property bool squareTopLeft: false
+    property bool squareTopRight: false
     default property alias rows: rowColumn.data
 
     Layout.fillWidth: true
@@ -23,9 +27,11 @@ ColumnLayout
         implicitHeight: rowColumn.implicitHeight
 
         radius: AppMetrics.radiusLarge
+        topLeftRadius: root.squareTopLeft ? 0 : AppMetrics.radiusLarge
+        topRightRadius: root.squareTopRight ? 0 : AppMetrics.radiusLarge
         color: AppTheme.colourPanel
-        border.width: AppMetrics.borderWidth
-        border.color: AppTheme.colourBorder
+        border.width: root.outlineWidth
+        border.color: root.outlineColour
 
         ColumnLayout
         {

@@ -47,12 +47,12 @@ namespace
 
             AppDatabase::Get().GetCardRepository().SetActiveLanguages("en", "uk");
 
-            if (!AppDictionary::Get().Initialise() || !AppDictionary::Get().GetRepository().HasDecks())
+            if (!AppDictionary::Get().Initialise() || !AppDictionary::GetActive().GetRepository().HasDecks())
             {
                 return;
             }
 
-            const std::vector<FTDeck> Decks = AppDictionary::Get().GetRepository().ListDecks();
+            const std::vector<FTDeck> Decks = AppDictionary::GetActive().GetRepository().ListDecks();
 
             if (Decks.empty())
             {
@@ -60,7 +60,7 @@ namespace
             }
 
             Deck = Decks.front();
-            Words = AppDictionary::Get().GetRepository().LoadDeckWords(Deck.Id);
+            Words = AppDictionary::GetActive().GetRepository().LoadDeckWords(Deck.Id);
         }
 
         ~FDeckFixture()
@@ -134,7 +134,7 @@ namespace
             FTSettings::Get().SetLanguagePair("en", "uk");
             AppDatabase::Get().GetCardRepository().SetActiveLanguages("en", "uk");
 
-            bReady = AppDictionary::Get().Initialise() && AppDictionary::Get().GetRepository().HasDecks();
+            bReady = AppDictionary::Get().Initialise() && AppDictionary::GetActive().GetRepository().HasDecks();
         }
 
         ~FTestDeckFixture()

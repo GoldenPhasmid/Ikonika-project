@@ -8,12 +8,12 @@
 
 std::optional<FReadSourcesRequest> AppReadSources::Capture()
 {
-    if (!AppDatabase::Get().IsReady() || !AppDictionary::Get().IsReady())
+    if (!AppDatabase::Get().IsReady() || !AppDictionary::GetActive().IsReady())
     {
         return std::nullopt;
     }
 
-    const FTDictionaryPackage* Package = AppDictionary::Get().GetActivePackage();
+    const FTDictionaryPackage* Package = AppDictionary::GetActive().GetPackage();
     const QString UserPath = AppDatabase::Get().GetFilePath();
 
     if (Package == nullptr || Package->FilePath.empty() || UserPath.isEmpty() || UserPath.contains(QStringLiteral(":memory:")))

@@ -1,11 +1,11 @@
 ﻿cmake_minimum_required(VERSION 3.21)
 
 # C is enabled for one reason: the vendored SQLite amalgamation.
-project(Ikonika VERSION 0.9.2 LANGUAGES C CXX)
+project(Ikonika VERSION 0.9.3 LANGUAGES C CXX)
 
 # Play Store requires this to strictly increase on every upload, independent of PROJECT_VERSION.
 # Bump it by hand for each Android release.
-set(IKONIKA_ANDROID_VERSION_CODE 24)
+set(IKONIKA_ANDROID_VERSION_CODE 25)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -57,6 +57,7 @@ enable_testing()
 # CMAKE_FOLDER applies to every target created while it is set, which is what puts the vendored
 # libraries and Catch2 together without naming each one.
 set(CMAKE_FOLDER "Third party")
+add_subdirectory(third_party/cld2)
 add_subdirectory(third_party/miniaudio)
 add_subdirectory(third_party/miniz)
 add_subdirectory(third_party/signalsmith-stretch)

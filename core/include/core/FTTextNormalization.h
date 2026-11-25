@@ -14,3 +14,7 @@ const std::vector<FAccentFold>& AccentFoldTable();
 std::string FoldAccents(const std::string& Value);
 
 std::string FoldCase(const std::string& Value);
+
+std::string ExpandLigatures(const std::string& Value);
+
+std::vector<std::string> LigatureSpellings(const std::string& Value);

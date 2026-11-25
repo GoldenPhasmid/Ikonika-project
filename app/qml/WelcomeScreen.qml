@@ -63,7 +63,7 @@ FocusScope
         id: content
 
         anchors.centerIn: parent
-        width: AppMetrics.contentWidthNarrow > 0 ? Math.min(parent.width - AppMetrics.contentPadding * 2, AppMetrics.contentWidthNarrow)
+        width: !AppMetrics.mobileLayout && AppMetrics.contentWidthNarrow > 0 ? Math.min(parent.width - AppMetrics.contentPadding * 2, AppMetrics.contentWidthNarrow)
                                                  : parent.width - AppMetrics.contentPadding * 2
         spacing: AppMetrics.gapLarge
         opacity: 0

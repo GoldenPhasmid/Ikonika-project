@@ -90,7 +90,7 @@ FExerciseSpeech WordGapController::GetRevealSpeech() const
         return GapProductionController::GetRevealSpeech();
     }
 
-    return FExerciseSpeech{QString::fromStdString(GetGapWord(*Sentence))};
+    return FExerciseSpeech{QString::fromStdString(GetGapWord(*Sentence)), false, true};
 }
 
 SentenceGapController::SentenceGapController(QObject* Parent)

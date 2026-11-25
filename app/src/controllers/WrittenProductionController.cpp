@@ -161,7 +161,7 @@ void WrittenProductionController::SpeakState(float RateScale) const
 
     const float SentenceScale = Speech.bSentence ? AppSpeech::Get().GetSentenceSpeed() : 1.0f;
 
-    SpeakAtScale(Speech.Text, SentenceScale * RateScale);
+    SpeakAtScale(Speech.Text, SentenceScale * RateScale, Speech.bVerbatim);
 }
 
 void WrittenProductionController::SpeakStateAutomatically() const

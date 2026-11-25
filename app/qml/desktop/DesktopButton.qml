@@ -13,9 +13,19 @@ Button
     property string trailingIconName: ""
     property string keyHint: ""
     property bool large: false
+    property real topRadius: AppMetrics.radiusMedium
+    property real bottomRadius: AppMetrics.radiusMedium
     property bool iconOnly: false
     property bool hintOnControl: false
     property bool alignHintRight: false
+    property bool onCover: false
+    property bool hairlineOutline: false
+
+    readonly property color inkColour: root.onCover ? AppTheme.colourCoverInk : AppTheme.colourText
+    readonly property color paperColour: root.onCover ? AppTheme.colourCoverPaper : AppTheme.colourPanel
+    readonly property color edgeColour: root.onCover ? AppTheme.faded(AppTheme.colourCoverInk, AppTheme.alphaHalf) : AppTheme.colourBorder
+    readonly property color hoverColour: root.onCover ? AppTheme.faded(AppTheme.colourCoverInk, AppTheme.alphaSoft) : AppTheme.colourHover
+    readonly property color pressedColour: root.onCover ? AppTheme.faded(AppTheme.colourCoverInk, AppTheme.alphaStrong) : AppTheme.colourPressed
 
     readonly property bool showsHint: root.keyHint.length > 0 && !root.compactContent && !AppMetrics.touchInput
                                       && (!root.hintOnControl || AppModifierKeys.controlHeld)
@@ -44,7 +54,7 @@ Button
     {
         if (root.tone === "primary")
         {
-            return AppTheme.colourText
+            return root.inkColour
         }
 
         if (root.tone === "danger")
@@ -59,10 +69,10 @@ Button
     {
         if (root.filled)
         {
-            return AppTheme.colourPanel
+            return root.paperColour
         }
 
-        return root.tone === "dangerOutline" ? AppTheme.colourWrong : AppTheme.colourText
+        return root.tone === "dangerOutline" ? AppTheme.colourWrong : root.inkColour
     }
 
     implicitHeight: root.large ? AppMetrics.buttonHeightLarge : AppMetrics.buttonHeight
@@ -158,7 +168,10 @@ Button
 
     background: Rectangle
     {
-        radius: AppMetrics.radiusMedium
+        topLeftRadius: root.topRadius
+        topRightRadius: root.topRadius
+        bottomLeftRadius: root.bottomRadius
+        bottomRightRadius: root.bottomRadius
 
         color:
         {
@@ -166,25 +179,28 @@ Button
             {
                 const veil = root.down ? AppTheme.alphaStrong : (root.hovered ? AppTheme.alphaSoft : 0)
 
-                return Qt.tint(root.fillColour, AppTheme.faded(AppTheme.colourPanel, veil))
+                return Qt.tint(root.fillColour, AppTheme.faded(root.paperColour, veil))
             }
 
             if (root.down)
             {
-                return AppTheme.colourPressed
+                return root.pressedColour
             }
 
-            return root.hovered || root.checked ? AppTheme.colourHover : AppTheme.faded(AppTheme.colourHover, 0)
+            return root.hovered || root.checked ? root.hoverColour : AppTheme.faded(root.hoverColour, 0)
         }
 
-        border.width: root.filled || root.tone === "ghost" ? 0 : AppMetrics.borderWidth
-        border.color: root.tone === "dangerOutline" ? AppTheme.colourWrong : AppTheme.colourBorder
+        border.width: root.filled || root.tone === "ghost" ? 0
+                    : AppMetrics.borderWidth / (root.hairlineOutline ? Screen.devicePixelRatio : 1)
+        border.pixelAligned: !root.hairlineOutline
+        border.color: root.tone === "dangerOutline" ? AppTheme.colourWrong : root.edgeColour
 
         Behavior on color { ColorAnimation { duration: AppMetrics.motionFast } }
 
         DesktopFocusRing
         {
             visible: root.visualFocus
+            colour: root.onCover ? AppTheme.colourCoverInk : AppTheme.colourAccent
         }
     }
 

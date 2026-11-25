@@ -129,7 +129,6 @@ TEST_CASE("Every field of a card carries across a refresh", "[cardstore]")
     const FTCardHandle Held = Store.UpdateCard(MakeCard("id0", "chien", "dog"));
 
     FTCard Updated = MakeCard("id0", "chienne", "female dog");
-    Updated.Definition = "a female dog";
     Updated.Gender = GenderFeminine;
     Updated.PartOfSpeech = "noun";
     Updated.LeitnerStage = 3;
@@ -139,7 +138,6 @@ TEST_CASE("Every field of a card carries across a refresh", "[cardstore]")
 
     CHECK(Held->TargetWord == "chienne");
     CHECK(Held->Translation == "female dog");
-    CHECK(Held->Definition == "a female dog");
     REQUIRE(Held->Gender.has_value());
     CHECK(*Held->Gender == GenderFeminine);
     CHECK(Held->PartOfSpeech == "noun");

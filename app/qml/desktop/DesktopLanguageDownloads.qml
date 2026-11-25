@@ -13,6 +13,19 @@ DesktopSettingsGroup
 
     title: qsTr("I am learning")
 
+    Connections
+    {
+        target: root.store
+
+        function onLanguagesChanged()
+        {
+            if (root.triage)
+            {
+                root.triage.refreshStartRank()
+            }
+        }
+    }
+
     Item
     {
         objectName: "account_active_language"

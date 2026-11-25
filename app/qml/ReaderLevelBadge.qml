@@ -8,6 +8,7 @@ Rectangle
 
     required property string level
     property real textSize: AppMetrics.fontMicro
+    property bool solid: false
 
     readonly property string label: Shelf.levelLabel(root.level)
     readonly property string mark: ["", "A", "B", "C"][Shelf.levels.indexOf(root.level)] || ""
@@ -20,8 +21,8 @@ Rectangle
     implicitHeight: badgeLabel.implicitHeight + AppMetrics.gapTight * 2
     visible: root.label.length > 0
     radius: AppMetrics.radiusSmall
-    color: AppTheme.colourPanel
-    border.width: AppMetrics.borderWidth
+    color: root.solid ? root.levelColour : AppTheme.colourPanel
+    border.width: root.solid ? 0 : AppMetrics.borderWidth
     border.color: root.levelColour
 
     ToolTip.visible: hover.hovered && root.label.length > 0
@@ -40,7 +41,7 @@ Rectangle
         anchors.centerIn: parent
         text: root.mark
         Accessible.name: root.label
-        color: root.levelColour
+        color: root.solid ? AppTheme.colourPanel : root.levelColour
         font.pixelSize: root.textSize
         font.weight: Font.DemiBold
         font.family: AppMetrics.fontFamily

@@ -1,0 +1,8 @@
+cmake_minimum_required(VERSION 3.24)
+project(LufiLottieTrial LANGUAGES CXX)
+find_package(Qt6 REQUIRED COMPONENTS Quick CorePrivate)
+qt_standard_project_setup()
+qt_add_executable(LufiLottieTrial Main.cpp AnimationSource.h SharedAnimation.h LufiAnimationItem.cpp LufiAnimationItem.h)
+target_link_libraries(LufiLottieTrial PRIVATE Qt6::Quick Qt6::CorePrivate)
+qt_add_resources(LufiLottieTrial Trial PREFIX "/" FILES main.qml)
+set_target_properties(LufiLottieTrial PROPERTIES QT_ANDROID_PACKAGE_NAME "org.ikonika.lufitrial" QT_ANDROID_VERSION_NAME "1.0" QT_ANDROID_VERSION_CODE 1)

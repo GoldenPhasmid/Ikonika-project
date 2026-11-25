@@ -279,8 +279,10 @@ secret, since every copy of the app carries it.
 
 The steps:
 
-1. Check out the repository on a `macos` runner with an Xcode that meets Apple's current minimum
-   SDK. Apple raises that minimum every spring; in 2026 it is the iOS 26 SDK.
+1. Check out the repository on the `xcode-27` runner, an Apple Silicon Mac with Xcode 27. Apple
+   raises the minimum SDK every spring: from April 2027 an upload needs the iOS 27 SDK, and the
+   `macos-26` image tops out at Xcode 26. The simulator job stays on `macos-15-intel`, because it
+   never uploads.
 2. Install Qt 6.11.1 for iOS and the macOS host Qt it needs for its tools, through `aqtinstall`.
    Cache both.
 3. Configure with `<Qt>/ios/bin/qt-cmake -G Xcode`. Set the bundle id, the team id and the version

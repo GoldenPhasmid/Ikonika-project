@@ -48,8 +48,9 @@ the schema cannot drift from what actually creates the database.
   another device.
 - **`Journal` is the record of a card's progress**: one row per learned, reviewed, pooled or
   completed event, with the day it happened and, for a review, whether the card was remembered. Rows
-  are only ever added. Each event also records the due date it produced, so a later change to the
-  intervals moves only future dates, never ones already set. The id is a time-ordered UUID (version 7), so two events on the same day
+  are only ever added. Each event also records the due date, stability and difficulty it produced. A
+  replay keeps those rather than working them out again, so a settings change moves only future
+  dates, and two devices with different floating-point results still rebuild the same schedule. The id is a time-ordered UUID (version 7), so two events on the same day
   replay in the order they were made. The merge takes every row from both copies.
 - **`Erasures` records when the user last erased everything, and when they last deleted each
   language.** The scope `everything` covers every language; `language:fr` covers one. Deleting a
@@ -61,22 +62,28 @@ the schema cannot drift from what actually creates the database.
   settings file keeps its values through an erase, and the table has to keep matching it. Journal events are deleted once their card
   no longer exists at all; a
   soft-deleted card keeps its events, since a newer edit can bring it back.
-- **`LeitnerStage`, `DueDate`, `BoxChangedDate` and `CompletedDate` are a cache of the journal.**
-  Each action applies its event to the stored card, which gives the same result as replaying the
-  whole journal. After a merge every card is replayed from its events and the stored values from the
-  other copy are ignored. A missed date is never an event: replay works it out from the dates, so it
-  demotes a card once, the same way on every device. A card with no events replays to the pool.
+- **`LeitnerStage`, `DueDate`, `BoxChangedDate`, `CompletedDate`, `Stability` and `Difficulty` are
+  a cache of the journal.** Each action applies its event to the stored card, which gives the same
+  result as replaying the whole journal. After a merge every card is replayed from its events and
+  the stored values from the other copy are ignored. A missed date changes nothing. A card with no
+  events replays to the pool.
 - **A card that had progress before the journal existed gets one starting event.** Schema 30, and
-  any older copy downloaded by sync, gives each card on the ladder a `placed` event holding its
-  stage, dated on the day its box last changed, and each completed card a `completed` event on its
+  any older copy downloaded by sync, gives each card on the schedule a `placed` event holding its
+  old Leitner box, dated on the day its box last changed, and each completed card a `completed` event on its
   completion day. A rebuild then keeps where the card stood. The event's id is built from the card,
   the stage and the day, so two copies of the same card in the same state seed the same row and the
-  merge keeps one. A card already punished for a missed date is placed back on its box's normal
-  date, so it loses that one pending review.
+  merge keeps one. Replaying a `placed` event gives the card its old box gap as stability.
+- **Schema 41 moved progress from the Leitner ladder to FSRS.** It adds `Stability` and `Difficulty`
+  to `Cards` and `Journal`, seeds a starting event for any card on the schedule without one, gives
+  every journal event the stability and difficulty it produced, and rebuilds every card. Due dates
+  recorded in the journal are kept. A `learned` event always starts the card fresh, because the ladder
+  returned stale first-box cards to the pool without an event.
 - **IDs are random UUIDs (v4), not autoincrement integers.** Two devices each issuing their own
   sequential IDs would collide the moment they sync; random IDs don't.
-- **`LeitnerStage` 0 means the pool** (not yet on the ladder); 1 upward is a ladder stage.
-  `DueDate`, `BoxChangedDate`, `CompletedDate` are day numbers, nullable — a pool card has no due
+- **`LeitnerStage` 0 means the pool** (not yet on the schedule); 1 to 4 is a progress stage worked
+  out from stability, for display only. `BoxChangedDate` is the day of the last answer, which
+  FSRS measures the elapsed time from. `DueDate`, `BoxChangedDate`, `CompletedDate` are day numbers,
+  nullable — a pool card has no due
   date at all, which is a real state, not zero.
 - **`UserEditedFields` is a bitmask** over which of a card's fields (translation, definition) came
   from the user rather than a dictionary import, so a reimport doesn't clobber a hand-edit.
@@ -119,7 +126,10 @@ the schema cannot drift from what actually creates the database.
   workspace writes a row at time zero for any setting the file holds that has none yet. The merge
   keeps the newer row and copies the winning values back into the settings file. Launch at startup,
   the speech cache size, the language pair, and everything under appearance, motion, reader, sound,
-  audio, sentences and triage stay in the workspace's file on this device and never get a row.
+  sentences and triage stay in the workspace's file on this device and never get a row. Under audio,
+  only `audio/desktop/` and `audio/mobile/` sync: speech speed, sentence speed and, on desktop, the
+  voice, speaker and per-language preferred voice. Each device reads and writes its own group, so a
+  desktop change never reaches a phone. Whether speech is on stays on the device.
 - **The language pair stays on the device.** Switching the language on one device leaves the others
   where they were. A workspace where no language was ever chosen takes the pair of the card changed
   last, at opening and after each merge.
@@ -157,6 +167,15 @@ the schema cannot drift from what actually creates the database.
   form as the marks above. A card keeps the first book it was added from. A deleted card drops out
   of the book's word list through its own `Deleted` flag, so the row itself is never removed.
   Uploading a book moves its cards to the cloud key along with its marks.
+- **`UserDeckCategories`, `UserDecks` and `UserDeckCards` hold the learner's own decks, and they sync.** A deck is a
+  tag on cards, not an owner of them: a card sits in at most one deck and stays in My Vocabulary when its deck
+  is deleted. `UserDeckCards` is keyed by card, so adding a card to a second deck moves it, and a merge keeps the
+  deck it was added to last. Schema 42 made that key: a card that sat in several decks kept the live link with the
+  newest date. `Description` is free text, and `DailyLearning` is 0 when the daily session leaves out the deck's new cards. Decks and categories carry the language pair they were made under, like a card. A deck sits in at most one category, and its
+  `CategoryId` is blank when it sits in none. My Decks is not a category: it lists every deck, the way All lists every built-in deck, so no table row stands for it. A category's
+  `Colour` is an index into the theme's eight cover tints. Deleting a deck, deleting a category and taking a card
+  out of a deck are dated flags, so the merge carries them; deleting a category sends its decks back to My Decks.
+  Schema 32 removed the older deck tables for the dictionary's decks, which stay read-only data and never appear here.
 - **`WordForms` holds forms progress, one row per headword and kind, and per tense for a verb.**
   The id names all of them: `conjugation-fr-vouloir-present`, `forms-adj-fr-beau`. `LearnedDate`
   is a day and stays NULL while the word waits for a training. The row carries its own language

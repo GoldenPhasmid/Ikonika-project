@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Window
+import QtQuick.Layouts
 
 Page
 {
@@ -106,13 +107,17 @@ Page
             return true
         }
 
-        if (window.screen === "settings" && settingsMobile.item && settingsMobile.item.closeCategory())
+        if (window.screen === "decks" && decksMobile.dismissSheet())
         {
             return true
         }
 
-        if (window.screen === "dictionaryword" && dictionaryWordMobile.item
-            && dictionaryWordMobile.item.closeConjugation())
+        if (window.screen === "deck" && deckMobile.item && deckMobile.item.dismissSheet())
+        {
+            return true
+        }
+
+        if (window.screen === "settings" && settingsMobile.item && settingsMobile.item.closeCategory())
         {
             return true
         }
@@ -128,6 +133,73 @@ Page
         ? window.screenStack[window.screenStack.length - 1] : ""
 
     property int transitionDirection: 0
+
+    readonly property bool splitLayout: AppMetrics.tabletScreen && window.availableWidth > window.availableHeight
+
+    onSplitLayoutChanged:
+    {
+        const query = window.controllers.dictionary("words").query
+
+        if (!window.splitLayout)
+        {
+            if (dictionaryMobile.item)
+            {
+                dictionaryMobile.item.searchTerm(query)
+            }
+
+            return
+        }
+
+        if (window.screen === "addword" && window.screenBelow() === "deck" && addWordDialogMobile.item
+            && addWordDialogMobile.item.card)
+        {
+            const cardId = addWordDialogMobile.item.card.id
+
+            console.info("Tablet turned to landscape, selecting card", cardId, "in the deck split")
+
+            window.transitionDirection = 0
+            window.screenStack = window.screenStack.slice(0, -1)
+            deckMobile.item.reselect(cardId)
+
+            return
+        }
+
+        if (window.screen === "addword" && window.screenBelow() === "vocabulary" && addWordDialogMobile.item
+            && addWordDialogMobile.item.card)
+        {
+            const cardId = addWordDialogMobile.item.card.id
+
+            console.info("Tablet turned to landscape, selecting card", cardId, "in the vocabulary split")
+
+            window.transitionDirection = 0
+            window.screenStack = window.screenStack.slice(0, -1)
+            vocabularySplit.active = true
+            vocabularySplit.item.screen.reselect(cardId)
+            vocabularySplit.item.screen.select(vocabularySplit.item.screen.selectedIndex)
+
+            return
+        }
+
+        if (window.screen === "dictionaryword" && window.screenBelow() === "dictionary" && dictionaryWordMobile.item)
+        {
+            const word = dictionaryWordMobile.item.word
+            const partOfSpeech = dictionaryWordMobile.item.partOfSpeech
+
+            console.info("Tablet turned to landscape, showing", word, "in the dictionary split")
+
+            window.transitionDirection = 0
+            window.screenStack = window.screenStack.slice(0, -1)
+            dictionarySplit.active = true
+            dictionarySplit.item.words.showWord(word, partOfSpeech)
+
+            return
+        }
+
+        if (dictionarySplit.item)
+        {
+            dictionarySplit.item.words.searchTerm(query)
+        }
+    }
 
     function pushScreen(name)
     {
@@ -168,9 +240,26 @@ Page
             ? window.screenStack[window.screenStack.length - 2] : ""
     }
 
-    function openLookup(word, sentence)
+    function openLookup(word, sentence, place)
     {
         Qt.inputMethod.hide()
+
+        const asPopup = AppMetrics.tabletScreen && place !== undefined && place !== null
+
+        console.info("Lookup opens as", asPopup ? "popup" : "sheet")
+
+        if (asPopup)
+        {
+            const origin = lookupPopupMobile.mapFromItem(null, place.left, place.top)
+
+            lookupPopupMobile.geometry = { top: origin.y, bottom: origin.y + place.bottom - place.top, left: origin.x,
+                                           right: origin.x + place.right - place.left, endX: origin.x + place.endX - place.left,
+                                           endY: origin.y + place.endY - place.top, width: place.width }
+            lookupPopupMobile.openFor(word, sentence)
+
+            return
+        }
+
         lookupMobile.openFor(word, false, sentence)
     }
 
@@ -198,6 +287,11 @@ Page
         if (AppOnboarding.required || tab === "onboarding")
         {
             return {}
+        }
+
+        if (readerMobile.item)
+        {
+            readerMobile.item.savePosition()
         }
 
         const sessions = {
@@ -323,6 +417,7 @@ Page
 
     onScreenChanged:
     {
+        lookupPopupMobile.dismiss()
         window.contentItem.forceActiveFocus()
 
         window.refreshCurrentScreen()
@@ -340,9 +435,37 @@ Page
         }
     }
 
+    function openDictionaryWord(word, partOfSpeech)
+    {
+        if (!window.splitLayout)
+        {
+            dictionaryWordMobile.open(word, partOfSpeech)
+            window.pushScreen("dictionaryword")
+
+            return
+        }
+
+        window.resetTo("dictionary")
+        dictionarySplit.active = true
+        dictionarySplit.item.words.showWord(word, partOfSpeech)
+    }
+
+    function forgetRemovedCard(cardId)
+    {
+        intensiveMobile.controller.removeCard(cardId)
+        repetitionMobile.controller.removeCard(cardId)
+        dictionaryMobile.refreshLearnedMarks()
+        dictionaryWordMobile.refreshLearnedMarks()
+    }
+
     function openVocabulary(filterKey)
     {
         vocabularyMobile.resetView()
+
+        if (vocabularySplit.item)
+        {
+            vocabularySplit.item.screen.resetView()
+        }
 
         if (filterKey.length > 0)
         {
@@ -563,6 +686,27 @@ Page
         }
     }
 
+    function startDeckTraining(userDeckId)
+    {
+        const key = UserDecksController.sessionKey(userDeckId)
+
+        if (intensiveMobile.startWithCards(key, UserDecksController.collectSessionCards(userDeckId)))
+        {
+            window.pushScreen("intensive")
+
+            return
+        }
+
+        toast.show(qsTr("There are not enough words to start a session. Add more words first."))
+    }
+
+    function openPractice(userDeckId)
+    {
+        practiceMobile.active = true
+        practiceMobile.item.userDeckId = userDeckId
+        window.pushScreen("practice")
+    }
+
     function startCollectedTraining()
     {
         if (intensiveMobile.start())
@@ -693,12 +837,13 @@ Page
         }
     }
 
-    function startExercise(exercise, reverse, cardCount, repetitionCount, filterKeys)
+    function startExercise(exercise, reverse, cardCount, repetitionCount, filterKeys, userDeckId)
     {
         if (window.exerciseLauncher.startExercise(exercise, !!reverse,
             cardCount === undefined ? -1 : cardCount,
             repetitionCount === undefined ? -1 : repetitionCount,
-            filterKeys === undefined ? [] : filterKeys))
+            filterKeys === undefined ? [] : filterKeys,
+            userDeckId === undefined ? "" : userDeckId))
         {
             window.pushScreen(exercise === "gap" ? "written" : exercise)
         }
@@ -709,6 +854,7 @@ Page
         id: todayMobile
 
         daily: window.daily
+        lufiActive: window.screen === "today" && !welcome.shown
 
         anchors.fill: parent
         visible: false
@@ -718,6 +864,7 @@ Page
         intensive: intensiveMobile
         sentences: window.sentenceTraining
         discovery: window.discovery
+        reader: window.controllers.reader
 
         onIntensiveRequested: window.startTraining()
         onDiscoverRequested: window.startDiscovery()
@@ -731,8 +878,35 @@ Page
         }
 
         onSentencesRequested: window.pushScreen("sentences")
-        onPracticeRequested: window.pushScreen("practice")
-        onFormsTrainingRequested: function(training) { window.startFormsTraining(training) }
+        onPracticeRequested: window.openPractice("")
+        onMessageRequested: function(message) { toast.show(message) }
+
+        onBookRequested: function(book)
+        {
+            console.info("Today: opening book", book.id)
+            window.controllers.reader.openDocument(book.id)
+            window.resetTo("reader")
+        }
+
+        onFreeBookRequested: function(book)
+        {
+            if (book.local)
+            {
+                console.info("Today: opening free book", book.id)
+                window.controllers.reader.openDocument(book.id)
+                window.resetTo("reader")
+
+                return
+            }
+
+            if (window.controllers.reader.freeTransfers[book.freeId] !== undefined)
+            {
+                return
+            }
+
+            console.info("Today: downloading free book", book.freeId)
+            window.controllers.reader.downloadFreeBook(book.freeId)
+        }
 
         onDictionaryRequested: window.pushScreen("dictionary")
         onSettingsRequested: window.pushScreen("settings")
@@ -886,38 +1060,133 @@ Page
         }
     }
 
-    Loader
+    Component
     {
-        id: dictionaryMobile
+        id: dictionarySplitComponent
+
+        Rectangle
+        {
+            readonly property alias words: wordsSplit
+
+            color: AppTheme.colourPanel
+
+            ColumnLayout
+            {
+                anchors.fill: parent
+                spacing: 0
+
+                DesktopWordsScreen
+                {
+                    id: wordsSplit
+
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+
+                    dictionary: window.controllers.dictionary("words")
+                    entryDictionary: window.controllers.dictionary("wordEntry")
+                    wordList: window.controllers.wordList
+                    store: window.store
+
+                    onAddWordRequested: function(word, translation, partOfSpeech, meaningGist)
+                    {
+                        dictionaryAddWordDialogMobile.openWith(word, translation, partOfSpeech, meaningGist)
+                        window.pushScreen("dictionaryaddword")
+                    }
+
+                    onDeckOpenRequested: function(deckId, word, partOfSpeech)
+                    {
+                        deckMobile.open(deckId, word)
+                        window.pushScreen("deck")
+                    }
+
+                    onEditWordRequested: function(cardId, word, translation, gender, partOfSpeech, box)
+                    {
+                        dictionaryAddWordDialogMobile.openForEdit(cardId, word, translation, gender, partOfSpeech, box,
+                                                                  window.controllers.dictionary("wordEntry").language)
+                        window.pushScreen("dictionaryaddword")
+                    }
+                }
+
+                MobileBottomTabBar
+                {
+                    Layout.bottomMargin: parent.SafeArea.margins.bottom
+
+                    activeTab: "dictionary"
+
+                    onTabSelected: function(key) { window.resetTo(key) }
+                }
+            }
+        }
+    }
+
+    Item
+    {
+        id: dictionaryHost
 
         anchors.fill: parent
         visible: false
-        active: false
-        asynchronous: false
-        sourceComponent: dictionaryMobileComponent
 
-        function reset()
+        Loader
         {
-            dictionaryMobile.active = true
-            dictionaryMobile.item.reset()
+            id: dictionarySplit
+
+            anchors.fill: parent
+            visible: window.splitLayout
+            active: false
+            asynchronous: false
+            sourceComponent: dictionarySplitComponent
+
+            onVisibleChanged: if (visible) active = true
         }
 
-        function searchTerm(term)
+        Loader
         {
-            dictionaryMobile.active = true
-            dictionaryMobile.item.searchTerm(term)
-        }
+            id: dictionaryMobile
 
-        function refresh()
-        {
-            dictionaryMobile.refreshLearnedMarks()
-        }
+            anchors.fill: parent
+            visible: !window.splitLayout
+            active: false
+            asynchronous: false
+            sourceComponent: dictionaryMobileComponent
 
-        function refreshLearnedMarks()
-        {
-            if (dictionaryMobile.item)
+            function reset()
             {
-                dictionaryMobile.item.refreshLearnedMarks()
+                dictionaryMobile.active = true
+                dictionaryMobile.item.reset()
+
+                if (dictionarySplit.item)
+                {
+                    dictionarySplit.item.words.openList(dictionarySplit.item.words.source)
+                }
+            }
+
+            function searchTerm(term)
+            {
+                dictionaryMobile.active = true
+                dictionaryMobile.item.searchTerm(term)
+
+                if (dictionarySplit.item)
+                {
+                    dictionarySplit.item.words.searchTerm(term)
+                }
+            }
+
+            function refresh()
+            {
+                dictionaryMobile.refreshLearnedMarks()
+            }
+
+            function refreshLearnedMarks()
+            {
+                if (dictionaryMobile.item)
+                {
+                    dictionaryMobile.item.refreshLearnedMarks()
+                }
+
+                if (dictionarySplit.item)
+                {
+                    dictionarySplit.item.words.refresh()
+                }
             }
         }
     }
@@ -999,6 +1268,8 @@ Page
         MobileReaderScreen
         {
             lookupDictionary: window.controllers.dictionary("readerLookup")
+            translationDictionary: window.controllers.dictionary("readerTranslation")
+            contextDictionary: window.controllers.dictionary("readerContext")
 
             reader: window.controllers.reader
             stageCount: window.store.stageCount
@@ -1007,13 +1278,14 @@ Page
 
             onAddWordRequested: function(word, translation, partOfSpeech, hint)
             {
-                dictionaryAddWordDialogMobile.openWith(word, translation, partOfSpeech, "", hint)
+                dictionaryAddWordDialogMobile.openWith(word, translation, partOfSpeech, "", hint,
+                                                       window.controllers.reader.bookLanguage.code)
                 window.pushScreen("dictionaryaddword")
             }
 
             onEntryOpened: function(headword, partOfSpeech, hint)
             {
-                dictionaryWordMobile.open(headword, partOfSpeech, "", hint)
+                dictionaryWordMobile.open(headword, partOfSpeech, "", hint, window.controllers.reader.bookLanguage.code)
                 window.pushScreen("dictionaryword")
             }
 
@@ -1022,6 +1294,13 @@ Page
                 window.resetTo(key)
             }
         }
+    }
+
+    Binding
+    {
+        target: AppReaderIntake
+        property: "bookOpen"
+        value: window.controllers.reader.reading
     }
 
     Connections
@@ -1095,15 +1374,20 @@ Page
 
         MobilePracticeScreen
         {
+            id: practiceScreen
+
             anchors.fill: parent
 
-            vocabulary: vocabularyMobile.vocabulary
+            vocabulary: practiceScreen.userDeckId.length > 0 && deckMobile.item ? deckMobile.item.vocabulary : vocabularyMobile.vocabulary
+            daily: window.daily
+            intensive: intensiveMobile
 
             onDone: window.popScreen()
+            onFormsTrainingRequested: function(training) { window.startFormsTraining(training) }
 
             onExerciseRequested: function(exercise, reverse, cardCount, repetitionCount, filterKeys)
             {
-                window.startExercise(exercise, reverse, cardCount, repetitionCount, filterKeys)
+                window.startExercise(exercise, reverse, cardCount, repetitionCount, filterKeys, practiceScreen.userDeckId)
             }
 
             onTabSelected: function(key)
@@ -1147,24 +1431,19 @@ Page
 
             onAddWordRequested: function(word, translation, partOfSpeech, meaningGist)
             {
-                dictionaryAddWordDialogMobile.openWith(word, translation, partOfSpeech, meaningGist, dictionaryWordMobile.sourceHint)
+                dictionaryAddWordDialogMobile.openWith(word, translation, partOfSpeech, meaningGist, dictionaryWordMobile.sourceHint,
+                                                       dictionaryWordMobile.sourceLanguage)
                 window.pushScreen("dictionaryaddword")
             }
 
             onEditWordRequested: function(cardId, word, translation, gender, partOfSpeech, box)
             {
                 dictionaryAddWordDialogMobile.openForEdit(
-                    cardId, word, translation, gender, partOfSpeech, box)
+                    cardId, word, translation, gender, partOfSpeech, box, dictionaryWordMobile.sourceLanguage)
                 window.pushScreen("dictionaryaddword")
             }
 
-            onTabSelected: function(key)
-            {
-                window.resetTo(key)
-            }
-
             onSearchRequested: window.lookUpWord("")
-            onWordTapped: function(word, sentence) { window.openLookup(word, sentence) }
 
             onDeckOpenRequested: function(deckId, word, partOfSpeech)
             {
@@ -1185,11 +1464,14 @@ Page
         sourceComponent: dictionaryWordMobileComponent
 
         property string sourceHint: ""
+        property string sourceLanguage: ""
 
-        function open(headword, partOfSpeech, searchText, hint)
+        function open(headword, partOfSpeech, searchText, hint, language)
         {
             dictionaryWordMobile.sourceHint = hint || ""
+            dictionaryWordMobile.sourceLanguage = language || ""
             dictionaryWordMobile.active = true
+            dictionaryWordMobile.item.controller.language = dictionaryWordMobile.sourceLanguage
             dictionaryWordMobile.item.open(headword, partOfSpeech, searchText || "")
         }
 
@@ -1202,43 +1484,126 @@ Page
         }
     }
 
-    MobileVocabularyScreen
+    Component
     {
-        id: vocabularyMobile
+        id: vocabularySplitComponent
 
-        controller: window.controllers.vocabulary
+        Rectangle
+        {
+            readonly property alias screen: vocabularySplitScreen
+
+            color: AppTheme.colourPanel
+
+            ColumnLayout
+            {
+                anchors.fill: parent
+                spacing: 0
+
+                DesktopVocabularyScreen
+                {
+                    id: vocabularySplitScreen
+
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+
+                    cardDictionary: window.controllers.dictionary("vocabularyCard")
+                    controller: window.controllers.vocabulary
+                    store: window.store
+                    compact: true
+
+                    onAddCardRequested: window.lookUpWord("")
+                    onDictionaryRequested: function(word, partOfSpeech) { window.openDictionaryWord(word, partOfSpeech) }
+                    onRemoveCardRequested: function(cardId, word) { vocabularySplitScreen.removeCard(cardId) }
+                    onCardRemoved: function(cardId) { window.forgetRemovedCard(cardId) }
+                    onCardActionsRequested: vocabularyActions.open = true
+                }
+
+                MobileBottomTabBar
+                {
+                    Layout.bottomMargin: parent.SafeArea.margins.bottom
+
+                    activeTab: "vocabulary"
+
+                    onTabSelected: function(key) { window.resetTo(key) }
+                }
+            }
+
+            MobileSheetLoader
+            {
+                id: vocabularyActions
+
+                anchors.fill: parent
+                z: 10
+
+                sourceComponent: MobileCardActionsSheet
+                {
+                    pane: vocabularySplitScreen.pane
+
+                    onDismissed: vocabularyActions.open = false
+                }
+            }
+        }
+    }
+
+    Item
+    {
+        id: vocabularyHost
 
         anchors.fill: parent
         visible: false
 
-        store: window.store
-
-        onPracticeRequested: window.pushScreen("practice")
-
-        onAddWordRequested: window.lookUpWord("")
-        onSearchRequested: window.lookUpWord("")
-
-        onWordOpened: function(word, partOfSpeech)
+        Loader
         {
-            dictionaryWordMobile.open(word, partOfSpeech)
-            window.pushScreen("dictionaryword")
+            id: vocabularySplit
+
+            anchors.fill: parent
+            visible: window.splitLayout
+            active: false
+            asynchronous: false
+            sourceComponent: vocabularySplitComponent
+
+            onVisibleChanged: if (visible) active = true
+            onLoaded: item.screen.resetView()
         }
 
-        onEditWordRequested: function(cardId, word, translation, gender, partOfSpeech, box)
+        MobileVocabularyScreen
         {
-            addWordDialogMobile.openForEdit(cardId, word, translation, gender, partOfSpeech, box)
-            window.pushScreen("addword")
-        }
+            id: vocabularyMobile
 
-        onCardRemoved: function(cardId)
-        {
-            intensiveMobile.controller.removeCard(cardId)
-            repetitionMobile.controller.removeCard(cardId)
-        }
+            controller: window.controllers.vocabulary
 
-        onTabSelected: function(key)
-        {
-            window.resetTo(key)
+            anchors.fill: parent
+            visible: !window.splitLayout
+
+            store: window.store
+
+            onPracticeRequested: window.openPractice("")
+
+            onAddWordRequested: window.lookUpWord("")
+            onSearchRequested: window.lookUpWord("")
+
+            onWordOpened: function(word, partOfSpeech)
+            {
+                dictionaryWordMobile.open(word, partOfSpeech)
+                window.pushScreen("dictionaryword")
+            }
+
+            onEditWordRequested: function(cardId, word, translation, gender, partOfSpeech, box)
+            {
+                addWordDialogMobile.openForEdit(cardId, word, translation, gender, partOfSpeech, box)
+                window.pushScreen("addword")
+            }
+
+            onCardRemoved: function(cardId)
+            {
+                intensiveMobile.controller.removeCard(cardId)
+                repetitionMobile.controller.removeCard(cardId)
+            }
+
+            onTabSelected: function(key)
+            {
+                window.resetTo(key)
+            }
         }
     }
 
@@ -1257,7 +1622,7 @@ Page
             store: window.store
 
             onDone: window.popScreen()
-            onWordTapped: function(word, sentence) { window.openLookup(word, sentence) }
+            onWordTapped: function(word, sentence, place) { window.openLookup(word, sentence, place) }
 
             onCompleted:
             {
@@ -1290,9 +1655,13 @@ Page
             window.pushScreen("deck")
         }
 
-        onTrainRequested: function(deckId) { window.startDeckDiscovery(deckId) }
+        onUserDeckOpened: function(deckId)
+        {
+            deckMobile.openUser(deckId)
+            window.pushScreen("deck")
+        }
 
-        onSearchRequested: window.lookUpWord("")
+        onMessageRequested: function(message) { toast.show(message) }
         onTabSelected: function(key) { window.resetTo(key) }
     }
 
@@ -1300,18 +1669,24 @@ Page
     {
         id: deckMobileComponent
 
-        MobileVocabularyScreen
+        MobileDeckScreen
         {
             controller: window.controllers.deckVocabulary
+            cardDictionary: window.controllers.dictionary("deckCard")
+            store: window.store
+            splitLayout: window.splitLayout
 
             anchors.fill: parent
 
-            store: window.store
-
-            onLearnRequested: function(deckId) { window.startDeckDiscovery(deckId) }
-
             onBackRequested: window.popScreen()
+            onTabSelected: function(key) { window.resetTo(key) }
             onSearchRequested: window.lookUpWord("")
+            onDiscoverRequested: function(deckId) { window.startDeckDiscovery(deckId) }
+            onLearnRequested: function(userDeckId) { window.startDeckTraining(userDeckId) }
+            onPracticeRequested: function(userDeckId) { window.openPractice(userDeckId) }
+            onAddCardRequested: dictionaryAddWordDialogMobile.openInDeck()
+            onMessageRequested: function(message) { toast.show(message) }
+            onDictionaryRequested: function(word, partOfSpeech) { window.openDictionaryWord(word, partOfSpeech) }
 
             onWordOpened: function(word, partOfSpeech)
             {
@@ -1325,13 +1700,13 @@ Page
                 window.pushScreen("addword")
             }
 
-            onCardRemoved: function(cardId)
-            {
-                intensiveMobile.controller.removeCard(cardId)
-                repetitionMobile.controller.removeCard(cardId)
-            }
+            onCardRemoved: function(cardId) { window.forgetRemovedCard(cardId) }
 
-            onTabSelected: function(key) { window.resetTo(key) }
+            onDeckDeleted:
+            {
+                decksMobile.refresh()
+                window.popScreen()
+            }
         }
     }
 
@@ -1349,7 +1724,7 @@ Page
         {
             deckMobile.active = true
 
-            if (deckMobile.item.deckId === deckId)
+            if (deckMobile.item.deckId === deckId && deckMobile.item.userDeckId.length === 0)
             {
                 deckMobile.item.resetView()
                 deckMobile.item.focusEntry(word ?? "")
@@ -1357,8 +1732,25 @@ Page
                 return
             }
 
+            deckMobile.item.userDeckId = ""
             deckMobile.item.deckId = deckId
             deckMobile.item.focusEntry(word ?? "")
+            window.deckAlreadyFresh = true
+        }
+
+        function openUser(userDeckId)
+        {
+            deckMobile.active = true
+
+            if (deckMobile.item.userDeckId === userDeckId)
+            {
+                deckMobile.item.resetView()
+
+                return
+            }
+
+            deckMobile.item.deckId = 0
+            deckMobile.item.userDeckId = userDeckId
             window.deckAlreadyFresh = true
         }
 
@@ -1416,7 +1808,7 @@ Page
 
         onEditCardRequested: function(exercise) { window.editSessionCard(exercise) }
 
-        onLookupRequested: function(word, sentence) { window.openLookup(word, sentence) }
+        onLookupRequested: function(word, sentence, place) { window.openLookup(word, sentence, place) }
     }
 
     Component
@@ -1434,7 +1826,8 @@ Page
 
             onDone: window.popScreen()
             onAdded: vocabularyMobile.refresh()
-            onWordTapped: function(word, sentence) { window.openLookup(word, sentence) }
+            onRemoved: function(cardId) { window.forgetRemovedCard(cardId) }
+            onDictionaryRequested: function(word, partOfSpeech) { window.openDictionaryWord(word, partOfSpeech) }
         }
     }
 
@@ -1456,7 +1849,6 @@ Page
         }
     }
 
-
     Component
     {
         id: dictionaryAddWordDialogComponent
@@ -1471,11 +1863,13 @@ Page
             controller: vocabularyMobile.vocabulary
 
             onDone: window.popScreen()
-            onWordTapped: function(word, sentence) { window.openLookup(word, sentence) }
+            onRemoved: function(cardId) { window.forgetRemovedCard(cardId) }
+            onDictionaryRequested: function(word, partOfSpeech) { window.openDictionaryWord(word, partOfSpeech) }
 
             onAdded:
             {
                 vocabularyMobile.refresh()
+                deckMobile.refresh()
                 dictionaryMobile.refreshLearnedMarks()
                 dictionaryWordMobile.refreshLearnedMarks()
             }
@@ -1493,11 +1887,20 @@ Page
         asynchronous: false
         sourceComponent: dictionaryAddWordDialogComponent
 
-        function openWith(word, translation, partOfSpeech, meaningGist, hint)
+        function openWith(word, translation, partOfSpeech, meaningGist, hint, language)
         {
             dictionaryAddWordDialogMobile.active = true
             dictionaryAddWordDialogMobile.item.controller = vocabularyMobile.vocabulary
-            dictionaryAddWordDialogMobile.item.openWith(word, translation, partOfSpeech || "", meaningGist || "", hint || "")
+            dictionaryAddWordDialogMobile.item.openWith(word, translation, partOfSpeech || "", meaningGist || "", hint || "",
+                                                        language || "")
+        }
+
+        function openInDeck()
+        {
+            dictionaryAddWordDialogMobile.active = true
+            dictionaryAddWordDialogMobile.item.controller = deckMobile.item.vocabulary
+            dictionaryAddWordDialogMobile.item.openWith("", "", "", "", "", "")
+            window.pushScreen("dictionaryaddword")
         }
 
         function openForCard(exercise, cardId, word, translation, gender, partOfSpeech, box)
@@ -1508,12 +1911,12 @@ Page
                 cardId, word, translation, gender, partOfSpeech, box)
         }
 
-        function openForEdit(cardId, word, translation, gender, partOfSpeech, box)
+        function openForEdit(cardId, word, translation, gender, partOfSpeech, box, language)
         {
             dictionaryAddWordDialogMobile.active = true
             dictionaryAddWordDialogMobile.item.controller = vocabularyMobile.vocabulary
             dictionaryAddWordDialogMobile.item.openForEdit(
-                cardId, word, translation, gender, partOfSpeech, box)
+                cardId, word, translation, gender, partOfSpeech, box, language)
         }
     }
 
@@ -1538,7 +1941,7 @@ Page
                 window.popScreen()
             }
 
-            onWordTapped: function(word, sentence) { window.openLookup(word, sentence) }
+            onWordTapped: function(word, sentence, place) { window.openLookup(word, sentence, place) }
         }
     }
 
@@ -1576,7 +1979,7 @@ Page
                 window.popScreen()
             }
 
-            onWordTapped: function(word, sentence) { window.openLookup(word, sentence) }
+            onWordTapped: function(word, sentence, place) { window.openLookup(word, sentence, place) }
         }
     }
 
@@ -1597,7 +2000,7 @@ Page
     {
         id: correctIncorrectMobileComponent
 
-        MobileCorrectIncorrectScreen
+        MobileFlipScreen
         {
             store: window.store
 
@@ -1614,7 +2017,7 @@ Page
                 window.popScreen()
             }
 
-            onWordTapped: function(word, sentence) { window.openLookup(word, sentence) }
+            onWordTapped: function(word, sentence, place) { window.openLookup(word, sentence, place) }
         }
     }
 
@@ -1688,7 +2091,7 @@ Page
                 window.popScreen()
             }
 
-            onWordTapped: function(word, sentence) { window.openLookup(word, sentence) }
+            onWordTapped: function(word, sentence, place) { window.openLookup(word, sentence, place) }
         }
     }
 
@@ -1741,7 +2144,7 @@ Page
                 window.popScreen()
             }
 
-            onWordTapped: function(word, sentence) { window.openLookup(word, sentence) }
+            onWordTapped: function(word, sentence, place) { window.openLookup(word, sentence, place) }
         }
     }
 
@@ -1904,7 +2307,7 @@ Page
             controller: window.discovery
             store: window.store
 
-            onWordTapped: function(word, sentence) { window.openLookup(word, sentence) }
+            onWordTapped: function(word, sentence, place) { window.openLookup(word, sentence, place) }
 
             onEditRequested: function(card)
             {
@@ -1988,7 +2391,7 @@ Page
         controller: window.sentenceTraining
 
         onDone: window.popScreen()
-        onLookupRequested: function(word, sentence) { window.openLookup(word, sentence) }
+        onLookupRequested: function(word, sentence, place) { window.openLookup(word, sentence, place) }
     }
 
     MobileIntensiveLearningScreen
@@ -2013,17 +2416,17 @@ Page
 
         onEditCardRequested: function(exercise) { window.editSessionCard(exercise) }
 
-        onLookupRequested: function(word, sentence) { window.openLookup(word, sentence) }
+        onLookupRequested: function(word, sentence, place) { window.openLookup(word, sentence, place) }
     }
 
     MobileScreenMotion { target: todayMobile; screenName: "today"; router: window }
     MobileScreenMotion { target: wordListMobile; screenName: "wordlist"; router: window }
     MobileScreenMotion { target: settingsMobile; screenName: "settings"; router: window }
-    MobileScreenMotion { target: dictionaryMobile; screenName: "dictionary"; router: window }
+    MobileScreenMotion { target: dictionaryHost; screenName: "dictionary"; router: window }
     MobileScreenMotion { target: readerMobile; screenName: "reader"; router: window }
     MobileScreenMotion { target: practiceMobile; screenName: "practice"; router: window }
     MobileScreenMotion { target: dictionaryWordMobile; screenName: "dictionaryword"; router: window }
-    MobileScreenMotion { target: vocabularyMobile; screenName: "vocabulary"; router: window }
+    MobileScreenMotion { target: vocabularyHost; screenName: "vocabulary"; router: window }
     MobileScreenMotion { target: decksMobile; screenName: "decks"; router: window }
     MobileScreenMotion { target: deckMobile; screenName: "deck"; router: window }
     MobileScreenMotion { target: triageMobile; screenName: "triage"; router: window }
@@ -2168,6 +2571,28 @@ Page
         active: false
         visible: window.onboardingActive && window.onboardingStep === "daily"
         sourceComponent: onboardingDailyComponent
+
+        onVisibleChanged: if (visible) active = true
+        Component.onCompleted: if (visible) active = true
+    }
+
+    Component
+    {
+        id: onboardingIntensityComponent
+
+        MobileOnboardingIntensityScreen
+        {
+            store: window.store
+        }
+    }
+
+    Loader
+    {
+        anchors.fill: parent
+        z: 60
+        active: false
+        visible: window.onboardingActive && window.onboardingStep === "intensity"
+        sourceComponent: onboardingIntensityComponent
 
         onVisibleChanged: if (visible) active = true
         Component.onCompleted: if (visible) active = true
@@ -2347,6 +2772,42 @@ Page
         onEntryOpened: function(headword, partOfSpeech, hint)
         {
             dictionaryWordMobile.open(headword, partOfSpeech, "", hint)
+            window.showScreen("dictionaryword")
+        }
+    }
+
+    MouseArea
+    {
+        anchors.fill: parent
+        z: 54
+        enabled: lookupPopupMobile.open
+        visible: lookupPopupMobile.open
+
+        onClicked: lookupPopupMobile.dismiss()
+    }
+
+    MobileReaderTranslation
+    {
+        id: lookupPopupMobile
+
+        anchors.fill: parent
+        z: 55
+
+        contextLookup: window.controllers.dictionary("lookupContext")
+        lookup: window.controllers.dictionary("lookupTranslation")
+        maxStage: window.store.stageCount
+
+        onAddWordRequested: function(word, translation, partOfSpeech, hint)
+        {
+            lookupPopupMobile.dismiss()
+            dictionaryAddWordDialogMobile.openWith(word, translation, partOfSpeech, "", hint)
+            window.showScreen("dictionaryaddword")
+        }
+
+        onDictionaryRequested: function(word)
+        {
+            lookupPopupMobile.dismiss()
+            dictionaryWordMobile.open(word, "", "", lookupPopupMobile.sentence)
             window.showScreen("dictionaryword")
         }
     }

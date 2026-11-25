@@ -406,10 +406,9 @@ Done:
 
 Outstanding:
 
-- The German dictionary is published as version 1 without definitions: its LLM passes are about 20% done, so every meaning shows a gloss. The mapping and deck-gist passes are the remaining work
+- The German dictionary is published as version 3 with definitions: its LLM passes are complete. 1,223 words keep a gloss or no meaning, mostly names, because the passes skip them
 - Not every built package is published; see `catalog.json`
 - No code signing, so SmartScreen warns on every download of the installer
-- The Store package has not been submitted, and its start at sign-in has not been watched across a
-  real sign-in
+- The Store package's start at sign-in has not been watched across a real sign-in
 - Nothing offers an update for a voice or translation package
 - The update sheet has no metered-connection wording and no way to defer until Wi-Fi

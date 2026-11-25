@@ -21,7 +21,6 @@ class PlacementTestController : public QObject
     Q_PROPERTY(int headwordGender READ GetHeadwordGender NOTIFY stateChanged)
     Q_PROPERTY(QString headwordVerbGroup READ GetHeadwordVerbGroup NOTIFY stateChanged)
     Q_PROPERTY(QString cardMeta READ GetCardMeta NOTIFY stateChanged)
-    Q_PROPERTY(QString definition READ GetDefinition CONSTANT)
     Q_PROPERTY(QString example READ GetExample CONSTANT)
     Q_PROPERTY(QString exampleTranslation READ GetExampleTranslation CONSTANT)
     Q_PROPERTY(int currentSessionCount READ GetCurrentSessionCount NOTIFY stateChanged)
@@ -61,7 +60,6 @@ public:
     int GetHeadwordGender() const;
     QString GetHeadwordVerbGroup() const;
     QString GetCardMeta() const;
-    QString GetDefinition() const { return {}; }
     QString GetExample() const { return {}; }
     QString GetExampleTranslation() const { return {}; }
     int GetCurrentSessionCount() const;

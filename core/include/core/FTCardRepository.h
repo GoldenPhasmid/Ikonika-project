@@ -121,6 +121,8 @@ public:
 
     std::optional<FTCardHandle> LoadCard(const std::string& CardId) const;
 
+    std::optional<std::string> FindCardLanguage(const std::string& CardId) const;
+
     std::optional<int> FindWordStage(const std::string& TargetWord,
                                      const std::string& PartOfSpeech) const;
 
@@ -197,6 +199,8 @@ public:
 
     bool UnmarkWordTriaged(const std::string& TargetWord, const std::string& PartOfSpeech,
                            const std::optional<int>& Gender, const std::string& MeaningGist);
+
+    bool UnmarkReadingKnown(const std::string& TargetWord, const std::string& PartOfSpeech);
 
     bool IsWordTriaged(const std::string& TargetWord, const std::string& PartOfSpeech,
                        const std::optional<int>& Gender) const;

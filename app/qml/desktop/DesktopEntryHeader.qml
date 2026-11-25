@@ -11,6 +11,7 @@ ColumnLayout
     property string frequencyBucket: ""
     property string cefrLevel: ""
     property bool centred: false
+    property bool webSearchShown: true
     property int headwordSize: AppMetrics.dictionaryFontHeadline
     property int gender: -1
     property string verbGroup: ""
@@ -29,6 +30,25 @@ ColumnLayout
         speakButton.speak()
     }
 
+    readonly property bool stacked: root.width > 0 && root.width < AppMetrics.twoColumnMinimumWidth
+
+    readonly property real badgesWidth:
+    {
+        let total = 0
+        let count = 0
+
+        for (const child of badges.children)
+        {
+            if (child.visible && child.implicitWidth > 0)
+            {
+                total += child.implicitWidth
+                ++count
+            }
+        }
+
+        return total + Math.max(0, count - 1) * badges.spacing
+    }
+
     readonly property string shownPhonetic: root.phonetic.length === 0 || root.phonetic.startsWith("/")
                                             || root.phonetic.startsWith("[")
         ? root.phonetic : qsTr("/%1/").arg(root.phonetic)
@@ -36,15 +56,17 @@ ColumnLayout
     Layout.fillWidth: true
     spacing: AppMetrics.gapSmall
 
-    RowLayout
+    GridLayout
     {
         Layout.fillWidth: true
-        spacing: AppMetrics.gapSmall
+        columns: root.stacked ? 2 : 4
+        columnSpacing: AppMetrics.gapSmall
+        rowSpacing: AppMetrics.gapSmall
 
         Item
         {
-            visible: root.centred
-            Layout.preferredWidth: tools.implicitWidth
+            visible: root.centred && !root.stacked
+            Layout.preferredWidth: tools.implicitWidth + AppMetrics.gapSmall + actionRow.implicitWidth
         }
 
         DesktopLabel
@@ -55,7 +77,8 @@ ColumnLayout
             font.pixelSize: root.headwordSize
             font.weight: Font.DemiBold
             horizontalAlignment: root.centred ? Text.AlignHCenter : Text.AlignLeft
-            elide: Text.ElideRight
+            wrapMode: root.stacked ? Text.Wrap : Text.NoWrap
+            elide: root.stacked ? Text.ElideNone : Text.ElideRight
 
             Accessible.role: Accessible.Heading
             Accessible.name: text
@@ -66,6 +89,7 @@ ColumnLayout
             id: tools
 
             Layout.fillWidth: false
+            Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
             spacing: AppMetrics.gapSmall
 
             DesktopSpeakButton
@@ -79,36 +103,41 @@ ColumnLayout
 
             DesktopIconButton
             {
+                visible: root.webSearchShown
                 iconName: "external_link"
                 text: qsTr("Search the web")
 
                 onClicked: root.webSearchRequested()
             }
+        }
 
-            RowLayout
-            {
-                id: actionRow
+        RowLayout
+        {
+            id: actionRow
 
-                Layout.fillWidth: false
-                spacing: AppMetrics.gapSmall
-            }
+            Layout.columnSpan: root.stacked ? 2 : 1
+            Layout.fillWidth: root.stacked
+            spacing: AppMetrics.gapSmall
         }
     }
 
-    RowLayout
+    GridLayout
     {
         Layout.fillWidth: true
-        spacing: AppMetrics.gapSmall
+        columns: root.stacked ? 1 : 3
+        columnSpacing: AppMetrics.gapSmall
+        rowSpacing: AppMetrics.gapSmall
 
         Item
         {
-            visible: root.centred
-            Layout.preferredWidth: badges.implicitWidth
+            visible: root.centred && !root.stacked
+            Layout.preferredWidth: root.badgesWidth
         }
 
         Item
         {
             Layout.fillWidth: true
+            visible: !root.stacked || details.implicitWidth > 0
             implicitHeight: details.implicitHeight
 
             Row
@@ -144,19 +173,27 @@ ColumnLayout
             }
         }
 
-        RowLayout
+        Flow
         {
             id: badges
 
-            Layout.fillWidth: false
+            Layout.fillWidth: root.stacked
+            Layout.preferredWidth: root.stacked ? -1 : root.badgesWidth
+            Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
             spacing: AppMetrics.gapSmall
 
-            RowLayout
+            Item
             {
-                id: statusRow
+                implicitWidth: statusRow.visibleChildren.length > 0 ? statusRow.implicitWidth : 0
+                implicitHeight: Math.max(AppMetrics.badgeHeight, statusRow.implicitHeight)
 
-                Layout.fillWidth: false
-                spacing: AppMetrics.gapSmall
+                RowLayout
+                {
+                    id: statusRow
+
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: AppMetrics.gapSmall
+                }
             }
 
             Repeater

@@ -207,7 +207,7 @@ void PlacementTestController::SpeakPrompt() const
         return;
     }
 
-    AppSpeech::Get().Speak(QString::fromStdString(Word->Word), TargetLanguage);
+    AppSpeech::Get().Speak(GetPrompt(), TargetLanguage);
 }
 
 QString PlacementTestController::GetPrompt() const

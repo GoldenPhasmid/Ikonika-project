@@ -11,27 +11,10 @@ Item
 
     readonly property bool hasExample: root.controller !== null && root.controller.example.length > 0
     readonly property bool hasTranslation: root.hasExample && root.controller.exampleTranslation.length > 0
-    readonly property bool hasDefinition: root.controller !== null && root.controller.definition.length > 0
 
     Layout.fillWidth: true
-    implicitHeight: root.hasExample ? exampleRow.implicitHeight : definition.implicitHeight
-    visible: root.hasExample || root.hasDefinition
-
-    DesktopLabel
-    {
-        id: definition
-
-        anchors.left: parent.left
-        anchors.right: parent.right
-        visible: !root.hasExample
-        text: root.hasDefinition ? root.controller.definition : ""
-        font.pixelSize: AppMetrics.sessionDefinitionSize
-        color: AppTheme.colourMuted
-        horizontalAlignment: Text.AlignHCenter
-        wrapMode: Text.WordWrap
-        maximumLineCount: AppMetrics.definitionLineCount
-        elide: Text.ElideRight
-    }
+    implicitHeight: exampleRow.implicitHeight
+    visible: root.hasExample
 
     RowLayout
     {

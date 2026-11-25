@@ -9,6 +9,9 @@ DesktopDialog
     property string collectionId: ""
     property int colour: 0
     property var action: null
+    property string newTitle: qsTr("New collection")
+    property string renameTitle: qsTr("Rename collection")
+    property bool colourShown: true
 
     readonly property string name: nameField.text.trim()
     readonly property bool renaming: root.collectionId.length > 0
@@ -16,7 +19,7 @@ DesktopDialog
     function create(action)
     {
         root.collectionId = ""
-        root.title = qsTr("New collection")
+        root.title = root.newTitle
         root.colour = 0
         root.action = action
         nameField.text = ""
@@ -26,7 +29,7 @@ DesktopDialog
     function rename(collectionId, name, action)
     {
         root.collectionId = collectionId
-        root.title = qsTr("Rename collection")
+        root.title = root.renameTitle
         root.action = action
         nameField.text = name
         root.open()
@@ -84,7 +87,7 @@ DesktopDialog
         DesktopFormField
         {
             Layout.fillWidth: true
-            visible: !root.renaming
+            visible: !root.renaming && root.colourShown
             label: qsTr("Colour")
 
             RowLayout

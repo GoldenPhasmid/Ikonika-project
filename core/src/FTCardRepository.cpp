@@ -99,6 +99,18 @@ namespace
         return Query.GetInt(Column);
     }
 
+    void BindOptionalReal(FTStatement& Query, int Index, const std::optional<double>& Value)
+    {
+        if (!Value.has_value())
+        {
+            Query.BindNull(Index);
+
+            return;
+        }
+
+        Query.BindDouble(Index, *Value);
+    }
+
     void BindOptionalInt(FTStatement& Query, int Index, const std::optional<int>& Value)
     {
         if (!Value.has_value())
@@ -113,9 +125,9 @@ namespace
 
     /** Every reader below selects these in this order, so ReadCard can share the column indices. */
     constexpr const char* CardColumns =
-        "Id, TargetWord, Translation, Definition, Gender, UserEditedFields, "
+        "Id, TargetWord, Translation, Gender, UserEditedFields, "
         "LeitnerStage, DueDate, BoxChangedDate, CompletedDate, CreatedDate, LastUpdatedDate, "
-        "PartOfSpeech, MeaningGist, Hint";
+        "PartOfSpeech, MeaningGist, Hint, Stability, Difficulty";
 
     std::string EscapeLikePattern(const std::string& Value)
     {
@@ -141,18 +153,23 @@ namespace
         Word.Id = Query.GetText(0);
         Word.TargetWord = Query.GetText(1);
         Word.Translation = Query.GetText(2);
-        Word.Definition = Query.GetText(3);
-        Word.Gender = ReadOptionalInt(Query, 4);
-        Word.UserEditedFields = static_cast<uint32_t>(Query.GetInt(5));
-        Word.LeitnerStage = Query.GetInt(6);
-        Word.DueDate = ReadOptionalDay(Query, 7);
-        Word.BoxChangedDate = ReadOptionalDay(Query, 8);
-        Word.CompletedDate = ReadOptionalDay(Query, 9);
-        Word.CreatedDate = Query.GetInt64(10);
-        Word.LastUpdatedDate = Query.GetInt64(11);
-        Word.PartOfSpeech = Query.GetText(12);
-        Word.MeaningGist = Query.GetText(13);
-        Word.Hint = Query.GetText(14);
+        Word.Gender = ReadOptionalInt(Query, 3);
+        Word.UserEditedFields = static_cast<uint32_t>(Query.GetInt(4));
+        Word.LeitnerStage = Query.GetInt(5);
+        Word.DueDate = ReadOptionalDay(Query, 6);
+        Word.BoxChangedDate = ReadOptionalDay(Query, 7);
+        Word.CompletedDate = ReadOptionalDay(Query, 8);
+        Word.CreatedDate = Query.GetInt64(9);
+        Word.LastUpdatedDate = Query.GetInt64(10);
+        Word.PartOfSpeech = Query.GetText(11);
+        Word.MeaningGist = Query.GetText(12);
+        Word.Hint = Query.GetText(13);
+
+        if (!Query.IsNull(14) && !Query.IsNull(15))
+        {
+            Word.Stability = Query.GetDouble(14);
+            Word.Difficulty = Query.GetDouble(15);
+        }
 
         return Word;
     }
@@ -312,6 +329,9 @@ bool FTCardRepository::DeleteLanguage(const std::string& TargetLanguage)
 
     const std::vector<std::string> Statements{
         "DELETE FROM Journal WHERE CardId IN (SELECT Id FROM Cards WHERE TargetLanguage = ?1)",
+        "DELETE FROM UserDeckCards WHERE DeckId IN (SELECT Id FROM UserDecks WHERE TargetLanguage = ?1)",
+        "DELETE FROM UserDecks WHERE TargetLanguage = ?1",
+        "DELETE FROM UserDeckCategories WHERE TargetLanguage = ?1",
         "DELETE FROM Cards WHERE TargetLanguage = ?1",
         "DELETE FROM WordForms WHERE TargetLanguage = ?1",
         "DELETE FROM TriagedWords WHERE TargetLanguage = ?1",
@@ -428,6 +448,27 @@ std::optional<FTCardHandle> FTCardRepository::LoadCard(const std::string& CardId
     }
 
     return Loaded.front();
+}
+
+std::optional<std::string> FTCardRepository::FindCardLanguage(const std::string& CardId) const
+{
+    const FTQueryTimer Timer("FTCardRepository::FindCardLanguage");
+
+    FTStatement Query = Target.Prepare("SELECT TargetLanguage FROM Cards WHERE Id = ?1 AND Deleted = 0");
+
+    if (!Query.IsValid())
+    {
+        return std::nullopt;
+    }
+
+    Query.BindText(1, CardId);
+
+    if (!Query.Step())
+    {
+        return std::nullopt;
+    }
+
+    return Query.GetText(0);
 }
 
 std::optional<int> FTCardRepository::FindWordStage(const std::string& TargetWord,
@@ -1457,8 +1498,8 @@ bool FTCardRepository::UpdateCardSchedule(const FTCard& Word)
     }
 
     FTStatement Update = Target.Prepare(
-        "UPDATE Cards SET LeitnerStage = ?2, DueDate = ?3, BoxChangedDate = ?4, CompletedDate = ?5 "
-        "WHERE Id = ?1 AND Deleted = 0");
+        "UPDATE Cards SET LeitnerStage = ?2, DueDate = ?3, BoxChangedDate = ?4, CompletedDate = ?5, "
+        "Stability = ?6, Difficulty = ?7 WHERE Id = ?1 AND Deleted = 0");
 
     if (!Update.IsValid())
     {
@@ -1470,6 +1511,8 @@ bool FTCardRepository::UpdateCardSchedule(const FTCard& Word)
     BindOptionalDay(Update, 3, Word.DueDate);
     BindOptionalDay(Update, 4, Word.BoxChangedDate);
     BindOptionalDay(Update, 5, Word.CompletedDate);
+    BindOptionalReal(Update, 6, Word.Stability);
+    BindOptionalReal(Update, 7, Word.Difficulty);
 
     if (!Update.Run() || Update.GetChangeCount() == 0)
     {
@@ -1514,6 +1557,8 @@ bool FTCardRepository::ApplyProgressEvent(const FTCard& Loaded, const char* Even
     FTJournalEvent Event = MakeJournalEvent(Before.Id, EventId, EventValue, Day);
     ApplyJournalEvent(Word, Event);
     Event.DueDate = Word.DueDate;
+    Event.Stability = Word.Stability;
+    Event.Difficulty = Word.Difficulty;
 
     if (!AppendJournalEvent(Target, Event) || !UpdateCardSchedule(Word))
     {
@@ -1568,11 +1613,11 @@ std::optional<std::string> FTCardRepository::AddCard(const FTCard& Word)
     const std::string CardId = MakeUuid();
 
     FTStatement Insert = Target.Prepare(
-        "INSERT INTO Cards (Id, TargetWord, Translation, Definition, Gender, UserEditedFields, "
+        "INSERT INTO Cards (Id, TargetWord, Translation, Gender, UserEditedFields, "
         "                   LeitnerStage, DueDate, BoxChangedDate, CompletedDate, "
         "                   CreatedDate, LastUpdatedDate, Deleted, PartOfSpeech, MeaningGist, Hint, "
         "                   TargetLanguage, NativeLanguage) "
-        "VALUES (?1, ?2, ?3, ?4, ?5, ?6, 0, NULL, NULL, NULL, ?7, ?7, 0, ?8, ?9, ?10, ?90, ?91)");
+        "VALUES (?1, ?2, ?3, ?4, ?5, 0, NULL, NULL, NULL, ?6, ?6, 0, ?7, ?8, ?9, ?90, ?91)");
 
     if (!Insert.IsValid())
     {
@@ -1582,13 +1627,12 @@ std::optional<std::string> FTCardRepository::AddCard(const FTCard& Word)
     Insert.BindText(1, CardId);
     Insert.BindText(2, ClampFieldLength(Word.TargetWord));
     Insert.BindText(3, ClampFieldLength(Word.Translation));
-    Insert.BindText(4, Word.Definition);
-    BindOptionalInt(Insert, 5, Word.Gender);
-    Insert.BindInt(6, static_cast<int>(Word.UserEditedFields));
-    Insert.BindInt64(7, Now());
-    Insert.BindText(8, Word.PartOfSpeech);
-    Insert.BindText(9, Word.MeaningGist);
-    Insert.BindText(10, Word.Hint);
+    BindOptionalInt(Insert, 4, Word.Gender);
+    Insert.BindInt(5, static_cast<int>(Word.UserEditedFields));
+    Insert.BindInt64(6, Now());
+    Insert.BindText(7, Word.PartOfSpeech);
+    Insert.BindText(8, Word.MeaningGist);
+    Insert.BindText(9, Word.Hint);
     Insert.BindText(TargetLanguageParameter, Pair.GetTargetLanguage());
     Insert.BindText(NativeLanguageParameter, Pair.GetNativeLanguage());
 
@@ -1747,6 +1791,26 @@ bool FTCardRepository::IsWordTriaged(const std::string& TargetWord,
     Query.BindText(TargetLanguageParameter, Pair.GetTargetLanguage());
 
     return Query.Step();
+}
+
+bool FTCardRepository::UnmarkReadingKnown(const std::string& TargetWord, const std::string& PartOfSpeech)
+{
+    const FTQueryTimer Timer("FTCardRepository::UnmarkReadingKnown");
+
+    FTStatement Delete = Target.Prepare(
+        "DELETE FROM TriagedWords "
+        "WHERE TargetWord = ?1 AND PartOfSpeech = ?2 AND TargetLanguage = ?90");
+
+    if (!Delete.IsValid())
+    {
+        return false;
+    }
+
+    Delete.BindText(1, Trim(TargetWord));
+    Delete.BindText(2, PartOfSpeech);
+    Delete.BindText(TargetLanguageParameter, Pair.GetTargetLanguage());
+
+    return Delete.Run();
 }
 
 int FTCardRepository::CountTriagedWords() const
@@ -2151,6 +2215,9 @@ bool FTCardRepository::DeleteEverything()
     }
 
     if (!Target.Execute("DELETE FROM Journal")
+        || !Target.Execute("DELETE FROM UserDeckCards")
+        || !Target.Execute("DELETE FROM UserDecks")
+        || !Target.Execute("DELETE FROM UserDeckCategories")
         || !Target.Execute("DELETE FROM Cards")
         || !Target.Execute("DELETE FROM WordForms")
         || !Target.Execute("DELETE FROM SearchHistory")

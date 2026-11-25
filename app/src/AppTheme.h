@@ -62,10 +62,20 @@ class AppTheme : public QObject
     Q_PROPERTY(QVariantList coverColours READ GetCoverColours NOTIFY themeChanged)
     Q_PROPERTY(QVariantList bookCovers READ GetBookCovers CONSTANT)
     Q_PROPERTY(QColor colourCoverInk READ GetColourCoverInk NOTIFY themeChanged)
+    Q_PROPERTY(QColor colourCoverPaper READ GetColourCoverPaper NOTIFY themeChanged)
+    Q_PROPERTY(QColor colourCoverWrong READ GetColourCoverWrong NOTIFY themeChanged)
     Q_PROPERTY(QColor colourCoverMuted READ GetColourCoverMuted NOTIFY themeChanged)
     Q_PROPERTY(QColor colourCoverStripe READ GetColourCoverStripe NOTIFY themeChanged)
+    Q_PROPERTY(QColor colourDeckHeaderTag READ GetColourDeckHeaderTag CONSTANT)
+    Q_PROPERTY(QColor colourDeckHeaderCheck READ GetColourDeckHeaderCheck CONSTANT)
     Q_PROPERTY(QColor colourTileWedge READ GetColourTileWedge NOTIFY themeChanged)
     Q_PROPERTY(QColor colourTileShadow READ GetColourTileShadow NOTIFY themeChanged)
+    Q_PROPERTY(QColor colourReviewBand READ GetColourReviewBand NOTIFY themeChanged)
+    Q_PROPERTY(QColor colourReviewInk READ GetColourReviewInk NOTIFY themeChanged)
+    Q_PROPERTY(QColor colourReviewDeep READ GetColourReviewDeep NOTIFY themeChanged)
+    Q_PROPERTY(QColor colourLearnBand READ GetColourLearnBand NOTIFY themeChanged)
+    Q_PROPERTY(QColor colourLearnInk READ GetColourLearnInk NOTIFY themeChanged)
+    Q_PROPERTY(QColor colourLearnDeep READ GetColourLearnDeep NOTIFY themeChanged)
     Q_PROPERTY(qreal alphaRingTrack READ GetAlphaRingTrack NOTIFY themeChanged)
 
     
@@ -131,10 +141,20 @@ public:
     QVariantList GetCoverColours() const;
     QVariantList GetBookCovers() const;
     QColor GetColourCoverInk() const;
+    QColor GetColourCoverPaper() const;
+    QColor GetColourCoverWrong() const;
     QColor GetColourCoverMuted() const;
     QColor GetColourCoverStripe() const;
+    QColor GetColourDeckHeaderTag() const;
+    QColor GetColourDeckHeaderCheck() const;
     QColor GetColourTileWedge() const;
     QColor GetColourTileShadow() const;
+    QColor GetColourReviewBand() const;
+    QColor GetColourReviewInk() const;
+    QColor GetColourReviewDeep() const;
+    QColor GetColourLearnBand() const;
+    QColor GetColourLearnInk() const;
+    QColor GetColourLearnDeep() const;
     qreal GetAlphaRingTrack() const;
 
     QVariantMap GetFrequencyColours() const;

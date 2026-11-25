@@ -25,7 +25,7 @@ Item
     signal restartRequested()
     signal completeRequested()
     signal wordHeld(string word)
-    signal wordTapped(string word, string sentence)
+    signal wordTapped(string word, string sentence, var place)
 
     function advance()
     {
@@ -133,17 +133,6 @@ Item
                     horizontalAlignment: Text.AlignHCenter
                     wrapMode: Text.WordWrap
                 },
-                Text
-                {
-                    visible: root.controller.definition.length > 0
-                    text: root.controller.definition
-                    font.pixelSize: AppMetrics.sessionDefinitionSize
-                    font.family: AppMetrics.fontFamily
-                    color: AppTheme.colourMuted
-                    Layout.fillWidth: true
-                    horizontalAlignment: Text.AlignHCenter
-                    wrapMode: Text.WordWrap
-                },
                 Item
                 {
                     Layout.fillHeight: true
@@ -176,7 +165,7 @@ Item
 
                     if (word.length > 0)
                     {
-                        root.wordTapped(word, exampleBlock.sentence)
+                        root.wordTapped(word, exampleBlock.sentence, exampleBlock.placeUnder(cardArea, mouse.x, mouse.y))
 
                         return
                     }

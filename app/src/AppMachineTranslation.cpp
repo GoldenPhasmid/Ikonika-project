@@ -19,6 +19,21 @@ AppMachineTranslation& AppMachineTranslation::Get()
 AppMachineTranslation::AppMachineTranslation(QObject* Parent)
     : QObject(Parent)
 {
+    ConnectSources();
+}
+
+AppMachineTranslation::AppMachineTranslation(std::string InTargetLanguage, std::string InNativeLanguage,
+                                             QObject* Parent)
+    : QObject(Parent)
+    , TargetLanguage(std::move(InTargetLanguage))
+    , NativeLanguage(std::move(InNativeLanguage))
+    , bFollowsActivePair(false)
+{
+    ConnectSources();
+}
+
+void AppMachineTranslation::ConnectSources()
+{
     connect(&AppCatalog::Get(), &AppCatalog::catalogChanged, this, &AppMachineTranslation::changed);
     connect(&AppDictionary::Notifier(), &AppDictionaryNotifier::languagesChanged, this,
             &AppMachineTranslation::changed);
@@ -34,6 +49,35 @@ AppMachineTranslation::AppMachineTranslation(QObject* Parent)
             &AppMachineTranslation::changed);
 }
 
+void AppMachineTranslation::SetPair(const std::string& NewTargetLanguage, const std::string& NewNativeLanguage)
+{
+    if (!bFollowsActivePair && TargetLanguage == NewTargetLanguage && NativeLanguage == NewNativeLanguage)
+    {
+        return;
+    }
+
+    bFollowsActivePair = false;
+    TargetLanguage = NewTargetLanguage;
+    NativeLanguage = NewNativeLanguage;
+
+    qCInfo(LogTranslate) << "Machine translation pair is now"
+                         << QString::fromStdString(TargetLanguage) << "to" << QString::fromStdString(NativeLanguage);
+
+    emit changed();
+}
+
+std::pair<std::string, std::string> AppMachineTranslation::GetPair() const
+{
+    if (bFollowsActivePair)
+    {
+        const FTLanguageRules& Rules = FTSettings::Get().GetLanguageRules();
+
+        return {Rules.TargetLanguage, Rules.NativeLanguage};
+    }
+
+    return {TargetLanguage, NativeLanguage};
+}
+
 void AppMachineTranslation::download()
 {
     if (!IsEnabled())
@@ -43,10 +87,12 @@ void AppMachineTranslation::download()
         return;
     }
 
-    qCInfo(LogTranslate) << "Learner asked to download the translation model for"
-                         << GetLanguageName();
+    const auto [Target, Native] = GetPair();
 
-    AppTranslator::Download();
+    qCInfo(LogTranslate) << "Learner asked to download the translation model for"
+                         << QString::fromStdString(Target) << "to" << QString::fromStdString(Native);
+
+    AppTranslator::Download(Target, Native);
 }
 
 bool AppMachineTranslation::IsEnabled() const
@@ -56,41 +102,51 @@ bool AppMachineTranslation::IsEnabled() const
 
 bool AppMachineTranslation::IsInstalled() const
 {
-    return IsEnabled() && AppTranslator::IsSupportedPair();
+    const auto [Target, Native] = GetPair();
+
+    return IsEnabled() && AppTranslator::IsSupportedPair(Target, Native);
 }
 
 bool AppMachineTranslation::IsOffered() const
 {
-    return IsEnabled() && !IsInstalled() && AppTranslator::IsPairOffered();
+    const auto [Target, Native] = GetPair();
+
+    return IsEnabled() && !IsInstalled() && AppTranslator::IsPairOffered(Target, Native);
 }
 
 bool AppMachineTranslation::IsDownloading() const
 {
-    return IsEnabled() && AppTranslator::IsDownloading();
+    const auto [Target, Native] = GetPair();
+
+    return IsEnabled() && AppTranslator::IsDownloading(Target, Native);
 }
 
 double AppMachineTranslation::GetProgress() const
 {
-    return IsEnabled() ? AppTranslator::GetDownloadProgress() : 0.0;
+    const auto [Target, Native] = GetPair();
+
+    return IsEnabled() ? AppTranslator::GetDownloadProgress(Target, Native) : 0.0;
 }
 
 qint64 AppMachineTranslation::GetBytes() const
 {
-    return IsEnabled() ? AppTranslator::GetDownloadBytes() : 0;
+    const auto [Target, Native] = GetPair();
+
+    return IsEnabled() ? AppTranslator::GetDownloadBytes(Target, Native) : 0;
 }
 
 QString AppMachineTranslation::GetLanguageName() const
 {
-    return LanguageDisplayName(FTSettings::Get().GetLanguageRules().TargetLanguage);
+    return LanguageDisplayName(GetPair().first);
 }
 
 QString AppMachineTranslation::GetPairLabel() const
 {
-    const FTLanguageRules& Rules = FTSettings::Get().GetLanguageRules();
+    const auto [Target, Native] = GetPair();
 
     return QStringLiteral("%1 → %2")
-        .arg(QString::fromStdString(Rules.TargetLanguage).toUpper(),
-             QString::fromStdString(Rules.NativeLanguage).toUpper());
+        .arg(QString::fromStdString(Target).toUpper(),
+             QString::fromStdString(Native).toUpper());
 }
 
 QString AppMachineTranslation::GetAttribution() const

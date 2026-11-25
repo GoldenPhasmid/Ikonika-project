@@ -12,11 +12,15 @@ def main():
     arguments = parser.parse_args()
     root = Path(__file__).resolve().parents[2]
     with tempfile.TemporaryDirectory(prefix="ikonika-reader-test-") as temporary:
-        destination = Path(temporary)
+        destination = Path(temporary) / "desktop"
+        destination.mkdir()
+        shutil.copy2(root / "app/qml/ReadAloudPlace.js", temporary)
         shutil.copytree(root / "app/tests/qml/reader", destination, dirs_exist_ok=True)
         for source in (root / "app/qml/mobile").glob("MobileReaderPdf*.qml"):
             shutil.copy2(source, destination)
-        for name in ("DesktopReaderTextView.qml", "DesktopScrollBar.qml"):
+        for name in ("DesktopReaderTextView.qml", "DesktopScrollBar.qml", "DesktopReaderPdfView.qml",
+                     "DesktopReaderPdfSheet.qml", "DesktopReaderAutoscroll.qml",
+                     "DesktopReaderTransition.qml"):
             shutil.copy2(root / "app/qml/desktop" / name, destination)
         for name in ("MobileReaderFrame.qml", "MobileReaderPageNumber.qml", "MobileTextField.qml"):
             source = root / "app/qml/mobile" / name

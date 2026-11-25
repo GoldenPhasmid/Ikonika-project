@@ -64,7 +64,7 @@ namespace
 
         bool HasSentenceIndex() const
         {
-            return AppDictionary::Get().Initialise() && AppDictionary::Get().GetSentenceTree() != nullptr;
+            return AppDictionary::Get().Initialise() && AppDictionary::GetActive().GetSentenceTree() != nullptr;
         }
     };
 
@@ -74,7 +74,7 @@ namespace
 
         std::vector<FTCard> Cards;
 
-        for (const FTLearnableWord& Word : AppDictionary::Get().GetRepository().LoadLearnableWords(Count, 0))
+        for (const FTLearnableWord& Word : AppDictionary::GetActive().GetRepository().LoadLearnableWords(Count, 0))
         {
             FTCard Card;
             Card.TargetWord = Word.Headword;
@@ -289,7 +289,7 @@ TEST_CASE("Studied words make ten balanced sentences ready", "[sentencetraining]
     }
 
     const std::vector<FTTreeSentence> Sentences =
-        AppDictionary::Get().GetRepository().LoadTreeSentences(SentenceIds);
+        AppDictionary::GetActive().GetRepository().LoadTreeSentences(SentenceIds);
 
     REQUIRE(Sentences.size() == 10);
 
@@ -571,7 +571,7 @@ namespace
         std::set<int> Levels;
 
         for (const FTTreeSentence& Sentence :
-             AppDictionary::Get().GetRepository().LoadTreeSentences(SentenceIds))
+             AppDictionary::GetActive().GetRepository().LoadTreeSentences(SentenceIds))
         {
             Levels.insert(Sentence.Level);
         }

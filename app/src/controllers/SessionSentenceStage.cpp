@@ -118,7 +118,7 @@ namespace
 
     void PickMeaningSentences(const FCardState& WordCards, FSentencePicks& Picks)
     {
-        const FTDictionaryRepository& Dictionary = AppDictionary::Get().GetRepository();
+        const FTDictionaryRepository& Dictionary = AppDictionary::GetActive().GetRepository();
 
         if (!Dictionary.HasMeaningExamples())
         {
@@ -184,14 +184,14 @@ namespace
     {
         FKnownWordCandidates Result;
 
-        const FTSentenceTree* Tree = AppDictionary::Get().GetSentenceTree();
+        const FTSentenceTree* Tree = AppDictionary::GetActive().GetSentenceTree();
 
         if (Tree == nullptr)
         {
             return Result;
         }
 
-        const FTDictionaryRepository& Dictionary = AppDictionary::Get().GetRepository();
+        const FTDictionaryRepository& Dictionary = AppDictionary::GetActive().GetRepository();
 
         FTWordIdSet Known = BuildKnownSentenceWords(*Tree);
 
@@ -361,7 +361,7 @@ namespace
 
     std::vector<std::vector<FTTreeSentence>> FindPhraseSentences(const std::vector<const FTCard*>& PhraseCards)
     {
-        const FTDictionaryRepository& Dictionary = AppDictionary::Get().GetRepository();
+        const FTDictionaryRepository& Dictionary = AppDictionary::GetActive().GetRepository();
         const bool bChecksMeaning = Dictionary.GetNativeLanguage() == "en";
         std::vector<std::string> Phrases;
 
@@ -487,12 +487,12 @@ FGapSentences PickGapSentences(const FCardState& WordCards)
 {
     FGapSentences Result;
 
-    if (!AppDictionary::Get().IsReady())
+    if (!AppDictionary::GetActive().IsReady())
     {
         return Result;
     }
 
-    const FTDictionaryRepository& Dictionary = AppDictionary::Get().GetRepository();
+    const FTDictionaryRepository& Dictionary = AppDictionary::GetActive().GetRepository();
     FKnownWordCandidates Candidates =
         FindKnownWordSentences(WordCards, std::vector<bool>(static_cast<size_t>(WordCards.GetCount()), false));
 
@@ -586,7 +586,7 @@ FSessionSentenceStage BuildSessionSentenceStage(QObject* Parent, const FTSession
     }
     else
     {
-        if (!Params.CardState || !AppDictionary::Get().IsReady())
+        if (!Params.CardState || !AppDictionary::GetActive().IsReady())
         {
             return Built;
         }

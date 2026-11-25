@@ -42,7 +42,7 @@ FSentenceSources MakeSentenceSources()
 {
     const std::string& TargetLanguage = FTSettings::Get().GetLanguageRules().TargetLanguage;
 
-    return FSentenceSources{&AppDictionary::Get().GetRepository(), &AppDatabase::Get().GetCardRepository(),
+    return FSentenceSources{&AppDictionary::GetActive().GetRepository(), &AppDatabase::Get().GetCardRepository(),
                             TargetLanguage, FTSettings::Get().GetEssentialVerbs(TargetLanguage)};
 }
 

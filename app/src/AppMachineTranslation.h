@@ -4,6 +4,9 @@
 #include <QQmlEngine>
 #include <QString>
 
+#include <string>
+#include <utility>
+
 class AppMachineTranslation : public QObject
 {
     Q_OBJECT
@@ -22,8 +25,13 @@ public:
     static AppMachineTranslation& Get();
 
     explicit AppMachineTranslation(QObject* Parent = nullptr);
+    AppMachineTranslation(std::string InTargetLanguage, std::string InNativeLanguage, QObject* Parent = nullptr);
 
     Q_INVOKABLE void download();
+
+    void SetPair(const std::string& NewTargetLanguage, const std::string& NewNativeLanguage);
+
+    std::pair<std::string, std::string> GetPair() const;
 
     bool IsEnabled() const;
     bool IsInstalled() const;
@@ -37,6 +45,13 @@ public:
 
 signals:
     void changed();
+
+private:
+    void ConnectSources();
+
+    std::string TargetLanguage;
+    std::string NativeLanguage;
+    bool bFollowsActivePair = true;
 };
 
 struct AppMachineTranslationSingleton

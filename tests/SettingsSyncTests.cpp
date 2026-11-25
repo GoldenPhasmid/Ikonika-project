@@ -126,14 +126,14 @@ TEST_CASE("Synced values hold what the file holds and no device setting", "[sett
     Fixture Test;
 
     Test.Settings.SetTrainingWordCount(15);
-    Test.Settings.SetIntervalDays({1, 3, 9});
+    Test.Settings.SetLearningIntensity(2);
     Test.Settings.SetLaunchAtStartup(true);
 
     const std::vector<std::pair<QString, QVariant>> Values = Test.Settings.ReadSyncedValues();
 
     REQUIRE(FindValue(Values, "intensiveLearning/trainingWordCount").has_value());
     CHECK(FindValue(Values, "intensiveLearning/trainingWordCount")->toInt() == 15);
-    CHECK(FindValue(Values, "schedule/intervalDays").has_value());
+    CHECK(FindValue(Values, "schedule/learningIntensity").has_value());
     CHECK_FALSE(FindValue(Values, "startup/launchAtStartup").has_value());
 }
 
@@ -159,12 +159,81 @@ TEST_CASE("Applying a device setting from elsewhere is ignored", "[settings][syn
     CHECK_FALSE(Test.Settings.GetLaunchAtStartup());
 }
 
-TEST_CASE("Intervals survive a round trip through their stored text", "[settings][sync]")
+TEST_CASE("Picking a learning intensity writes nothing else", "[settings][sync]")
+{
+    Fixture Test;
+
+    Test.Settings.SetLearningIntensity(2);
+
+    REQUIRE(Test.Changes.size() == 1);
+    CHECK(Test.Changes.front().Key == "schedule/learningIntensity");
+}
+
+TEST_CASE("Picking Custom writes its three values and the intensity", "[settings][sync]")
+{
+    Fixture Test;
+
+    Test.Settings.SetLearningIntensity(CustomIntensityIndex);
+
+    REQUIRE(Test.Changes.size() == 4);
+    CHECK(Test.Changes.back().Key == "schedule/learningIntensity");
+    CHECK(Test.Changes.back().Value.toInt() == static_cast<int>(CustomIntensityIndex));
+}
+
+TEST_CASE("Picking Custom the first time starts from the intensity picked before", "[settings][sync]")
+{
+    Fixture Test;
+
+    Test.Settings.SetLearningIntensity(2);
+    Test.Settings.SetLearningIntensity(CustomIntensityIndex);
+
+    const FTLearningIntensity& Custom = Test.Settings.GetScheduleRules().GetIntensity();
+    CHECK(Custom.TargetRetention == LearningIntensities[2].TargetRetention);
+    CHECK(Custom.LearnedStability == LearningIntensities[2].LearnedStability);
+    CHECK(Custom.QuickReviewStability == LearningIntensities[2].QuickReviewStability);
+}
+
+TEST_CASE("Custom values stay when another intensity is picked in between", "[settings][sync]")
+{
+    Fixture Test;
+
+    Test.Settings.SetCustomIntensity({91, 200, 21});
+    Test.Settings.SetLearningIntensity(CustomIntensityIndex);
+    Test.Settings.SetLearningIntensity(0);
+    Test.Settings.SetLearningIntensity(CustomIntensityIndex);
+
+    CHECK(Test.Settings.GetScheduleRules().GetIntensity().LearnedStability == 200);
+}
+
+TEST_CASE("A changed quick review setting from an older version becomes Custom", "[settings][sync]")
+{
+    Fixture Test;
+
+    Test.Settings.ApplySyncedValues({{"schedule/targetRetention", QVariant(95)}, {"schedule/quickReviewDays", QVariant(21)}});
+
+    const FTScheduleRules& Rules = Test.Settings.GetScheduleRules();
+    CHECK(Rules.IntensityIndex == CustomIntensityIndex);
+    CHECK(Rules.Custom.TargetRetention == 95);
+    CHECK(Rules.Custom.LearnedStability == LearningIntensities[2].LearnedStability);
+    CHECK(Rules.Custom.QuickReviewStability == 21);
+}
+
+TEST_CASE("An untouched quick review setting from an older version keeps the nearest intensity", "[settings][sync]")
+{
+    Fixture Test;
+
+    Test.Settings.ApplySyncedValues({{"schedule/targetRetention", QVariant(91)}, {"schedule/quickReviewDays", QVariant(14)}});
+
+    CHECK(Test.Settings.GetScheduleRules().IntensityIndex == 0);
+}
+
+TEST_CASE("Schedule settings survive a round trip through their stored text", "[settings][sync]")
 {
     Fixture Source;
     Fixture Destination;
 
-    Source.Settings.SetIntervalDays({1, 3, 9});
+    Source.Settings.SetCustomIntensity({91, 200, 21});
+    Source.Settings.SetLearningIntensity(CustomIntensityIndex);
 
     std::vector<std::pair<QString, QVariant>> Carried;
 
@@ -175,7 +244,10 @@ TEST_CASE("Intervals survive a round trip through their stored text", "[settings
 
     Destination.Settings.ApplySyncedValues(Carried);
 
-    CHECK(Destination.Settings.GetScheduleRules().IntervalDays == std::vector<int>{1, 3, 9});
+    const FTLearningIntensity& Intensity = Destination.Settings.GetScheduleRules().GetIntensity();
+    CHECK(Intensity.TargetRetention == 91);
+    CHECK(Intensity.LearnedStability == 200);
+    CHECK(Intensity.QuickReviewStability == 21);
 }
 
 TEST_CASE("The language pair stays on this device", "[settings][sync]")
@@ -245,7 +317,7 @@ TEST_CASE("Adopting a language pair needs no dictionary and records no synced ch
                        [](const FChange& Change) { return Change.Key.startsWith("languages/"); }));
 }
 
-TEST_CASE("Device preferences live in the workspace file and never sync", "[settings][sync]")
+TEST_CASE("Device preferences live in the workspace file and only the audio platform groups sync", "[settings][sync]")
 {
     Fixture Test;
 
@@ -253,7 +325,9 @@ TEST_CASE("Device preferences live in the workspace file and never sync", "[sett
         QSettings Store(Test.Settings.OpenStore());
         Store.setValue("appearance/theme", 0);
         Store.setValue("reader/textSize", 22);
-        Store.setValue("audio/voiceName", "Siwis");
+        Store.setValue("audio/enabled", false);
+        Store.setValue("audio/desktop/speed", 1.2);
+        Store.setValue("audio/mobile/sentenceSpeed", 0.8);
         Store.setValue("triage/rangePaneOpen", true);
     }
 
@@ -261,7 +335,9 @@ TEST_CASE("Device preferences live in the workspace file and never sync", "[sett
 
     CHECK_FALSE(FindValue(Values, "appearance/theme").has_value());
     CHECK_FALSE(FindValue(Values, "reader/textSize").has_value());
-    CHECK_FALSE(FindValue(Values, "audio/voiceName").has_value());
+    CHECK_FALSE(FindValue(Values, "audio/enabled").has_value());
+    CHECK(FindValue(Values, "audio/desktop/speed").has_value());
+    CHECK(FindValue(Values, "audio/mobile/sentenceSpeed").has_value());
     CHECK_FALSE(FindValue(Values, "triage/rangePaneOpen").has_value());
 
     Test.Settings.ApplySyncedValues({{"reader/textSize", QVariant(30)}});

@@ -12,7 +12,19 @@ Item
     required property VocabularyController controller
 
     property var deckId: 0
-    readonly property bool deckMode: root.deckId > 0
+    property string userDeckId: ""
+    readonly property bool deckMode: root.deckId > 0 || root.userDeckId.length > 0
+
+    property Component deckHeader: null
+    property bool compact: false
+    readonly property alias pane: pane
+    readonly property Item deckHeaderItem: headerLoader.item
+
+    readonly property bool unsaved: pane.unsaved
+    readonly property bool typing: pane.typing || searchField.activeFocus
+    readonly property bool narrowed: root.controller.search.length > 0 || root.controller.filterKeys.length > 0
+    readonly property bool cardsAddable: root.deckId <= 0
+    readonly property bool emptyDeck: root.userDeckId.length > 0 && root.controller.filteredCount === 0 && !root.narrowed
 
     readonly property alias vocabulary: root.controller
 
@@ -25,6 +37,8 @@ Item
     signal dictionaryRequested(string word, string partOfSpeech)
     signal cardRemoved(string cardId)
     signal removeCardRequested(string cardId, string word)
+    signal addCardRequested()
+    signal cardActionsRequested()
 
     readonly property var sortOptions: root.deckMode ? [
         { key: "deck", primary: qsTr("Deck order"), inverted: qsTr("Reverse deck order") },
@@ -138,6 +152,13 @@ Item
         value: root.deckId
     }
 
+    Binding
+    {
+        target: root.controller
+        property: "userDeckId"
+        value: root.userDeckId
+    }
+
     Connections
     {
         target: root.controller
@@ -171,64 +192,47 @@ Item
         widthKey: "vocabularyList"
         defaultWidth: AppMetrics.listPaneWidth
 
-        DesktopSearchField
-        {
-            id: searchField
-
-            objectName: "vocabulary_search"
-
-            Layout.fillWidth: true
-            placeholderText: root.deckMode ? qsTr("Search %1").arg(root.controller.deckName) : qsTr("Search My Vocabulary")
-
-            onTermChanged: root.controller.search = searchField.text + searchField.preeditText
-
-            Keys.onDownPressed: root.select(root.selectedIndex + 1)
-            Keys.onUpPressed: root.select(root.selectedIndex - 1)
-            Keys.onReturnPressed: if (root.selectedCard) root.editCard(root.selectedIndex)
-
-            Connections
-            {
-                target: root.controller
-
-                function onVocabularyChanged() { searchField.text = root.controller.search }
-            }
-        }
-
-        MobileVocabularyBar
-        {
-            readonly property string selectedFilterKey: root.controller.filterKeys.length === 1 ? root.controller.filterKeys[0] : ""
-
-            notStartedCount: root.controller.notLearnedCount
-            learningCount: root.controller.learningCount
-            learnedCount: root.controller.learnedCount
-            selectedKey: selectedFilterKey
-
-            onStageOpened: function(filterKey)
-            {
-                root.controller.filterKeys = filterKey === selectedFilterKey ? [] : [filterKey]
-            }
-        }
-
         RowLayout
         {
+            id: tools
+
             Layout.fillWidth: true
             spacing: AppMetrics.gapSmall
 
-            DesktopLabel
+            DesktopSearchField
             {
+                id: searchField
+
+                objectName: "vocabulary_search"
+
                 Layout.fillWidth: true
-                text: qsTr("%n words", "", root.controller.filteredCount)
-                font.pixelSize: AppMetrics.fontSmall
-                color: AppTheme.colourMuted
+                placeholderText: qsTr("Search")
+
+                onTermChanged: root.controller.search = searchField.text + searchField.preeditText
+
+                Keys.onDownPressed: root.select(root.selectedIndex + 1)
+                Keys.onUpPressed: root.select(root.selectedIndex - 1)
+                Keys.onReturnPressed: if (root.selectedCard) root.editCard(root.selectedIndex)
+
+                Connections
+                {
+                    target: root.controller
+
+                    function onVocabularyChanged() { searchField.text = root.controller.search }
+                }
             }
 
             DesktopButton
             {
                 id: sortButton
 
-                tone: "ghost"
+                objectName: "vocabulary_sort"
+
+                iconOnly: tools.width - fullWidth - tools.spacing < AppMetrics.listSearchMinimumWidth
+                iconName: root.controller.sortDescending ? "arrow_up_narrow_wide" : "arrow_down_wide_narrow"
                 text: root.sortLabel
-                trailingIconName: "chevron_down"
+
+                Accessible.name: qsTr("Sort by: %1").arg(root.sortLabel)
 
                 onClicked: sortPopover.open()
 
@@ -284,13 +288,41 @@ Item
             }
         }
 
+        MobileVocabularyBar
+        {
+            readonly property string selectedFilterKey: root.controller.filterKeys.length === 1 ? root.controller.filterKeys[0] : ""
+
+            notStartedCount: root.controller.notLearnedCount
+            learningCount: root.controller.learningCount
+            learnedCount: root.controller.learnedCount
+            selectedKey: selectedFilterKey
+            trackShown: !root.deckMode
+            joined: true
+
+            onStageOpened: function(filterKey)
+            {
+                root.controller.filterKeys = filterKey === selectedFilterKey ? [] : [filterKey]
+            }
+        }
+
+        DesktopLabel
+        {
+            Layout.fillWidth: true
+            visible: !root.deckMode || root.narrowed
+            text: qsTr("%n words", "", root.controller.filteredCount)
+            font.pixelSize: AppMetrics.fontSmall
+            color: AppTheme.colourMuted
+        }
+
         DesktopWordList
         {
             id: list
 
             objectName: "vocabulary_words"
 
-            emptyText: searchField.text.length > 0 ? qsTr("No words match.") : qsTr("No words in this view.")
+            emptyText: searchField.text.length > 0 ? qsTr("No words match.")
+                     : root.emptyDeck ? "" : qsTr("No words in this view.")
+            header: root.cardsAddable ? addCardRow : null
 
             Accessible.name: qsTr("Words in My Vocabulary")
 
@@ -316,6 +348,41 @@ Item
         }
     }
 
+    Component
+    {
+        id: addCardRow
+
+        Item
+        {
+            width: list.width
+            height: addCardButton.implicitHeight + list.spacing
+
+            DesktopAddCardRow
+            {
+                id: addCardButton
+
+                objectName: "vocabulary_add_card"
+
+                width: list.rowWidth
+
+                onClicked: root.addCardRequested()
+            }
+        }
+    }
+
+    Loader
+    {
+        id: headerLoader
+
+        anchors.left: listPane.right
+        anchors.right: parent.right
+        anchors.top: parent.top
+        anchors.margins: root.userDeckId.length > 0 ? AppMetrics.gapSmall : 0
+        height: item ? item.implicitHeight : 0
+        active: root.deckHeader !== null
+        sourceComponent: root.deckHeader
+    }
+
     DesktopCardPane
     {
         id: pane
@@ -324,17 +391,23 @@ Item
 
         anchors.left: listPane.right
         anchors.right: parent.right
-        anchors.top: parent.top
+        anchors.top: headerLoader.bottom
         anchors.bottom: parent.bottom
 
+        removable: root.deckId <= 0
+        quiet: root.deckMode
+        compact: root.compact
         controller: root.controller
         card: root.selectedCard
         stageCount: root.store.stageCount
-        emptyText: root.controller.visibleCards.length === 0 ? qsTr("Add words to My Vocabulary from Words.")
-                                                         : ""
+        emptyText: root.controller.visibleCards.length === 0
+                   ? (root.userDeckId.length > 0 ? qsTr("This deck has no cards yet.")
+                                                 : qsTr("Add words to My Vocabulary from Words."))
+                   : ""
 
         onSaved: root.refresh()
         onRemoveRequested: function(cardId, word) { root.removeCardRequested(cardId, word) }
         onDictionaryRequested: function(word, partOfSpeech) { root.dictionaryRequested(word, partOfSpeech) }
+        onActionsRequested: root.cardActionsRequested()
     }
 }

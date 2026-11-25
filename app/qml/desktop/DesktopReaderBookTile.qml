@@ -15,6 +15,7 @@ Button
     property bool exists: true
     property bool local: true
     property bool free: false
+    property bool catalogEntry: false
     property bool cloudAvailable: false
     property bool favorite: false
     property bool finished: false
@@ -30,50 +31,20 @@ Button
     readonly property bool onlyInCloud: !root.local && !root.transferring
     readonly property bool downloadable: root.onlyInCloud && (root.free || root.cloudAvailable)
     readonly property bool menuOffered: root.local && !root.transferring
-    readonly property bool actionsShown: root.hovered && root.transferring
-    property bool actionsFading: false
     readonly property int percent: Math.round(Math.max(0, root.progress) * 100)
     readonly property int readPercent: Math.ceil(Math.max(0, root.readProgress) * 100)
+    readonly property real actionOverhang: (AppMetrics.iconTapSize - AppMetrics.iconSize) / 2
 
     signal removeRequested()
+    signal favoriteToggled()
     signal overviewRequested()
     signal cancelRequested()
 
-    component CoverAction: DesktopCoverButton
+    component RowAction: DesktopIconButton
     {
-        id: action
-
-        implicitWidth: AppMetrics.bookActionSize
-        implicitHeight: AppMetrics.bookActionSize
-        iconColour: AppTheme.colourCoverInk
-
-        background: Rectangle
-        {
-            radius: width / 2
-            color: AppTheme.faded(AppTheme.colourScrim, action.hovered ? AppTheme.opacityHover : AppTheme.opacitySecondary)
-        }
-    }
-
-    onActionsShownChanged:
-    {
-        if (root.actionsShown)
-        {
-            actionsFadeTimer.stop()
-            root.actionsFading = true
-
-            return
-        }
-
-        actionsFadeTimer.restart()
-    }
-
-    Timer
-    {
-        id: actionsFadeTimer
-
-        interval: AppMetrics.motionFast
-
-        onTriggered: root.actionsFading = false
+        Layout.rightMargin: -root.actionOverhang
+        focusPolicy: Qt.NoFocus
+        iconColour: AppTheme.colourSubtle
     }
 
     function openOverview()
@@ -83,6 +54,16 @@ Button
             root.overviewRequested()
         }
     }
+
+    onClicked:
+    {
+        if (root.transferring)
+        {
+            root.cancelRequested()
+        }
+    }
+
+    onPressAndHold: root.openOverview()
 
     hoverEnabled: true
     focusPolicy: Qt.StrongFocus
@@ -155,97 +136,6 @@ Button
                 Behavior on opacity { NumberAnimation { duration: AppMetrics.motionFast } }
             }
 
-            Rectangle
-            {
-                objectName: "reader_book_download"
-
-                anchors.right: cover.right
-                anchors.bottom: cover.bottom
-                anchors.margins: AppMetrics.gapMedium
-                width: AppMetrics.bookRingSize
-                height: AppMetrics.bookRingSize
-                radius: width / 2
-                visible: root.downloadable && !root.transferring
-                color: AppTheme.faded(AppTheme.colourScrim, root.hovered ? AppTheme.opacityHover : AppTheme.opacitySecondary)
-
-                Behavior on color { ColorAnimation { duration: AppMetrics.motionFast } }
-
-                DesktopIcon
-                {
-                    anchors.centerIn: parent
-                    name: "download"
-                    color: AppTheme.colourCoverInk
-                    width: Math.round(AppMetrics.bookRingSize / 2)
-                    height: Math.round(AppMetrics.bookRingSize / 2)
-                }
-            }
-
-            Loader
-            {
-                anchors.fill: cover
-                active: root.transferring
-
-                sourceComponent: Component
-                {
-                    Rectangle
-                    {
-                        radius: AppMetrics.bookRadius
-                        color: AppTheme.faded(AppTheme.colourScrim, AppTheme.opacitySecondary)
-
-                        DesktopGoalRing
-                        {
-                            anchors.centerIn: parent
-                            width: AppMetrics.bookRingSize
-                            height: AppMetrics.bookRingSize
-                            progress: Math.max(0, root.progress)
-                            stroke: AppMetrics.bookRingStroke
-                            fill: AppTheme.colourCoverInk
-                            track: AppTheme.faded(AppTheme.colourCoverInk, AppTheme.alphaStrong)
-                            sweepDuration: AppMetrics.motionFast
-
-                            DesktopLabel
-                            {
-                                text: qsTr("%1%").arg(root.percent)
-                                font.pixelSize: AppMetrics.fontSmall
-                                font.weight: Font.DemiBold
-                                color: AppTheme.colourCoverInk
-                            }
-                        }
-                    }
-                }
-            }
-
-            Loader
-            {
-                id: actions
-
-                anchors.right: cover.right
-                anchors.top: cover.top
-                anchors.margins: AppMetrics.gapSmall
-                active: root.actionsShown || root.actionsFading
-
-                sourceComponent: Component
-                {
-                    Row
-                    {
-                        spacing: AppMetrics.gapSmall
-                        opacity: root.actionsShown ? 1 : 0
-
-                        Behavior on opacity { NumberAnimation { duration: AppMetrics.motionFast } }
-
-                        CoverAction
-                        {
-                            objectName: "reader_book_cancel"
-
-                            iconName: "close"
-                            text: root.uploading ? qsTr("Cancel the upload") : qsTr("Cancel the download")
-
-                            onClicked: root.cancelRequested()
-                        }
-                    }
-                }
-            }
-
             DesktopFocusRing
             {
                 anchors.fill: cover
@@ -288,38 +178,34 @@ Button
         RowLayout
         {
             Layout.fillWidth: true
-            Layout.topMargin: AppMetrics.gapSmall
-            spacing: AppMetrics.gapSmall
+            Layout.topMargin: AppMetrics.gapTight
+            Layout.preferredHeight: AppMetrics.iconTapSize
+            spacing: 0
 
             ReaderLevelBadge
             {
+                id: levelBadge
+
+                Layout.preferredWidth: AppMetrics.bookLevelSize
+                Layout.preferredHeight: AppMetrics.bookLevelSize
+                solid: true
                 level: root.level
-                textSize: AppMetrics.fontMicro
+                textSize: AppMetrics.bookLevelFont
             }
 
-            DesktopLabel
+            RowAction
             {
-                Layout.fillWidth: true
-                Layout.minimumWidth: 0
-                visible: root.transferring || (root.readPercent > 0 && !root.finished)
-                elide: Text.ElideRight
-                text: root.downloading ? qsTr("Downloading…")
-                    : root.uploading ? qsTr("Uploading…")
-                    : qsTr("%1%").arg(root.readPercent)
-                font.pixelSize: AppMetrics.fontSmall
-                color: AppTheme.colourMuted
-            }
+                objectName: "reader_book_favorite"
 
-            DesktopIcon
-            {
-                visible: root.finished
-                name: "check"
-                color: AppTheme.colourCorrect
-                width: AppMetrics.iconSizeSmall
-                height: AppMetrics.iconSizeSmall
+                Layout.leftMargin: levelBadge.visible ? (AppMetrics.iconTapSize - AppMetrics.bookLevelSize) / 2 : -root.actionOverhang
+                Layout.rightMargin: 0
+                visible: !root.catalogEntry
+                iconName: "heart"
+                iconFilled: root.favorite
+                iconColour: root.favorite ? AppTheme.colourWrong : AppTheme.colourSubtle
+                text: root.favorite ? qsTr("Remove from favorites") : qsTr("Add to favorites")
 
-                Accessible.role: Accessible.StaticText
-                Accessible.name: qsTr("Finished")
+                onClicked: root.favoriteToggled()
             }
 
             Item
@@ -327,28 +213,50 @@ Button
                 Layout.fillWidth: true
             }
 
-            DesktopIcon
+            RowAction
             {
-                visible: root.favorite
-                name: "heart"
-                filled: true
-                color: AppTheme.colourWrong
-                width: AppMetrics.iconSizeSmall
-                height: AppMetrics.iconSizeSmall
+                objectName: "reader_book_download"
+
+                visible: root.downloadable
+                iconName: "download"
+                text: qsTr("Download")
+
+                onClicked: root.clicked()
             }
 
-            DesktopIconButton
+            RowAction
             {
-                id: trailingButton
+                id: transferAction
 
+                objectName: "reader_book_cancel"
+
+                visible: root.transferring
+                iconName: transferAction.hovered ? "close" : ""
+                text: root.uploading ? qsTr("Cancel the upload") : qsTr("Cancel the download")
+
+                onClicked: root.cancelRequested()
+
+                DesktopGoalRing
+                {
+                    anchors.centerIn: parent
+                    width: AppMetrics.iconSize
+                    height: AppMetrics.iconSize
+                    visible: !transferAction.hovered
+                    progress: Math.max(0, root.progress)
+                    stroke: AppMetrics.focusRingWidth
+                    fill: AppTheme.colourSubtle
+                    track: AppTheme.faded(AppTheme.colourSubtle, AppTheme.alphaStrong)
+                    sweepDuration: AppMetrics.motionFast
+                }
+            }
+
+            RowAction
+            {
                 objectName: "reader_book_menu"
 
-                Layout.rightMargin: -AppMetrics.gapTight
-                opacity: root.menuOffered ? 1 : 0
-                enabled: root.menuOffered
+                visible: root.menuOffered
                 iconName: "kebab"
-                iconColour: AppTheme.colourSubtle
-                iconSize: AppMetrics.iconSizeSmall
+                iconFilled: true
                 text: qsTr("Book details")
 
                 onClicked: root.openOverview()
@@ -368,6 +276,6 @@ Button
 
     HoverHandler
     {
-        cursorShape: root.transferring ? Qt.ArrowCursor : Qt.PointingHandCursor
+        cursorShape: Qt.PointingHandCursor
     }
 }

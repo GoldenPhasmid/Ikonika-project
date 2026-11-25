@@ -3,11 +3,21 @@
 #include "core/FTLog.h"
 
 #include <QApplication>
+#include <QInputEvent>
 #include <QQmlComponent>
 #include <QQmlContext>
 #include <QQmlEngine>
 #include <QQuickItem>
 #include <QQuickWindow>
+
+#if defined(Q_OS_ANDROID)
+#include <qpa/qwindowsysteminterface_p.h>
+
+namespace
+{
+    constexpr quint64 QueuedInputMilliseconds = 300;
+}
+#endif
 
 AppHostWindow::AppHostWindow() = default;
 
@@ -98,8 +108,52 @@ void AppHostWindow::Unload()
     delete Root.data();
 }
 
+void AppHostWindow::DropQueuedInput()
+{
+#if defined(Q_OS_ANDROID)
+    InputCutoff = QWindowSystemInterfacePrivate::eventTime.elapsed() + QueuedInputMilliseconds;
+#endif
+}
+
+bool AppHostWindow::ShouldDropInput(const QEvent& Event)
+{
+    const QEvent::Type Type{Event.type()};
+    const bool bTouch{Type == QEvent::TouchBegin || Type == QEvent::TouchUpdate || Type == QEvent::TouchEnd || Type == QEvent::TouchCancel};
+    const bool bMouse{Type == QEvent::MouseButtonPress || Type == QEvent::MouseButtonDblClick || Type == QEvent::MouseMove
+                      || Type == QEvent::MouseButtonRelease};
+
+    if (!bTouch && !bMouse)
+    {
+        return false;
+    }
+
+    const bool bTooSoon{static_cast<const QInputEvent&>(Event).timestamp() < InputCutoff};
+    bool& bDropping{bTouch ? bDroppingTouch : bDroppingMouse};
+
+    if ((Type == QEvent::TouchBegin || Type == QEvent::MouseButtonPress || Type == QEvent::MouseButtonDblClick) && bTooSoon)
+    {
+        qCInfo(LogApp) << "Dropped" << (bTouch ? "a touch" : "a click") << "aimed at the screens before the layout swap";
+
+        bDropping = true;
+    }
+
+    const bool bDrop{bDropping || bTooSoon};
+
+    if (Type == QEvent::TouchEnd || Type == QEvent::TouchCancel || Type == QEvent::MouseButtonRelease)
+    {
+        bDropping = false;
+    }
+
+    return bDrop;
+}
+
 bool AppHostWindow::eventFilter(QObject* Watched, QEvent* Event)
 {
+    if (Watched == Window.get() && ShouldDropInput(*Event))
+    {
+        return true;
+    }
+
     if (Watched != Window.get() || Event->type() != QEvent::Close || Root == nullptr)
     {
         return QObject::eventFilter(Watched, Event);

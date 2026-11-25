@@ -318,6 +318,7 @@ $MtPairs = @(
     @{ Pair = "es-en"; Repository = "onnx-community/opus-mt-es-en" },
     @{ Pair = "pt-en"; Repository = "Xenova/opus-mt-ROMANCE-en" },
     @{ Pair = "it-en"; Repository = "Xenova/opus-mt-it-en" },
+    @{ Pair = "de-en"; Repository = "Xenova/opus-mt-de-en" },
     @{ Pair = "en-uk"; Repository = "Xenova/opus-mt-en-uk"; Settings = '{ "excludedCharacters": "\u044b\u044d\u044a\u0451\u042b\u042d\u042a\u0401" }' }
 )
 

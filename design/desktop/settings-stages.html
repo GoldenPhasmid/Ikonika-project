@@ -1,0 +1,407 @@
+<title>Ikonika Desktop Session Stages</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+:root {
+  --page: #e4e1d7; --page-ink: #2e2a25; --page-muted: #75716a; --page-line: #d6d2c5; --page-panel: #efede5;
+  --font: "Inter", "Segoe UI", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --page: #1d1d1b; --page-ink: #f2f0e9; --page-muted: #9c9a8f; --page-line: #3a3937; --page-panel: #262624; color-scheme: dark } }
+
+.frame {
+  --text: #f2f0e9; --muted: #9c9a8f; --accent: #5b9cf8; --accent-text: #000000; --panel: #262624; --faint: #30302e;
+  --sunken: #2b2b29; --subtle: #c2c0b6; --outline: #8a887e; --border: #3a3937; --hover: rgba(242, 240, 233, .06);
+}
+.frame[data-t="light"] {
+  --text: #2e2a25; --muted: #75716a; --accent: #3d63b0; --accent-text: #ffffff; --panel: #efede5; --faint: #e4e1d7;
+  --sunken: #e9e6dd; --subtle: #57534b; --outline: #857f72; --border: #d6d2c5; --hover: rgba(46, 42, 37, .06);
+}
+
+* { box-sizing: border-box }
+body {
+  background: var(--page); color: var(--page-ink); font-family: var(--font); margin: 0;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 28px 48px;
+}
+.wrap { max-width: 1320px; margin: 0 auto; display: grid; gap: 18px }
+.controls { display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: center }
+.seg { display: inline-flex; border: 1px solid var(--page-line); border-radius: 8px; overflow: hidden; background: var(--page-panel) }
+.seg button { font: 500 13px var(--font); color: var(--page-muted); background: none; border: 0; padding: 8px 13px; cursor: pointer }
+.seg button + button { border-left: 1px solid var(--page-line) }
+.seg button[aria-pressed="true"] { color: var(--page-ink); background: var(--page-line) }
+.seg button:focus-visible { outline: 2px solid #5b9cf8; outline-offset: -2px }
+.ctl-label { font: 600 11px var(--font); letter-spacing: .08em; text-transform: uppercase; color: var(--page-muted); margin-right: 8px }
+
+.stage { position: relative; width: 100%; overflow: hidden }
+.frame {
+  position: absolute; top: 0; left: 0; width: 1280px; height: 800px; transform-origin: 0 0; display: flex; flex-direction: column;
+  background: var(--sunken); color: var(--text); border-radius: 10px; overflow: hidden;
+  box-shadow: 0 0 0 1px var(--border), 0 24px 60px -20px rgba(0,0,0,.45);
+  font: 400 14px var(--font); font-variant-numeric: tabular-nums;
+  --ease: cubic-bezier(.33, 1, .68, 1);
+}
+.topbar { height: 64px; flex: none; background: var(--panel); border-bottom: 1px solid var(--border) }
+.body { flex: 1; display: flex; min-height: 0 }
+
+.icon { width: 18px; height: 18px; flex: none; stroke: currentColor; fill: none; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round }
+
+.categories { width: 260px; flex: none; background: var(--panel); border-right: 1px solid var(--border); padding: 16px 8px; display: grid; align-content: start; gap: 1px }
+.category {
+  position: relative; height: 40px; display: flex; align-items: center; padding: 0 8px 0 16px; border-radius: 8px;
+  font-weight: 500; color: var(--text); cursor: pointer; border: 0; background: none; font-family: inherit; font-size: 14px; text-align: left;
+}
+.category:hover { background: var(--hover) }
+.category.selected { background: var(--faint); font-weight: 600 }
+.category.selected::before { content: ""; position: absolute; left: 0; top: 8px; width: 3px; height: 24px; border-radius: 2px; background: var(--accent) }
+
+.page { flex: 1; overflow-y: auto; padding: 32px }
+.column { max-width: 720px; margin: 0 auto; display: grid; gap: 24px }
+
+.section-label { font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--muted) }
+.group { display: grid; gap: 8px }
+.panel { background: var(--panel); border: 1px solid var(--border); border-radius: 12px }
+
+.row { min-height: 56px; display: flex; align-items: center; gap: 16px; padding: 16px 24px; position: relative }
+.row.stacked { flex-direction: column; align-items: stretch; gap: 12px }
+.row:not(:last-child)::after { content: ""; position: absolute; left: 24px; right: 24px; bottom: 0; height: 1px; background: var(--border) }
+.row-text { flex: 1; display: grid; gap: 4px }
+.row-title { font-weight: 500 }
+.row-description { font-size: 13px; color: var(--muted) }
+.dimmed { opacity: .4; pointer-events: none }
+
+.slider-head { display: flex; gap: 16px; align-items: baseline }
+.slider-head .row-title { flex: 1 }
+.slider-value { font-weight: 600; color: var(--subtle) }
+.slider-row { flex-direction: column; align-items: stretch; gap: 8px }
+.slider { position: relative; height: 20px }
+.slider .track { position: absolute; left: 0; right: 0; top: 8px; height: 4px; border-radius: 2px; background: var(--faint) }
+.slider .fill { position: absolute; left: 0; top: 8px; height: 4px; border-radius: 2px; background: var(--text) }
+.slider .tick { position: absolute; top: 6px; width: 2px; height: 8px; border-radius: 1px; margin-left: -1px; background: var(--border) }
+.slider .tick.passed { background: var(--text) }
+.slider .handle { position: absolute; top: 0; width: 20px; height: 20px; margin-left: -10px; border-radius: 50%; background: var(--panel); border: 2px solid var(--text) }
+
+.switch { width: 44px; height: 24px; border-radius: 12px; flex: none; position: relative; background: var(--faint); border: 1px solid var(--border); cursor: pointer; padding: 0 }
+.switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: var(--muted); transition: left 90ms var(--ease) }
+.switch.on { background: var(--accent); border-color: var(--accent) }
+.switch.on::after { left: 23px; background: var(--accent-text) }
+
+.select {
+  width: 220px; height: 36px; flex: none; display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 0 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--sunken); color: var(--text); font: 500 14px var(--font)
+}
+.select .icon { width: 16px; height: 16px; color: var(--muted) }
+
+.chip {
+  flex: 1 1 0; min-width: 0; height: 64px; display: grid; place-content: center; justify-items: center; gap: 4px; position: relative;
+  border-radius: 8px; border: 1.5px dashed var(--border); background: transparent; color: var(--muted);
+  font: 500 13px var(--font); cursor: pointer; padding: 0 6px; transition: background-color 90ms
+}
+.chip:hover { border-color: var(--outline); background: var(--hover) }
+.chip span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100% }
+.chip.on { border: 1.5px solid var(--accent); background: color-mix(in srgb, var(--accent) 14%, var(--panel)); color: var(--text) }
+.chip.on .icon { color: var(--accent) }
+.chip.on:hover { background: color-mix(in srgb, var(--accent) 22%, var(--panel)) }
+.chips { display: flex; gap: 8px }
+
+.stages { display: flex; gap: 8px }
+.stages .chip.selected { font-weight: 600; background: color-mix(in srgb, var(--accent) 24%, var(--panel)) }
+.stages .chip.selected::after { content: ""; position: absolute; bottom: 4px; left: calc(50% - 12px); width: 24px; height: 3px; border-radius: 2px; background: var(--accent) }
+.stages .chip:not(.on).selected { background: var(--faint); border-color: var(--outline) }
+.stages .chip.locked { cursor: default }
+.stages .chip.locked:hover { background: color-mix(in srgb, var(--accent) 14%, var(--panel)) }
+.stages .lock { position: absolute; top: 6px; right: 6px; width: 12px; height: 12px; color: var(--muted) }
+.stages .label-lock { display: none; width: 12px; height: 12px; color: var(--muted); margin-right: 4px; vertical-align: -1px }
+
+.stages[data-locked="neutral"] .chip.locked,
+.stages[data-locked="apart"] .chip.locked,
+.stages[data-locked="apart"] .chip.locked:hover,
+.stages[data-locked="neutral"] .chip.locked:hover { border: 1.5px solid var(--border); background: var(--faint); color: var(--subtle) }
+.stages[data-locked="neutral"] .chip.locked .icon:not(.label-lock),
+.stages[data-locked="apart"] .chip.locked .icon:not(.label-lock) { color: var(--muted) }
+.stages[data-locked="neutral"] .chip.locked .lock,
+.stages[data-locked="apart"] .chip.locked .lock { display: none }
+.stages[data-locked="neutral"] .chip.locked .label-lock,
+.stages[data-locked="apart"] .chip.locked .label-lock { display: inline-block }
+.stages[data-locked="apart"] .chip.locked { flex: 0 0 auto; padding: 0 16px; border-color: transparent; background: var(--faint) }
+.stage-divider { display: none; width: 1px; align-self: stretch; margin: 8px 4px; background: var(--border); flex: none }
+.stages[data-locked="apart"] .stage-divider { display: block }
+
+.drop { position: relative; margin-top: 4px }
+.drop::before {
+  content: ""; position: absolute; top: -7px; left: calc(var(--caret-x, 50%) - 6px); width: 12px; height: 12px; transform: rotate(45deg);
+  background: var(--panel); border-left: 1px solid var(--border); border-top: 1px solid var(--border); transition: left 160ms var(--ease)
+}
+.drop.opening .panel { animation: open 160ms var(--ease) both }
+
+[data-selection="tab"] .stages { position: relative; z-index: 2; align-items: flex-start }
+[data-selection="tab"] .drop { margin-top: 0 }
+[data-selection="tab"] .drop::before { display: none }
+[data-selection="tab"] .drop .panel { border: 1.5px solid var(--accent) }
+[data-selection="tab"] .drop.join-start .panel { border-top-left-radius: 0 }
+[data-selection="tab"] .drop.join-end .panel { border-top-right-radius: 0 }
+[data-selection="tab"] .stages .chip.selected,
+[data-selection="tab"] .stages .chip.selected:hover {
+  height: 74px; margin-bottom: -10px; padding-bottom: 10px; border: 1.5px solid var(--accent); border-bottom: 0;
+  border-radius: 8px 8px 0 0; background: var(--panel); font-weight: 500
+}
+[data-selection="tab"] .stages .chip.selected::after { display: none }
+[data-selection="tab"] .stages .chip.selected .icon { color: var(--accent) }
+[data-selection="tab"] .stages .chip.selected:not(.on) { color: var(--muted) }
+[data-selection="tab"] .stages .chip.selected:not(.on) .icon { color: var(--muted) }
+
+[data-selection="filled"] .stages .chip.selected,
+[data-selection="filled"] .stages .chip.selected:hover { background: var(--accent); border: 1.5px solid var(--accent); color: var(--accent-text); font-weight: 600 }
+[data-selection="filled"] .stages .chip.selected .icon { color: var(--accent-text) }
+[data-selection="filled"] .stages .chip.selected:not(.on),
+[data-selection="filled"] .stages .chip.selected:not(.on):hover { background: var(--outline); border: 1.5px solid var(--outline); color: var(--panel) }
+[data-selection="filled"] .stages .chip.selected:not(.on) .icon { color: var(--panel) }
+[data-selection="filled"] .stages .chip.selected::after { display: none }
+@keyframes open { from { opacity: 0; transform: translateY(-4px) } }
+@media (prefers-reduced-motion: reduce) { .drop .panel { animation: none } .drop::before, .switch::after { transition: none } }
+</style>
+
+<svg width="0" height="0" style="position: absolute">
+  <symbol id="i-flashcards" viewBox="0 0 24 24"><rect x="3" y="7" width="13" height="13" rx="2"/><path d="M8 4h11a2 2 0 0 1 2 2v11"/></symbol>
+  <symbol id="i-flip" viewBox="0 0 24 24"><path d="M20 12a8 8 0 0 1-14.3 4.9"/><path d="M4 12a8 8 0 0 1 14.3-4.9"/><path d="M18.5 3v4.2h-4.2"/><path d="M5.5 21v-4.2h4.2"/></symbol>
+  <symbol id="i-review" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.7 2.7L16.5 9.5"/></symbol>
+  <symbol id="i-choice" viewBox="0 0 24 24"><rect x="3" y="4" width="7" height="7" rx="1.5"/><rect x="14" y="4" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></symbol>
+  <symbol id="i-typing" viewBox="0 0 24 24"><rect x="2.5" y="6" width="19" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8"/></symbol>
+  <symbol id="i-sentences" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></symbol>
+  <symbol id="i-match" viewBox="0 0 24 24"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></symbol>
+  <symbol id="i-speaker" viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16.5 8.5a5 5 0 0 1 0 7"/><path d="M19 6a8.5 8.5 0 0 1 0 12"/></symbol>
+  <symbol id="i-edit" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
+</svg>
+
+<div class="wrap">
+  <div class="controls">
+    <div><span class="ctl-label">Session</span><span class="seg" id="seg-session">
+      <button data-v="training">Training</button><button data-v="review">Review</button>
+    </span></div>
+    <div><span class="ctl-label">Locked stage</span><span class="seg" id="seg-locked">
+      <button data-v="current">Current</button><button data-v="neutral">Neutral</button><button data-v="apart">Set apart</button>
+    </span></div>
+    <div><span class="ctl-label">Selected stage</span><span class="seg" id="seg-selection">
+      <button data-v="bar">Current</button><button data-v="tab">Tab</button><button data-v="filled">Filled</button>
+    </span></div>
+    <div><span class="ctl-label">Theme</span><span class="seg" id="seg-theme">
+      <button data-v="dark">Dark</button><button data-v="light">Light</button>
+    </span></div>
+  </div>
+
+  <div class="stage" id="stage">
+    <div class="frame" id="frame" data-t="dark">
+      <div class="topbar"></div>
+      <div class="body">
+        <nav class="categories" id="categories"></nav>
+        <div class="page"><div class="column" id="column"></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const CATEGORIES = ['Account', 'General', 'Training', 'Review', 'Sound', 'Reader', 'Reminders', 'About'];
+
+const SESSIONS = {
+  training: {
+    daily: [
+      { kind: 'slider', title: 'Words per training', value: 15, from: 10, to: 25, step: 5 },
+      { kind: 'slider', title: 'Trainings per day', description: 'Daily goal: 30 words, 2 trainings of 15', value: 2, from: 0, to: 4, step: 1 }
+    ],
+    stages: [
+      { key: 'flashcards', label: 'Flashcards', icon: 'flashcards', locked: true },
+      { key: 'flip', label: 'Flip cards', icon: 'flip', on: true },
+      { key: 'choice', label: 'Multiple choice', icon: 'choice', on: true, switchable: true },
+      { key: 'typing', label: 'Typing', icon: 'typing', on: true },
+      { key: 'sentences', label: 'Sentences', icon: 'sentences', on: true, switchable: true },
+      { key: 'match', label: 'Speed match', icon: 'match', on: true, switchable: true }
+    ],
+    selected: 'choice'
+  },
+  review: {
+    daily: [
+      { kind: 'slider', title: 'Words per review', value: 20, from: 10, to: 25, step: 5 }
+    ],
+    stages: [
+      { key: 'review', label: 'Review card', icon: 'review', locked: true },
+      { key: 'choice', label: 'Multiple choice', icon: 'choice', on: false, switchable: true },
+      { key: 'typing', label: 'Typing', icon: 'typing', on: true },
+      { key: 'sentences', label: 'Sentences', icon: 'sentences', on: false, switchable: true },
+      { key: 'match', label: 'Speed match', icon: 'match', on: true, switchable: true }
+    ],
+    schedule: [
+      { kind: 'slider', title: 'Recall target', value: 90, from: 70, to: 97, step: 1, valueText: '90%' },
+      { kind: 'slider', title: 'Quick review after', value: 14, from: 1, to: 60, step: 1, valueText: '14 days' },
+      { kind: 'slider', title: 'Learned after', value: 180, from: 60, to: 360, step: 10, valueText: '180 days' }
+    ],
+    selected: 'typing'
+  }
+};
+
+const STAGE_ROWS = {
+  flip: [
+    { kind: 'slider', title: 'Times known per word', value: 2, from: 1, to: 5, step: 1, valueText: '2×' }
+  ],
+  choice: [
+    { kind: 'switch', title: 'Enabled', stageSwitch: true },
+    { kind: 'slider', title: 'Rounds per word', value: 1, from: 1, to: 3, step: 1, valueText: '1×' },
+    { kind: 'select', title: 'Ask with', value: 'Random' },
+    { kind: 'switch', title: 'Ask by voice', description: 'The word is played, not shown', on: false }
+  ],
+  typing: [
+    { kind: 'chips', title: 'Exercises', chips: [
+      { label: 'Write what you hear', icon: 'speaker', on: true },
+      { label: 'Write the word', icon: 'edit', on: true },
+      { label: 'Fill the gap', icon: 'edit', on: true }
+    ] },
+    { kind: 'slider', title: 'Correct answers to master a word', value: 3, from: 1, to: 10, step: 1 },
+    { kind: 'switch', title: 'Require exact accents', on: false }
+  ],
+  sentences: [
+    { kind: 'switch', title: 'Enabled', description: "Build sentences that use the session's words", stageSwitch: true },
+    { kind: 'switch', title: 'Hard mode', description: 'No word tiles, the sentence is typed in full', on: false }
+  ],
+  match: [
+    { kind: 'switch', title: 'Enabled', stageSwitch: true },
+    { kind: 'slider', title: 'Rounds per word', value: 1, from: 1, to: 3, step: 1, valueText: '1×' },
+    { kind: 'switch', title: 'Match by voice', description: 'Words are played, not shown', on: true }
+  ]
+};
+
+let view = { session: 'training', locked: 'apart', selection: 'tab', theme: (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') };
+try { Object.assign(view, JSON.parse(localStorage.getItem('settings-stages-mock') || '{}')) } catch (e) {}
+for (const part of location.hash.slice(1).split('-').filter(Boolean)) {
+  if (part in SESSIONS) view.session = part;
+  else if (['current', 'neutral', 'apart'].includes(part)) view.locked = part;
+  else if (['bar', 'tab', 'filled'].includes(part)) view.selection = part;
+  else if (['dark', 'light'].includes(part)) view.theme = part;
+  else if (SESSIONS[view.session].stages.some(stage => stage.key === part && !stage.locked)) SESSIONS[view.session].selected = part;
+}
+
+const $ = id => document.getElementById(id);
+const icon = name => `<svg class="icon"><use href="#i-${name}"/></svg>`;
+
+function slider(row) {
+  const ratio = (row.value - row.from) / (row.to - row.from);
+  const steps = (row.to - row.from) / row.step;
+  let ticks = '';
+  if (720 / steps >= 16)
+    for (let index = 0; index <= steps; ++index) {
+      const tickRatio = index / steps;
+      ticks += `<i class="tick ${tickRatio <= ratio ? 'passed' : ''}" style="left:${tickRatio * 100}%"></i>`;
+    }
+  return `<div class="row slider-row">
+    <div class="slider-head"><span class="row-title">${row.title}</span><span class="slider-value">${row.valueText || row.value}</span></div>
+    ${row.description ? `<span class="row-description">${row.description}</span>` : ''}
+    <div class="slider"><i class="track"></i><i class="fill" style="width:${ratio * 100}%"></i>${ticks}<i class="handle" style="left:${ratio * 100}%"></i></div>
+  </div>`;
+}
+
+function rowHtml(row, stage, index) {
+  const dim = stage && stage.switchable && !stage.on && !row.stageSwitch ? ' dimmed' : '';
+  if (row.kind === 'slider') return slider(row).replace('class="row slider-row"', `class="row slider-row${dim}"`);
+  const text = `<div class="row-text"><span class="row-title">${row.title}</span>${row.description ? `<span class="row-description">${row.description}</span>` : ''}</div>`;
+  if (row.kind === 'switch') {
+    const on = row.stageSwitch ? stage.on : row.on;
+    return `<div class="row${dim}">${text}<button class="switch ${on ? 'on' : ''}" data-row="${index}" aria-label="${row.title}" aria-pressed="${on}"></button></div>`;
+  }
+  if (row.kind === 'select')
+    return `<div class="row${dim}">${text}<div class="select"><span>${row.value}</span>${icon('down')}</div></div>`;
+  return `<div class="row stacked${dim}">${text}<div class="chips">${row.chips.map((chip, chipIndex) =>
+    `<button class="chip ${chip.on ? 'on' : ''}" data-row="${index}" data-chip="${chipIndex}">${icon(chip.icon)}<span>${chip.label}</span></button>`).join('')}</div></div>`;
+}
+
+function group(title, rows, extra) {
+  return `<section class="group"><div class="section-label">${title}</div><div class="panel">${rows.map(row => rowHtml(row)).join('')}${extra || ''}</div></section>`;
+}
+
+let shownStage = '';
+
+function render() {
+  const session = SESSIONS[view.session];
+  const opening = shownStage !== view.session + session.selected;
+  shownStage = view.session + session.selected;
+  $('frame').dataset.t = view.theme;
+
+  const current = view.session === 'training' ? 'Training' : 'Review';
+  $('categories').innerHTML = CATEGORIES.map(name =>
+    `<button class="category ${name === current ? 'selected' : ''}" data-name="${name}">${name}</button>`).join('');
+
+  const selected = session.stages.find(stage => stage.key === session.selected);
+  const rows = STAGE_ROWS[selected.key];
+
+  let html = group('Daily', session.daily);
+  html += `<section class="group" data-selection="${view.selection}"><div class="section-label">Stages</div>
+    <div class="stages" id="stages" data-locked="${view.locked}">${session.stages.map(stage =>
+      `<button class="chip ${stage.on || stage.locked ? 'on' : ''} ${stage.locked ? 'locked' : ''} ${stage.key === selected.key ? 'selected' : ''}" data-key="${stage.key}">
+        ${stage.locked ? `<svg class="icon lock"><use href="#i-lock"/></svg>` : ''}${icon(stage.icon)}<span>${stage.locked ? `<svg class="icon label-lock"><use href="#i-lock"/></svg>` : ''}${stage.label}</span></button>${stage.locked ? '<i class="stage-divider"></i>' : ''}`).join('')}</div>
+    <div class="drop ${opening ? 'opening' : ''}" id="drop"><div class="panel">${rows.map((row, index) => rowHtml(row, selected, index)).join('')}</div></div>
+  </section>`;
+  if (session.schedule) html += group('Schedule', session.schedule);
+  $('column').innerHTML = html;
+
+  const chip = $('stages').querySelector(`[data-key="${selected.key}"]`);
+  const stagesBox = $('stages').getBoundingClientRect();
+  const chipBox = chip.getBoundingClientRect();
+  const scale = stagesBox.width / $('stages').offsetWidth || 1;
+  $('drop').style.setProperty('--caret-x', ((chipBox.left - stagesBox.left + chipBox.width / 2) / scale) + 'px');
+  $('drop').classList.toggle('join-start', chipBox.left - stagesBox.left < 1);
+  $('drop').classList.toggle('join-end', stagesBox.right - chipBox.right < 1);
+
+  for (const [segId, key] of [['seg-session', 'session'], ['seg-locked', 'locked'], ['seg-selection', 'selection'], ['seg-theme', 'theme']])
+    for (const button of $(segId).querySelectorAll('button')) button.setAttribute('aria-pressed', button.dataset.v === view[key]);
+
+  try { localStorage.setItem('settings-stages-mock', JSON.stringify(view)) } catch (e) {}
+  fit();
+}
+
+function fit() {
+  const scale = Math.min(1, $('stage').clientWidth / 1280);
+  $('frame').style.transform = `scale(${scale})`;
+  $('stage').style.height = (800 * scale) + 'px';
+}
+
+$('frame').addEventListener('click', event => {
+  const session = SESSIONS[view.session];
+  const category = event.target.closest('.category');
+  if (category && (category.dataset.name === 'Training' || category.dataset.name === 'Review')) {
+    view.session = category.dataset.name.toLowerCase();
+    return render();
+  }
+  const stageChip = event.target.closest('.stages .chip');
+  if (stageChip) {
+    const stage = session.stages.find(entry => entry.key === stageChip.dataset.key);
+    if (stage.locked) return;
+    session.selected = stage.key;
+    return render();
+  }
+  const control = event.target.closest('[data-row]');
+  if (!control) return;
+  const stage = session.stages.find(entry => entry.key === session.selected);
+  const row = STAGE_ROWS[stage.key][Number(control.dataset.row)];
+  if (control.dataset.chip !== undefined) {
+    const chip = row.chips[Number(control.dataset.chip)];
+    if (chip.on && row.chips.filter(entry => entry.on).length <= 1) return;
+    chip.on = !chip.on;
+  }
+  else if (row.stageSwitch) stage.on = !stage.on;
+  else row.on = !row.on;
+  const scroll = document.querySelector('.page').scrollTop;
+  render();
+  document.querySelector('.page').scrollTop = scroll;
+});
+
+for (const [segId, key] of [['seg-session', 'session'], ['seg-locked', 'locked'], ['seg-selection', 'selection'], ['seg-theme', 'theme']])
+  $(segId).addEventListener('click', event => {
+    const button = event.target.closest('button');
+    if (!button) return;
+    view[key] = button.dataset.v;
+    render();
+  });
+addEventListener('resize', fit);
+document.fonts && document.fonts.ready.then(render);
+render();
+</script>

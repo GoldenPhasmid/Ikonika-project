@@ -10,6 +10,7 @@ MobileExerciseShell
 
     property string headline: qsTr("Training complete")
     property string countLabel: qsTr("words trained")
+    property string doneText: qsTr("Done")
 
     signal doneClicked()
 
@@ -105,7 +106,7 @@ MobileExerciseShell
 
     actions: MobileWideButton
     {
-        label: qsTr("Done")
+        label: root.doneText
 
         onClicked: root.doneClicked()
     }

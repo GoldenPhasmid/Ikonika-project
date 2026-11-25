@@ -2,140 +2,21 @@ import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Layouts
 
-Item
+ReaderTranslationBase
 {
     id: root
 
-    required property DictionaryController contextLookup
-    required property var lookup
-    property var geometry: null
-    property string text: ""
-    property string sentence: ""
     property bool darkPaper: false
     property real contentWidth: root.width
-    property int maxStage: 1
     property bool selecting: false
     property bool showTrigger: true
-    property bool readAloudOffered: false
-
-    property bool open: false
-    property bool searching: false
     property bool pending: false
 
-    signal addWordRequested(string word, string translation, string partOfSpeech, string hint)
-    signal dictionaryRequested(string word)
-    signal readAloudRequested()
-
-    readonly property int words: root.wordCount(root.text)
-    readonly property bool brief: root.words > 0 && root.words <= AppMetrics.readerLookupWordLimit
-    readonly property var matches: root.open && root.brief && !root.searching ? root.findMatches(root.lookup.results) : []
-    readonly property var shownMatches: root.rankMatches(root.matches, root.contextLookup.machineTranslation)
-    readonly property var match: root.shownMatches.length > 0 ? root.shownMatches[0] : null
-    readonly property bool cardShown: root.match !== null
-    readonly property bool translated: !root.lookup.translating && root.lookup.machineTranslation.length > 0
-    readonly property bool downloadShown: !root.cardShown && !root.lookup.translating && !root.translated
-                                          && AppMachineTranslation.offered
-    readonly property bool actionsShown: !root.downloadShown && !root.lookup.translating
-                                         && (root.cardShown || root.translated || root.brief)
-    readonly property bool onScreen: root.geometry !== null && root.geometry.endY >= 0 && root.geometry.endY <= root.height
-    readonly property bool available: root.brief || AppMachineTranslation.installed || AppMachineTranslation.offered
-
-    function wordCount(text)
-    {
-        return text.split(/\s+/).filter(part => part.length > 0).length
-    }
-
-    function findMatches(results)
-    {
-        return results.filter(Row => Row.exact)
-    }
-
-    function translationStem(phrase)
-    {
-        if (phrase.length > 5)
-        {
-            return phrase.slice(0, -2)
-        }
-
-        return phrase.length > 3 ? phrase.slice(0, -1) : phrase
-    }
-
-    function supportedBy(row, contextText)
-    {
-        const words = contextText.split(/[\s.,;:!?"()\[\]«»—–-]+/).filter(Word => Word.length > 0)
-
-        return (row.translation || "").split(", ").some(function(Phrase)
-        {
-            const phrase = Phrase.trim().toLowerCase().replace(/^(to|a|an|the)\s+/, "")
-
-            if (phrase.length === 0)
-            {
-                return false
-            }
-
-            if (phrase.indexOf(" ") >= 0)
-            {
-                return contextText.indexOf(phrase) >= 0
-            }
-
-            const stem = root.translationStem(phrase)
-
-            return words.some(Word => Word === phrase || Word.startsWith(stem))
-        })
-    }
-
-    function rankMatches(rows, contextTranslation)
-    {
-        const contextText = contextTranslation.toLowerCase()
-
-        if (rows.length < 2 || contextText.length === 0)
-        {
-            return rows
-        }
-
-        const supported = rows.filter(Row => root.supportedBy(Row, contextText))
-
-        if (supported.length === 0 || supported.length === rows.length)
-        {
-            return rows
-        }
-
-        return supported.concat(rows.filter(Row => supported.indexOf(Row) < 0))
-    }
+    readonly property bool available: root.brief || root.lookup.machinePack.installed || root.lookup.machinePack.offered
 
     function expect()
     {
         root.pending = true
-    }
-
-    function show()
-    {
-        root.pending = false
-        console.info("Learner asked to translate", root.words, "words selected in the book")
-
-        root.open = true
-
-        if (!root.brief)
-        {
-            root.lookup.translate(root.text)
-
-            return
-        }
-
-        root.searching = true
-        root.lookup.search(root.text)
-    }
-
-    function dismiss()
-    {
-        if (!root.open)
-        {
-            return false
-        }
-
-        root.open = false
-
-        return true
     }
 
     function containsPopup(position)
@@ -143,89 +24,7 @@ Item
         return box.visible && box.contains(box.mapFromItem(root, position))
     }
 
-    function addMatch(row)
-    {
-        root.addWordRequested(row.word, (row.translation || "").split(", ")[0], row.partOfSpeech || "", root.sentence)
-    }
-
-    function addWord()
-    {
-        if (root.match !== null)
-        {
-            root.addMatch(root.match)
-
-            return
-        }
-
-        const phrase = root.text.trim()
-
-        root.addWordRequested(phrase, root.lookup.machineTranslation, root.words > 1 ? "phrase" : "",
-                              root.sentence.trim() === phrase ? "" : root.sentence)
-    }
-
-    function translateAfterDownload()
-    {
-        if (!root.open || root.searching || root.cardShown || root.lookup.translating || root.translated)
-        {
-            return
-        }
-
-        console.info("Translating the book selection once the translation model arrived")
-
-        root.lookup.translate(root.text)
-    }
-
-    function translateContext()
-    {
-        root.contextLookup.translate("")
-
-        if (root.matches.length > 1 && root.sentence.trim().length > 0)
-        {
-            console.info("Translating the sentence to rank", root.matches.length, "dictionary matches")
-            root.contextLookup.translate(root.sentence)
-        }
-    }
-
-    onTextChanged:
-    {
-        root.open = false
-        root.searching = false
-        root.contextLookup.translate("")
-    }
-    onGeometryChanged: if (root.geometry === null) root.open = false
-
-    Connections
-    {
-        target: AppMachineTranslation
-
-        function onChanged()
-        {
-            if (AppMachineTranslation.installed)
-            {
-                root.translateAfterDownload()
-            }
-        }
-    }
-
-    Connections
-    {
-        target: root.lookup
-        enabled: root.searching
-
-        function onResultsChanged()
-        {
-            root.searching = false
-
-            if (root.lookup.results.length > 0 && root.findMatches(root.lookup.results).length === 0)
-            {
-                root.lookup.translate(root.text)
-
-                return
-            }
-
-            root.translateContext()
-        }
-    }
+    onShown: root.pending = false
 
     DesktopButton
     {
@@ -273,9 +72,9 @@ Item
         readonly property real above: root.geometry ? root.geometry.top - AppMetrics.gapSmall - box.height : 0
         readonly property real minimumWidth: root.brief ? AppMetrics.popoverWidth
                                                         : root.contentWidth * AppMetrics.readerTranslationWidthShare
-        readonly property real iconInset: (AppMetrics.iconSize - AppMetrics.headerIconTapWidth) / 2
+        readonly property real iconInset: (AppMetrics.iconSize - AppMetrics.iconTapSize) / 2
         readonly property real cardInset: AppMetrics.gapTight - AppMetrics.gapMedium
-        readonly property bool bare: root.downloadShown && !AppMachineTranslation.downloading
+        readonly property bool bare: root.downloadShown && !root.lookup.machinePack.downloading
         readonly property real padding: box.bare ? 0 : AppMetrics.gapMedium
 
         visible: root.open && root.onScreen && !root.searching
@@ -391,6 +190,7 @@ Item
             {
                 id: download
 
+                source: root.lookup.machinePack
                 buttonName: "reader_translation_download"
 
                 Layout.fillWidth: true
@@ -468,6 +268,19 @@ Item
                     text: qsTr("Add to My Vocabulary")
 
                     onClicked: root.addWord()
+                }
+
+                DesktopIconButton
+                {
+                    objectName: "reader_translation_known"
+
+                    visible: root.knowable
+                    focusPolicy: Qt.NoFocus
+                    iconName: root.known ? "circle_check" : "check"
+                    iconColour: root.known ? AppTheme.colourAccent : AppTheme.colourMuted
+                    text: root.known ? qsTr("Known. Click to undo") : qsTr("I know this word")
+
+                    onClicked: root.toggleKnown()
                 }
 
                 Item

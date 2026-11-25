@@ -15,7 +15,7 @@ namespace
     constexpr const char* DocumentColumns =
         "Id, FilePath, Title, Format, AddedDate, LastOpenedDate, LastPosition, LastZoom, LastScrollX, "
         "LastScrollY, CloudId, PositionCount, ReadAloudParagraph, ReadAloudCharacter, Author, MetadataRead, "
-        "TitleEdited";
+        "TitleEdited, CloudTitle";
 
     FTReaderDocumentRow ReadRow(const FTStatement& Query)
     {
@@ -37,6 +37,7 @@ namespace
         Row.Author = Query.GetText(14);
         Row.bMetadataRead = Query.GetInt(15) != 0;
         Row.bTitleEdited = Query.GetInt(16) != 0;
+        Row.CloudTitle = Query.GetText(17);
 
         Row.bExists = QFileInfo::exists(QString::fromStdString(Row.FilePath));
 
@@ -278,6 +279,25 @@ bool FTReaderRepository::SetCloudId(const std::string& Id, const std::string& Cl
     FTStatement Update = Target.Prepare(
         "UPDATE ReaderDocuments SET CloudId = ?1 WHERE Id = ?2");
     Update.BindText(1, CloudId);
+    Update.BindText(2, Id);
+
+    if (!Update.Run())
+    {
+        LastError = Target.GetLastError();
+
+        return false;
+    }
+
+    return true;
+}
+
+bool FTReaderRepository::SetCloudTitle(const std::string& Id, const std::string& CloudTitle)
+{
+    const FTQueryTimer Timer("FTReaderRepository::SetCloudTitle");
+
+    FTStatement Update = Target.Prepare(
+        "UPDATE ReaderDocuments SET CloudTitle = ?1 WHERE Id = ?2");
+    Update.BindText(1, CloudTitle);
     Update.BindText(2, Id);
 
     if (!Update.Run())

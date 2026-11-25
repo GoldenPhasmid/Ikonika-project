@@ -26,11 +26,17 @@ public:
 
     QQuickItem* Load(QQmlEngine& Engine, const QString& Screens, const QVariantMap& InitialProperties);
     void Unload();
+    void DropQueuedInput();
 
 protected:
     bool eventFilter(QObject* Watched, QEvent* Event) override;
 
 private:
+    bool ShouldDropInput(const QEvent& Event);
+
     std::unique_ptr<QQuickWindow> Window;
     QPointer<QQuickItem> Root;
+    quint64 InputCutoff{0};
+    bool bDroppingTouch{false};
+    bool bDroppingMouse{false};
 };

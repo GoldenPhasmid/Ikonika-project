@@ -42,7 +42,10 @@ namespace
             {"FavoriteBooks", {"BookKey"}, "LastUpdatedDate"},
             {"BookCollections", {"Id"}, "LastUpdatedDate"},
             {"BookCollectionMembers", {"CollectionId", "BookKey"}, "LastUpdatedDate"},
-            {"BookCards", {"CardId"}, "LastUpdatedDate"}};
+            {"BookCards", {"CardId"}, "LastUpdatedDate"},
+            {"UserDeckCategories", {"Id"}, "LastUpdatedDate"},
+            {"UserDecks", {"Id"}, "LastUpdatedDate"},
+            {"UserDeckCards", {"CardId"}, "LastUpdatedDate"}};
 
         return Rules;
     }
@@ -299,7 +302,7 @@ AppMergeResult AppWorkspaceMerger::Merge(FTDatabase& Local, FTDatabase& Download
 
     AdoptLastStudiedLanguage(FTCardRepository{Local}, *Settings);
 
-    if (!RebuildCardProgress(Local, GetTodayDayNumber()))
+    if (!RebuildCardProgress(Local))
     {
         return FailAndRestoreSettings(QStringLiteral("progress could not be rebuilt from the journal"));
     }

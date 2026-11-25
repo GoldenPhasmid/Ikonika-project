@@ -7,6 +7,7 @@ Item
 
     required property string label
     required property bool active
+    property bool marked: false
 
     required property string iconName
 
@@ -22,22 +23,44 @@ Item
 
         Rectangle
         {
-            Layout.preferredWidth: 40
+            Layout.preferredWidth: 56
             Layout.preferredHeight: 40
             Layout.alignment: Qt.AlignHCenter
 
-            radius: AppMetrics.radiusSmall
-            color: root.active ? AppTheme.colourText : "transparent"
-            border.color: AppTheme.colourBorder
-            border.width: root.active ? 0 : AppMetrics.borderWidth
+            radius: AppMetrics.radiusMedium
+            color: root.active ? AppTheme.colourFaint : "transparent"
 
             DesktopIcon
             {
                 anchors.centerIn: parent
                 name: root.iconName
-                width: 20
+                width: 22
                 height: width
-                color: root.active ? AppTheme.colourPanel : AppTheme.colourText
+                color: root.active ? AppTheme.colourText : AppTheme.colourSubtle
+            }
+
+            Rectangle
+            {
+                visible: root.active
+                anchors.bottom: parent.bottom
+                anchors.horizontalCenter: parent.horizontalCenter
+                width: 24
+                height: 3
+                radius: height / 2
+                color: AppTheme.colourAccent
+            }
+
+            Rectangle
+            {
+                visible: root.marked
+                anchors.right: parent.right
+                anchors.top: parent.top
+                anchors.rightMargin: 10
+                anchors.topMargin: 4
+                width: 8
+                height: 8
+                radius: width / 2
+                color: AppTheme.colourAccent
             }
         }
 

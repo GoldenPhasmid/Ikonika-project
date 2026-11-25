@@ -1,5 +1,5 @@
 [CmdletBinding()]
-param([string]$Database, [switch]$Headless, [switch]$Mobile, [switch]$Onboarding, [switch]$Release)
+param([string]$Database, [string]$Window, [switch]$Headless, [switch]$Mobile, [switch]$Onboarding, [switch]$Touch, [switch]$Release)
 
 $env:PATH = "C:\Qt\6.11.1\msvc2022_64\bin;$env:PATH"
 
@@ -15,6 +15,16 @@ if ($Mobile)
 if ($Onboarding)
 {
     $Arguments += "-onboarding"
+}
+
+if ($Touch)
+{
+    $Arguments += "-touch"
+}
+
+if ($Window)
+{
+    $Arguments += "-window=$Window"
 }
 
 if ($Headless -or $Mobile -or $Onboarding -or $Database)

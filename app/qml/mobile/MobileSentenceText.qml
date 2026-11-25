@@ -12,7 +12,7 @@ Text
     property bool tapEnabled: false
 
     signal wordHeld(string word)
-    signal wordTapped(string word, string sentence)
+    signal wordTapped(string word, string sentence, var place)
 
     readonly property var parsed: root.parse(root.sentence, root.gapStart, root.gapLength,
                                              AppTheme.colourText, AppTheme.colourAccent)
@@ -79,6 +79,15 @@ Text
         return root.parsed.words[parseInt(link.substring(5))] || ""
     }
 
+    function placeAt(x, y)
+    {
+        const lineHeight = root.contentHeight / Math.max(1, root.lineCount)
+        const point = root.mapToItem(null, x, y)
+
+        return { top: point.y - lineHeight / 2, bottom: point.y + lineHeight / 2, left: point.x, right: point.x,
+                 endX: point.x, endY: point.y, width: 0 }
+    }
+
     Layout.fillWidth: true
 
     text: root.parsed.markup
@@ -100,7 +109,7 @@ Text
 
             if (word.length > 0)
             {
-                root.wordTapped(word, root.sentence)
+                root.wordTapped(word, root.sentence, root.placeAt(point.position.x, point.position.y))
             }
         }
     }

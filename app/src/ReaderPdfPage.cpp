@@ -415,6 +415,7 @@ void ReaderPdfPage::IssueRender()
     }
 
     SettleTimer.stop();
+    Document->SetWantedPage(OwnerKey(), Page);
 
     // The sharp one first. The worker takes them in order, and what the reader is looking at should
     // not wait behind the stand-in for it, let alone behind a page they have not turned to.
@@ -717,6 +718,23 @@ QSGNode* ReaderPdfPage::updatePaintNode(QSGNode* OldNode, UpdatePaintNodeData*)
     return Root;
 }
 
+QVariantMap ReaderPdfPage::internalLinkAt(QPointF ItemPoint)
+{
+    if (!IsReady() || RenderScale <= 0)
+    {
+        return {};
+    }
+
+    const QPdfLink Link = Document->LinkAt(Page, ItemPoint / RenderScale);
+
+    if (!Link.isValid() || !Link.url().isEmpty() || Link.page() < 0 || Link.page() >= GetPageCount())
+    {
+        return {};
+    }
+
+    return {{QStringLiteral("page"), Link.page()}, {QStringLiteral("location"), Link.location()}};
+}
+
 QString ReaderPdfPage::wordAt(QPointF ItemPoint)
 {
     return selectWordAt(ItemPoint).value(QStringLiteral("text")).toString();
@@ -842,6 +860,25 @@ QVariantMap ReaderPdfPage::selectionBetween(QPointF FromItem, QPointF ToItem)
     return ToSelectionMap(Selection);
 }
 
+QVariantList ReaderPdfPage::textRectangles(int Start, int Length)
+{
+    QPdfDocument* const TextLayer = Document ? Document->TextDocument() : nullptr;
+
+    if (!TextLayer || Length <= 0)
+    {
+        return {};
+    }
+
+    QVariantList Rectangles;
+
+    for (const QRectF& Line : MergeIntoLines(TextLayer->getSelectionAtIndex(Page, Start, Length)))
+    {
+        Rectangles.append(Line);
+    }
+
+    return Rectangles;
+}
+
 void ReaderPdfPage::requestOutline()
 {
     if (Document)
@@ -850,7 +887,7 @@ void ReaderPdfPage::requestOutline()
     }
 }
 
-QVariantMap ReaderPdfPage::ToSelectionMap(const QPdfSelection& Selection) const
+QList<QRectF> ReaderPdfPage::MergeIntoLines(const QPdfSelection& Selection)
 {
     // The document gives one shape per character, which drawn as they come reads as a row of
     // separate blocks rather than as a selection. Characters sharing a line are merged into the
@@ -886,9 +923,14 @@ QVariantMap ReaderPdfPage::ToSelectionMap(const QPdfSelection& Selection) const
         *SameLine = SameLine->united(Character);
     }
 
+    return Lines;
+}
+
+QVariantMap ReaderPdfPage::ToSelectionMap(const QPdfSelection& Selection) const
+{
     QVariantList Rectangles;
 
-    for (const QRectF& Line : Lines)
+    for (const QRectF& Line : MergeIntoLines(Selection))
     {
         Rectangles.append(QRectF(Line.x() * RenderScale, Line.y() * RenderScale,
                                  Line.width() * RenderScale, Line.height() * RenderScale));
@@ -900,6 +942,8 @@ QVariantMap ReaderPdfPage::ToSelectionMap(const QPdfSelection& Selection) const
     Result[QStringLiteral("sentence")] = FindHintAt(PageText.text(), Selection.startIndex() - PageText.startIndex(),
                                                     FTSettings::Get().GetLanguageRules().TargetLanguage);
     Result[QStringLiteral("rectangles")] = Rectangles;
+    Result[QStringLiteral("page")] = Page;
+    Result[QStringLiteral("index")] = Selection.startIndex();
 
     return Result;
 }

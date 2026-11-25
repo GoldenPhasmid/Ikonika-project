@@ -12,12 +12,17 @@
 #include <QStringList>
 
 #include <algorithm>
+#include <cmath>
+#include <cstdlib>
 
 namespace
 {
-    constexpr const char* IntervalsKey = "schedule/intervalDays";
-    constexpr const char* FirstStageDaysKey = "schedule/maximumDaysInFirstStage";
-    constexpr const char* FirstStageToPoolKey = "schedule/firstStageFailureReturnsToPool";
+    constexpr const char* LearningIntensityKey = "schedule/learningIntensity";
+    constexpr const char* TargetRetentionKey = "schedule/targetRetention";
+    constexpr const char* LearnedStabilityKey = "schedule/learnedStability";
+    constexpr const char* QuickReviewDaysKey = "schedule/quickReviewDays";
+    constexpr const char* ScheduleWeightsKey = "schedule/weights";
+    constexpr const char* FittedReviewCountKey = "schedule/fittedReviewCount";
     constexpr const char* CardsPerExerciseKey = "intensiveLearning/cardsPerExercise";
     constexpr const char* SessionsPerDayKey = "intensiveLearning/sessionsPerDay";
     constexpr const char* TrainingWordCountKey = "intensiveLearning/trainingWordCount";
@@ -26,7 +31,6 @@ namespace
     constexpr const char* TargetLanguageKey = "languages/target";
     constexpr const char* NativeLanguageKey = "languages/native";
     constexpr const char* AllowMissingArticleKey = "answers/allowMissingArticle";
-    constexpr const char* MissedReviewDemotesKey = "schedule/missedReviewDemotes";
     constexpr const char* ReminderEnabledKey = "reminder/enabled";
     constexpr const char* ReminderTimeKey = "reminder/timeOfDayMinutes";
     constexpr const char* ReminderMessageKey = "reminder/message";
@@ -66,6 +70,11 @@ namespace
 
     bool IsSyncedKey(const QString& Key)
     {
+        if (Key.startsWith(QLatin1String("audio/desktop/")) || Key.startsWith(QLatin1String("audio/mobile/")))
+        {
+            return true;
+        }
+
         for (const char* DeviceGroup : {"appearance/", "motion/", "reader/", "sound/", "audio/", "sentences/", "triage/"})
         {
             if (Key.startsWith(QLatin1String(DeviceGroup)))
@@ -234,62 +243,90 @@ namespace
         Write(MatchVoiceName, Before.bMatchVoice, After.bMatchVoice);
     }
 
-    QString ToStored(const std::vector<int>& Days)
+    constexpr std::array<std::pair<double, double>, ScheduleWeightCount> ScheduleWeightBounds{{
+        {0.01, 100.0}, {0.01, 100.0}, {0.01, 100.0}, {0.01, 100.0}, {1.0, 10.0},   {0.001, 4.0},  {0.001, 4.0},
+        {0.001, 0.75}, {0.0, 4.5},    {0.0, 0.8},    {0.001, 3.5},  {0.001, 5.0},  {0.001, 0.25}, {0.001, 0.9},
+        {0.0, 4.0},    {0.0, 1.0},    {1.0, 6.0},    {0.0, 2.0},    {0.0, 2.0}}};
+
+    QString SerializeWeights(const FTScheduleWeights& Weights)
     {
         QStringList Parts;
 
-        for (const int Value : Days)
+        for (const double Weight : Weights)
         {
-            Parts.append(QString::number(Value));
+            Parts.append(QString::number(Weight, 'g', 8));
         }
 
         return Parts.join(QLatin1Char(','));
     }
 
-    std::vector<int> FromStored(const QString& Stored)
+    FTScheduleWeights ParseWeights(const QString& Text)
     {
-        std::vector<int> Result;
+        const QStringList Parts = Text.split(QLatin1Char(','), Qt::SkipEmptyParts);
 
-        for (const QString& Part : Stored.split(QLatin1Char(','), Qt::SkipEmptyParts))
+        if (Parts.size() != static_cast<qsizetype>(ScheduleWeightCount))
+        {
+            return DefaultScheduleWeights;
+        }
+
+        FTScheduleWeights Result = DefaultScheduleWeights;
+
+        for (size_t Index = 0; Index < ScheduleWeightCount; ++Index)
         {
             bool bParsed = false;
-            const int Value = Part.trimmed().toInt(&bParsed);
+            const double Value = Parts[static_cast<qsizetype>(Index)].trimmed().toDouble(&bParsed);
 
             if (bParsed)
             {
-                Result.push_back(Value);
+                Result[Index] = Value;
             }
         }
 
         return Result;
     }
 
+    constexpr int LegacyQuickReviewDays = 14;
+
+    size_t GetNearestIntensityIndex(int TargetRetention)
+    {
+        const auto Nearest = std::min_element(LearningIntensities.begin(), LearningIntensities.end(),
+                                              [TargetRetention](const FTLearningIntensity& Left, const FTLearningIntensity& Right)
+                                              {
+                                                  return std::abs(Left.TargetRetention - TargetRetention)
+                                                      < std::abs(Right.TargetRetention - TargetRetention);
+                                              });
+
+        return static_cast<size_t>(std::distance(LearningIntensities.begin(), Nearest));
+    }
+
     FTScheduleRules ReadRules(const QSettings& Settings)
     {
         FTScheduleRules Result;
 
-        const QString Stored = Settings.value(
-            IntervalsKey,
-            ShippedDefault(IntervalsKey, QString())).toString();
+        const int StoredTargetRetention = Settings.value(TargetRetentionKey, Result.Custom.TargetRetention).toInt();
+        Result.IntensityIndex = GetNearestIntensityIndex(StoredTargetRetention);
+        Result.Custom = LearningIntensities[Result.IntensityIndex];
+        Result.Custom.TargetRetention = StoredTargetRetention;
+        Result.Custom.LearnedStability = Settings.value(LearnedStabilityKey, Result.Custom.LearnedStability).toInt();
+        Result.Custom.QuickReviewStability = Settings.value(QuickReviewDaysKey, Result.Custom.QuickReviewStability).toInt();
 
-        if (!Stored.isEmpty())
+        if (Settings.contains(LearningIntensityKey))
         {
-            Result.IntervalDays = FromStored(Stored);
+            Result.IntensityIndex = Settings.value(LearningIntensityKey).toUInt();
+        }
+        else if (Settings.contains(QuickReviewDaysKey) && Result.Custom.QuickReviewStability != LegacyQuickReviewDays)
+        {
+            Result.IntensityIndex = CustomIntensityIndex;
         }
 
-        Result.MaximumDaysInFirstStage =
-            Settings.value(
-                FirstStageDaysKey,
-                ShippedDefault(FirstStageDaysKey, Result.MaximumDaysInFirstStage)).toInt();
+        Result.bCustomChosen = Settings.contains(LearnedStabilityKey) || Result.IntensityIndex == CustomIntensityIndex;
 
-        Result.bFirstStageFailureReturnsToPool =
-            Settings.value(
-                FirstStageToPoolKey,
-                ShippedDefault(FirstStageToPoolKey,
-                               Result.bFirstStageFailureReturnsToPool)).toBool();
+        Result.FittedReviewCount = Settings.value(FittedReviewCountKey, 0).toInt();
 
-        Result.bMissedReviewDemotes = Settings.value(
-            MissedReviewDemotesKey, ShippedDefault(MissedReviewDemotesKey, Result.bMissedReviewDemotes)).toBool();
+        if (Result.FittedReviewCount > 0)
+        {
+            Result.Weights = ParseWeights(Settings.value(ScheduleWeightsKey).toString());
+        }
 
         Sanitise(Result);
 
@@ -455,24 +492,38 @@ namespace
     }
 }
 
+void Sanitise(FTScheduleWeights& Weights)
+{
+    for (size_t Index = 0; Index < ScheduleWeightCount; ++Index)
+    {
+        if (!std::isfinite(Weights[Index]))
+        {
+            Weights[Index] = DefaultScheduleWeights[Index];
+        }
+
+        Weights[Index] = std::clamp(Weights[Index], ScheduleWeightBounds[Index].first, ScheduleWeightBounds[Index].second);
+    }
+}
+
+const FTLearningIntensity& FTScheduleRules::GetIntensity() const
+{
+    if (IntensityIndex == CustomIntensityIndex)
+    {
+        return Custom;
+    }
+
+    return LearningIntensities[IntensityIndex];
+}
+
 void Sanitise(FTScheduleRules& Rules)
 {
-    if (Rules.IntervalDays.empty())
-    {
-        Rules.IntervalDays = FTScheduleRules{}.IntervalDays;
-    }
+    Sanitise(Rules.Weights);
+    Rules.FittedReviewCount = std::max(Rules.FittedReviewCount, 0);
 
-    if (Rules.IntervalDays.size() > static_cast<size_t>(10))
-    {
-        Rules.IntervalDays.resize(10);
-    }
-
-    for (int& Days : Rules.IntervalDays)
-    {
-        Days = std::clamp(Days, 1, 1000);
-    }
-
-    Rules.MaximumDaysInFirstStage = std::max(Rules.MaximumDaysInFirstStage, 1);
+    Rules.IntensityIndex = std::min(Rules.IntensityIndex, CustomIntensityIndex);
+    Rules.Custom.TargetRetention = std::clamp(Rules.Custom.TargetRetention, MinimumTargetRetention, MaximumTargetRetention);
+    Rules.Custom.LearnedStability = std::clamp(Rules.Custom.LearnedStability, MinimumLearnedStability, MaximumLearnedStability);
+    Rules.Custom.QuickReviewStability = std::clamp(Rules.Custom.QuickReviewStability, 1, MaximumQuickReviewStability);
 }
 
 void Sanitise(FTIntensiveLearningRules& Rules)
@@ -601,39 +652,38 @@ const FTScheduleRules& FTSettings::GetScheduleRules() const
     return Rules;
 }
 
-void FTSettings::SetIntervalDays(const QList<int>& Days)
+void FTSettings::SetLearningIntensity(size_t Index)
 {
-    Rules.IntervalDays.assign(Days.begin(), Days.end());
+    if (Index == CustomIntensityIndex && !Rules.bCustomChosen)
+    {
+        SetCustomIntensity(Rules.GetIntensity());
+    }
+
+    Rules.IntensityIndex = Index;
     Sanitise(Rules);
 
-    Write(QLatin1String(IntervalsKey), ToStored(Rules.IntervalDays));
+    Write(QLatin1String(LearningIntensityKey), static_cast<int>(Rules.IntensityIndex));
 }
 
-void FTSettings::SetMaximumDaysInFirstStage(int Days)
+void FTSettings::SetCustomIntensity(const FTLearningIntensity& Intensity)
 {
-    Rules.MaximumDaysInFirstStage = Days;
+    Rules.Custom = Intensity;
+    Rules.bCustomChosen = true;
     Sanitise(Rules);
 
-    Write(QLatin1String(FirstStageDaysKey), Rules.MaximumDaysInFirstStage);
+    Write(QLatin1String(TargetRetentionKey), Rules.Custom.TargetRetention);
+    Write(QLatin1String(LearnedStabilityKey), Rules.Custom.LearnedStability);
+    Write(QLatin1String(QuickReviewDaysKey), Rules.Custom.QuickReviewStability);
 }
 
-void FTSettings::SetMissedReviewDemotes(bool bValue)
+void FTSettings::SetScheduleWeights(const FTScheduleWeights& Weights, int FittedReviewCount)
 {
-    Rules.bMissedReviewDemotes = bValue;
+    Rules.Weights = Weights;
+    Rules.FittedReviewCount = FittedReviewCount;
+    Sanitise(Rules);
 
-    Write(QLatin1String(MissedReviewDemotesKey), bValue);
-}
-
-void FTSettings::SetFirstStageFailureReturnsToPool(bool bValue)
-{
-    Rules.bFirstStageFailureReturnsToPool = bValue;
-
-    Write(QLatin1String(FirstStageToPoolKey), bValue);
-}
-
-QList<int> FTSettings::GetIntervalDays() const
-{
-    return QList<int>(Rules.IntervalDays.begin(), Rules.IntervalDays.end());
+    Write(QLatin1String(ScheduleWeightsKey), SerializeWeights(Rules.Weights));
+    Write(QLatin1String(FittedReviewCountKey), Rules.FittedReviewCount);
 }
 
 const FTIntensiveLearningRules& FTSettings::GetIntensiveLearningRules() const

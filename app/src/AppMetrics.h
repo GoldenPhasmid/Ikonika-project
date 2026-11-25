@@ -6,6 +6,8 @@
 
 bool IsMobileLayoutEnabled();
 void SetMobileLayoutEnabled(bool bEnabled);
+bool IsTabletScreenEnabled();
+void SetTabletScreenEnabled(bool bEnabled);
 
 /**
  * The non-colour half of the design tokens: sizes, spacing and font sizes taken from the v3
@@ -25,11 +27,7 @@ class AppMetrics : public QObject
     Q_PROPERTY(int railWidth READ GetRailWidth CONSTANT)
     Q_PROPERTY(int railWidthCollapsed READ GetRailWidthCollapsed CONSTANT)
     Q_PROPERTY(int topBarHeight READ GetTopBarHeight CONSTANT)
-    Q_PROPERTY(int headerIconTapWidth READ GetHeaderIconTapWidth CONSTANT)
-    Q_PROPERTY(int headerChevronSize READ GetHeaderChevronSize CONSTANT)
-    Q_PROPERTY(int headerActionIconSize READ GetHeaderActionIconSize CONSTANT)
-    Q_PROPERTY(int exerciseMuteIconSize READ GetExerciseMuteIconSize CONSTANT)
-    Q_PROPERTY(int exerciseActionIconTapWidth READ GetExerciseActionIconTapWidth CONSTANT)
+    Q_PROPERTY(int iconTapSize READ GetIconTapSize CONSTANT)
 
     // ---- Spacing ----
     Q_PROPERTY(int contentPadding READ GetContentPadding CONSTANT)
@@ -89,6 +87,7 @@ class AppMetrics : public QObject
 
     /** The face every screen asks for by name. */
     Q_PROPERTY(QString fontFamily READ GetFontFamily CONSTANT)
+    Q_PROPERTY(QString bookFontFamily READ GetBookFontFamily CONSTANT)
 
     // ---- Font sizes ----
     Q_PROPERTY(int fontMeta READ GetFontMeta CONSTANT)
@@ -133,7 +132,6 @@ class AppMetrics : public QObject
     Q_PROPERTY(int chipListSpacing READ GetChipListSpacing CONSTANT)
     Q_PROPERTY(int optionCellMinimumHeight READ GetOptionCellMinimumHeight CONSTANT)
     Q_PROPERTY(int playButtonSize READ GetPlayButtonSize CONSTANT)
-    Q_PROPERTY(int playButtonGlyphSize READ GetPlayButtonGlyphSize CONSTANT)
 
     Q_PROPERTY(int exerciseAdvanceDelayCorrect READ GetExerciseAdvanceDelayCorrect CONSTANT)
     Q_PROPERTY(int exerciseAdvanceDelayWrong READ GetExerciseAdvanceDelayWrong CONSTANT)
@@ -161,6 +159,7 @@ class AppMetrics : public QObject
     Q_PROPERTY(int contentWidthWide READ GetContentWidthWide CONSTANT)
     Q_PROPERTY(int contentWidthNarrow READ GetContentWidthNarrow CONSTANT)
     Q_PROPERTY(int columnMaximumWidth READ GetColumnMaximumWidth CONSTANT)
+    Q_PROPERTY(int shellMaximumWidth READ GetShellMaximumWidth CONSTANT)
 
     Q_PROPERTY(int listPaneWidth READ GetListPaneWidth CONSTANT)
 
@@ -235,16 +234,43 @@ class AppMetrics : public QObject
     Q_PROPERTY(int rowProgressWidth READ GetRowProgressWidth CONSTANT)
     Q_PROPERTY(int categoryPaneWidth READ GetCategoryPaneWidth CONSTANT)
     Q_PROPERTY(int coverTileMinimumWidth READ GetCoverTileMinimumWidth CONSTANT)
+    Q_PROPERTY(int deckHeaderRoomyHeight READ GetDeckHeaderRoomyHeight CONSTANT)
+    Q_PROPERTY(int deckBadgeSize READ GetDeckBadgeSize CONSTANT)
+    Q_PROPERTY(int deckBadgeSizeCompact READ GetDeckBadgeSizeCompact CONSTANT)
+    Q_PROPERTY(int deckStripeWidth READ GetDeckStripeWidth CONSTANT)
+    Q_PROPERTY(int fontDeckName READ GetFontDeckName CONSTANT)
+    Q_PROPERTY(int deckHeaderFrameWidth READ GetDeckHeaderFrameWidth CONSTANT)
+    Q_PROPERTY(int deckHeaderStackWidth READ GetDeckHeaderStackWidth CONSTANT)
+    Q_PROPERTY(int deckHeaderRadius READ GetDeckHeaderRadius CONSTANT)
+    Q_PROPERTY(int deckHeaderSymbolSize READ GetDeckHeaderSymbolSize CONSTANT)
+    Q_PROPERTY(int deckHeaderActionWidth READ GetDeckHeaderActionWidth CONSTANT)
+    Q_PROPERTY(int deckHeaderActionIconSize READ GetDeckHeaderActionIconSize CONSTANT)
+    Q_PROPERTY(int deckHeaderTagHeight READ GetDeckHeaderTagHeight CONSTANT)
+    Q_PROPERTY(int deckHeaderTagIconSize READ GetDeckHeaderTagIconSize CONSTANT)
+    Q_PROPERTY(int deckHeaderCheckRadius READ GetDeckHeaderCheckRadius CONSTANT)
+    Q_PROPERTY(qreal deckHeaderIconStrokeWidth READ GetDeckHeaderIconStrokeWidth CONSTANT)
+    Q_PROPERTY(qreal deckHeaderTitleLeading READ GetDeckHeaderTitleLeading CONSTANT)
+    Q_PROPERTY(qreal deckHeaderDescriptionLeading READ GetDeckHeaderDescriptionLeading CONSTANT)
+    Q_PROPERTY(int vocabularySegmentHeight READ GetVocabularySegmentHeight CONSTANT)
+    Q_PROPERTY(int listSearchMinimumWidth READ GetListSearchMinimumWidth CONSTANT)
     Q_PROPERTY(int bookTileMinimumWidth READ GetBookTileMinimumWidth CONSTANT)
     Q_PROPERTY(qreal bookCoverAspect READ GetBookCoverAspect CONSTANT)
-    Q_PROPERTY(qreal bookFrameInset READ GetBookFrameInset CONSTANT)
-    Q_PROPERTY(qreal bookFramePadding READ GetBookFramePadding CONSTANT)
+    Q_PROPERTY(qreal bookCoverInset READ GetBookCoverInset CONSTANT)
+    Q_PROPERTY(qreal bookTextWidth READ GetBookTextWidth CONSTANT)
     Q_PROPERTY(qreal bookTitleScale READ GetBookTitleScale CONSTANT)
+    Q_PROPERTY(qreal bookTitleMinimumScale READ GetBookTitleMinimumScale CONSTANT)
+    Q_PROPERTY(qreal bookTitleLineHeight READ GetBookTitleLineHeight CONSTANT)
     Q_PROPERTY(qreal bookAuthorScale READ GetBookAuthorScale CONSTANT)
-    Q_PROPERTY(qreal bookOrnamentWidth READ GetBookOrnamentWidth CONSTANT)
+    Q_PROPERTY(qreal bookSpineWidth READ GetBookSpineWidth CONSTANT)
+    Q_PROPERTY(qreal bookBandTop READ GetBookBandTop CONSTANT)
+    Q_PROPERTY(qreal bookBandHeight READ GetBookBandHeight CONSTANT)
+    Q_PROPERTY(qreal bookBandRise READ GetBookBandRise CONSTANT)
+    Q_PROPERTY(qreal bookBandLine READ GetBookBandLine CONSTANT)
+    Q_PROPERTY(qreal bookBandHairline READ GetBookBandHairline CONSTANT)
     Q_PROPERTY(int bookRingSize READ GetBookRingSize CONSTANT)
     Q_PROPERTY(int bookRingStroke READ GetBookRingStroke CONSTANT)
-    Q_PROPERTY(int bookActionSize READ GetBookActionSize CONSTANT)
+    Q_PROPERTY(int bookLevelSize READ GetBookLevelSize CONSTANT)
+    Q_PROPERTY(int bookLevelFont READ GetBookLevelFont CONSTANT)
     Q_PROPERTY(int bookOverviewWidth READ GetBookOverviewWidth CONSTANT)
     Q_PROPERTY(int bookOverviewHeight READ GetBookOverviewHeight CONSTANT)
     Q_PROPERTY(int bookOverviewCoverWidth READ GetBookOverviewCoverWidth CONSTANT)
@@ -278,6 +304,7 @@ class AppMetrics : public QObject
     Q_PROPERTY(int readerContentsWidth READ GetReaderContentsWidth CONSTANT)
     Q_PROPERTY(int coverGridWidth READ GetCoverGridWidth CONSTANT)
     Q_PROPERTY(int deckIconSize READ GetDeckIconSize CONSTANT)
+    Q_PROPERTY(int newDeckIconSize READ GetNewDeckIconSize CONSTANT)
     Q_PROPERTY(int categoryDotSize READ GetCategoryDotSize CONSTANT)
     Q_PROPERTY(int avatarSize READ GetAvatarSize CONSTANT)
     Q_PROPERTY(int toggleChipHeight READ GetToggleChipHeight CONSTANT)
@@ -292,7 +319,7 @@ class AppMetrics : public QObject
     Q_PROPERTY(int listMarkerWidth READ GetListMarkerWidth CONSTANT)
     Q_PROPERTY(int completeBadgeSize READ GetCompleteBadgeSize CONSTANT)
     Q_PROPERTY(int completeGlyphSize READ GetCompleteGlyphSize CONSTANT)
-    Q_PROPERTY(qreal iconStrokeBold READ GetIconStrokeBold CONSTANT)
+    Q_PROPERTY(qreal iconStrokeWidth READ GetIconStrokeWidth CONSTANT)
     Q_PROPERTY(qreal dashStrokeWidth READ GetDashStrokeWidth CONSTANT)
     Q_PROPERTY(qreal dashLength READ GetDashLength CONSTANT)
 
@@ -343,9 +370,11 @@ class AppMetrics : public QObject
     Q_PROPERTY(qreal readerAutoscrollSpeed READ GetReaderAutoscrollSpeed CONSTANT)
     Q_PROPERTY(int readerAutoscrollAnchorSize READ GetReaderAutoscrollAnchorSize CONSTANT)
     Q_PROPERTY(qreal readerImageHeightShare READ GetReaderImageHeightShare CONSTANT)
-    Q_PROPERTY(qreal readerEndSpaceShare READ GetReaderEndSpaceShare CONSTANT)
+    Q_PROPERTY(int readerEndSpace READ GetReaderEndSpace CONSTANT)
     Q_PROPERTY(int readerLookupWordLimit READ GetReaderLookupWordLimit CONSTANT)
     Q_PROPERTY(qreal readerTranslationWidthShare READ GetReaderTranslationWidthShare CONSTANT)
+    Q_PROPERTY(bool tabletScreen READ IsTabletScreen CONSTANT)
+    Q_PROPERTY(int readerPopupWidth READ GetReaderPopupWidth CONSTANT)
     Q_PROPERTY(int readerCropPadding READ GetReaderCropPadding CONSTANT)
     Q_PROPERTY(int readerPositionWidth READ GetReaderPositionWidth CONSTANT)
     Q_PROPERTY(int readerBarHeight READ GetReaderBarHeight CONSTANT)
@@ -364,11 +393,7 @@ public:
     int GetRailWidth() const;
     int GetRailWidthCollapsed() const;
     int GetTopBarHeight() const;
-    int GetHeaderIconTapWidth() const;
-    int GetHeaderChevronSize() const;
-    int GetHeaderActionIconSize() const;
-    int GetExerciseMuteIconSize() const;
-    int GetExerciseActionIconTapWidth() const;
+    int GetIconTapSize() const;
 
     int GetContentPadding() const;
     int GetGapTight() const;
@@ -400,6 +425,7 @@ public:
     int GetRadiusLarge() const;
 
     QString GetFontFamily() const;
+    QString GetBookFontFamily() const;
 
     int GetFontMeta() const;
     int GetFontMicro() const;
@@ -429,7 +455,6 @@ public:
     int GetChipListSpacing() const;
     int GetOptionCellMinimumHeight() const;
     int GetPlayButtonSize() const;
-    int GetPlayButtonGlyphSize() const;
 
     int GetExerciseAdvanceDelayCorrect() const;
     int GetExerciseAdvanceDelayWrong() const;
@@ -457,6 +482,7 @@ public:
     int GetContentWidthWide() const;
     int GetContentWidthNarrow() const;
     int GetColumnMaximumWidth() const;
+    int GetShellMaximumWidth() const;
     int GetListPaneWidth() const;
     int GetNavItemHeight() const;
     int GetIconSize() const;
@@ -521,16 +547,43 @@ public:
     int GetRowProgressWidth() const;
     int GetCategoryPaneWidth() const;
     int GetCoverTileMinimumWidth() const;
+    int GetDeckHeaderRoomyHeight() const;
+    int GetDeckBadgeSize() const;
+    int GetDeckBadgeSizeCompact() const;
+    int GetDeckStripeWidth() const;
+    int GetFontDeckName() const;
+    int GetDeckHeaderFrameWidth() const;
+    int GetDeckHeaderStackWidth() const;
+    int GetDeckHeaderRadius() const;
+    int GetDeckHeaderSymbolSize() const;
+    int GetDeckHeaderActionWidth() const;
+    int GetDeckHeaderActionIconSize() const;
+    int GetDeckHeaderTagHeight() const;
+    int GetDeckHeaderTagIconSize() const;
+    int GetDeckHeaderCheckRadius() const;
+    qreal GetDeckHeaderIconStrokeWidth() const;
+    qreal GetDeckHeaderTitleLeading() const;
+    qreal GetDeckHeaderDescriptionLeading() const;
+    int GetVocabularySegmentHeight() const;
+    int GetListSearchMinimumWidth() const;
     int GetBookTileMinimumWidth() const;
     qreal GetBookCoverAspect() const;
-    qreal GetBookFrameInset() const;
-    qreal GetBookFramePadding() const;
+    qreal GetBookCoverInset() const;
+    qreal GetBookTextWidth() const;
     qreal GetBookTitleScale() const;
+    qreal GetBookTitleMinimumScale() const;
+    qreal GetBookTitleLineHeight() const;
     qreal GetBookAuthorScale() const;
-    qreal GetBookOrnamentWidth() const;
+    qreal GetBookSpineWidth() const;
+    qreal GetBookBandTop() const;
+    qreal GetBookBandHeight() const;
+    qreal GetBookBandRise() const;
+    qreal GetBookBandLine() const;
+    qreal GetBookBandHairline() const;
     int GetBookRingSize() const;
     int GetBookRingStroke() const;
-    int GetBookActionSize() const;
+    int GetBookLevelSize() const;
+    int GetBookLevelFont() const;
     int GetBookOverviewWidth() const;
     int GetBookOverviewHeight() const;
     int GetBookOverviewCoverWidth() const;
@@ -564,6 +617,7 @@ public:
     int GetReaderContentsWidth() const;
     int GetCoverGridWidth() const;
     int GetDeckIconSize() const;
+    int GetNewDeckIconSize() const;
     int GetCategoryDotSize() const;
     int GetAvatarSize() const;
     int GetToggleChipHeight() const;
@@ -576,7 +630,7 @@ public:
     int GetListMarkerWidth() const;
     int GetCompleteBadgeSize() const;
     int GetCompleteGlyphSize() const;
-    qreal GetIconStrokeBold() const;
+    qreal GetIconStrokeWidth() const;
     qreal GetDashStrokeWidth() const;
     qreal GetDashLength() const;
     int GetSelectionBarWidth() const;
@@ -624,10 +678,12 @@ public:
     int GetReaderAutoscrollDeadZone() const;
     int GetReaderLookupWordLimit() const;
     qreal GetReaderTranslationWidthShare() const;
+    bool IsTabletScreen() const;
+    int GetReaderPopupWidth() const;
     qreal GetReaderAutoscrollSpeed() const;
     int GetReaderAutoscrollAnchorSize() const;
     qreal GetReaderImageHeightShare() const;
-    qreal GetReaderEndSpaceShare() const;
+    int GetReaderEndSpace() const;
     int GetReaderCropPadding() const;
     int GetReaderPositionWidth() const;
     int GetReaderBarHeight() const;

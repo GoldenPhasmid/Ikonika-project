@@ -9,6 +9,8 @@ ColumnLayout
     property int learningCount: 0
     property int learnedCount: 0
     property string selectedKey: ""
+    property bool trackShown: true
+    property bool joined: false
 
     signal stageOpened(string filterKey)
 
@@ -44,6 +46,7 @@ ColumnLayout
     {
         id: track
 
+        visible: root.trackShown
         Layout.fillWidth: true
         Layout.preferredHeight: AppMetrics.progressBarHeight * 2
         radius: height / 2
@@ -77,7 +80,7 @@ ColumnLayout
     RowLayout
     {
         Layout.fillWidth: true
-        spacing: AppMetrics.gapSmall
+        spacing: root.joined ? -AppMetrics.borderWidth : AppMetrics.gapSmall
 
         Repeater
         {
@@ -88,22 +91,29 @@ ColumnLayout
                 id: cell
 
                 required property var modelData
+                required property int index
 
                 readonly property bool selected: modelData.key === root.selectedKey
                 readonly property bool tappable: modelData.count > 0 || selected
+                readonly property real leftRadius: root.joined && cell.index > 0 ? 0 : AppMetrics.radiusMedium
+                readonly property real rightRadius: root.joined && cell.index < root.groups.length - 1 ? 0 : AppMetrics.radiusMedium
 
                 objectName: "vocabulary_" + modelData.key
 
                 Layout.fillWidth: true
                 Layout.preferredWidth: 1
-                Layout.preferredHeight: AppMetrics.sessionTileHeightCompact
+                Layout.preferredHeight: root.joined ? AppMetrics.vocabularySegmentHeight : AppMetrics.sessionTileHeightCompact
+                z: cell.selected ? 1 : 0
 
                 Accessible.role: Accessible.Button
                 Accessible.name: qsTr("%1, %2").arg(cell.modelData.label).arg(cell.modelData.count)
                 Accessible.checkable: true
                 Accessible.checked: cell.selected
 
-                radius: AppMetrics.radiusMedium
+                topLeftRadius: cell.leftRadius
+                bottomLeftRadius: cell.leftRadius
+                topRightRadius: cell.rightRadius
+                bottomRightRadius: cell.rightRadius
                 color: Qt.tint(AppTheme.colourPanel, AppTheme.faded(AppTheme.colourAccent,
                     cellTap.pressed ? 0.24 : (cell.selected ? 0.10 : (cellHover.hovered ? AppTheme.alphaFaint : 0))))
                 border.width: AppMetrics.borderWidth
@@ -112,13 +122,13 @@ ColumnLayout
                 ColumnLayout
                 {
                     anchors.centerIn: parent
-                    spacing: 2
+                    spacing: root.joined ? 0 : 2
 
                     Text
                     {
                         Layout.alignment: Qt.AlignHCenter
                         text: cell.modelData.count
-                        font.pixelSize: AppMetrics.fontSubtitle
+                        font.pixelSize: root.joined ? AppMetrics.fontLabel : AppMetrics.fontSubtitle
                         font.weight: Font.Bold
                         font.family: AppMetrics.fontFamily
                         color: cell.tappable ? cell.modelData.figure : AppTheme.colourMuted

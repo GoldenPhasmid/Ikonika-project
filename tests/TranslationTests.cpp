@@ -15,6 +15,7 @@ namespace
     const std::string EnglishModelDirectory = OPUS_MT_ENGLISH_MODEL_DIRECTORY;
     const std::string PortugueseModelDirectory = OPUS_MT_PORTUGUESE_MODEL_DIRECTORY;
     const std::string ItalianModelDirectory = OPUS_MT_ITALIAN_MODEL_DIRECTORY;
+    const std::string GermanModelDirectory = OPUS_MT_GERMAN_MODEL_DIRECTORY;
 
     const std::optional<FTInContextTranslator>& Loaded()
     {
@@ -399,6 +400,40 @@ TEST_CASE("Italian translation benchmark across grammar", "[.][translation-bench
         "Gli studenti che non consegneranno la tesi entro venerdì non potranno sostenere l'esame finale.",
         "Anche se il governo ha promesso di abbassare le tasse, la maggior parte delle famiglie non ha notato alcun miglioramento del proprio potere d'acquisto.",
         "Ti amo e vorrei passare il resto della mia vita con te.",
+    });
+}
+
+TEST_CASE("German translation benchmark across grammar", "[.][translation-benchmark][de]")
+{
+    RunBenchmark(GermanModelDirectory, {
+        "Meine Cousinen sind gestern angekommen; sie bleiben eine Woche.",
+        "Meine Schwester ist größer als mein Bruder.",
+        "Er hat ein blaues Kleid und schwarze Schuhe gekauft.",
+        "Ich stehe jeden Morgen um sechs Uhr auf.",
+        "Sie haben sich vor zehn Jahren in Berlin kennengelernt.",
+        "Gestern sind wir auf den Markt gegangen.",
+        "Als Kind verbrachte ich die Ferien bei meiner Großmutter.",
+        "Morgen scheint im ganzen Land die Sonne.",
+        "Ich werde heute Nachmittag den Arzt anrufen.",
+        "Er hatte schon gegessen, als wir ankamen.",
+        "Wenn ich Geld hätte, würde ich ein Haus auf dem Land kaufen.",
+        "Wenn du mehr gelernt hättest, hättest du die Prüfung bestanden.",
+        "Ruf mich an, wenn du ankommst.",
+        "Obwohl sie müde ist, arbeitet sie weiter.",
+        "Hast du Maria gesehen? Ja, ich habe sie gestern gesehen.",
+        "Ich habe es ihm heute Morgen gegeben.",
+        "Die Briefe, die ich geschrieben habe, liegen auf dem Tisch.",
+        "Ich habe noch nie das Meer gesehen.",
+        "Es gibt kein Brot mehr.",
+        "Niemand ist zur Besprechung gekommen.",
+        "Der Brief wurde vom Direktor geschickt.",
+        "Wo hast du die Schlüssel hingelegt?",
+        "Warum hast du mir nicht geantwortet?",
+        "Das Buch, von dem ich dir erzählt habe, ist letzte Woche erschienen.",
+        "Es regnet seit heute Morgen in Strömen.",
+        "Mach bitte die Tür zu, es ist kalt.",
+        "Die Studenten, die ihre Arbeit nicht bis Freitag abgeben, dürfen die Abschlussprüfung nicht ablegen.",
+        "Ich liebe dich und möchte den Rest meines Lebens mit dir verbringen.",
     });
 }
 

@@ -7,8 +7,12 @@ Item
     id: root
 
     property var vocabulary: null
+    property var daily: null
+    property var intensive: null
+    property string userDeckId: ""
 
     signal done()
+    signal formsTrainingRequested(string training)
     signal exerciseRequested(string exercise, bool reverse, int cardCount, int repetitionCount, var filterKeys)
     signal tabSelected(string key)
 
@@ -31,6 +35,66 @@ Item
           subtitle: qsTr("Match pairs fast") }
     ]
 
+    readonly property var formsTrainingKinds: [
+        { key: "conjugation", iconSvg: Icons.Icons.session_conjugation.path, label: qsTr("Conjugations") },
+        { key: "forms", iconSvg: Icons.Icons.session_forms.path, label: qsTr("Forms") }
+    ]
+
+    property var formsTrainings: []
+
+    function listFormsTrainings()
+    {
+        if (!root.daily)
+        {
+            return []
+        }
+
+        const offered = []
+
+        for (const kind of root.formsTrainingKinds)
+        {
+            const trainingId = root.daily.formsTrainingId(kind.key)
+
+            if (trainingId.length === 0)
+            {
+                continue
+            }
+
+            const resumable = root.intensive ? root.intensive.controller.hasSessionFor(trainingId) : false
+
+            offered.push({
+                key: kind.key,
+                iconSvg: kind.iconSvg,
+                label: kind.label,
+                resumable: resumable,
+                wordCount: resumable ? root.intensive.controller.wordCountFor(trainingId)
+                                     : root.daily.formsWordCount(trainingId),
+                ready: resumable || root.daily.canStartFormsTraining(trainingId)
+            })
+        }
+
+        return offered
+    }
+
+    onVisibleChanged: if (root.visible) root.formsTrainings = root.listFormsTrainings()
+    Component.onCompleted: root.formsTrainings = root.listFormsTrainings()
+
+    Connections
+    {
+        target: root.daily
+        enabled: root.visible
+
+        function onFormsCountsChanged() { root.formsTrainings = root.listFormsTrainings() }
+    }
+
+    Connections
+    {
+        target: root.intensive ? root.intensive.controller : null
+        enabled: root.visible
+
+        function onStateChanged() { root.formsTrainings = root.listFormsTrainings() }
+    }
+
     property var selectedExercise: null
     property bool practiceSheetOpen: false
 
@@ -39,6 +103,7 @@ Item
         anchors.fill: parent
 
         activeTab: "vocabulary"
+        contentMaximumWidth: AppMetrics.shellMaximumWidth
         headerTitle: qsTr("Practice")
         showBack: true
         showTabBar: false
@@ -53,6 +118,33 @@ Item
             anchors.top: parent.top
             anchors.margins: AppMetrics.contentPadding
             spacing: AppMetrics.gapSmall
+
+            Repeater
+            {
+                model: root.userDeckId.length > 0 ? [] : root.formsTrainings
+
+                delegate: MobileActionButton
+                {
+                    required property var modelData
+
+                    objectName: "practice_" + modelData.key
+
+                    interactive: modelData.ready
+                    iconSvg: modelData.iconSvg
+                    label: modelData.label
+                    caption: modelData.resumable ? qsTr("Continue")
+                           : modelData.ready ? "" : qsTr("Learn more words to unlock")
+                    trailing: modelData.wordCount >= 0 ? modelData.wordCount.toString() : ""
+
+                    onClicked: root.formsTrainingRequested(modelData.key)
+                }
+            }
+
+            Item
+            {
+                visible: root.formsTrainings.length > 0 && root.userDeckId.length === 0
+                Layout.preferredHeight: AppMetrics.gapSmall
+            }
 
             Repeater
             {

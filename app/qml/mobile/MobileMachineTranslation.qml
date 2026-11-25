@@ -21,12 +21,12 @@ ColumnLayout
 
         Layout.fillWidth: true
         visible: root.lookup.formTerm.length > 0
-        enabled: !root.lookup.translating && (root.translated || (AppMachineTranslation.offered && !AppMachineTranslation.downloading))
+        enabled: !root.lookup.translating && (root.translated || (root.lookup.machinePack.offered && !root.lookup.machinePack.downloading))
         word: root.lookup.formTerm
         translation: root.lookup.translating ? qsTr("Translating...")
             : root.translated ? root.lookup.machineTranslation
-            : AppMachineTranslation.downloading ? qsTr("Downloading translation, %1%").arg(Math.round(AppMachineTranslation.progress * 100))
-            : AppMachineTranslation.bytes > 0 ? qsTr("Download translation · %1 MB").arg(Math.round(AppMachineTranslation.bytes / (1024 * 1024)))
+            : root.lookup.machinePack.downloading ? qsTr("Downloading translation, %1%").arg(Math.round(root.lookup.machinePack.progress * 100))
+            : root.lookup.machinePack.bytes > 0 ? qsTr("Download translation · %1 MB").arg(Math.round(root.lookup.machinePack.bytes / (1024 * 1024)))
             : qsTr("Download translation")
         partOfSpeech: root.translated ? root.lookup.formReading : ""
         maxStage: 1
@@ -47,7 +47,7 @@ ColumnLayout
                 return
             }
 
-            AppMachineTranslation.download()
+            root.lookup.machinePack.download()
         }
     }
 
@@ -99,19 +99,19 @@ ColumnLayout
         objectName: "machine_translation_download"
 
         Layout.fillWidth: true
-        visible: root.lookup.formTerm.length === 0 && AppMachineTranslation.offered && !AppMachineTranslation.downloading
+        visible: root.lookup.formTerm.length === 0 && root.lookup.machinePack.offered && !root.lookup.machinePack.downloading
 
-        label: AppMachineTranslation.bytes > 0
-            ? qsTr("Download · %1 MB").arg(Math.round(AppMachineTranslation.bytes / (1024 * 1024)))
+        label: root.lookup.machinePack.bytes > 0
+            ? qsTr("Download · %1 MB").arg(Math.round(root.lookup.machinePack.bytes / (1024 * 1024)))
             : qsTr("Download")
 
-        onClicked: AppMachineTranslation.download()
+        onClicked: root.lookup.machinePack.download()
     }
 
     ColumnLayout
     {
         Layout.fillWidth: true
-        visible: root.lookup.formTerm.length === 0 && AppMachineTranslation.offered && AppMachineTranslation.downloading
+        visible: root.lookup.formTerm.length === 0 && root.lookup.machinePack.offered && root.lookup.machinePack.downloading
         spacing: AppMetrics.gapSmall
 
         Text
@@ -128,7 +128,7 @@ ColumnLayout
         {
             Layout.fillWidth: true
             Accessible.name: qsTr("Downloading translation")
-            value: AppMachineTranslation.progress
+            value: root.lookup.machinePack.progress
             indeterminate: value <= 0
             palette.dark: AppTheme.colourText
             palette.midlight: AppTheme.colourFaint

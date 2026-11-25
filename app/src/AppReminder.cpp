@@ -1,5 +1,6 @@
 #include "AppReminder.h"
 
+#include "AppCards.h"
 #include "AppDatabase.h"
 #include "AppDictionary.h"
 #include "AppLocalization.h"
@@ -302,7 +303,7 @@ bool AppReminder::IsTodayDone() const
     }
 
     const int Due = FTScheduleManager(AppDatabase::Get().GetCardRepository()).CountDueCardsForToday(GetTodayDayNumber());
-    const int Pool = AppDatabase::Get().GetCardRepository().CountUnlearnedCards();
+    const int Pool = static_cast<int>(AppCards::LoadDailyPool().size());
 
     return (Due == 0 && Pool == 0) || DayRequirementMet(Due);
 }
@@ -365,7 +366,7 @@ QString AppReminder::debugTriggerCheck()
     if (AppDatabase::Get().IsReady())
     {
         const int Due = FTScheduleManager(AppDatabase::Get().GetCardRepository()).CountDueCardsForToday(GetTodayDayNumber());
-        const int Pool = AppDatabase::Get().GetCardRepository().CountUnlearnedCards();
+        const int Pool = static_cast<int>(AppCards::LoadDailyPool().size());
 
         if (Due == 0 && Pool == 0)
         {

@@ -10,7 +10,10 @@ Item
     required property VocabularyController controller
 
     property var deckId: 0
-    readonly property bool deckMode: root.deckId > 0
+    property string userDeckId: ""
+    readonly property bool deckMode: root.deckId > 0 || root.userDeckId.length > 0
+
+    property Component deckHeader: null
 
     readonly property var vocabulary: root.controller
 
@@ -24,8 +27,8 @@ Item
     signal wordOpened(string word, string partOfSpeech)
     signal tabSelected(string key)
     signal searchRequested()
-    signal learnRequested(var deckId)
     signal backRequested()
+    signal optionsRequested()
 
     function resetView()
     {
@@ -59,6 +62,13 @@ Item
         target: root.controller
         property: "deckId"
         value: root.deckId
+    }
+
+    Binding
+    {
+        target: root.controller
+        property: "userDeckId"
+        value: root.userDeckId
     }
 
     readonly property var filterOptions: [
@@ -171,15 +181,17 @@ Item
         anchors.fill: parent
 
         activeTab: root.deckMode ? "decks" : "vocabulary"
-        contentMaximumWidth: root.deckMode ? Number.POSITIVE_INFINITY : 672
+        contentMaximumWidth: root.deckMode ? Number.POSITIVE_INFINITY : AppMetrics.shellMaximumWidth
         headerTitle: root.deckMode ? root.controller.deckName : qsTr("My Vocabulary")
         showBack: root.deckMode
         showSearch: true
+        showOptions: root.deckMode
         showTabBar: true
 
         onTabSelected: function(key) { root.tabSelected(key) }
         onSearchRequested: root.searchRequested()
         onBackRequested: root.backRequested()
+        onOptionsRequested: root.optionsRequested()
 
         ColumnLayout
         {
@@ -188,11 +200,19 @@ Item
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.top: parent.top
-            anchors.bottom: actionRow.top
-            anchors.bottomMargin: AppMetrics.gapSmall
+            anchors.bottom: actionRow.visible ? actionRow.top : parent.bottom
+            anchors.bottomMargin: actionRow.visible ? AppMetrics.gapSmall : AppMetrics.contentPadding
             anchors.margins: AppMetrics.contentPadding
             spacing: AppMetrics.gapWide
             enabled: !root.anySheetOpen
+
+            Loader
+            {
+                Layout.fillWidth: true
+                active: root.deckHeader !== null
+                visible: active
+                sourceComponent: root.deckHeader
+            }
 
             MobileSearchFilterBar
             {
@@ -271,7 +291,7 @@ Item
 
                 onVoicePlayRequested: function(index)
                 {
-                    root.controller.speakWord(root.controller.visibleCards[index].targetWord)
+                    root.controller.speakWord(root.controller.visibleCards[index].word)
                 }
 
                 onEditRequested: function(index)
@@ -320,18 +340,8 @@ Item
             anchors.right: parent.right
             anchors.bottom: parent.bottom
             anchors.margins: AppMetrics.contentPadding
+            visible: !root.deckMode || root.userDeckId.length > 0
             enabled: !root.anySheetOpen
-
-            MobileWideButton
-            {
-                objectName: "deck_learn"
-                visible: root.deckMode
-
-                label: qsTr("Learn")
-                interactive: root.controller.deckNewCount > 0
-
-                onClicked: root.learnRequested(root.deckId)
-            }
 
             MobileWideButton
             {
@@ -346,7 +356,6 @@ Item
             MobileWideButton
             {
                 objectName: "vocabulary_add_word"
-                visible: !root.deckMode
 
                 label: qsTr("Add word")
 

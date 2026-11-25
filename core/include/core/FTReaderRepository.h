@@ -26,6 +26,7 @@ struct FTReaderDocumentRow
     double LastScrollX = 0.0;
     double LastScrollY = 0.0;
     std::string CloudId;
+    std::string CloudTitle;
     int64_t PositionCount = 0;
     int64_t ReadAloudParagraph = -1;
     int64_t ReadAloudCharacter = 0;
@@ -89,6 +90,8 @@ public:
     bool SetScroll(const std::string& Id, double ScrollX, double ScrollY);
 
     bool SetCloudId(const std::string& Id, const std::string& CloudId);
+
+    bool SetCloudTitle(const std::string& Id, const std::string& CloudTitle);
 
     bool SetPositionCount(const std::string& Id, int64_t PositionCount);
 

@@ -3,6 +3,7 @@
 #include "AppCatalog.h"
 #include "AppDictionary.h"
 #include "AppFileTransfer.h"
+#include "AppLocalization.h"
 #include "AppPaths.h"
 #include "AppSpeech.h"
 #include "AppTranslator.h"
@@ -204,6 +205,16 @@ void AppPackageDownloader::download(const QString& Id)
 
     qCInfo(LogUpdate) << "Queued" << Id << "; waiting behind" << Queue.size() - 1;
 
+    if (IsBusy())
+    {
+        const std::optional<FTCatalogPackage> Package = AppCatalog::Get().FindPackage(Id);
+
+        if (Package.has_value() && Package->IsCompatible())
+        {
+            Transfer->QueueInBackground(MakeTransferJob(*Package));
+        }
+    }
+
     StartNextInQueue();
 }
 
@@ -276,6 +287,13 @@ void AppPackageDownloader::forget(const QString& Id)
     emit queueChanged();
 
     qCInfo(LogUpdate) << "Dropped" << Id << "from the queue";
+
+    const std::optional<FTCatalogPackage> Package = AppCatalog::Get().FindPackage(Id);
+
+    if (Package.has_value())
+    {
+        AppFileTransfer::CancelBackground(MakeTransferJob(*Package).DestinationPath);
+    }
 }
 
 void AppPackageDownloader::StartNextInQueue()
@@ -361,11 +379,21 @@ bool AppPackageDownloader::Begin(const QString& Id)
     TotalBytes = Package->Bytes;
     LastError.clear();
 
-    const QString FileName = Package->FileName.empty()
-                                 ? Id + QStringLiteral(".zip")
-                                 : QString::fromStdString(Package->FileName);
+    const FTransferJob Job = MakeTransferJob(*Package);
 
-    ArchivePath = QDir(AppPaths::DownloadScratchDirectory()).filePath(FileName);
+    ArchivePath = Job.DestinationPath;
+
+    QList<FTransferJob> Upcoming;
+
+    for (const QString& QueuedId : std::as_const(Queue))
+    {
+        const std::optional<FTCatalogPackage> Queued = AppCatalog::Get().FindPackage(QueuedId);
+
+        if (Queued.has_value() && Queued->IsCompatible())
+        {
+            Upcoming.append(MakeTransferJob(*Queued));
+        }
+    }
 
     qCInfo(LogUpdate) << "Installing package" << Id << "version" << ActiveVersion << "into"
                       << Destination;
@@ -374,10 +402,34 @@ bool AppPackageDownloader::Begin(const QString& Id)
     emit progressChanged();
     emit lastErrorChanged();
 
-    Transfer->Start(QUrl(QString::fromStdString(Package->Url)), ArchivePath,
-                    QString::fromStdString(Package->Sha256), Package->Bytes);
+    Transfer->StartInBackground(Job, Upcoming);
 
     return true;
+}
+
+FTransferJob AppPackageDownloader::MakeTransferJob(const FTCatalogPackage& Package) const
+{
+    const QString Id = QString::fromStdString(Package.Id);
+    const QString FileName = Package.FileName.empty()
+                                 ? Id + QStringLiteral(".zip")
+                                 : QString::fromStdString(Package.FileName);
+
+    QString Name = QString::fromStdString(Package.Name);
+
+    if (Name.isEmpty())
+    {
+        Name = Package.TargetLanguage.empty() ? Id : LanguageDisplayName(Package.TargetLanguage);
+    }
+
+    FTransferJob Job;
+
+    Job.Url = QUrl(QString::fromStdString(Package.Url));
+    Job.DestinationPath = QDir(AppPaths::DownloadScratchDirectory()).filePath(FileName);
+    Job.Sha256 = QString::fromStdString(Package.Sha256);
+    Job.Bytes = Package.Bytes;
+    Job.Title = tr("Downloading %1").arg(Name);
+
+    return Job;
 }
 
 void AppPackageDownloader::cancel()
@@ -521,18 +573,19 @@ bool AppPackageDownloader::Unpack(const FTCatalogPackage& Package,
     qCInfo(LogUpdate) << "Unpacking" << Id << "into" << Destination;
 
     // A dictionary already in use is about to have its file rewritten, so the connection is let go
-    // first and the same pair is opened again afterwards.
-    const FTDictionaryPackage* Active = AppDictionary::Get().GetActivePackage();
-
-    const bool bReplacingOpenDictionary = Active != nullptr && Package.Replaces(*Active);
+    // first. The learned pair is opened again afterwards; any other language reopens on its next use.
+    const std::string ReplacedLanguage{AppDictionary::Get().FindOpenLanguageReplacedBy(Package)};
 
     const FTLanguageRules Reopen = FTSettings::Get().GetLanguageRules();
 
-    const bool bReplacingOutdatedDictionary = Active == nullptr && AppDictionary::Get().IsReplacedBy(Package);
+    const bool bReplacingOpenDictionary = !ReplacedLanguage.empty() && ReplacedLanguage == Reopen.TargetLanguage;
 
-    if (bReplacingOpenDictionary)
+    const bool bReplacingOutdatedDictionary = !AppDictionary::GetActive().IsOpen()
+                                              && AppDictionary::Get().IsReplacedBy(Package);
+
+    if (!ReplacedLanguage.empty())
     {
-        AppDictionary::Get().Close();
+        AppDictionary::Get().Close(ReplacedLanguage);
     }
 
     if (Package.Kind == CatalogKindTranslation)

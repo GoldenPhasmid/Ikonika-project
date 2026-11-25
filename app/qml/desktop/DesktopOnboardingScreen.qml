@@ -59,6 +59,17 @@ FocusScope
         store: root.store
     }
 
+    DesktopOnboardingIntensity
+    {
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: progressBar.bottom
+        anchors.bottom: parent.bottom
+        visible: root.step === "intensity"
+
+        store: root.store
+    }
+
     Loader
     {
         id: placementStep

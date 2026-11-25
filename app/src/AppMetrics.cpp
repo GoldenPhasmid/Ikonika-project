@@ -81,6 +81,23 @@ void SetMobileLayoutEnabled(bool bEnabled)
     GetMobileLayoutState() = bEnabled;
 }
 
+static bool& GetTabletScreenState()
+{
+    static bool bTablet{false};
+
+    return bTablet;
+}
+
+bool IsTabletScreenEnabled()
+{
+    return GetTabletScreenState();
+}
+
+void SetTabletScreenEnabled(bool bEnabled)
+{
+    GetTabletScreenState() = bEnabled;
+}
+
 bool AppMetrics::IsMobileLayout() const
 {
     return IsMobileLayoutEnabled();
@@ -112,29 +129,9 @@ int AppMetrics::GetTopBarHeight() const
     return IsMobileLayout() ? 56 : 64;
 }
 
-int AppMetrics::GetHeaderIconTapWidth() const
+int AppMetrics::GetIconTapSize() const
 {
     return IsMobileLayout() || IsTouchInput() ? 44 : 36;
-}
-
-int AppMetrics::GetHeaderChevronSize() const
-{
-    return 22;
-}
-
-int AppMetrics::GetHeaderActionIconSize() const
-{
-    return 18;
-}
-
-int AppMetrics::GetExerciseMuteIconSize() const
-{
-    return 16;
-}
-
-int AppMetrics::GetExerciseActionIconTapWidth() const
-{
-    return IsMobileLayout() ? 40 : 36;
 }
 
 int AppMetrics::GetContentPadding() const
@@ -174,7 +171,7 @@ int AppMetrics::GetGapLarge() const
 
 int AppMetrics::GetButtonHeight() const
 {
-    return IsMobileLayout() ? 0 : IsTouchInput() ? 44 : 36;
+    return IsTouchInput() ? 44 : 36;
 }
 
 int AppMetrics::GetButtonHeightLarge() const
@@ -275,6 +272,11 @@ int AppMetrics::GetRadiusMedium() const
 QString AppMetrics::GetFontFamily() const
 {
     return QStringLiteral("Inter");
+}
+
+QString AppMetrics::GetBookFontFamily() const
+{
+    return QStringLiteral("EB Garamond");
 }
 
 int AppMetrics::GetFontMeta() const
@@ -501,11 +503,6 @@ int AppMetrics::GetPlayButtonSize() const
     return 80;
 }
 
-int AppMetrics::GetPlayButtonGlyphSize() const
-{
-    return 22;
-}
-
 
 int AppMetrics::GetWindowWidth() const
 {
@@ -529,12 +526,12 @@ int AppMetrics::GetWindowMinimumHeight() const
 
 int AppMetrics::GetContentWidthWide() const
 {
-    return IsMobileLayout() ? 0 : 1120;
+    return 1120;
 }
 
 int AppMetrics::GetContentWidthNarrow() const
 {
-    return IsMobileLayout() ? 0 : 720;
+    return 720;
 }
 
 int AppMetrics::GetColumnMaximumWidth() const
@@ -542,9 +539,14 @@ int AppMetrics::GetColumnMaximumWidth() const
     return 600;
 }
 
+int AppMetrics::GetShellMaximumWidth() const
+{
+    return GetColumnMaximumWidth() + GetContentPadding() * 2;
+}
+
 int AppMetrics::GetListPaneWidth() const
 {
-    return IsMobileLayout() ? 0 : 400;
+    return 400;
 }
 
 int AppMetrics::GetNavItemHeight() const
@@ -554,17 +556,17 @@ int AppMetrics::GetNavItemHeight() const
 
 int AppMetrics::GetIconSize() const
 {
-    return IsMobileLayout() ? 0 : 18;
+    return IsMobileLayout() ? 20 : 16;
 }
 
 int AppMetrics::GetIconSizeSmall() const
 {
-    return IsMobileLayout() ? 0 : 14;
+    return 14;
 }
 
 int AppMetrics::GetListRowHeight() const
 {
-    return IsMobileLayout() ? 0 : 56;
+    return 56;
 }
 
 int AppMetrics::GetChipHeight() const
@@ -574,17 +576,17 @@ int AppMetrics::GetChipHeight() const
 
 int AppMetrics::GetBadgeHeight() const
 {
-    return IsMobileLayout() ? 0 : 22;
+    return 22;
 }
 
 int AppMetrics::GetProgressRingSize() const
 {
-    return IsMobileLayout() ? 0 : 26;
+    return 26;
 }
 
 int AppMetrics::GetProgressRingStroke() const
 {
-    return IsMobileLayout() ? 0 : 3;
+    return 3;
 }
 
 int AppMetrics::GetDialogWidth() const
@@ -594,7 +596,7 @@ int AppMetrics::GetDialogWidth() const
 
 int AppMetrics::GetPopoverWidth() const
 {
-    return IsMobileLayout() ? 0 : 300;
+    return 300;
 }
 
 int AppMetrics::GetTextAreaHeight() const
@@ -819,17 +821,17 @@ int AppMetrics::GetWeekRingGap() const
 
 int AppMetrics::GetFocusRingWidth() const
 {
-    return IsMobileLayout() ? 0 : 2;
+    return 2;
 }
 
 int AppMetrics::GetScrollBarWidth() const
 {
-    return IsMobileLayout() ? 0 : 8;
+    return 8;
 }
 
 int AppMetrics::GetKeyHintSize() const
 {
-    return IsMobileLayout() ? 0 : 22;
+    return 22;
 }
 
 int AppMetrics::GetSliderTickSpacing() const
@@ -862,6 +864,101 @@ int AppMetrics::GetCoverTileMinimumWidth() const
     return IsMobileLayout() ? 170 : 260;
 }
 
+int AppMetrics::GetDeckHeaderRoomyHeight() const
+{
+    return IsMobileLayout() ? 0 : 680;
+}
+
+int AppMetrics::GetDeckBadgeSize() const
+{
+    return 64;
+}
+
+int AppMetrics::GetDeckBadgeSizeCompact() const
+{
+    return 56;
+}
+
+int AppMetrics::GetDeckStripeWidth() const
+{
+    return 350;
+}
+
+int AppMetrics::GetFontDeckName() const
+{
+    return 24;
+}
+
+int AppMetrics::GetDeckHeaderFrameWidth() const
+{
+    return 784;
+}
+
+int AppMetrics::GetDeckHeaderStackWidth() const
+{
+    return 600;
+}
+
+int AppMetrics::GetDeckHeaderRadius() const
+{
+    return 7;
+}
+
+int AppMetrics::GetDeckHeaderSymbolSize() const
+{
+    return 48;
+}
+
+int AppMetrics::GetDeckHeaderActionWidth() const
+{
+    return 150;
+}
+
+int AppMetrics::GetDeckHeaderActionIconSize() const
+{
+    return 18;
+}
+
+int AppMetrics::GetDeckHeaderTagHeight() const
+{
+    return 36;
+}
+
+int AppMetrics::GetDeckHeaderTagIconSize() const
+{
+    return 16;
+}
+
+int AppMetrics::GetDeckHeaderCheckRadius() const
+{
+    return 2;
+}
+
+qreal AppMetrics::GetDeckHeaderIconStrokeWidth() const
+{
+    return 1.65;
+}
+
+qreal AppMetrics::GetDeckHeaderTitleLeading() const
+{
+    return 1.2;
+}
+
+qreal AppMetrics::GetDeckHeaderDescriptionLeading() const
+{
+    return 1.4;
+}
+
+int AppMetrics::GetVocabularySegmentHeight() const
+{
+    return 48;
+}
+
+int AppMetrics::GetListSearchMinimumWidth() const
+{
+    return 140;
+}
+
 int AppMetrics::GetBookTileMinimumWidth() const
 {
     return IsMobileLayout() ? 110 : 170;
@@ -872,29 +969,64 @@ qreal AppMetrics::GetBookCoverAspect() const
     return 1.5;
 }
 
-qreal AppMetrics::GetBookFrameInset() const
+qreal AppMetrics::GetBookCoverInset() const
 {
-    return 0.065;
+    return 0.082;
 }
 
-qreal AppMetrics::GetBookFramePadding() const
+qreal AppMetrics::GetBookTextWidth() const
 {
-    return 0.1;
+    return 0.74;
 }
 
 qreal AppMetrics::GetBookTitleScale() const
 {
-    return 0.095;
+    return 0.13;
+}
+
+qreal AppMetrics::GetBookTitleMinimumScale() const
+{
+    return 0.088;
+}
+
+qreal AppMetrics::GetBookTitleLineHeight() const
+{
+    return 0.86;
 }
 
 qreal AppMetrics::GetBookAuthorScale() const
 {
-    return 0.046;
+    return 0.068;
 }
 
-qreal AppMetrics::GetBookOrnamentWidth() const
+qreal AppMetrics::GetBookSpineWidth() const
 {
-    return 0.16;
+    return 0.018;
+}
+
+qreal AppMetrics::GetBookBandTop() const
+{
+    return 0.337;
+}
+
+qreal AppMetrics::GetBookBandHeight() const
+{
+    return 0.251;
+}
+
+qreal AppMetrics::GetBookBandRise() const
+{
+    return 0.353;
+}
+
+qreal AppMetrics::GetBookBandLine() const
+{
+    return 0.0044;
+}
+
+qreal AppMetrics::GetBookBandHairline() const
+{
+    return 0.016;
 }
 
 int AppMetrics::GetBookRingSize() const
@@ -907,9 +1039,14 @@ int AppMetrics::GetBookRingStroke() const
     return 4;
 }
 
-int AppMetrics::GetBookActionSize() const
+int AppMetrics::GetBookLevelSize() const
 {
-    return 30;
+    return IsMobileLayout() ? 30 : 24;
+}
+
+int AppMetrics::GetBookLevelFont() const
+{
+    return IsMobileLayout() ? 16 : 13;
 }
 
 int AppMetrics::GetBookOverviewWidth() const
@@ -1074,7 +1211,12 @@ int AppMetrics::GetCoverGridWidth() const
 
 int AppMetrics::GetDeckIconSize() const
 {
-    return IsMobileLayout() ? 22 : 26;
+    return 26;
+}
+
+int AppMetrics::GetNewDeckIconSize() const
+{
+    return IsMobileLayout() ? 36 : 44;
 }
 
 int AppMetrics::GetCategoryDotSize() const
@@ -1104,12 +1246,12 @@ int AppMetrics::GetToastDuration() const
 
 int AppMetrics::GetMenuWidth() const
 {
-    return IsMobileLayout() ? 0 : 200;
+    return 200;
 }
 
 int AppMetrics::GetPopoverListHeight() const
 {
-    return IsMobileLayout() ? 0 : 420;
+    return 420;
 }
 
 int AppMetrics::GetDialogListHeight() const
@@ -1119,12 +1261,12 @@ int AppMetrics::GetDialogListHeight() const
 
 int AppMetrics::GetTwoColumnMinimumWidth() const
 {
-    return IsMobileLayout() ? 0 : 520;
+    return 520;
 }
 
 int AppMetrics::GetListMarkerWidth() const
 {
-    return IsMobileLayout() ? 0 : 22;
+    return 22;
 }
 
 int AppMetrics::GetCompleteBadgeSize() const
@@ -1137,10 +1279,11 @@ int AppMetrics::GetCompleteGlyphSize() const
     return IsMobileLayout() ? 0 : 44;
 }
 
-qreal AppMetrics::GetIconStrokeBold() const
+qreal AppMetrics::GetIconStrokeWidth() const
 {
-    return IsMobileLayout() ? 0 : 2.0;
+    return 1.5;
 }
+
 qreal AppMetrics::GetDashStrokeWidth() const
 {
     return IsMobileLayout() ? 0 : 1.5;
@@ -1153,12 +1296,12 @@ qreal AppMetrics::GetDashLength() const
 
 int AppMetrics::GetSelectionBarWidth() const
 {
-    return IsMobileLayout() ? 0 : 3;
+    return 3;
 }
 
 int AppMetrics::GetSelectionBarHeight() const
 {
-    return IsMobileLayout() ? 0 : 24;
+    return 24;
 }
 
 int AppMetrics::GetTabHeight() const
@@ -1222,6 +1365,16 @@ qreal AppMetrics::GetReaderTranslationWidthShare() const
     return 0.5;
 }
 
+bool AppMetrics::IsTabletScreen() const
+{
+    return IsTabletScreenEnabled();
+}
+
+int AppMetrics::GetReaderPopupWidth() const
+{
+    return IsMobileLayout() ? 240 : 360;
+}
+
 int AppMetrics::GetReaderAutoscrollAnchorSize() const
 {
     return 28;
@@ -1232,9 +1385,9 @@ qreal AppMetrics::GetReaderImageHeightShare() const
     return 0.8;
 }
 
-qreal AppMetrics::GetReaderEndSpaceShare() const
+int AppMetrics::GetReaderEndSpace() const
 {
-    return 0.25;
+    return 80;
 }
 
 int AppMetrics::GetReaderCropPadding() const
@@ -1359,7 +1512,7 @@ int AppMetrics::GetWaveformBarMinimumHeight() const
 
 int AppMetrics::GetWaveformCycle() const
 {
-    return IsMobileLayout() ? 0 : 700;
+    return 700;
 }
 
 int AppMetrics::GetExerciseAnswerHeight() const
@@ -1434,5 +1587,5 @@ int AppMetrics::GetMatchCellHeightCompact() const
 
 int AppMetrics::GetFormCellHeight() const
 {
-    return IsMobileLayout() ? 0 : 48;
+    return 48;
 }

@@ -5,29 +5,45 @@
 
 #include <QString>
 
-inline constexpr int MaximumLadderStages = 10;
+#include <vector>
+
 inline constexpr int MaximumIntervalDays = 1000;
+inline constexpr int ProgressStageCount = 4;
+inline constexpr int SchedulePreviewForgottenReview = 2;
+
+struct FTMemoryState
+{
+    double Stability = 0.0;
+    double Difficulty = 0.0;
+};
+
+struct FTSchedulePreview
+{
+    std::vector<int> ReviewDays;
+    std::vector<bool> QuickReviews;
+    int CompletedDay = 0;
+};
 
 int GetLastStage();
-int GetEffectiveStage(const FTCard& Subject);
-int GetIntervalDays(int Stage);
+
+FTMemoryState GetFirstMemoryState(const FTScheduleWeights& Weights, bool bRemembered);
+FTMemoryState GetNextMemoryState(const FTScheduleWeights& Weights, const FTMemoryState& State, bool bRemembered,
+                                 int ElapsedDays);
+
+double GetRetrievability(double Stability, int ElapsedDays);
+int GetNextIntervalDays(double Stability);
+int GetProgressStage(double Stability);
 
 bool IsDue(const FTCard& Subject, FTDayNumber Today);
-bool IsExpired(const FTCard& Subject, FTDayNumber Today);
+bool IsQuickReviewCard(const FTCard& Subject);
 
-/**
- * Records one card's move: which card, why it moved, and what it moved from.
- *
- * Called by whatever decided the move rather than by the ladder functions themselves, since only
- * the caller knows whether the card was answered or punished for missing its date. The before
- * state is what makes the line reversible.
- */
 void LogCardMove(const FTCard& Before, const FTCard& After, const QString& Reason);
 
-void PlaceInStage(FTCard& Subject, int Stage, FTDayNumber Today);
-void Promote(FTCard& Subject, FTDayNumber Today);
-void Demote(FTCard& Subject, FTDayNumber Today);
+void LearnCard(FTCard& Subject, FTDayNumber Today);
+void AnswerReview(FTCard& Subject, bool bRemembered, FTDayNumber Today);
+void PlaceWithStability(FTCard& Subject, double Stability, FTDayNumber Today);
 void ReturnToPool(FTCard& Subject, FTDayNumber Today);
 void MarkCompleted(FTCard& Subject, FTDayNumber Today);
-bool ApplyExpiry(FTCard& Subject, FTDayNumber Today);
-bool ApplyExpiryThrough(FTCard& Subject, FTDayNumber Today);
+void ScheduleFromStability(FTCard& Subject, FTDayNumber Today);
+
+FTSchedulePreview PreviewSchedule(int ForgottenReview);

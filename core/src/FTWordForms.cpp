@@ -1476,7 +1476,7 @@ std::optional<FTWordForm> ReadWordForm(const FTCard& Item)
     Result.Subject = std::string(GetCue(*Kind, *Language, *CellIndex));
     Result.SubjectLabel = IsVerbKind(*Kind) ? std::string(Language->PronounLabels[*CellIndex]) : Result.Subject;
     Result.Base = Item.Translation;
-    Result.Meaning = Item.Definition;
+    Result.Meaning = Item.FormMeaning;
     Result.Form = StripSubject(Result.Subject, Item.TargetWord);
     Result.Headword = ReadIdHeadword(*Kind, Item.Id);
     Result.bFeminine = !IsVerbKind(*Kind) && Cell->First == FormGenderFeminine;
@@ -2015,7 +2015,7 @@ std::vector<FTCard> ExpandFormsCard(const FTCard& Stored, const FTDictionaryEntr
         Form.Id = MakeItemId(Stored.Id, Item.Cell);
         Form.TargetWord = AttachSubject(*Kind, *Language, *CellIndex, Item.Form);
         Form.Translation = Item.Base;
-        Form.Definition = Stored.Translation;
+        Form.FormMeaning = Stored.Translation;
         Form.LeitnerStage = Stored.LeitnerStage;
 
         for (const std::string& Alternative : Item.Alternatives)

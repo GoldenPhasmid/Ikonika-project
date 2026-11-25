@@ -21,6 +21,26 @@ ReaderPdfPage
     property real selectionScale: 1
     property bool hasRendered: false
 
+    readonly property var readRange:
+    {
+        if (!root.inUse)
+        {
+            return null
+        }
+
+        for (const range of root.view.readRanges)
+        {
+            if (range.page === root.page)
+            {
+                return range
+            }
+        }
+
+        return null
+    }
+
+    readonly property var readRectangles: root.readRange !== null ? root.textRectangles(root.readRange.start, root.readRange.length) : []
+
     readonly property real selectionStretch: root.renderScale / root.selectionScale
 
     function clearSelection()
@@ -31,6 +51,7 @@ ReaderPdfPage
 
     function showSelection(found)
     {
+        root.view.pickedPlace = found.text.length > 0 ? { page: found.page, index: found.index } : null
         root.selectionScale = root.renderScale
         root.selectionRectangles = found.rectangles
         root.selectionText = found.text
@@ -97,6 +118,7 @@ ReaderPdfPage
     {
         id: tapHandler
 
+        exclusiveSignals: TapHandler.SingleTap | TapHandler.DoubleTap
         longPressThreshold: 0.4
 
         property bool selecting: false
@@ -105,7 +127,17 @@ ReaderPdfPage
 
         onSingleTapped: function(eventPoint)
         {
-            const found = root.selectWordAt(eventPoint.position)
+            const position = root.mapFromItem(null, eventPoint.scenePosition)
+            const link = root.internalLinkAt(position)
+
+            if (link.page !== undefined)
+            {
+                root.view.goToPage(link.page, link.location)
+
+                return
+            }
+
+            const found = root.selectWordAt(position)
 
             if (found.text.length === 0)
             {
@@ -121,6 +153,15 @@ ReaderPdfPage
 
         onDoubleTapped: function(eventPoint)
         {
+            const found = root.selectWordAt(root.mapFromItem(null, eventPoint.scenePosition))
+
+            if (root.view.narrated && found.text.length > 0)
+            {
+                root.view.readAloudRequested({ page: found.page, index: found.index })
+
+                return
+            }
+
             root.view.doubleTapped()
             root.view.toggleZoom(eventPoint.scenePosition)
         }
@@ -168,6 +209,23 @@ ReaderPdfPage
             {
                 root.view.wordPicked(root.selectionText, root.selectionSentence)
             }
+        }
+    }
+
+    Repeater
+    {
+        model: root.readRectangles
+
+        delegate: Rectangle
+        {
+            required property var modelData
+
+            x: modelData.x * root.renderScale
+            y: modelData.y * root.renderScale
+            width: modelData.width * root.renderScale
+            height: modelData.height * root.renderScale
+
+            color: AppTheme.faded(root.inkColour, AppTheme.alphaSoft)
         }
     }
 

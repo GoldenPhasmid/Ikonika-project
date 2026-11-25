@@ -1,5 +1,7 @@
 #pragma once
 
+#include <QElapsedTimer>
+#include <QList>
 #include <QObject>
 #include <QString>
 #include <QUrl>
@@ -9,6 +11,16 @@
 class QFile;
 class QNetworkAccessManager;
 class QNetworkReply;
+class QTimer;
+
+struct FTransferJob
+{
+    QUrl Url;
+    QString DestinationPath;
+    QString Sha256;
+    qint64 Bytes = 0;
+    QString Title;
+};
 
 class AppFileTransfer : public QObject
 {
@@ -20,6 +32,12 @@ public:
 
     void Start(const QUrl& Url, const QString& DestinationPath, const QString& ExpectedSha256,
                qint64 ExpectedBytes);
+
+    void StartInBackground(const FTransferJob& Job, const QList<FTransferJob>& Upcoming);
+
+    void QueueInBackground(const FTransferJob& Job);
+
+    static void CancelBackground(const QString& DestinationPath);
 
     void Cancel();
 
@@ -36,10 +54,18 @@ private:
     void Fail(const QString& Message);
     void Reset();
 
-    /** Reads the finished part file back to hash it, since a digest cannot carry across a restart. */
-    bool MatchesExpectedDigest() const;
+    bool MatchesExpectedDigest(const QString& FilePath) const;
 
     void DiscardPartFile();
+
+#if defined(Q_OS_ANDROID)
+    void StartInService(const FTransferJob& Job, const QList<FTransferJob>& Upcoming);
+    QString DescribeServiceError(const QString& Code, const QString& Detail) const;
+    QString BuildServicePayload(const QList<FTransferJob>& Jobs) const;
+    void CancelInService();
+    void PollService();
+    void StopPolling();
+#endif
 
     std::unique_ptr<QNetworkAccessManager> Network;
     std::unique_ptr<QFile> PartFile;
@@ -55,4 +81,12 @@ private:
 
     /** What the part file already held when this attempt started. Zero for a fresh transfer. */
     qint64 ResumeOffset = 0;
+
+#if defined(Q_OS_ANDROID)
+    QTimer* PollTimer = nullptr;
+    QElapsedTimer ProgressClock;
+
+    qint64 LastProgressBytes = 0;
+    bool bServiceActive = false;
+#endif
 };

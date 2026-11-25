@@ -7,7 +7,7 @@
 
 class FTDatabase;
 
-inline constexpr int CurrentSchemaVersion = 39;
+inline constexpr int CurrentSchemaVersion = 40;
 
 /** The version stored in the file, or 0 for a database that has never been migrated. */
 int ReadSchemaVersion(FTDatabase& Target);

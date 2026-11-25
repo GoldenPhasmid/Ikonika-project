@@ -8,13 +8,20 @@ ColumnLayout
     property string sentence: ""
     property string translation: ""
 
-    signal wordTapped(string word, string sentence)
+    signal wordTapped(string word, string sentence, var place)
 
     function wordUnder(source, x, y)
     {
         const point = sentenceText.mapFromItem(source, x, y)
 
         return sentenceText.wordAt(point.x, point.y)
+    }
+
+    function placeUnder(source, x, y)
+    {
+        const point = sentenceText.mapFromItem(source, x, y)
+
+        return sentenceText.placeAt(point.x, point.y)
     }
 
     visible: root.sentence.length > 0
@@ -68,7 +75,7 @@ ColumnLayout
                 holdEnabled: false
                 tapEnabled: true
 
-                onWordTapped: function(word, sentence) { root.wordTapped(word, sentence) }
+                onWordTapped: function(word, sentence, place) { root.wordTapped(word, sentence, place) }
             }
 
             MobileSeparator

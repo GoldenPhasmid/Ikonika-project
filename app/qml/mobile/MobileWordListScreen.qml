@@ -98,7 +98,7 @@ Item
 
             onVoicePlayRequested: function(index)
             {
-                root.controller.speakWord(root.filteredEntries[index].targetWord)
+                root.controller.speakWord(root.filteredEntries[index].word)
             }
         }
     }

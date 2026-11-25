@@ -29,6 +29,7 @@ public:
     explicit FTPdfRenderWorker(QObject* Parent = nullptr);
 
     void SetLatestRequest(quint64 Owner, quint64 RequestId);
+    void SetWantedPage(quint64 Owner, int Page);
 
 public slots:
     /**
@@ -67,9 +68,11 @@ signals:
 
 private:
     bool IsSuperseded(quint64 Owner, quint64 RequestId);
+    bool IsUnwantedPage(quint64 Owner, int Page);
 
     std::unique_ptr<QPdfDocument> Document;
 
     QMutex LatestMutex;
     QHash<quint64, quint64> LatestRequests;
+    QHash<quint64, int> WantedPages;
 };

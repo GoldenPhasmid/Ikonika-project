@@ -480,7 +480,7 @@ TEST_CASE("Opening a 500-word vocabulary completes quickly", "[vocabulary][.][pe
     Filter.PartOfSpeech = "noun";
 
     const std::vector<FTLearnableWord> Words =
-        AppDictionary::Get().GetRepository().LoadLearnableWords(500, 0, Filter);
+        AppDictionary::GetActive().GetRepository().LoadLearnableWords(500, 0, Filter);
 
     REQUIRE(Words.size() == 500);
 

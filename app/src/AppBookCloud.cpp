@@ -151,6 +151,7 @@ void AppBookCloud::Upload(const QString& DocumentId)
             }
 
             AppDatabase::Get().GetReaderLibrary().SetCloudId(Document->Id, *CloudId);
+            AppDatabase::Get().GetReaderLibrary().SetCloudTitle(Document->Id, Document->Title);
 
             if (!AppDatabase::Get().GetBookShelf().RenameBookKey("local:" + Document->Id, "cloud:" + *CloudId))
             {
@@ -246,6 +247,7 @@ void AppBookCloud::Download(const QString& CloudId)
             }
 
             Library.SetCloudId(*DocumentId, Book->Id);
+            Library.SetCloudTitle(*DocumentId, Book->Title);
             Library.SetPosition(*DocumentId, Book->LastPosition);
             Library.SetZoom(*DocumentId, Book->LastZoom);
             Library.SetScroll(*DocumentId, Book->LastScrollX, Book->LastScrollY);

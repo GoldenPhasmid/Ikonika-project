@@ -32,10 +32,12 @@ public:
     Q_INVOKABLE void restartSession();
     Q_INVOKABLE void endSession();
     Q_INVOKABLE bool removeCard(const QString& cardId);
+    Q_INVOKABLE void continueToFollowUp() override;
 
     int GetCardCount() const;
     int GetElapsedSeconds() const;
     bool IsQuickPass() const;
+    bool HasFollowUp() const override;
 
 signals:
     void sessionEnded();
@@ -50,7 +52,8 @@ protected:
 private:
     void BeginNewSession(std::vector<FTCardHandle> Cards, bool bInQuickPass,
                          std::unordered_set<std::string> InCarriedCardIds);
-    void StartAfterQuickPass(const std::unordered_set<std::string>& Forgotten);
+    std::vector<FTCardHandle> LoadFollowUpCards(const std::unordered_set<std::string>& Forgotten,
+                                                std::unordered_set<std::string>& OutCarried) const;
     void SkipEmptyReviewStage();
     bool IsCarried(const std::string& CardId) const;
     void DestroyControllers();
@@ -70,6 +73,8 @@ private:
     std::unordered_map<std::string, bool> ReviewedYes;
     std::unordered_set<std::string> CarriedCardIds;
     bool bQuickPass = false;
+    bool bFollowUpPending = false;
+    std::unordered_set<std::string> ForgottenInQuickPass;
     int ReviewCardCount = 0;
 
     QElapsedTimer SessionTimer;

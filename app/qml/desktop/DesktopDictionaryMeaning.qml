@@ -19,6 +19,7 @@ DesktopCard
     signal wordClicked(string word, string sentence)
 
     readonly property bool learned: root.meaning.learnedStage >= 0
+    readonly property bool narrow: root.width - root.padding * 2 < AppMetrics.twoColumnMinimumWidth
     readonly property bool hovered: !root.expanded && hoverHandler.hovered
     readonly property bool tinted: root.learned
     readonly property color stateColour: root.meaning.completed ? AppTheme.colourCorrect : AppTheme.colourAccent
@@ -84,16 +85,21 @@ DesktopCard
         stageCount: root.stageCount
         picked: root.cardTranslations
         pickedColour: root.stateColour
+        narrow: root.narrow
     }
 
-    RowLayout
+    GridLayout
     {
         Layout.fillWidth: true
         visible: root.expanded
-        spacing: AppMetrics.gapSmall
+        columnSpacing: AppMetrics.gapSmall
+        rowSpacing: AppMetrics.gapSmall
 
         DesktopLabel
         {
+            Layout.row: 0
+            Layout.column: 0
+            visible: !root.narrow
             text: root.number
             font.pixelSize: AppMetrics.dictionaryFontBody
             font.weight: Font.Bold
@@ -102,13 +108,22 @@ DesktopCard
 
         DesktopGistBadge
         {
+            Layout.row: 0
+            Layout.column: root.narrow ? 0 : 1
             label: root.meaning.gist
         }
 
-        Item { Layout.fillWidth: true }
+        Item
+        {
+            Layout.row: 0
+            Layout.column: 2
+            Layout.fillWidth: true
+        }
 
         DesktopProgressRing
         {
+            Layout.row: 0
+            Layout.column: root.narrow ? 4 : 3
             visible: root.learned
             stage: root.meaning.learnedStage
             stageCount: root.stageCount
@@ -117,6 +132,10 @@ DesktopCard
 
         DesktopButton
         {
+            Layout.row: root.narrow ? 1 : 0
+            Layout.column: root.narrow ? 0 : 4
+            Layout.columnSpan: root.narrow ? 6 : 1
+            Layout.fillWidth: root.narrow
             iconName: root.learned ? "edit" : "plus"
             text: root.learned ? qsTr("Edit") : qsTr("Add")
 
@@ -125,6 +144,8 @@ DesktopCard
 
         DesktopIconButton
         {
+            Layout.row: 0
+            Layout.column: 5
             visible: root.collapsible
             iconName: "chevron_up"
             iconSize: AppMetrics.iconSizeSmall
@@ -143,14 +164,17 @@ DesktopCard
         onWordClicked: function(word, sentence) { root.wordClicked(word, sentence) }
     }
 
-    GridLayout
+    Flow
     {
+        id: translationFlow
+
+        readonly property real cellWidth: Math.floor((translationFlow.width - (root.columns - 1) * translationFlow.spacing)
+                                                     / root.columns)
+
         Layout.fillWidth: true
         Layout.topMargin: AppMetrics.gapTight
         visible: root.expanded && root.translations.length > 0
-        columns: root.columns
-        columnSpacing: AppMetrics.gapSmall
-        rowSpacing: AppMetrics.gapSmall
+        spacing: AppMetrics.gapSmall
 
         Repeater
         {
@@ -160,7 +184,7 @@ DesktopCard
             {
                 required property var modelData
 
-                Layout.preferredWidth: 1
+                width: implicitWidth > translationFlow.cellWidth ? translationFlow.width : translationFlow.cellWidth
                 text: modelData.text
                 relative: modelData.relative
                 hasProbability: modelData.hasProbability

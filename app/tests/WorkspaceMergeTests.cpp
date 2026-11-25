@@ -9,6 +9,7 @@
 #include "core/FTSchedule.h"
 #include "core/FTSchema.h"
 #include "core/FTSettings.h"
+#include "core/FTUserDeckRepository.h"
 #include "core/FTUuid.h"
 
 #include <QScopeGuard>
@@ -213,7 +214,7 @@ TEST_CASE("Reviews made on two devices all survive the merge", "[merge]")
     CHECK(LoadJournal(*Phone.Database, Seeded.CardId).size() == 5);
 
     FTCard Replayed;
-    ReplayJournal(Replayed, Expected, Today);
+    ReplayJournal(Replayed, Expected);
 
     const FTCard Stored = ReadStoredProgress(Phone, Seeded.CardId);
     CHECK(Stored.LeitnerStage == Replayed.LeitnerStage);
@@ -325,7 +326,7 @@ TEST_CASE("Progress columns from the other copy are ignored", "[merge]")
 
     const FTCard Stored = ReadStoredProgress(Desktop, Seeded.CardId);
     CHECK(Stored.LeitnerStage == FirstLadderStage);
-    CHECK(Stored.DueDate == Today + GetIntervalDays(1));
+    CHECK(Stored.DueDate == Today + 2);
 }
 
 TEST_CASE("A merge stamps no card with a new time", "[merge]")
@@ -549,7 +550,7 @@ TEST_CASE("Progress from a copy made before the journal survives the merge", "[m
     FTCard OldCard = *Phone.Repository->LoadCard(Old.CardId).value();
     OldCard.LeitnerStage = 3;
     OldCard.BoxChangedDate = Today - 1;
-    OldCard.DueDate = Today - 1 + GetIntervalDays(3);
+    OldCard.DueDate = Today + 3;
     REQUIRE(Phone.Repository->UpdateCardSchedule(OldCard));
     REQUIRE(Phone.Database->Execute("PRAGMA user_version = 29"));
     REQUIRE(MigrateSchema(*Phone.Database));
@@ -558,15 +559,15 @@ TEST_CASE("Progress from a copy made before the journal survives the merge", "[m
     FTCard MyCard = *Desktop.Repository->LoadCard(Mine.CardId).value();
     MyCard.LeitnerStage = 2;
     MyCard.BoxChangedDate = Today - 1;
-    MyCard.DueDate = Today - 1 + GetIntervalDays(2);
+    MyCard.DueDate = Today + 1;
     REQUIRE(Desktop.Repository->UpdateCardSchedule(MyCard));
     REQUIRE(Desktop.Database->Execute("PRAGMA user_version = 29"));
     REQUIRE(MigrateSchema(*Desktop.Database));
 
     Merge(Desktop, Phone);
 
-    CHECK(ReadStoredProgress(Desktop, Old.CardId).LeitnerStage == 3);
-    CHECK(ReadStoredProgress(Desktop, Mine.CardId).LeitnerStage == 2);
+    CHECK(ReadStoredProgress(Desktop, Old.CardId).DueDate == Today + 3);
+    CHECK(ReadStoredProgress(Desktop, Mine.CardId).DueDate == Today + 1);
 }
 
 namespace
@@ -769,21 +770,22 @@ TEST_CASE("Progress is rebuilt under the schedule rules the merge brings", "[mer
     FTSettings::SetActive(&Desktop.Settings);
     const auto Restore{qScopeGuard([] { FTSettings::SetActive(nullptr); })};
 
-    Desktop.Settings.SetMissedReviewDemotes(true);
-    RecordSetting(Desktop, "schedule/missedReviewDemotes", true, 2000);
-    RecordSetting(Phone, "schedule/missedReviewDemotes", false, 3000);
+    Desktop.Settings.SetLearningIntensity(1);
+    RecordSetting(Desktop, "schedule/learningIntensity", 1, 2000);
+    RecordSetting(Phone, "schedule/learningIntensity", 0, 3000);
 
     const FTDayNumber Learned{GetTodayDayNumber() - 300};
-    const FTDayNumber FirstReview{Learned + GetIntervalDays(1)};
-    const FTDayNumber SecondReview{FirstReview + GetIntervalDays(2)};
     InsertEvent(Desktop, Seeded.CardId, JournalLearned, Learned);
-    InsertEvent(Desktop, Seeded.CardId, JournalReviewed, FirstReview, 1);
-    InsertEvent(Desktop, Seeded.CardId, JournalReviewed, SecondReview, 1);
+
+    for (const int ReviewDay : {2, 8, 23, 58})
+    {
+        InsertEvent(Desktop, Seeded.CardId, JournalReviewed, Learned + ReviewDay, 1);
+    }
 
     Merge(Desktop, Phone);
 
-    CHECK_FALSE(Desktop.Settings.GetScheduleRules().bMissedReviewDemotes);
-    CHECK(ReadStoredProgress(Desktop, Seeded.CardId).LeitnerStage == 3);
+    CHECK(Desktop.Settings.GetScheduleRules().IntensityIndex == 0);
+    CHECK(IsCompleted(ReadStoredProgress(Desktop, Seeded.CardId)));
 }
 
 TEST_CASE("Two settings changed at the same time end up the same on both devices", "[merge][settings]")
@@ -886,4 +888,34 @@ TEST_CASE("Workspace merge carries the newest card hint", "[workspace-merge][hin
     const auto Updated = Local.Repository->LoadCard(*Id);
     REQUIRE(Updated.has_value());
     CHECK((*Updated)->Hint == "Le chat joue.");
+}
+
+TEST_CASE("A deck made on another device arrives with its cards, and its deletion arrives too", "[sync][userdeck]")
+{
+    FCopy Local;
+    FCopy Downloaded;
+
+    FTUserDeckRepository LocalDecks{*Local.Database, [&Local] { return Local.Clock; }};
+    FTUserDeckRepository DownloadedDecks{*Downloaded.Database, [&Downloaded] { return Downloaded.Clock; }};
+    LocalDecks.SetActiveLanguages("fr", "en");
+    DownloadedDecks.SetActiveLanguages("fr", "en");
+
+    const FSeeded Card = SeedCard(Downloaded);
+    const std::optional<std::string> DeckId = DownloadedDecks.CreateDeck("Cafe", "");
+    REQUIRE(DeckId.has_value());
+    REQUIRE(DownloadedDecks.AddCard(*DeckId, Card.CardId));
+
+    Merge(Local, Downloaded);
+
+    REQUIRE(LocalDecks.ListDecks().size() == 1);
+    CHECK(LocalDecks.ListDecks()[0].Name == "Cafe");
+    CHECK(LocalDecks.ListCardIds(*DeckId) == std::vector<std::string>{Card.CardId});
+
+    Downloaded.Clock = 5000;
+    REQUIRE(DownloadedDecks.DeleteDeck(*DeckId));
+
+    Merge(Local, Downloaded);
+
+    CHECK(LocalDecks.ListDecks().empty());
+    CHECK(LocalDecks.ListCardIds(*DeckId).empty());
 }

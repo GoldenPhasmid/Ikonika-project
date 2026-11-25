@@ -5,8 +5,11 @@
 #include "miniaudio.h"
 
 #include <algorithm>
+#include <atomic>
 #include <iterator>
 #include <mutex>
+
+static std::atomic_bool bPlaybackSuspended{false};
 
 struct FTAudioPlayer::Impl
 {
@@ -195,7 +198,7 @@ struct FTAudioPlayer::Impl
 
         const std::lock_guard<std::mutex> Lock(Guard);
 
-        if (bPaused)
+        if (bPaused || FTAudioPlayer::IsPlaybackSuspended())
         {
             std::fill_n(Destination, static_cast<size_t>(FrameCount), int16_t{0});
 
@@ -243,6 +246,16 @@ struct FTAudioPlayer::Impl
         qCDebug(LogSpeech) << "audio device" << TypeNames[Type];
     }
 };
+
+void FTAudioPlayer::SetPlaybackSuspended(bool bSuspended)
+{
+    bPlaybackSuspended.store(bSuspended, std::memory_order_relaxed);
+}
+
+bool FTAudioPlayer::IsPlaybackSuspended()
+{
+    return bPlaybackSuspended.load(std::memory_order_relaxed);
+}
 
 FTAudioPlayer::FTAudioPlayer(int InSampleRate)
     : Data(std::make_unique<Impl>())

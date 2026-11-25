@@ -126,9 +126,15 @@ signals:
 protected:
     AppSpeech();
 
-    static constexpr const char* SpeedKey = "audio/speed";
+#if defined(IKONIKA_DESKTOP)
+#define IKONIKA_AUDIO_GROUP "audio/desktop/"
+#else
+#define IKONIKA_AUDIO_GROUP "audio/mobile/"
+#endif
+
+    static constexpr const char* SpeedKey = IKONIKA_AUDIO_GROUP "speed";
     static constexpr const char* EnabledKey = "audio/enabled";
-    static constexpr const char* SentenceSpeedKey = "audio/sentenceSpeed";
+    static constexpr const char* SentenceSpeedKey = IKONIKA_AUDIO_GROUP "sentenceSpeed";
 
     virtual void SpeakNow(const FSpeechRequest& Request) { Q_UNUSED(Request); }
 

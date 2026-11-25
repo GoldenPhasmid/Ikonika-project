@@ -93,7 +93,7 @@ TEST_CASE("The gap blanks one word of the sentence", "[sentencecards]")
     CHECK(HasGap(Sentence));
     CHECK(GetGapWord(Sentence) == "mange");
     CHECK(MakeGapPrompt(Sentence) == "Je ___ une pomme.");
-    CHECK(MakeGapSpeech(Sentence) == "Je … une pomme.");
+    CHECK(MakeGapSpeech(Sentence) == "Je .. , une pomme.");
 
     const FTGapParts Parts = SplitAtGap(Sentence);
 

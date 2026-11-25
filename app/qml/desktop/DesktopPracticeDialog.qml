@@ -6,6 +6,7 @@ DesktopStartDialog
     id: root
 
     property var vocabulary: null
+    property string userDeckId: ""
 
     readonly property PracticeSelection selection: PracticeSelection
     {
@@ -30,8 +31,10 @@ DesktopStartDialog
         { reverse: true, label: qsTr("Translation → word") }
     ]
 
-    function openFor()
+    function openFor(userDeckId)
     {
+        root.userDeckId = userDeckId ?? ""
+
         if (root.chosenKey.length === 0)
         {
             root.chosenKey = root.exercises[0].key

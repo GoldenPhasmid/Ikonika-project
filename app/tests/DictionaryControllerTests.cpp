@@ -441,6 +441,96 @@ TEST_CASE("A search lists a word once across its parts of speech", "[dictionaryc
     CHECK(Avoir->toMap().value("stage").toInt() == 2);
 }
 
+TEST_CASE("A search lists each part of speech apart when asked to", "[dictionarycontroller]")
+{
+    FAppDatabaseGuard DatabaseGuard;
+    FAppDictionaryGuard DictionaryGuard;
+
+    FTSettings::Get().SetTargetLanguage("fr");
+    FTSettings::Get().SetNativeLanguage("en");
+
+    REQUIRE(AppDictionary::Get().Initialise());
+
+    const auto Readings = [](const DictionaryController& Controller)
+    {
+        QStringList Result;
+
+        for (const QVariant& Row : Controller.GetResults())
+        {
+            if (Row.toMap().value("word").toString() == "inconnu")
+            {
+                Result << Row.toMap().value("partOfSpeech").toString();
+            }
+        }
+
+        return Result;
+    };
+
+    DictionaryController Grouped;
+    Grouped.search("inconnu");
+    WaitForResults(Grouped);
+
+    CHECK(Readings(Grouped).size() == 1);
+
+    DictionaryController Separate;
+    Separate.SetSeparatePartsOfSpeech(true);
+    Separate.search("inconnu");
+    WaitForResults(Separate);
+
+    const QStringList Apart = Readings(Separate);
+
+    CHECK(Apart.size() == 2);
+    CHECK(Apart.contains("adj"));
+    CHECK(Apart.contains("noun"));
+}
+
+TEST_CASE("A result row carries the known mark of its reading", "[dictionarycontroller]")
+{
+    FAppDatabaseGuard DatabaseGuard;
+    FAppDictionaryGuard DictionaryGuard;
+
+    FTSettings::Get().SetTargetLanguage("fr");
+    FTSettings::Get().SetNativeLanguage("en");
+
+    REQUIRE(AppDictionary::Get().Initialise());
+
+    DictionaryController Controller;
+    Controller.SetSeparatePartsOfSpeech(true);
+    Controller.search("inconnu");
+    WaitForResults(Controller);
+
+    const auto IsKnown = [](const DictionaryController& Source, const QString& PartOfSpeech)
+    {
+        for (const QVariant& Row : Source.GetResults())
+        {
+            if (Row.toMap().value("word").toString() == "inconnu" && Row.toMap().value("partOfSpeech").toString() == PartOfSpeech)
+            {
+                return Row.toMap().value("known").toBool();
+            }
+        }
+
+        return false;
+    };
+
+    CHECK_FALSE(IsKnown(Controller, "adj"));
+
+    REQUIRE(Controller.markKnown("inconnu", "adj"));
+
+    CHECK(IsKnown(Controller, "adj"));
+    CHECK_FALSE(IsKnown(Controller, "noun"));
+
+    DictionaryController Later;
+    Later.SetSeparatePartsOfSpeech(true);
+    Later.search("inconnu");
+    WaitForResults(Later);
+
+    CHECK(IsKnown(Later, "adj"));
+
+    REQUIRE(Controller.unmarkKnown("inconnu", "adj"));
+
+    CHECK_FALSE(IsKnown(Controller, "adj"));
+}
+
 TEST_CASE("A verb's forms carry the persons and mark the endings where training knows them", "[dictionarycontroller]")
 {
     FAppDatabaseGuard DatabaseGuard;

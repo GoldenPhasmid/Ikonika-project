@@ -123,7 +123,8 @@ ColumnLayout
         if (root.entry === null)
         {
             const added = vocabulary.addCard(root.term, root.lookup.machineTranslation,
-                                             root.wordCount(root.term) > 1 ? "phrase" : "", -1, false, "", hint)
+                                             root.wordCount(root.term) > 1 ? "phrase" : "", -1, false, "", hint,
+                                             root.lookup.language)
 
             console.info("Quick Add", added ? "added" : "could not add", "a machine-translated phrase")
 
@@ -135,7 +136,8 @@ ColumnLayout
         const headword = root.entry.headword
         const partOfSpeech = root.entry.partOfSpeech
 
-        if (!vocabulary.addCard(headword, root.meaningTranslation, partOfSpeech, gender, gender >= 0, root.pickedGist, hint))
+        if (!vocabulary.addCard(headword, root.meaningTranslation, partOfSpeech, gender, gender >= 0, root.pickedGist, hint,
+                                root.lookup.language))
         {
             return false
         }

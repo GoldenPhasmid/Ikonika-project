@@ -96,6 +96,8 @@ struct FTDeck
 
     std::string Category;
 
+    std::string Description;
+
     int WordCount = 0;
 };
 
@@ -201,6 +203,7 @@ public:
     bool HasDecks() const;
 
     bool HasDeckCategories() const;
+    bool HasDeckDescriptions() const;
 
     std::vector<FTDeck> ListDecks() const;
 

@@ -26,6 +26,7 @@ namespace
     const QString StepSignIn{QStringLiteral("signin")};
     const QString StepLearn{QStringLiteral("learn")};
     const QString StepDaily{QStringLiteral("daily")};
+    const QString StepIntensity{QStringLiteral("intensity")};
     const QString StepPlacement{QStringLiteral("placement")};
     const QString StepDownload{QStringLiteral("download")};
 
@@ -507,6 +508,7 @@ QStringList AppOnboarding::GetSteps() const
 
     Steps.append(StepLearn);
     Steps.append(StepDaily);
+    Steps.append(StepIntensity);
 
     if (bPlacementOffered)
     {

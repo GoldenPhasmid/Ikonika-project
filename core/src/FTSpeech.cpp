@@ -35,7 +35,7 @@ namespace
 
     constexpr int SupertonicSteps = 8;
     constexpr int SupertonicSeed = 42;
-    constexpr float SupertonicMinimumSpeed = 0.8f;
+    constexpr float SupertonicMinimumSpeed = 0.85f;
     constexpr float SupertonicMaximumSpeed = 1.3f;
 
     constexpr float StretchFrameSeconds = 0.040f;

@@ -30,9 +30,9 @@ TEST_CASE("An added word gets its part of speech from the dictionary when it is 
     FTSettings::Get().SetNativeLanguage("en");
 
     REQUIRE(AppDictionary::Get().Initialise());
-    REQUIRE(AppDictionary::Get().IsReady());
+    REQUIRE(AppDictionary::GetActive().IsReady());
 
-    const FTCard Card = AppCards::MakeAddedWord("avoir", "to have", "", -1, false, "");
+    const FTCard Card = AppCards::MakeAddedWord(AppDictionary::GetActive(), "avoir", "to have", "", -1, false, "");
 
     CHECK_FALSE(Card.PartOfSpeech.empty());
 }
@@ -46,9 +46,9 @@ TEST_CASE("An added word keeps the part of speech it was given", "[appcards]")
     FTSettings::Get().SetNativeLanguage("en");
 
     REQUIRE(AppDictionary::Get().Initialise());
-    REQUIRE(AppDictionary::Get().IsReady());
+    REQUIRE(AppDictionary::GetActive().IsReady());
 
-    const FTCard Card = AppCards::MakeAddedWord("avoir", "to have", "custom", -1, false, "");
+    const FTCard Card = AppCards::MakeAddedWord(AppDictionary::GetActive(), "avoir", "to have", "custom", -1, false, "");
 
     CHECK(Card.PartOfSpeech == "custom");
 }
@@ -62,10 +62,10 @@ TEST_CASE("An added word gets the meaning its translation matches when it is mad
     FTSettings::Get().SetNativeLanguage("en");
 
     REQUIRE(AppDictionary::Get().Initialise());
-    REQUIRE(AppDictionary::Get().IsReady());
-    REQUIRE(AppDictionary::Get().GetRepository().HasMeaningExamples());
+    REQUIRE(AppDictionary::GetActive().IsReady());
+    REQUIRE(AppDictionary::GetActive().GetRepository().HasMeaningExamples());
 
-    const FTCard Card = AppCards::MakeAddedWord("avoir", "to have", "", -1, false, "");
+    const FTCard Card = AppCards::MakeAddedWord(AppDictionary::GetActive(), "avoir", "to have", "", -1, false, "");
 
     CHECK_FALSE(Card.MeaningGist.empty());
 }
@@ -79,9 +79,9 @@ TEST_CASE("An added word keeps the meaning it was given", "[appcards]")
     FTSettings::Get().SetNativeLanguage("en");
 
     REQUIRE(AppDictionary::Get().Initialise());
-    REQUIRE(AppDictionary::Get().IsReady());
+    REQUIRE(AppDictionary::GetActive().IsReady());
 
-    const FTCard Card = AppCards::MakeAddedWord("avoir", "to have", "", -1, false, "chosen");
+    const FTCard Card = AppCards::MakeAddedWord(AppDictionary::GetActive(), "avoir", "to have", "", -1, false, "chosen");
 
     CHECK(Card.MeaningGist == "chosen");
 }
@@ -96,7 +96,7 @@ TEST_CASE("Annotate batches h-elision and noun/verb overlap correctly across man
     FTSettings::Get().SetNativeLanguage("en");
 
     REQUIRE(AppDictionary::Get().Initialise());
-    REQUIRE(AppDictionary::Get().IsReady());
+    REQUIRE(AppDictionary::GetActive().IsReady());
 
     FTCard MuteH;
     MuteH.TargetWord = "homme";

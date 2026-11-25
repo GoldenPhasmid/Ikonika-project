@@ -404,7 +404,6 @@ Item
                     {
                         model: [
                             { "value": root.count(root.details.pages), "label": qsTr("Pages") },
-                            { "value": root.count(root.details.words), "label": qsTr("Words") },
                             { "value": root.addedWords.toString(), "label": qsTr("Added words") },
                             { "value": "—", "label": qsTr("Known vocabulary") }
                         ]

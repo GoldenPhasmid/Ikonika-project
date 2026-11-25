@@ -334,7 +334,7 @@ TEST_CASE("An installed dictionary an app update outdated waits for permission t
     SECTION("the saved language waits for its update instead of switching to another one")
     {
         CHECK_FALSE(AppDictionary::Get().Initialise());
-        CHECK(AppDictionary::Get().GetActivePackage() == nullptr);
+        CHECK(AppDictionary::GetActive().GetPackage() == nullptr);
         CHECK(FTSettings::Get().GetLanguageRules().TargetLanguage == Language);
     }
 
@@ -368,7 +368,7 @@ TEST_CASE("An installed dictionary an app update outdated waits for permission t
         CHECK_FALSE(AppDictionary::Get().IsOutdated(Language, "en"));
         CHECK(AppCatalog::GetInstalledVersion(PackageId) == 2);
 
-        const FTDictionaryPackage* Active{AppDictionary::Get().GetActivePackage()};
+        const FTDictionaryPackage* Active{AppDictionary::GetActive().GetPackage()};
 
         REQUIRE(Active != nullptr);
         CHECK(Active->TargetLanguage == Language);

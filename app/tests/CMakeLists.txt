@@ -1,5 +1,6 @@
 add_executable(AppTests
     ReaderIntakeTests.cpp
+    MachineTranslationPairTests.cpp
     TextIntakeTests.cpp
     "${CMAKE_SOURCE_DIR}/app/src/AppTextIntake.cpp"
     "${CMAKE_SOURCE_DIR}/app/src/AppReaderIntake.cpp"
@@ -17,11 +18,14 @@ add_executable(AppTests
     ExerciseFlowStagesTests.cpp
     CardEditDuringSessionTests.cpp
     VocabularyControllerTests.cpp
+    UserDecksControllerTests.cpp
     ExerciseLauncherControllerTests.cpp
     WordListControllerTests.cpp
     WordRowGroupingTests.cpp
     AppCardsTests.cpp
     TriageControllerTests.cpp
+    AppDictionaryTests.cpp
+    ReaderLanguageTests.cpp
     DeckTests.cpp
     ReaderShelfTests.cpp
     DictionaryControllerTests.cpp
@@ -61,6 +65,7 @@ add_executable(AppTests
     "${CMAKE_SOURCE_DIR}/app/src/controllers/SessionSentenceStage.cpp"
     "${CMAKE_SOURCE_DIR}/app/src/controllers/RepetitionController.cpp"
     "${CMAKE_SOURCE_DIR}/app/src/controllers/IntensiveLearningController.cpp"
+    "${CMAKE_SOURCE_DIR}/app/src/controllers/UserDecksController.cpp"
     "${CMAKE_SOURCE_DIR}/app/src/controllers/VocabularyController.cpp"
     "${CMAKE_SOURCE_DIR}/app/src/controllers/DailySessionController.cpp"
     "${CMAKE_SOURCE_DIR}/app/src/controllers/ExerciseLauncherController.cpp"
@@ -70,9 +75,13 @@ add_executable(AppTests
     "${CMAKE_SOURCE_DIR}/app/src/controllers/DiscoveryController.cpp"
     "${CMAKE_SOURCE_DIR}/app/src/controllers/DecksController.cpp"
     "${CMAKE_SOURCE_DIR}/app/src/controllers/DictionaryController.cpp"
+    "${CMAKE_SOURCE_DIR}/app/src/ReaderVocabulary.cpp"
+    "${CMAKE_SOURCE_DIR}/app/src/ReaderBookLanguage.cpp"
+    "${CMAKE_SOURCE_DIR}/app/src/AppReaderSettings.cpp"
     "${CMAKE_SOURCE_DIR}/app/src/AppGoogleAccount.cpp"
     "${CMAKE_SOURCE_DIR}/app/src/AppSpeech.cpp"
     "${CMAKE_SOURCE_DIR}/app/src/AppTranslator.cpp"
+    "${CMAKE_SOURCE_DIR}/app/src/AppMachineTranslation.cpp"
     "${CMAKE_SOURCE_DIR}/app/src/AppSoundEffects.cpp"
     "${CMAKE_SOURCE_DIR}/app/src/AppDatabase.cpp"
     "${CMAKE_SOURCE_DIR}/app/src/AppDatabaseService.cpp"
@@ -80,6 +89,7 @@ add_executable(AppTests
     "${CMAKE_SOURCE_DIR}/app/src/AppState.cpp"
     "${CMAKE_SOURCE_DIR}/app/src/AppPaths.cpp"
     "${CMAKE_SOURCE_DIR}/app/src/AppCards.cpp"
+    "${CMAKE_SOURCE_DIR}/app/src/AppImport.cpp"
     "${CMAKE_SOURCE_DIR}/app/src/AppCoreCards.cpp"
     "${CMAKE_SOURCE_DIR}/app/src/AppDictionary.cpp"
     "${CMAKE_SOURCE_DIR}/app/src/AppReadSources.cpp"

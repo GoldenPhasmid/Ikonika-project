@@ -24,6 +24,8 @@ namespace
         {"Cards", "LastUpdatedDate"},
         {"WordForms", "LastUpdatedDate"},
         {"Placements", "LastUpdatedDate"},
+        {"UserDeckCategories", "LastUpdatedDate"},
+        {"UserDecks", "LastUpdatedDate"},
         {"DailyStats", "LastUpdatedDate"},
         {"TriagedWords", "MarkedDate"},
         {"SearchHistory", "SearchedAt"}};
@@ -133,5 +135,6 @@ bool RemoveErasedData(FTDatabase& Target)
         }
     }
 
-    return Target.Execute("DELETE FROM Journal WHERE CardId NOT IN (SELECT Id FROM Cards)");
+    return Target.Execute("DELETE FROM Journal WHERE CardId NOT IN (SELECT Id FROM Cards)")
+        && Target.Execute("DELETE FROM UserDeckCards WHERE DeckId NOT IN (SELECT Id FROM UserDecks)");
 }

@@ -3,21 +3,23 @@
 #include "AppCards.h"
 #include "AppDatabase.h"
 #include "AppDictionary.h"
+#include "AppImport.h"
 #include "AppSpeech.h"
 
-#include "core/FTAnkiImporter.h"
 #include "core/FTCard.h"
-#include "core/FTCsvImporter.h"
 #include "core/FTDeckProgress.h"
 #include "core/FTLog.h"
 #include "core/FTSettings.h"
 #include "core/FTTextNormalization.h"
+#include "core/FTUserDeckRepository.h"
 
+#include <QFile>
 #include <QFileInfo>
 #include <QVariantMap>
 
 #include <algorithm>
 #include <cstddef>
+#include <unordered_map>
 #include <limits>
 #include <memory>
 
@@ -35,6 +37,7 @@ void VocabularyController::HandleLanguagesChanged()
     qCInfo(LogApp) << "Vocabulary: languages changed, dropping deck" << DeckId;
 
     DeckId = 0;
+    UserDeckId.clear();
 
     ClearView();
     Load();
@@ -55,7 +58,7 @@ void VocabularyController::ClearView()
 {
     Search.clear();
     FilterKeys.clear();
-    SortKey = DeckId > 0 ? QStringLiteral("deck") : QStringLiteral("word");
+    SortKey = DeckId > 0 || !UserDeckId.isEmpty() ? QStringLiteral("deck") : QStringLiteral("word");
     bSortDescending = false;
 }
 
@@ -125,7 +128,8 @@ bool VocabularyController::completeCardProgress(const QString& CardId)
 }
 
 bool VocabularyController::addCard(const QString& Word, const QString& Translation, const QString& PartOfSpeech,
-                                   int Gender, bool bReadingChosen, const QString& MeaningGist, const QString& Hint)
+                                   int Gender, bool bReadingChosen, const QString& MeaningGist, const QString& Hint,
+                                   const QString& Language)
 {
     if (!AppDatabase::Get().IsReady())
     {
@@ -140,21 +144,33 @@ bool VocabularyController::addCard(const QString& Word, const QString& Translati
         return false;
     }
 
-    FTCard Card = AppCards::MakeAddedWord(TrimmedWord.toStdString(), TrimmedTranslation.toStdString(),
-                                                PartOfSpeech.trimmed().toStdString(), Gender, bReadingChosen,
-                                                MeaningGist.toStdString());
+    const std::string TargetLanguage{Language.isEmpty() ? FTSettings::Get().GetLanguageRules().TargetLanguage
+                                                        : Language.toStdString()};
+
+    AppLanguageDictionary& Dictionary{AppDictionary::Get(TargetLanguage)};
+
+    FTCard Card = AppCards::MakeAddedWord(Dictionary, TrimmedWord.toStdString(), TrimmedTranslation.toStdString(),
+                                          PartOfSpeech.trimmed().toStdString(), Gender, bReadingChosen,
+                                          MeaningGist.toStdString());
     Card.Hint = Hint.trimmed().toStdString();
 
-    const std::optional<std::string> Added = AppDatabase::Get().GetCardRepository().AddCard(Card);
+    const std::optional<std::string> Added = AppCards::GetCardRepository(Dictionary).AddCard(Card);
 
     if (!Added.has_value())
     {
-        qCWarning(LogApp) << "Could not add" << TrimmedWord << "to My Vocabulary";
+        qCWarning(LogApp) << "Could not add" << TrimmedWord << "to the"
+                          << QString::fromStdString(TargetLanguage) << "vocabulary";
 
         return false;
     }
 
-    qCInfo(LogApp) << "Added" << TrimmedWord << Card.PartOfSpeech.c_str() << "to My Vocabulary";
+    if (!UserDeckId.isEmpty() && !AppDatabase::Get().GetUserDecks().AddCard(UserDeckId.toStdString(), *Added))
+    {
+        qCWarning(LogApp) << "Could not put" << TrimmedWord << "into the deck" << UserDeckId;
+    }
+
+    qCInfo(LogApp) << "Added" << TrimmedWord << Card.PartOfSpeech.c_str() << "to the"
+                   << QString::fromStdString(TargetLanguage) << "vocabulary";
 
     Load();
 
@@ -186,26 +202,15 @@ int VocabularyController::findWordTranslationStage(const QString& Word,
 
 bool VocabularyController::importFromFile(const QString& Path)
 {
-    if (Path.isEmpty() || !AppDatabase::Get().IsReady())
+    if (!AppDatabase::Get().IsReady())
     {
         return false;
     }
 
-    std::unique_ptr<FTImportSource> Source;
+    const std::unique_ptr<FTImportSource> Source = AppImport::Parse(Path);
 
-    if (QFileInfo(Path).suffix().compare(QStringLiteral("csv"), Qt::CaseInsensitive) == 0)
+    if (!Source)
     {
-        Source = std::make_unique<FTCsvImporter>();
-    }
-    else
-    {
-        Source = std::make_unique<FTAnkiImporter>();
-    }
-
-    if (!Source->Parse(Path.toStdString()))
-    {
-        qCWarning(LogApp) << "Import failed for" << Path << ":" << QString::fromStdString(Source->GetLastError());
-
         return false;
     }
 
@@ -213,7 +218,7 @@ bool VocabularyController::importFromFile(const QString& Path)
 
     for (const FTImportRow& Row : Source->GetRows())
     {
-        const FTCard Card = AppCards::MakeAddedWord(Row.TargetWord, Row.Translation, {}, -1, false, {});
+        const FTCard Card = AppCards::MakeAddedWord(AppDictionary::GetActive(), Row.TargetWord, Row.Translation, {}, -1, false, {});
 
         if (AppDatabase::Get().GetCardRepository().AddCard(Card).has_value())
         {
@@ -227,6 +232,44 @@ bool VocabularyController::importFromFile(const QString& Path)
     Load();
 
     return Added > 0;
+}
+
+static QString QuoteCsvField(const std::string& Value)
+{
+    QString Field = QString::fromStdString(Value).simplified();
+    Field.replace(QLatin1Char('"'), QStringLiteral("\"\""));
+
+    return QLatin1Char('"') + Field + QLatin1Char('"');
+}
+
+bool VocabularyController::exportToFile(const QUrl& File) const
+{
+    QFile Target{File.isLocalFile() ? File.toLocalFile() : File.toString()};
+
+    if (!Target.open(QIODevice::WriteOnly | QIODevice::Truncate))
+    {
+        qCWarning(LogApp) << "Could not export to" << File << ":" << Target.errorString();
+
+        return false;
+    }
+
+    QByteArray Content{"Word,Translation\n"};
+
+    for (const FTCardHandle& Card : Cards)
+    {
+        Content += (QuoteCsvField(Card->TargetWord) + QLatin1Char(',') + QuoteCsvField(Card->Translation) + QLatin1Char('\n')).toUtf8();
+    }
+
+    if (Target.write(Content) != Content.size() || !Target.flush())
+    {
+        qCWarning(LogApp) << "Could not finish the export to" << File << ":" << Target.errorString();
+
+        return false;
+    }
+
+    qCInfo(LogApp) << "Exported" << static_cast<int>(Cards.size()) << "words of" << DeckName << "to" << File;
+
+    return true;
 }
 
 int VocabularyController::practiceCount(const QStringList& Keys) const
@@ -351,6 +394,10 @@ void VocabularyController::ShowCards()
     {
         LoadDeck();
     }
+    else if (!UserDeckId.isEmpty())
+    {
+        LoadUserDeck();
+    }
     else
     {
         Cards = VocabularyCards;
@@ -367,14 +414,14 @@ void VocabularyController::LoadDeck()
     DeckName.clear();
     DeckNewCount = 0;
 
-    if (!AppDictionary::Get().IsReady() || !AppDatabase::Get().IsReady())
+    if (!AppDictionary::GetActive().IsReady() || !AppDatabase::Get().IsReady())
     {
         qCWarning(LogApp) << "Cannot show deck" << DeckId << "without both a dictionary and a database";
 
         return;
     }
 
-    FTDictionaryRepository& Dictionary = AppDictionary::Get().GetRepository();
+    FTDictionaryRepository& Dictionary = AppDictionary::GetActive().GetRepository();
 
     for (const FTDeck& Deck : Dictionary.ListDecks())
     {
@@ -420,6 +467,51 @@ void VocabularyController::LoadDeck()
 
     qCInfo(LogApp) << "Deck" << DeckName << "shows" << static_cast<int>(Cards.size()) << "words,"
                    << DeckNewCount << "not yet triaged";
+}
+
+void VocabularyController::LoadUserDeck()
+{
+    Cards.clear();
+    DeckName.clear();
+    DeckNewCount = 0;
+
+    if (!AppDatabase::Get().IsReady())
+    {
+        qCWarning(LogApp) << "Cannot show the deck" << UserDeckId << "without a database";
+
+        return;
+    }
+
+    FTUserDeckRepository& Repository = AppDatabase::Get().GetUserDecks();
+    const std::string Id = UserDeckId.toStdString();
+
+    for (const FTUserDeckRow& Deck : Repository.ListDecks())
+    {
+        if (Deck.Id == Id)
+        {
+            DeckName = QString::fromStdString(Deck.Name);
+        }
+    }
+
+    std::unordered_map<std::string, FTCardHandle> CardsById;
+    CardsById.reserve(VocabularyCards.size());
+
+    for (const FTCardHandle& Card : VocabularyCards)
+    {
+        CardsById.emplace(Card->Id, Card);
+    }
+
+    for (const std::string& CardId : Repository.ListCardIds(Id))
+    {
+        const auto Found = CardsById.find(CardId);
+
+        if (Found != CardsById.end())
+        {
+            Cards.push_back(Found->second);
+        }
+    }
+
+    qCInfo(LogApp) << "The deck" << DeckName << "shows" << static_cast<int>(Cards.size()) << "cards";
 }
 
 void VocabularyController::RebuildView()
@@ -534,6 +626,24 @@ void VocabularyController::SetDeckId(qint64 Value)
     }
 
     DeckId = Value;
+
+    ClearView();
+    Load();
+}
+
+QString VocabularyController::GetUserDeckId() const
+{
+    return UserDeckId;
+}
+
+void VocabularyController::SetUserDeckId(const QString& Value)
+{
+    if (UserDeckId == Value)
+    {
+        return;
+    }
+
+    UserDeckId = Value;
 
     ClearView();
     Load();

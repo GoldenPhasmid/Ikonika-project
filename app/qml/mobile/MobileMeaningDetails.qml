@@ -9,7 +9,7 @@ ColumnLayout
     property bool showDefinition: true
     property bool showNativeDefinition: true
 
-    signal wordTapped(string word, string sentence)
+    signal wordTapped(string word, string sentence, var place)
 
     spacing: AppMetrics.gapSmall
 
@@ -75,7 +75,7 @@ ColumnLayout
                 holdEnabled: false
                 tapEnabled: true
 
-                onWordTapped: function(word, sentence) { root.wordTapped(word, sentence) }
+                onWordTapped: function(word, sentence, place) { root.wordTapped(word, sentence, place) }
             }
 
             Text

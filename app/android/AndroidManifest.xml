@@ -12,6 +12,7 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <!-- %%INSERT_FEATURES -->
     <supports-screens
         android:anyDensity="true"
@@ -79,6 +80,12 @@
         <service
             android:name="com.goldenphasmid.ikonika.ReadAloudService"
             android:foregroundServiceType="mediaPlayback"
+            android:exported="false" />
+
+        <service
+            android:name="com.goldenphasmid.ikonika.PackageDownloadService"
+            android:foregroundServiceType="dataSync"
+            android:process=":download"
             android:exported="false" />
 
         <receiver

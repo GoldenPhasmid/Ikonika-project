@@ -1447,13 +1447,23 @@ std::vector<FTDictionaryEntry> FTDictionaryRepository::LookUpIgnoringAccents(
         return {};
     }
 
+    const std::string CanonicalFolded = ExpandLigatures(Folded);
+    const std::vector<std::string> Spellings = LigatureSpellings(Folded);
+
+    std::string Placeholders;
+
+    for (size_t Position = 1; Position <= Spellings.size(); ++Position)
+    {
+        Placeholders += (Position == 1 ? "?" : ", ?") + std::to_string(Position);
+    }
+
     const std::string Queries[] = {
         "SELECT words.id, words.headword, parts_of_speech.code, words.phonetic, "
         "       words.frequency_rank, words.cefr_level, words.llm_complete, "
         "       words.teaching_rank, words.tags "
         "FROM words "
         "JOIN parts_of_speech ON parts_of_speech.id = words.part_of_speech_id "
-        "WHERE " + FoldedExpression("headword") + " = ?1",
+        "WHERE " + FoldedExpression("headword") + " IN (" + Placeholders + ")",
 
         "SELECT words.id, words.headword, parts_of_speech.code, words.phonetic, "
         "       words.frequency_rank, words.cefr_level, words.llm_complete, "
@@ -1461,7 +1471,7 @@ std::vector<FTDictionaryEntry> FTDictionaryRepository::LookUpIgnoringAccents(
         "FROM word_forms "
         "JOIN words ON words.id = word_forms.word_id "
         "JOIN parts_of_speech ON parts_of_speech.id = words.part_of_speech_id "
-        "WHERE " + FoldedExpression("form") + " = ?1"
+        "WHERE " + FoldedExpression("form") + " IN (" + Placeholders + ")"
     };
 
     for (size_t Index = 0; Index < std::size(Queries); ++Index)
@@ -1473,7 +1483,10 @@ std::vector<FTDictionaryEntry> FTDictionaryRepository::LookUpIgnoringAccents(
             continue;
         }
 
-        Query.BindText(1, Folded);
+        for (size_t Position = 0; Position < Spellings.size(); ++Position)
+        {
+            Query.BindText(static_cast<int>(Position) + 1, Spellings[Position]);
+        }
 
         std::vector<FTDictionaryEntry> Candidates = RunWordQuery(Target, Query, GetNativeLanguageFilter(), HasMeaningExamples());
         std::vector<FTDictionaryEntry> Confirmed;
@@ -1482,7 +1495,7 @@ std::vector<FTDictionaryEntry> FTDictionaryRepository::LookUpIgnoringAccents(
 
         for (FTDictionaryEntry& Candidate : Candidates)
         {
-            if (FoldAccents(Candidate.Headword) != Folded)
+            if (ExpandLigatures(FoldAccents(Candidate.Headword)) != CanonicalFolded)
             {
                 continue;
             }
@@ -1765,79 +1778,100 @@ std::vector<FTDictionarySearchMatch> FTDictionaryRepository::Search(const std::s
     const std::string HeadwordTranslationSubqueryCondition =
         LanguageId.has_value() ? "AND other.language_id = ?5 " : "";
 
-    const std::string ExactPattern = MakeFoldedGlob(FoldAccents(SearchText));
-    const std::string PrefixPattern = ExactPattern + "*";
-    const std::string InsidePhrasePattern = "*[ '’-]" + PrefixPattern;
+    std::unordered_map<std::string, size_t> HeadwordIndices;
 
-    FTStatement HeadwordQuery = Target.Prepare(
-        "WITH MatchedWords AS ("
-        "    SELECT id, "
-        "           CASE WHEN headword = ?1 THEN 0 "
-        "                WHEN headword GLOB ?2 THEN 1 "
-        "                ELSE 4 END AS Rank "
-        "    FROM words WHERE headword GLOB ?3 "
-        "    UNION ALL "
-        "    SELECT word_id AS id, "
-        "           CASE WHEN form = ?1 OR form GLOB ?2 THEN " + std::to_string(FormTier) + " "
-        "                ELSE 4 END AS Rank "
-        "    FROM word_forms WHERE form GLOB ?3 "
-        "    UNION ALL "
-        "    SELECT id, 5 AS Rank "
-        "    FROM words WHERE headword GLOB ?6"
-        ") "
-        "SELECT words.headword, parts_of_speech.code, "
-        "       MIN(words.cefr_level), "
-        "       (SELECT GROUP_CONCAT(Best.Text, ', ') FROM ("
-        + EntryTranslations(HeadwordTranslationSubqueryCondition) +
-        "           LIMIT 3"
-        "       ) AS Best), "
-        "       MIN(MatchedWords.Rank) AS MatchTier, "
-        "       MIN(words.teaching_rank) AS TeachingRank, MIN(words.frequency_rank) "
-        "FROM MatchedWords "
-        "JOIN words ON words.id = MatchedWords.id "
-        "JOIN parts_of_speech ON parts_of_speech.id = words.part_of_speech_id "
-        "GROUP BY words.headword, parts_of_speech.code "
-        "ORDER BY MatchTier ASC, "
-        "         CASE WHEN MatchTier <= " + std::to_string(LastExactTier) + " THEN TeachingRank IS NULL ELSE 0 END ASC, "
-        "         CASE WHEN MatchTier <= " + std::to_string(LastExactTier) + " THEN TeachingRank END ASC, "
-        "         CASE WHEN MatchTier = " + std::to_string(FormTier) + " THEN parts_of_speech.code <> 'verb' ELSE 0 END ASC, "
-        "         MIN(words.cefr_level) IS NULL, MIN(words.cefr_level) ASC, "
-        "         words.headword ASC, parts_of_speech.code ASC "
-        "LIMIT ?4");
-
-    if (HeadwordQuery.IsValid())
+    for (const std::string& Spelling : LigatureSpellings(SearchText))
     {
-        const FTQueryTimer HeadwordTimer("FTDictionaryRepository::Search HeadwordQuery");
+        const std::string ExactPattern = MakeFoldedGlob(FoldAccents(Spelling));
+        const std::string PrefixPattern = ExactPattern + "*";
+        const std::string InsidePhrasePattern = "*[ '’-]" + PrefixPattern;
 
-        HeadwordQuery.BindText(1, SearchText);
-        HeadwordQuery.BindText(2, ExactPattern);
-        HeadwordQuery.BindText(3, PrefixPattern);
-        HeadwordQuery.BindInt(4, Limit);
-        HeadwordQuery.BindText(6, InsidePhrasePattern);
+        FTStatement HeadwordQuery = Target.Prepare(
+            "WITH MatchedWords AS ("
+            "    SELECT id, "
+            "           CASE WHEN headword = ?1 THEN 0 "
+            "                WHEN headword GLOB ?2 THEN 1 "
+            "                ELSE 4 END AS Rank "
+            "    FROM words WHERE headword GLOB ?3 "
+            "    UNION ALL "
+            "    SELECT word_id AS id, "
+            "           CASE WHEN form = ?1 OR form GLOB ?2 THEN " + std::to_string(FormTier) + " "
+            "                ELSE 4 END AS Rank "
+            "    FROM word_forms WHERE form GLOB ?3 "
+            "    UNION ALL "
+            "    SELECT id, 5 AS Rank "
+            "    FROM words WHERE headword GLOB ?6"
+            ") "
+            "SELECT words.headword, parts_of_speech.code, "
+            "       MIN(words.cefr_level), "
+            "       (SELECT GROUP_CONCAT(Best.Text, ', ') FROM ("
+            + EntryTranslations(HeadwordTranslationSubqueryCondition) +
+            "           LIMIT 3"
+            "       ) AS Best), "
+            "       MIN(MatchedWords.Rank) AS MatchTier, "
+            "       MIN(words.teaching_rank) AS TeachingRank, MIN(words.frequency_rank) "
+            "FROM MatchedWords "
+            "JOIN words ON words.id = MatchedWords.id "
+            "JOIN parts_of_speech ON parts_of_speech.id = words.part_of_speech_id "
+            "GROUP BY words.headword, parts_of_speech.code "
+            "ORDER BY MatchTier ASC, "
+            "         CASE WHEN MatchTier <= " + std::to_string(LastExactTier) + " THEN TeachingRank IS NULL ELSE 0 END ASC, "
+            "         CASE WHEN MatchTier <= " + std::to_string(LastExactTier) + " THEN TeachingRank END ASC, "
+            "         CASE WHEN MatchTier = " + std::to_string(FormTier) + " THEN parts_of_speech.code <> 'verb' ELSE 0 END ASC, "
+            "         MIN(words.cefr_level) IS NULL, MIN(words.cefr_level) ASC, "
+            "         words.headword ASC, parts_of_speech.code ASC "
+            "LIMIT ?4");
 
-        if (LanguageId.has_value())
+        if (HeadwordQuery.IsValid())
         {
-            HeadwordQuery.BindInt64(5, *LanguageId);
-        }
+            const FTQueryTimer HeadwordTimer("FTDictionaryRepository::Search HeadwordQuery");
 
-        while (HeadwordQuery.Step())
-        {
-            FTDictionarySearchMatch Match;
-            Match.Headword = HeadwordQuery.GetText(0);
-            Match.PartOfSpeech = HeadwordQuery.GetText(1);
-            Match.CefrLevel = HeadwordQuery.IsNull(2) ? std::nullopt
-                                                       : std::optional(HeadwordQuery.GetInt(2));
-            Match.Translation = HeadwordQuery.IsNull(3) ? std::string() : HeadwordQuery.GetText(3);
+            HeadwordQuery.BindText(1, Spelling);
+            HeadwordQuery.BindText(2, ExactPattern);
+            HeadwordQuery.BindText(3, PrefixPattern);
+            HeadwordQuery.BindInt(4, Limit);
+            HeadwordQuery.BindText(6, InsidePhrasePattern);
 
-            Match.TeachingRank = HeadwordQuery.IsNull(5) ? std::nullopt
-                                                          : std::optional(HeadwordQuery.GetInt(5));
-            Match.FrequencyRank = HeadwordQuery.IsNull(6) ? std::nullopt : std::optional(HeadwordQuery.GetInt(6));
+            if (LanguageId.has_value())
+            {
+                HeadwordQuery.BindInt64(5, *LanguageId);
+            }
 
-            const int Tier = HeadwordQuery.GetInt(4);
+            while (HeadwordQuery.Step())
+            {
+                FTDictionarySearchMatch Match;
+                Match.Headword = HeadwordQuery.GetText(0);
+                Match.PartOfSpeech = HeadwordQuery.GetText(1);
+                Match.CefrLevel = HeadwordQuery.IsNull(2) ? std::nullopt
+                                                           : std::optional(HeadwordQuery.GetInt(2));
+                Match.Translation = HeadwordQuery.IsNull(3) ? std::string() : HeadwordQuery.GetText(3);
 
-            Match.bExactMatch = Tier <= LastExactTier || Tier == FormTier;
+                Match.TeachingRank = HeadwordQuery.IsNull(5) ? std::nullopt
+                                                              : std::optional(HeadwordQuery.GetInt(5));
+                Match.FrequencyRank = HeadwordQuery.IsNull(6) ? std::nullopt : std::optional(HeadwordQuery.GetInt(6));
 
-            Tiered.emplace_back(Tier, std::move(Match));
+                const int Tier = HeadwordQuery.GetInt(4);
+
+                Match.bExactMatch = Tier <= LastExactTier || Tier == FormTier;
+
+                const auto Known = HeadwordIndices.find(SearchMatchKey(Match));
+
+                if (Known != HeadwordIndices.end())
+                {
+                    std::pair<int, FTDictionarySearchMatch>& Earlier = Tiered[Known->second];
+
+                    if (Tier < Earlier.first)
+                    {
+                        Earlier.first = Tier;
+                        Earlier.second.bExactMatch = Match.bExactMatch;
+                    }
+
+                    continue;
+                }
+
+                HeadwordIndices.emplace(SearchMatchKey(Match), Tiered.size());
+                Tiered.emplace_back(Tier, std::move(Match));
+            }
         }
     }
 
@@ -2610,6 +2644,14 @@ bool FTDictionaryRepository::HasDeckCategories() const
     return *ResolvedDeckCategories;
 }
 
+bool FTDictionaryRepository::HasDeckDescriptions() const
+{
+    FTStatement Query{Target.Prepare(
+        "SELECT COUNT(*) FROM pragma_table_info('decks') WHERE name = 'description'")};
+
+    return Query.IsValid() && Query.Step() && Query.GetInt(0) > 0;
+}
+
 std::vector<FTDeck> FTDictionaryRepository::ListDecks() const
 {
     const FTQueryTimer Timer("FTDictionaryRepository::ListDecks");
@@ -2622,9 +2664,10 @@ std::vector<FTDeck> FTDictionaryRepository::ListDecks() const
     }
 
     const std::string CategoryColumn = HasDeckCategories() ? "decks.category" : "''";
+    const std::string DescriptionColumn = HasDeckDescriptions() ? "decks.description" : "''";
 
     FTStatement Query = Target.Prepare(
-        "SELECT decks.id, decks.name, " + CategoryColumn + ", COUNT(deck_words.id) FROM decks "
+        "SELECT decks.id, decks.name, " + CategoryColumn + ", COUNT(deck_words.id), " + DescriptionColumn + " FROM decks "
         "JOIN deck_words ON deck_words.deck_id = decks.id "
         "GROUP BY decks.id "
         "ORDER BY decks.id");
@@ -2641,6 +2684,7 @@ std::vector<FTDeck> FTDictionaryRepository::ListDecks() const
         Deck.Name = Query.GetText(1);
         Deck.Category = Query.GetText(2);
         Deck.WordCount = Query.GetInt(3);
+        Deck.Description = Query.GetText(4);
 
         Decks.push_back(std::move(Deck));
     }

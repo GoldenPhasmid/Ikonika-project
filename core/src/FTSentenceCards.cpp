@@ -18,7 +18,7 @@ namespace
 
     constexpr std::string_view GapMark{"___"};
 
-    constexpr std::string_view GapPause{"…"};
+    constexpr std::string_view GapPause{".. ,"};
 
     constexpr std::array<std::string_view, 50> Determiners{
         "le", "la", "les", "l'", "un", "une", "des", "du", "d'", "au", "aux", "ce", "cet", "cette", "ces",

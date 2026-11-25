@@ -34,7 +34,8 @@ Item
     readonly property int percent: Math.round(Math.max(0, root.progress) * 100)
     readonly property real coverWidth: root.compact ? Math.round(AppMetrics.readerRowCoverWidth * 1.5) : root.width
     readonly property real coverHeight: Math.round(root.coverWidth * AppMetrics.bookCoverAspect)
-    readonly property real rowIconSize: AppMetrics.headerActionIconSize + AppMetrics.gapTight
+    readonly property real actionOverhang: (AppMetrics.iconTapSize - AppMetrics.iconSize) / 2
+    readonly property real rowIconSize: AppMetrics.iconSize
     readonly property string transferText: root.downloading ? qsTr("Downloading…") : qsTr("Uploading…")
 
     implicitHeight: root.compact ? Math.max(root.coverHeight, listColumn.implicitHeight) + AppMetrics.gapMedium * 2
@@ -66,33 +67,10 @@ Item
             progress: root.readProgress
         }
 
-        Rectangle
-        {
-            objectName: "reader_book_download"
-
-            anchors.right: parent.right
-            anchors.bottom: parent.bottom
-            anchors.margins: AppMetrics.gapSmall
-            width: AppMetrics.buttonHeightLarge
-            height: width
-            radius: width / 2
-            visible: !root.compact && root.downloadable
-            color: AppTheme.faded(AppTheme.colourScrim, AppTheme.opacitySecondary)
-
-            DesktopIcon
-            {
-                anchors.centerIn: parent
-                name: "download"
-                color: AppTheme.colourCoverInk
-                width: AppMetrics.headerActionIconSize
-                height: AppMetrics.headerActionIconSize
-            }
-        }
-
         Loader
         {
             anchors.fill: parent
-            active: root.transferring
+            active: root.transferring && root.compact
 
             sourceComponent: Component
             {
@@ -129,9 +107,16 @@ Item
         {
             id: coverTap
 
-            onTapped: root.clicked()
+            onTapped: root.transferring ? root.cancelRequested() : root.clicked()
             onLongPressed: if (root.detailsOffered) root.detailsRequested()
         }
+    }
+
+    component RowAction: MobileIconButton
+    {
+        Layout.preferredHeight: AppMetrics.iconTapSize
+        Layout.rightMargin: -root.actionOverhang
+        iconColour: AppTheme.colourSubtle
     }
 
     component Favorite: MobileIconButton
@@ -188,34 +173,26 @@ Item
         RowLayout
         {
             Layout.fillWidth: true
-            Layout.preferredHeight: AppMetrics.exerciseActionIconTapWidth
-            spacing: AppMetrics.gapSmall
+            Layout.topMargin: AppMetrics.gapTight
+            Layout.preferredHeight: AppMetrics.iconTapSize
+            spacing: 0
 
             ReaderLevelBadge
             {
+                id: levelBadge
+
+                Layout.preferredWidth: AppMetrics.bookLevelSize
+                Layout.preferredHeight: AppMetrics.bookLevelSize
+                solid: true
                 level: root.book.level || ""
-                textSize: AppMetrics.fontSmall
+                textSize: AppMetrics.bookLevelFont
             }
 
-            Text
+            Favorite
             {
-                Layout.minimumWidth: 0
-                visible: root.transferring || (root.readPercent > 0 && !root.finished)
-                text: root.transferring ? root.transferText : qsTr("%1%").arg(root.readPercent)
-                font.pixelSize: AppMetrics.fontBody
-                font.family: AppMetrics.fontFamily
-                font.features: { "tnum": 1 }
-                color: AppTheme.colourMuted
-                elide: Text.ElideRight
-            }
-
-            DesktopIcon
-            {
-                visible: root.finished
-                name: "check"
-                color: AppTheme.colourCorrect
-                width: AppMetrics.headerActionIconSize
-                height: AppMetrics.headerActionIconSize
+                Layout.preferredHeight: AppMetrics.iconTapSize
+                Layout.leftMargin: levelBadge.visible ? (AppMetrics.iconTapSize - AppMetrics.bookLevelSize) / 2 : -root.actionOverhang
+                visible: !root.catalogEntry
             }
 
             Item
@@ -223,27 +200,46 @@ Item
                 Layout.fillWidth: true
             }
 
-            DesktopIcon
+            RowAction
             {
-                visible: root.favorite
-                name: "heart"
-                filled: true
-                color: AppTheme.colourWrong
-                width: AppMetrics.headerActionIconSize
-                height: AppMetrics.headerActionIconSize
+                objectName: "reader_book_download"
+
+                visible: root.downloadable
+                iconName: "download"
+                text: qsTr("Download")
+
+                onClicked: root.clicked()
             }
 
-            MobileIconButton
+            RowAction
+            {
+                objectName: "reader_book_cancel"
+
+                visible: root.transferring
+                text: root.uploading ? qsTr("Cancel the upload") : qsTr("Cancel the download")
+
+                onClicked: root.cancelRequested()
+
+                DesktopGoalRing
+                {
+                    anchors.centerIn: parent
+                    width: AppMetrics.iconSize
+                    height: AppMetrics.iconSize
+                    progress: Math.max(0, root.progress)
+                    stroke: AppMetrics.focusRingWidth
+                    fill: AppTheme.colourSubtle
+                    track: AppTheme.faded(AppTheme.colourSubtle, AppTheme.alphaStrong)
+                    sweepDuration: AppMetrics.motionFast
+                }
+            }
+
+            RowAction
             {
                 objectName: "reader_book_details"
 
-                Layout.preferredWidth: AppMetrics.exerciseActionIconTapWidth
-                Layout.preferredHeight: AppMetrics.exerciseActionIconTapWidth
-                Layout.rightMargin: -(AppMetrics.exerciseActionIconTapWidth - AppMetrics.headerActionIconSize) / 2
                 visible: root.detailsOffered
                 iconName: "kebab"
-                iconSize: AppMetrics.headerActionIconSize
-                iconColour: AppTheme.colourSubtle
+                filled: true
                 text: qsTr("Book details")
 
                 onClicked: root.detailsRequested()
@@ -313,6 +309,7 @@ Item
             RowLayout
             {
                 Layout.fillWidth: true
+                Layout.fillHeight: false
                 Layout.preferredHeight: root.rowIconSize
                 spacing: AppMetrics.gapCompact
 
@@ -346,7 +343,7 @@ Item
 
                 Item
                 {
-                    Layout.preferredWidth: AppMetrics.exerciseActionIconTapWidth
+                    Layout.preferredWidth: AppMetrics.iconTapSize
                     Layout.fillHeight: true
                     visible: !root.transferring && !root.onlyInCloud
 
@@ -369,8 +366,8 @@ Item
                         visible: root.finished
                         name: "check"
                         color: AppTheme.colourCorrect
-                        width: AppMetrics.headerActionIconSize
-                        height: AppMetrics.headerActionIconSize
+                        width: AppMetrics.iconSize
+                        height: AppMetrics.iconSize
                     }
                 }
             }
@@ -378,15 +375,19 @@ Item
             RowLayout
             {
                 Layout.fillWidth: true
-                Layout.topMargin: AppMetrics.gapTight - (AppMetrics.buttonHeightLarge - root.rowIconSize) / 2
-                Layout.rightMargin: -(AppMetrics.exerciseActionIconTapWidth - root.rowIconSize) / 2
-                Layout.bottomMargin: -(AppMetrics.buttonHeightLarge - root.rowIconSize) / 2
+                Layout.fillHeight: false
+                Layout.topMargin: AppMetrics.gapSmall - (AppMetrics.buttonHeightLarge - AppMetrics.bookLevelSize) / 2
+                Layout.rightMargin: -(AppMetrics.iconTapSize - root.rowIconSize) / 2
+                Layout.bottomMargin: -(AppMetrics.buttonHeightLarge - AppMetrics.bookLevelSize) / 2
                 spacing: 0
 
                 ReaderLevelBadge
                 {
+                    Layout.preferredWidth: AppMetrics.bookLevelSize
+                    Layout.preferredHeight: AppMetrics.bookLevelSize
+                    solid: true
                     level: root.book.level || ""
-                    textSize: AppMetrics.fontSmall
+                    textSize: AppMetrics.bookLevelFont
                 }
 
                 Item

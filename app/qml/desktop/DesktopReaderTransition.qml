@@ -12,6 +12,7 @@ Item
 
     property bool contentReady: true
     property bool awaitingContent: false
+    property bool opening: false
     property var afterShut: null
 
     readonly property bool available: AppMetrics.motionBase > 0 && !root.running
@@ -30,6 +31,7 @@ Item
         root.pageShown = 0
         root.chromeShown = 0
         root.running = true
+        root.opening = true
 
         leaveShelfAnimation.start()
         root.openStarted()
@@ -54,6 +56,7 @@ Item
         leaveShelfAnimation.stop()
         showPageAnimation.stop()
         root.awaitingContent = false
+        root.opening = false
         root.resetStage()
         root.running = false
     }

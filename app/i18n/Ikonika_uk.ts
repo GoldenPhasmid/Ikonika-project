@@ -7440,71 +7440,79 @@
     </message>
 </context>
 <context>
-    <name>MobileReaderFilterSheet</name>
+    <name>MobileReaderFilterDrawer</name>
     <message>
-        <location filename="../qml/mobile/MobileReaderFilterSheet.qml" line="16"/>
+        <location filename="../qml/mobile/MobileReaderFilterDrawer.qml" line="16"/>
         <source>Filter</source>
         <translation>Фільтр</translation>
     </message>
     <message>
-        <location filename="../qml/mobile/MobileReaderFilterSheet.qml" line="82"/>
+        <location filename="../qml/mobile/MobileReaderFilterDrawer.qml" line="69"/>
         <source>Level</source>
         <translation>Рівень</translation>
     </message>
     <message>
-        <location filename="../qml/mobile/MobileReaderFilterSheet.qml" line="90"/>
+        <location filename="../qml/mobile/MobileReaderFilterDrawer.qml" line="77"/>
         <source>Status</source>
         <translation>Статус</translation>
     </message>
     <message>
-        <location filename="../qml/mobile/MobileReaderFilterSheet.qml" line="92"/>
+        <location filename="../qml/mobile/MobileReaderFilterDrawer.qml" line="79"/>
         <source>Not started</source>
         <translation>Не розпочато</translation>
     </message>
     <message>
-        <location filename="../qml/mobile/MobileReaderFilterSheet.qml" line="92"/>
+        <location filename="../qml/mobile/MobileReaderFilterDrawer.qml" line="79"/>
         <source>Reading</source>
         <translation>Читання</translation>
     </message>
     <message>
-        <location filename="../qml/mobile/MobileReaderFilterSheet.qml" line="92"/>
+        <location filename="../qml/mobile/MobileReaderFilterDrawer.qml" line="79"/>
         <source>Finished</source>
         <translation>Дочитані</translation>
     </message>
     <message>
-        <location filename="../qml/mobile/MobileReaderFilterSheet.qml" line="98"/>
+        <location filename="../qml/mobile/MobileReaderFilterDrawer.qml" line="85"/>
         <source>Storage</source>
         <translation>Сховище</translation>
     </message>
     <message>
-        <location filename="../qml/mobile/MobileReaderFilterSheet.qml" line="100"/>
+        <location filename="../qml/mobile/MobileReaderFilterDrawer.qml" line="87"/>
         <source>On this phone</source>
         <translation>На цьому телефоні</translation>
     </message>
     <message>
-        <location filename="../qml/mobile/MobileReaderFilterSheet.qml" line="100"/>
+        <location filename="../qml/mobile/MobileReaderFilterDrawer.qml" line="87"/>
         <source>In the cloud</source>
         <translation>У хмарі</translation>
     </message>
     <message>
-        <location filename="../qml/mobile/MobileReaderFilterSheet.qml" line="106"/>
+        <location filename="../qml/mobile/MobileReaderFilterDrawer.qml" line="93"/>
         <source>Format</source>
         <translation>Формат</translation>
     </message>
     <message>
-        <location filename="../qml/mobile/MobileReaderFilterSheet.qml" line="121"/>
+        <location filename="../qml/mobile/MobileReaderFilterDrawer.qml" line="103"/>
         <source>Reset</source>
         <translation>Скинути</translation>
     </message>
     <message>
-        <location filename="../qml/mobile/MobileReaderFilterSheet.qml" line="133"/>
+        <location filename="../qml/mobile/MobileReaderFilterDrawer.qml" line="113"/>
         <source>Show 1 book</source>
         <translation>Показати 1 книжку</translation>
     </message>
     <message>
-        <location filename="../qml/mobile/MobileReaderFilterSheet.qml" line="133"/>
+        <location filename="../qml/mobile/MobileReaderFilterDrawer.qml" line="113"/>
         <source>Show %1 books</source>
         <translation>Показати книжок: %1</translation>
+    </message>
+</context>
+<context>
+    <name>MobileReaderOptionsDrawer</name>
+    <message>
+        <location filename="../qml/mobile/MobileReaderOptionsDrawer.qml" line="45"/>
+        <source>Close</source>
+        <translation>Закрити</translation>
     </message>
 </context>
 <context>
@@ -7770,14 +7778,14 @@
     </message>
 </context>
 <context>
-    <name>MobileReaderSortSheet</name>
+    <name>MobileReaderSortDrawer</name>
     <message>
-        <location filename="../qml/mobile/MobileReaderSortSheet.qml" line="18"/>
+        <location filename="../qml/mobile/MobileReaderSortDrawer.qml" line="18"/>
         <source>Sort books</source>
         <translation>Сортування книжок</translation>
     </message>
     <message>
-        <location filename="../qml/mobile/MobileReaderSortSheet.qml" line="108"/>
+        <location filename="../qml/mobile/MobileReaderSortDrawer.qml" line="43"/>
         <source>Group by</source>
         <translation>Групувати за</translation>
     </message>

@@ -1,6 +1,5 @@
 import QtQuick
 import QtQuick.Layouts
-import "MobileIcons.js" as Icons
 import "../ReaderTones.js" as Tones
 import "../ReaderShelf.js" as Shelf
 import "../ReadAloudPlace.js" as ReadAloudPlace
@@ -10,7 +9,31 @@ Item
     id: root
 
     required property DictionaryController lookupDictionary
+    required property DictionaryController translationDictionary
+    required property DictionaryController contextDictionary
     required property ReaderController reader
+
+    Binding
+    {
+        target: root.lookupDictionary
+        property: "language"
+        value: root.reader.bookLanguage.code
+    }
+
+    Binding
+    {
+        target: root.translationDictionary
+        property: "language"
+        value: root.reader.bookLanguage.code
+    }
+
+    Binding
+    {
+        target: root.contextDictionary
+        property: "language"
+        value: root.reader.bookLanguage.code
+    }
+
     required property int stageCount
 
     signal tabSelected(string key)
@@ -19,11 +42,14 @@ Item
 
     readonly property bool reading: root.reader.reading
 
-    readonly property bool lookupOpen: lookupSheet.shown
+    readonly property bool popupLookup: AppMetrics.tabletScreen
+    readonly property bool lookupOpen: lookupSheet.shown || translationPopup.open
     property bool outlineOpen: false
     property bool settingsOpen: false
     property bool voiceNoticeShown: false
+    property var voiceNoticePlace: null
     property var lookupPlace: null
+    readonly property bool readAloudOffered: !root.reader.isPdf || root.reader.pdfNarration.available
 
     property int pdfPendingPage: 0
     property real pdfPendingZoom: 0
@@ -297,12 +323,29 @@ Item
 
     function toggleChrome()
     {
+        if (translationPopup.dismiss())
+        {
+            return
+        }
+
         root.reader.fullScreen = !root.reader.fullScreen
     }
 
     function openLookup(term, focusField, sentence, place)
     {
         root.lookupPlace = place || null
+
+        const asPopup = root.popupLookup && !root.reader.isPdf && !focusField && root.lookupPlace !== null
+
+        console.info("Reader lookup opens as", asPopup ? "popup" : "sheet")
+
+        if (asPopup)
+        {
+            translationPopup.openFor(term, sentence)
+
+            return
+        }
+
         lookupSheet.openFor(term, focusField, sentence)
     }
 
@@ -317,19 +360,59 @@ Item
 
         if (!root.reader.readAloud.available)
         {
+            root.voiceNoticePlace = null
             root.voiceNoticeShown = !root.voiceNoticeShown
 
             return
         }
 
         root.voiceNoticeShown = false
+        root.playReadAloud()
+    }
+
+    function playReadAloud()
+    {
+        if (root.reader.isPdf)
+        {
+            pdfView.playReadAloud()
+
+            return
+        }
+
         readingList.playReadAloud()
+    }
+
+    function readFromPlace(place)
+    {
+        root.closeLookup()
+
+        if (!root.reader.readAloud.available)
+        {
+            root.voiceNoticePlace = place
+            root.voiceNoticeShown = true
+
+            return
+        }
+
+        root.voiceNoticeShown = false
+
+        if (root.reader.isPdf)
+        {
+            pdfView.readFrom(place)
+
+            return
+        }
+
+        readingList.readFrom(place)
     }
 
     function closeLookup()
     {
+        translationPopup.dismiss()
         lookupSheet.close()
     }
+
+    onPopupLookupChanged: if (!root.popupLookup) translationPopup.dismiss()
 
     function dismissSheet()
     {
@@ -361,16 +444,16 @@ Item
             return true
         }
 
-        if (filterSheet.visible)
+        if (filterDrawer.visible)
         {
-            filterSheet.close()
+            filterDrawer.close()
 
             return true
         }
 
-        if (sortSheet.visible)
+        if (sortDrawer.visible)
         {
-            sortSheet.close()
+            sortDrawer.close()
 
             return true
         }
@@ -439,18 +522,51 @@ Item
         }
     }
 
-    function closeBook()
+    function savePosition()
     {
+        if (!root.reader.reading)
+        {
+            return
+        }
+
         if (root.reader.isPdf)
         {
             root.reader.savePosition(root.pdfPendingPage)
             root.reader.saveZoom(root.pdfPendingZoom)
             root.reader.saveScroll(root.pdfPendingScroll)
+
+            return
         }
-        else
+
+        if (!root.reader.loading)
         {
             root.reader.savePosition(root.topParagraph)
         }
+    }
+
+    function restorePosition()
+    {
+        if (!root.reader.reading || root.reader.loading || root.reader.isPdf)
+        {
+            return
+        }
+
+        Qt.callLater(function()
+        {
+            if (root.reader.currentPosition <= 0)
+            {
+                readingList.positionViewAtBeginning()
+
+                return
+            }
+
+            readingList.positionViewAtIndex(root.reader.currentPosition, ListView.Beginning)
+        })
+    }
+
+    function closeBook()
+    {
+        root.savePosition()
 
         root.closeLookup()
         root.outlineOpen = false
@@ -561,8 +677,16 @@ Item
                 return
             }
 
+            const place = root.voiceNoticePlace
+            if (place !== null)
+            {
+                root.readFromPlace(place)
+
+                return
+            }
+
             root.voiceNoticeShown = false
-            readingList.playReadAloud()
+            root.playReadAloud()
         }
     }
 
@@ -585,20 +709,7 @@ Item
 
         function onLoadingChanged()
         {
-            if (root.reader.reading && !root.reader.loading && !root.reader.isPdf)
-            {
-                Qt.callLater(function()
-                {
-                    if (root.reader.currentPosition <= 0)
-                    {
-                        readingList.positionViewAtBeginning()
-
-                        return
-                    }
-
-                    readingList.positionViewAtIndex(root.reader.currentPosition, ListView.Beginning)
-                })
-            }
+            root.restorePosition()
         }
     }
 
@@ -606,6 +717,7 @@ Item
     {
         root.adoptShelf()
         root.refresh()
+        root.restorePosition()
     }
 
     MobileShell
@@ -655,7 +767,7 @@ Item
                 marked: Shelf.filterCount(root.filter) > 0
                 text: qsTr("Filter books")
 
-                onClicked: filterSheet.open()
+                onClicked: filterDrawer.open()
             }
 
             MobileIconButton
@@ -666,7 +778,7 @@ Item
                 iconName: root.sortReversed ? "arrow_up_narrow_wide" : "arrow_down_wide_narrow"
                 text: qsTr("Sort books")
 
-                onClicked: sortSheet.open()
+                onClicked: sortDrawer.open()
             }
 
             MobileIconButton
@@ -674,7 +786,7 @@ Item
                 objectName: "reader_layout_switch"
 
                 visible: !root.searchOpen && !bookPage.visible
-                iconName: root.listLayout ? "layout_grid" : "contents"
+                iconName: root.listLayout ? "layout_grid" : "layout_rows"
                 text: root.listLayout ? qsTr("Show as covers") : qsTr("Show as a list")
 
                 onClicked: AppViewLayouts.setList("reader", !root.listLayout)
@@ -890,66 +1002,64 @@ Item
                 controlsVisible: root.chromeVisible
 
                 topContent: [
-                    RowLayout
-                    {
-                        Layout.fillWidth: true
-                        Layout.leftMargin: AppMetrics.contentPadding
-                        Layout.rightMargin: AppMetrics.contentPadding
-                        Layout.topMargin: AppMetrics.gapSmall
-                        visible: root.chromeVisible
-                        spacing: AppMetrics.gapSmall
-
-                        MobileActionIconButton
-                        {
-                            iconSvg: Icons.Icons.chevron_left.path
-
-                            onClicked: root.closeBook()
-                        }
-
-                        Item
-                        {
-                            Layout.fillWidth: true
-                        }
-
-                        MobileActionIconButton
-                        {
-                            objectName: "reader_read_aloud"
-
-                            visible: !root.reader.isPdf
-                            active: root.reader.readAloud.started || root.voiceNoticeShown
-                            iconSvg: Icons.Icons.headphones.path
-
-                            onClicked: root.toggleReadAloud()
-                        }
-
-                        MobileActionIconButton
-                        {
-                            iconSvg: Icons.Icons.contents.path
-
-                            onClicked: root.openOutline()
-                        }
-
-                        MobileActionIconButton
-                        {
-                            iconSvg: Icons.Icons.text_size.path
-                            iconMinX: Icons.Icons.text_size.minX
-                            iconMinY: Icons.Icons.text_size.minY
-                            iconWidth: Icons.Icons.text_size.width
-                            iconHeight: Icons.Icons.text_size.height
-
-                            onClicked: root.settingsOpen = true
-                        }
-
-                        MobileActionIconButton
-                        {
-                            iconSvg: Icons.Icons.search.path
-
-                            onClicked: root.openLookup("", true)
-                        }
-                    },
                     MobileHeader
                     {
+                        visible: root.chromeVisible
                         title: root.reader.currentTitle
+                        showBack: true
+
+                        onBackRequested: root.closeBook()
+
+                        status: RowLayout
+                        {
+                            Layout.fillWidth: false
+                            spacing: 0
+
+                            MobileIconButton
+                            {
+                                objectName: "reader_read_aloud"
+
+                                visible: root.readAloudOffered
+                                iconName: "headphones"
+                                iconColour: root.reader.readAloud.started || root.voiceNoticeShown ? AppTheme.colourAccent : AppTheme.colourText
+                                text: qsTr("Read aloud")
+
+                                onClicked: root.toggleReadAloud()
+                            }
+
+                            MobileIconButton
+                            {
+                                objectName: "reader_contents"
+
+                                iconName: "contents"
+                                iconColour: root.outlineOpen ? AppTheme.colourAccent : AppTheme.colourText
+                                text: qsTr("Contents")
+
+                                onClicked: root.openOutline()
+                            }
+
+                            MobileIconButton
+                            {
+                                objectName: "reader_appearance"
+
+                                iconName: "text_size"
+                                iconColour: root.settingsOpen ? AppTheme.colourAccent : AppTheme.colourText
+                                text: qsTr("Appearance")
+
+                                onClicked: root.settingsOpen = true
+                            }
+
+                            MobileIconButton
+                            {
+                                objectName: "reader_lookup"
+
+                                iconName: "search"
+                                iconColour: root.lookupOpen ? AppTheme.colourAccent : AppTheme.colourText
+                                text: qsTr("Look up a word")
+
+                                onClicked: root.openLookup("", true)
+                            }
+                        }
                     }
                 ]
 
@@ -965,17 +1075,17 @@ Item
                         border.width: AppMetrics.borderWidth
                         border.color: AppTheme.colourBorder
 
-                        MobileActionIconButton
+                        MobileIconButton
                         {
                             anchors.left: parent.left
                             anchors.leftMargin: AppMetrics.gapSmall
                             anchors.verticalCenter: parent.verticalCenter
-                            width: 32
-                            height: 32
                             visible: root.reader.isPdf
+                            enabled: pdfView.pageIndex > 0
 
-                            iconSvg: Icons.Icons.chevron_left.path
-                            interactive: pdfView.pageIndex > 0
+                            iconName: "chevron_left"
+                            iconColour: enabled ? AppTheme.colourText : AppTheme.colourSubtle
+                            text: qsTr("Previous page")
 
                             onClicked: pdfView.goToPage(pdfView.pageIndex - 1)
                         }
@@ -985,7 +1095,7 @@ Item
                             id: pageNumber
 
                             anchors.centerIn: parent
-                            width: Math.min(180, parent.width - 96)
+                            width: Math.min(180, parent.width - 112)
                             height: parent.height
                             page: pdfView.pageIndex
                             pageCount: pdfView.pageCount
@@ -997,17 +1107,17 @@ Item
                             onPageRequested: function(page) { pdfView.goToPage(page) }
                         }
 
-                        MobileActionIconButton
+                        MobileIconButton
                         {
                             anchors.right: parent.right
                             anchors.rightMargin: AppMetrics.gapSmall
                             anchors.verticalCenter: parent.verticalCenter
-                            width: 32
-                            height: 32
                             visible: root.reader.isPdf
+                            enabled: pdfView.pageIndex + 1 < pdfView.pageCount
 
-                            iconSvg: Icons.Icons.chevron_right.path
-                            interactive: pdfView.pageIndex + 1 < pdfView.pageCount
+                            iconName: "chevron_right"
+                            iconColour: enabled ? AppTheme.colourText : AppTheme.colourSubtle
+                            text: qsTr("Next page")
 
                             onClicked: pdfView.goToPage(pdfView.pageIndex + 1)
                         }
@@ -1041,66 +1151,24 @@ Item
                             }
                         }
 
-                        Item
+                        ReaderScrubber
                         {
                             id: scrubber
 
                             Layout.fillWidth: true
-                            Layout.preferredHeight: thumb.height
 
-                            property int previewIndex: -1
+                            count: root.positionCount
+                            index: root.positionIndex
 
-                            readonly property int shownIndex: scrubber.previewIndex >= 0
-                                ? scrubber.previewIndex : root.positionIndex
-                            readonly property real fraction: root.positionCount > 1
-                                ? scrubber.shownIndex / (root.positionCount - 1) : 0
-
-                            function indexFromRatio(ratio)
-                            {
-                                const clamped = Math.max(0, Math.min(1, ratio))
-                                return Math.round(clamped * (root.positionCount - 1))
-                            }
+                            onPositionRequested: function(position) { root.goToPosition(position) }
 
                             Rectangle
                             {
-                                anchors.verticalCenter: parent.verticalCenter
-                                width: parent.width
-                                height: AppMetrics.borderWidth * 2
-                                radius: height / 2
-                                color: AppTheme.colourBorder
-                            }
-
-                            Rectangle
-                            {
-                                anchors.verticalCenter: parent.verticalCenter
-                                width: thumb.x + thumb.width / 2
-                                height: AppMetrics.borderWidth * 2
-                                radius: height / 2
-                                color: AppTheme.colourAccent
-                            }
-
-                            Rectangle
-                            {
-                                id: thumb
-
-                                x: (scrubber.width - width) * scrubber.fraction
-                                anchors.verticalCenter: parent.verticalCenter
-
-                                width: 16
-                                height: 16
-                                radius: 8
-                                color: AppTheme.colourPanel
-                                border.width: AppMetrics.borderWidth
-                                border.color: AppTheme.colourAccent
-                            }
-
-                            Rectangle
-                            {
-                                visible: scrubberArea.pressed
+                                visible: scrubber.pressed
                                 z: 1
 
-                                x: Math.max(0, Math.min(scrubber.width - width, thumb.x + thumb.width / 2 - width / 2))
-                                y: thumb.y - height - AppMetrics.gapSmall
+                                x: Math.max(0, Math.min(scrubber.width - width, scrubber.handle.x + scrubber.handle.width / 2 - width / 2))
+                                y: scrubber.handle.y - height - AppMetrics.gapSmall
 
                                 width: bubbleLabel.implicitWidth + AppMetrics.gapMedium
                                 height: bubbleLabel.implicitHeight + AppMetrics.gapSmall
@@ -1119,36 +1187,6 @@ Item
                                     font.pixelSize: AppMetrics.fontMeta
                                     font.family: AppMetrics.fontFamily
                                     color: AppTheme.colourText
-                                }
-                            }
-
-                            MouseArea
-                            {
-                                id: scrubberArea
-
-                                anchors.fill: parent
-                                anchors.margins: -12
-                                preventStealing: true
-
-                                onPressed: function(mouse)
-                                {
-                                    scrubber.previewIndex = scrubber.indexFromRatio(mouse.x / scrubber.width)
-                                }
-                                onPositionChanged: function(mouse)
-                                {
-                                    if (scrubberArea.pressed)
-                                    {
-                                        scrubber.previewIndex = scrubber.indexFromRatio(mouse.x / scrubber.width)
-                                    }
-                                }
-                                onReleased:
-                                {
-                                    if (scrubber.previewIndex >= 0)
-                                    {
-                                        root.goToPosition(scrubber.previewIndex)
-                                    }
-
-                                    scrubber.previewIndex = -1
                                 }
                             }
                         }
@@ -1173,11 +1211,26 @@ Item
                         initialZoom: root.reader.currentZoom
                         initialScroll: root.reader.currentScroll
                         cropMargins: root.reader.cropMargins
+                        startPadding: readingFrame.topReserve + AppMetrics.readerEndSpace
+                        endPadding: readingFrame.bottomReserve + AppMetrics.readerEndSpace
                         paperColour: root.pageTone.paper
                         inkColour: root.pageTone.ink
+                        readAloud: root.reader.readAloud
+                        narration: root.reader.pdfNarration
+                        topChrome: readingFrame.topCover
+                        readAloudInset: readingFrame.bottomCover + (playBar.visible ? playBar.height + AppMetrics.gapMedium * 2 : 0)
 
-                        onWordPicked: function(word, sentence) { root.openLookup(word, false, sentence) }
+                        onWordPicked: function(word, sentence)
+                        {
+                            if (root.reader.readAloud.playing)
+                            {
+                                root.reader.readAloud.pause()
+                            }
+
+                            root.openLookup(word, false, sentence, pdfView.pickedPlace)
+                        }
                         onDoubleTapped: root.closeLookup()
+                        onReadAloudRequested: function(place) { root.readFromPlace(place) }
                         onBlankTapped: root.toggleChrome()
                         onCurrentPageChanged: function(page)
                         {
@@ -1220,13 +1273,13 @@ Item
                         header: Item
                         {
                             width: readingList.width
-                            height: readingList.height / 2
+                            height: readingFrame.topReserve + AppMetrics.readerEndSpace
                         }
 
                         footer: Item
                         {
                             width: readingList.width
-                            height: readingList.height / 2
+                            height: readingFrame.bottomReserve + AppMetrics.readerEndSpace
                         }
 
                         property var selectedText: null
@@ -1316,7 +1369,33 @@ Item
                             followGlide.start()
                         }
 
-                        onMovementStarted: readingList.leaveReadAloud()
+                        onMovementStarted:
+                        {
+                            readingList.leaveReadAloud()
+                            translationPopup.dismiss()
+                        }
+
+                        function selectionGeometry()
+                        {
+                            const owner = readingList.selectedText
+
+                            if (owner === null || owner.selectedText.length === 0)
+                            {
+                                return null
+                            }
+
+                            const first = owner.positionToRectangle(owner.selectionStart)
+                            const last = owner.positionToRectangle(owner.selectionEnd)
+                            const left = owner.parent.x + owner.x
+                            const top = owner.parent.y + owner.y - readingList.contentY
+                            const singleLine = first.y === last.y
+                            const selectionLeft = left + (singleLine ? Math.min(first.x, last.x) : 0)
+                            const selectionRight = left + (singleLine ? Math.max(first.x, last.x) : owner.width)
+
+                            return { top: top + first.y, bottom: top + last.y + last.height, endX: left + last.x,
+                                     endY: top + last.y + last.height / 2, left: selectionLeft, right: selectionRight,
+                                     width: selectionRight - selectionLeft }
+                        }
 
                         NumberAnimation
                         {
@@ -1359,6 +1438,8 @@ Item
 
                         function clearSelection()
                         {
+                            translationPopup.dismiss()
+
                             if (readingList.selectedText === null)
                             {
                                 return
@@ -1376,8 +1457,8 @@ Item
 
                                 if (row === null || !row.holdsText(eventPoint.position.x))
                                 {
-                                    readingList.clearSelection()
                                     root.toggleChrome()
+                                    readingList.clearSelection()
                                 }
                             }
                         }
@@ -1568,23 +1649,29 @@ Item
 
                                 TapHandler
                                 {
+                                    id: wordTapHandler
+
+                                    exclusiveSignals: TapHandler.SingleTap | TapHandler.DoubleTap
                                     longPressThreshold: 0.4
 
-                                    onTapped: function(eventPoint)
+                                    function wordRangeAt(position)
                                     {
-                                        const index = hitTest.characterAt(
-                                            eventPoint.position.x, eventPoint.position.y)
-                                        const range = root.wordRange(paragraph.display, index)
+                                        return root.wordRange(paragraph.display, hitTest.characterAt(position.x, position.y))
+                                    }
+
+                                    onSingleTapped: function(eventPoint)
+                                    {
+                                        const range = wordTapHandler.wordRangeAt(paragraphText.mapFromItem(null, eventPoint.scenePosition))
 
                                         if (range === null)
                                         {
-                                            readingList.clearSelection()
                                             root.toggleChrome()
+                                            readingList.clearSelection()
 
                                             return
                                         }
 
-                                        root.reader.readAloud.pauseForLookup()
+                                        root.reader.readAloud.pause()
                                         readingList.claimSelection(paragraphText)
                                         paragraphText.select(range.start, range.end)
                                         root.openLookup(paragraph.display.substring(range.start, range.end),
@@ -1592,19 +1679,26 @@ Item
                                                         { paragraph: paragraph.index, character: range.start })
                                     }
 
+                                    onDoubleTapped: function(eventPoint)
+                                    {
+                                        const range = wordTapHandler.wordRangeAt(paragraphText.mapFromItem(null, eventPoint.scenePosition))
+
+                                        if (range !== null)
+                                        {
+                                            root.readFromPlace({ paragraph: paragraph.index, character: range.start })
+                                        }
+                                    }
+
                                     onLongPressed:
                                     {
-                                        const index = hitTest.characterAt(
-                                            selectionTracker.point.position.x,
-                                            selectionTracker.point.position.y)
-                                        const range = root.wordRange(paragraph.display, index)
+                                        const range = wordTapHandler.wordRangeAt(selectionTracker.point.position)
 
                                         if (range === null)
                                         {
                                             return
                                         }
 
-                                        root.reader.readAloud.pauseForLookup()
+                                        root.reader.readAloud.pause()
                                         readingList.interactive = false
                                         readingList.claimSelection(paragraphText)
                                         readingList.selectingText = paragraphText
@@ -1661,6 +1755,38 @@ Item
                             }
                         }
                     }
+
+                    MobileReaderTranslation
+                    {
+                        id: translationPopup
+
+                        anchors.fill: readingList
+                        z: 40
+                        visible: !root.reader.isPdf
+
+                        contextLookup: root.contextDictionary
+                        lookup: root.translationDictionary
+                        maxStage: root.stageCount
+                        geometry: readingList.selectionGeometry()
+                        readAloudOffered: !root.reader.isPdf && root.reader.readAloud.available && root.lookupPlace !== null
+                        knownOffered: true
+
+                        onKnownMarkChanged: root.reader.vocabulary.refresh()
+
+                        onAddWordRequested: function(word, translation, partOfSpeech, hint)
+                        {
+                            translationPopup.dismiss()
+                            root.addWordRequested(word, translation, partOfSpeech, hint)
+                        }
+
+                        onDictionaryRequested: function(word)
+                        {
+                            translationPopup.dismiss()
+                            root.entryOpened(word, "", translationPopup.sentence)
+                        }
+
+                        onReadAloudRequested: root.readFromPlace(root.lookupPlace)
+                    }
                 }
             }
 
@@ -1670,13 +1796,13 @@ Item
 
                 anchors.horizontalCenter: parent.horizontalCenter
                 anchors.bottom: parent.bottom
-                anchors.bottomMargin: readingFrame.bottomCover + AppMetrics.gapMedium
+                anchors.bottomMargin: readingFrame.bottomCover
                                       + (readingFrame.controlsVisible ? 0 : readingFrame.SafeArea.margins.bottom)
-                visible: !root.reader.isPdf && !root.reader.loading && root.reader.readAloud.started
+                visible: root.readAloudOffered && !root.reader.loading && root.reader.readAloud.started
 
                 readAloud: root.reader.readAloud
 
-                onPlayRequested: readingList.playReadAloud()
+                onPlayRequested: root.playReadAloud()
             }
 
             Rectangle
@@ -1686,7 +1812,7 @@ Item
                 anchors.horizontalCenter: parent.horizontalCenter
                 anchors.bottom: playBar.top
                 anchors.bottomMargin: AppMetrics.gapSmall
-                visible: playBar.visible && readingList.readingAway
+                visible: playBar.visible && (root.reader.isPdf ? pdfView.readingAway : readingList.readingAway)
                 implicitWidth: backLabel.implicitWidth + AppMetrics.gapMedium * 2
                 implicitHeight: backLabel.implicitHeight + AppMetrics.gapSmall * 2
                 radius: height / 2
@@ -1710,7 +1836,7 @@ Item
                 {
                     anchors.fill: parent
 
-                    onClicked: readingList.showReading()
+                    onClicked: root.reader.isPdf ? pdfView.showReading() : readingList.showReading()
                 }
             }
 
@@ -1719,7 +1845,7 @@ Item
                 anchors.horizontalCenter: parent.horizontalCenter
                 anchors.bottom: parent.bottom
                 anchors.bottomMargin: playBar.anchors.bottomMargin
-                visible: root.voiceNoticeShown && !root.reader.isPdf && !root.reader.loading && !root.reader.readAloud.available
+                visible: root.voiceNoticeShown && root.readAloudOffered && !root.reader.loading && !root.reader.readAloud.available
 
                 readAloud: root.reader.readAloud
 
@@ -1738,19 +1864,7 @@ Item
                 id: positionSaveTimer
                 interval: 800
 
-                onTriggered:
-                {
-                    if (root.reader.reading && root.reader.isPdf)
-                    {
-                        root.reader.savePosition(root.pdfPendingPage)
-                        root.reader.saveZoom(root.pdfPendingZoom)
-                        root.reader.saveScroll(root.pdfPendingScroll)
-                    }
-                    else if (root.reader.reading && !root.reader.loading)
-                    {
-                        root.reader.savePosition(root.topParagraph)
-                    }
-                }
+                onTriggered: root.savePosition()
             }
         }
 
@@ -1823,21 +1937,14 @@ Item
         stageCount: root.stageCount
 
         anchors.fill: parent
-        readAloudOffered: !root.reader.isPdf && root.reader.readAloud.available && root.lookupPlace !== null
+        readAloudOffered: root.readAloudOffered && root.reader.readAloud.available && root.lookupPlace !== null
 
         onAddWordRequested: function(word, translation, partOfSpeech, hint)
         {
             root.addWordRequested(word, translation, partOfSpeech, hint)
         }
 
-        onReadAloudRequested:
-        {
-            const place = root.lookupPlace
-
-            lookupSheet.close()
-            root.voiceNoticeShown = false
-            readingList.readFrom(place)
-        }
+        onReadAloudRequested: root.readFromPlace(root.lookupPlace)
 
         onEntryOpened: function(headword, partOfSpeech, hint) { root.entryOpened(headword, partOfSpeech, hint) }
     }
@@ -1942,7 +2049,7 @@ Item
             showPdf: root.reader.isPdf
             showText: !root.reader.isPdf
             titled: false
-            readAloud: root.reader.isPdf ? null : root.reader.readAloud
+            readAloud: root.reader.readAloud
         }
     }
 
@@ -1968,10 +2075,11 @@ Item
         onImportRequested: root.reader.pickAndOpen()
     }
 
-    MobileReaderFilterSheet
+    MobileReaderFilterDrawer
     {
-        id: filterSheet
+        id: filterDrawer
 
+        anchors.fill: parent
         z: 50
 
         filter: root.filter
@@ -1982,10 +2090,11 @@ Item
         onReset: root.filter = Shelf.emptyFilter()
     }
 
-    MobileReaderSortSheet
+    MobileReaderSortDrawer
     {
-        id: sortSheet
+        id: sortDrawer
 
+        anchors.fill: parent
         z: 50
 
         order: root.sortOrder

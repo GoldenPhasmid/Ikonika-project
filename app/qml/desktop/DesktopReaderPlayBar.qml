@@ -32,6 +32,7 @@ Rectangle
 
             focusPolicy: Qt.NoFocus
             iconName: "skip_back"
+            shortcutKey: "←"
             text: qsTr("Previous sentence (Ctrl+Left)")
 
             onClicked: root.readAloud.previous()
@@ -65,6 +66,7 @@ Rectangle
 
             focusPolicy: Qt.NoFocus
             iconName: "skip_forward"
+            shortcutKey: "→"
             text: qsTr("Next sentence (Ctrl+Right)")
 
             onClicked: root.readAloud.next()

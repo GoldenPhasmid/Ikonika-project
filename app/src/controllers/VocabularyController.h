@@ -5,6 +5,7 @@
 #include <QObject>
 #include <QString>
 #include <QStringList>
+#include <QUrl>
 #include <QVariantList>
 #include <qqmlintegration.h>
 
@@ -29,6 +30,7 @@ class VocabularyController : public QObject
     Q_PROPERTY(int filteredCount READ GetFilteredCount NOTIFY viewChanged)
 
     Q_PROPERTY(qint64 deckId READ GetDeckId WRITE SetDeckId NOTIFY vocabularyChanged)
+    Q_PROPERTY(QString userDeckId READ GetUserDeckId WRITE SetUserDeckId NOTIFY vocabularyChanged)
     Q_PROPERTY(QString deckName READ GetDeckName NOTIFY vocabularyChanged)
     Q_PROPERTY(int deckNewCount READ GetDeckNewCount NOTIFY vocabularyChanged)
 
@@ -46,9 +48,11 @@ public:
 
     Q_INVOKABLE bool completeCardProgress(const QString& CardId);
 
+    /** Language is the card's foreign language. Empty for the language being learned. */
     Q_INVOKABLE bool addCard(const QString& Word, const QString& Translation,
                              const QString& PartOfSpeech = QString(), int Gender = -1,
-                             bool bReadingChosen = false, const QString& MeaningGist = QString(), const QString& Hint = QString());
+                             bool bReadingChosen = false, const QString& MeaningGist = QString(), const QString& Hint = QString(),
+                             const QString& Language = QString());
 
     Q_INVOKABLE bool updateCard(const QString& CardId, const QString& Word,
                                 const QString& Translation, int Gender,
@@ -57,6 +61,8 @@ public:
     Q_INVOKABLE int findWordTranslationStage(const QString& Word, const QString& Translation) const;
 
     Q_INVOKABLE bool importFromFile(const QString& Path);
+
+    Q_INVOKABLE bool exportToFile(const QUrl& File) const;
 
     Q_INVOKABLE int practiceCount(const QStringList& Keys) const;
 
@@ -84,6 +90,8 @@ public:
 
     qint64 GetDeckId() const;
     void SetDeckId(qint64 Value);
+    QString GetUserDeckId() const;
+    void SetUserDeckId(const QString& Value);
     QString GetDeckName() const;
     int GetDeckNewCount() const;
 
@@ -97,6 +105,7 @@ private:
     void Load();
     void ShowCards();
     void LoadDeck();
+    void LoadUserDeck();
     void ClearView();
     void RebuildView();
 
@@ -109,6 +118,7 @@ private:
     std::vector<FTCardHandle> Cards;
 
     qint64 DeckId = 0;
+    QString UserDeckId;
     QString DeckName;
     int DeckNewCount = 0;
 

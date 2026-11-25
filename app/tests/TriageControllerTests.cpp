@@ -152,7 +152,7 @@ TEST_CASE("Triage offers nothing at or below the placement cutoff", "[triage][pl
 
     std::set<QString> CommonWords;
 
-    for (const FTLearnableWord& Word : AppDictionary::Get().GetRepository().LoadLearnableWords(CommonWordCount, 0))
+    for (const FTLearnableWord& Word : AppDictionary::GetActive().GetRepository().LoadLearnableWords(CommonWordCount, 0))
     {
         CommonWords.insert(QString::fromStdString(Word.Headword + " " + Word.PartOfSpeech));
     }
@@ -162,7 +162,7 @@ TEST_CASE("Triage offers nothing at or below the placement cutoff", "[triage][pl
     FTLearnableWordFilter AboveCommon;
     AboveCommon.AboveTeachingRank = 3000;
 
-    for (const FTLearnableWord& Word : AppDictionary::Get().GetRepository().LoadLearnableWords(CommonWordCount, 0, AboveCommon))
+    for (const FTLearnableWord& Word : AppDictionary::GetActive().GetRepository().LoadLearnableWords(CommonWordCount, 0, AboveCommon))
     {
         CHECK_FALSE(CommonWords.contains(QString::fromStdString(Word.Headword + " " + Word.PartOfSpeech)));
     }
@@ -197,7 +197,7 @@ TEST_CASE("Learning a meaning adds a card for it and moves to the next word", "[
 
     REQUIRE(AppDictionary::Get().Initialise());
 
-    if (!AppDictionary::Get().GetRepository().HasMeaningExamples())
+    if (!AppDictionary::GetActive().GetRepository().HasMeaningExamples())
     {
         SKIP("The built dictionary has no meanings");
     }
@@ -247,7 +247,7 @@ TEST_CASE("Moving the start rank refills triage and becomes the placement value"
     std::set<QString> CommonWords;
 
     for (const FTLearnableWord& Word :
-         AppDictionary::Get().GetRepository().LoadLearnableWords(CommonWordCount, 0, AbovePlacement))
+         AppDictionary::GetActive().GetRepository().LoadLearnableWords(CommonWordCount, 0, AbovePlacement))
     {
         CommonWords.insert(QString::fromStdString(Word.Headword + " " + Word.PartOfSpeech));
     }
@@ -358,7 +358,7 @@ TEST_CASE("Triage still starts when nothing is left above the start rank", "[tri
     AboveCeiling.AboveTeachingRank = Ceiling;
 
     for (const FTLearnableWord& Word :
-         AppDictionary::Get().GetRepository().LoadLearnableWords(100000, 0, AboveCeiling))
+         AppDictionary::GetActive().GetRepository().LoadLearnableWords(100000, 0, AboveCeiling))
     {
         CardRepository.MarkWordTriaged(Word.Headword, Word.PartOfSpeech, Word.Gender);
     }

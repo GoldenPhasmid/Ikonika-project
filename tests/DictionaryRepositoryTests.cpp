@@ -4,6 +4,7 @@
 #include "core/FTDictionaryPackage.h"
 #include "core/FTDictionaryRepository.h"
 #include "core/FTFormsFlags.h"
+#include "core/FTTextNormalization.h"
 #include "core/FTWordForms.h"
 
 #include <QDir>
@@ -2026,6 +2027,97 @@ TEST_CASE("A search orders exact headword matches by teaching rank", "[dictionar
     CHECK(Matches[1].Headword == "porte");
     CHECK(Matches[1].PartOfSpeech == "noun");
     CHECK(Matches[2].Headword == "portée");
+}
+
+TEST_CASE("A ligature spells out as two letters and each pair of letters can become a ligature",
+          "[dictionaryrepository]")
+{
+    CHECK(ExpandLigatures("sœur") == "soeur");
+    CHECK(ExpandLigatures("Œuvre") == "Oeuvre");
+    CHECK(ExpandLigatures("archæology") == "archaeology");
+
+    const std::vector<std::string> Soeur = LigatureSpellings("soeur");
+    REQUIRE(Soeur.size() == 2);
+    CHECK(Soeur[0] == "soeur");
+    CHECK(Soeur[1] == "sœur");
+
+    const std::vector<std::string> Ligated = LigatureSpellings("sœur");
+    REQUIRE(Ligated.size() == 2);
+    CHECK(Ligated[0] == "sœur");
+    CHECK(Ligated[1] == "soeur");
+
+    CHECK(LigatureSpellings("mere").size() == 1);
+}
+
+TEST_CASE("A lookup finds a headword spelled with or without the ligature", "[dictionaryrepository]")
+{
+    std::optional<FTDatabase> Database = OpenWordWithoutMeanings();
+    REQUIRE(Database.has_value());
+
+    Database->Execute(
+        "INSERT INTO words (id, headword, part_of_speech_id) VALUES (2, 'soeur', 1);"
+        "INSERT INTO words (id, headword, part_of_speech_id) VALUES (3, 'sœurette', 1);"
+        "INSERT INTO word_forms (form, word_id) VALUES ('sœurs', 2);");
+
+    FTDictionaryRepository Repository(*Database, "uk");
+
+    const std::vector<FTDictionaryEntry> WithLigature = Repository.LookUp("sœur");
+    REQUIRE(WithLigature.size() == 1);
+    CHECK(WithLigature.front().Headword == "soeur");
+
+    const std::vector<FTDictionaryEntry> Ligated = Repository.LookUp("sœurette");
+    REQUIRE(Ligated.size() == 1);
+    CHECK(Ligated.front().Headword == "sœurette");
+
+    const std::vector<FTDictionaryEntry> Plain = Repository.LookUp("soeurette");
+    REQUIRE(Plain.size() == 1);
+    CHECK(Plain.front().Headword == "sœurette");
+}
+
+TEST_CASE("A search finds ligature entries from the plain spelling and the reverse", "[dictionaryrepository]")
+{
+    std::optional<FTDatabase> Database = OpenWordWithoutMeanings();
+    REQUIRE(Database.has_value());
+
+    Database->Execute(
+        "INSERT INTO words (id, headword, part_of_speech_id) VALUES (2, 'soeur', 1);"
+        "INSERT INTO words (id, headword, part_of_speech_id) VALUES (3, 'bonne sœur', 1);"
+        "INSERT INTO words (id, headword, part_of_speech_id) VALUES (4, 'coefficient', 1);"
+        "INSERT INTO word_forms (form, word_id) VALUES ('sœurs', 2);");
+
+    FTDictionaryRepository Repository(*Database, "uk");
+
+    const auto Headwords = [](const std::vector<FTDictionarySearchMatch>& Matches)
+    {
+        std::vector<std::string> Result;
+
+        for (const FTDictionarySearchMatch& Match : Matches)
+        {
+            Result.push_back(Match.Headword);
+        }
+
+        return Result;
+    };
+
+    const std::vector<std::string> FromLigature = Headwords(Repository.Search("sœur", 10));
+    CHECK(std::count(FromLigature.begin(), FromLigature.end(), "soeur") == 1);
+    CHECK(std::count(FromLigature.begin(), FromLigature.end(), "bonne sœur") == 1);
+
+    const std::vector<std::string> FromPlain = Headwords(Repository.Search("soeur", 10));
+    CHECK(std::count(FromPlain.begin(), FromPlain.end(), "soeur") == 1);
+    CHECK(std::count(FromPlain.begin(), FromPlain.end(), "bonne sœur") == 1);
+
+    const std::vector<FTDictionarySearchMatch> Soeur = Repository.Search("sœur", 10);
+    REQUIRE_FALSE(Soeur.empty());
+    CHECK(Soeur.front().Headword == "soeur");
+    CHECK(Soeur.front().bExactMatch);
+
+    const std::vector<std::string> FromPlainPlural = Headwords(Repository.Search("soeurs", 10));
+    CHECK(std::count(FromPlainPlural.begin(), FromPlainPlural.end(), "soeur") == 1);
+
+    const std::vector<std::string> Coefficient = Headwords(Repository.Search("coefficient", 10));
+    REQUIRE(Coefficient.size() >= 1);
+    CHECK(Coefficient.front() == "coefficient");
 }
 
 TEST_CASE("A search puts the verb first among the words an inflected form belongs to", "[dictionaryrepository]")

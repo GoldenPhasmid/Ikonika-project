@@ -236,6 +236,19 @@ TEST_CASE("A renamed document keeps its title when the file is added again", "[r
     CHECK_FALSE(Test.Repository->RenameDocument(*Id, ""));
 }
 
+TEST_CASE("A document remembers the cloud title it last agreed with", "[reader][repository]")
+{
+    Fixture Test;
+    QTemporaryDir Dir;
+
+    const std::optional<std::string> Id = Test.Repository->AddDocument(MakeExistingFile(Dir, "book.txt"), "Book", "TXT");
+    REQUIRE(Id.has_value());
+    CHECK(Test.Repository->FindDocument(*Id)->CloudTitle.empty());
+
+    REQUIRE(Test.Repository->SetCloudTitle(*Id, "Cloud Title"));
+    CHECK(Test.Repository->FindDocument(*Id)->CloudTitle == "Cloud Title");
+}
+
 TEST_CASE("A document keeps the details read from its file", "[reader][repository]")
 {
     Fixture Test;

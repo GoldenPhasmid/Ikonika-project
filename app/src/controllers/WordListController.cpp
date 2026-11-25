@@ -20,12 +20,12 @@ namespace
     std::optional<FTDictionarySearchMatch> FindExactMatch(const std::string& Headword,
                                                            const std::string& PartOfSpeech)
     {
-        if (!AppDictionary::Get().IsReady())
+        if (!AppDictionary::GetActive().IsReady())
         {
             return std::nullopt;
         }
 
-        return AppDictionary::Get().GetRepository().LookUpExact(Headword, PartOfSpeech);
+        return AppDictionary::GetActive().GetRepository().LookUpExact(Headword, PartOfSpeech);
     }
 
     QVariantMap BuildCardEntry(const FTCard& Card)
@@ -92,7 +92,7 @@ void WordListController::load(const QString& Source)
     }
     else
     {
-        const bool bDictionaryReady = AppDictionary::Get().IsReady();
+        const bool bDictionaryReady = AppDictionary::GetActive().IsReady();
 
         for (const FTSearchHistoryEntry& Row : AppDatabase::Get().GetCardRepository().LoadRecentSearches(RecentLimit))
         {
@@ -102,7 +102,7 @@ void WordListController::load(const QString& Source)
             if (Row.WordId != 0 && bDictionaryReady)
             {
                 const std::optional<FTDictionaryEntry> Resolved =
-                    AppDictionary::Get().GetRepository().LookUpById(Row.WordId);
+                    AppDictionary::GetActive().GetRepository().LookUpById(Row.WordId);
 
                 if (Resolved.has_value())
                 {

@@ -40,12 +40,12 @@ namespace
     {
         std::vector<FTDictionarySense> Meanings;
 
-        if (!AppDictionary::Get().IsReady())
+        if (!AppDictionary::GetActive().IsReady())
         {
             return Meanings;
         }
 
-        for (FTDictionarySense& Meaning : AppDictionary::Get().GetRepository().LoadMeanings(Row.Headword, Row.PartOfSpeech))
+        for (FTDictionarySense& Meaning : AppDictionary::GetActive().GetRepository().LoadMeanings(Row.Headword, Row.PartOfSpeech))
         {
             if (MeaningFitsGender(Meaning, Row.Gender))
             {
@@ -62,12 +62,12 @@ namespace
     {
         std::vector<std::string> Forms;
 
-        if (!AppDictionary::Get().IsReady())
+        if (!AppDictionary::GetActive().IsReady())
         {
             return Forms;
         }
 
-        for (FTHeadwordForm& Form : AppDictionary::Get().GetRepository().ListHeadwordForms({Row.Headword}))
+        for (FTHeadwordForm& Form : AppDictionary::GetActive().GetRepository().ListHeadwordForms({Row.Headword}))
         {
             if (Form.PartOfSpeech == Row.PartOfSpeech)
             {
@@ -80,7 +80,7 @@ namespace
 
     std::function<bool(const FTDiscoveryRow&, const std::string&)> MakeKnownExampleCheck()
     {
-        const FTSentenceTree* Tree = AppDictionary::Get().GetSentenceTree();
+        const FTSentenceTree* Tree = AppDictionary::GetActive().GetSentenceTree();
 
         if (Tree == nullptr)
         {
@@ -91,7 +91,7 @@ namespace
 
         return [Tree, Known](const FTDiscoveryRow& Row, const std::string& Example)
         {
-            const FTDictionaryRepository& Dictionary = AppDictionary::Get().GetRepository();
+            const FTDictionaryRepository& Dictionary = AppDictionary::GetActive().GetRepository();
             const std::vector<uint32_t> WordIds = Dictionary.ListWordIds(Row.Headword);
 
             if (WordIds.empty())
@@ -171,7 +171,7 @@ namespace
             FTLearnableWordFilter Filter;
             Filter.PartOfSpeech = PartOfSpeech;
 
-            for (const FTLearnableWord& Word : AppDictionary::Get().GetRepository().LoadLearnableWords(ExtraDistractorRows, 0, Filter))
+            for (const FTLearnableWord& Word : AppDictionary::GetActive().GetRepository().LoadLearnableWords(ExtraDistractorRows, 0, Filter))
             {
                 FTDiscoveryRow Row;
                 Row.Headword = Word.Headword;
@@ -241,7 +241,7 @@ bool DiscoveryController::startDecks(const QVariantList& InDeckIds)
         DeckIds.push_back(Id.toLongLong());
     }
 
-    if (!AppDictionary::Get().IsReady() || !AppDatabase::Get().IsReady())
+    if (!AppDictionary::GetActive().IsReady() || !AppDatabase::Get().IsReady())
     {
         qCWarning(LogApp) << "Discover: cannot start without both a dictionary and a database";
 
@@ -251,7 +251,7 @@ bool DiscoveryController::startDecks(const QVariantList& InDeckIds)
         return false;
     }
 
-    const FTDictionaryRepository& Dictionary = AppDictionary::Get().GetRepository();
+    const FTDictionaryRepository& Dictionary = AppDictionary::GetActive().GetRepository();
     const std::vector<FTDeck> Decks = Dictionary.ListDecks();
 
     QStringList DeckNames;
@@ -854,12 +854,12 @@ QString DiscoveryController::GetPhonetic() const
 {
     const FTDiscoveryRow* Row = GetQuestionRow();
 
-    if (!Row || !AppDictionary::Get().IsReady())
+    if (!Row || !AppDictionary::GetActive().IsReady())
     {
         return {};
     }
 
-    return QString::fromStdString(AppDictionary::Get().GetRepository().FindPhonetic(Row->Headword, Row->PartOfSpeech));
+    return QString::fromStdString(AppDictionary::GetActive().GetRepository().FindPhonetic(Row->Headword, Row->PartOfSpeech));
 }
 
 QString DiscoveryController::GetTranslations() const

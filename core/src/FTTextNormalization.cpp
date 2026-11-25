@@ -1,5 +1,6 @@
 #include "core/FTTextNormalization.h"
 
+#include <algorithm>
 #include <cctype>
 #include <unordered_map>
 
@@ -92,4 +93,103 @@ std::string FoldCase(const std::string& Value)
     }
 
     return Result;
+}
+
+namespace
+{
+    struct FLigature
+    {
+        const char* Ligature;
+        const char* Letters;
+    };
+
+    constexpr size_t MaxLigatureSites = 3;
+
+    const std::vector<FLigature>& LigatureTable()
+    {
+        static const std::vector<FLigature> Table = {
+            {"œ", "oe"}, {"Œ", "Oe"}, {"æ", "ae"}, {"Æ", "Ae"}
+        };
+
+        return Table;
+    }
+}
+
+std::string ExpandLigatures(const std::string& Value)
+{
+    std::string Result = Value;
+
+    for (const FLigature& Entry : LigatureTable())
+    {
+        const std::string Ligature = Entry.Ligature;
+
+        for (size_t At = Result.find(Ligature); At != std::string::npos; At = Result.find(Ligature, At))
+        {
+            Result.replace(At, Ligature.size(), Entry.Letters);
+        }
+    }
+
+    return Result;
+}
+
+std::vector<std::string> LigatureSpellings(const std::string& Value)
+{
+    const std::string Base = ExpandLigatures(Value);
+
+    std::vector<size_t> Sites;
+
+    for (size_t Index = 0; Index + 1 < Base.size() && Sites.size() < MaxLigatureSites; ++Index)
+    {
+        const int First = std::tolower(static_cast<unsigned char>(Base[Index]));
+        const int Second = std::tolower(static_cast<unsigned char>(Base[Index + 1]));
+
+        if ((First == 'o' || First == 'a') && Second == 'e')
+        {
+            Sites.push_back(Index);
+            ++Index;
+        }
+    }
+
+    std::vector<std::string> Spellings = {Value};
+
+    for (size_t Mask = 0; Mask < (size_t{1} << Sites.size()); ++Mask)
+    {
+        std::string Spelling;
+        size_t SiteIndex = 0;
+
+        for (size_t Index = 0; Index < Base.size(); ++Index)
+        {
+            const bool bSiteHere = SiteIndex < Sites.size() && Sites[SiteIndex] == Index;
+
+            if (!bSiteHere)
+            {
+                Spelling.push_back(Base[Index]);
+
+                continue;
+            }
+
+            const bool bChosen = (Mask & (size_t{1} << SiteIndex)) != 0;
+            const bool bOpen = std::tolower(static_cast<unsigned char>(Base[Index])) == 'o';
+            const bool bUpper = std::isupper(static_cast<unsigned char>(Base[Index])) != 0;
+
+            ++SiteIndex;
+
+            if (!bChosen)
+            {
+                Spelling.push_back(Base[Index]);
+
+                continue;
+            }
+
+            Spelling += bOpen ? (bUpper ? "Œ" : "œ") : (bUpper ? "Æ" : "æ");
+            ++Index;
+        }
+
+        if (std::find(Spellings.begin(), Spellings.end(), Spelling) == Spellings.end())
+        {
+            Spellings.push_back(std::move(Spelling));
+        }
+    }
+
+    return Spellings;
 }

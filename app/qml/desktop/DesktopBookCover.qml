@@ -16,7 +16,6 @@ Rectangle
 
     readonly property var coverStyle: Shelf.tint(root.title, AppTheme.bookCovers)
     readonly property bool imageShown: !root.missing && image.status === Image.Ready
-    readonly property real frameInset: Math.round(root.width * AppMetrics.bookFrameInset)
 
     radius: AppMetrics.bookRadius
     color: root.missing ? AppTheme.colourSunken : root.coverStyle.paper
@@ -33,63 +32,24 @@ Rectangle
         source: root.missing ? "" : root.imageSource
         fillMode: Image.PreserveAspectCrop
         asynchronous: true
-        cache: false
+        cache: true
         smooth: true
-        mipmap: true
+        mipmap: Qt.platform.os !== "android"
     }
 
-    Rectangle
+    Loader
     {
-        id: frame
-
         anchors.fill: parent
-        anchors.margins: root.frameInset
-        visible: !root.missing && !root.imageShown
-        color: "transparent"
-        border.width: AppMetrics.borderWidth
-        border.color: root.coverStyle.foil
+        active: !root.missing && image.status !== Image.Ready
 
-        ColumnLayout
+        sourceComponent: Component
         {
-            anchors.fill: parent
-            anchors.topMargin: Math.round(root.width * AppMetrics.bookFramePadding)
-            anchors.bottomMargin: Math.round(root.width * AppMetrics.bookFramePadding)
-            anchors.leftMargin: root.frameInset
-            anchors.rightMargin: root.frameInset
-            spacing: 0
-
-            DesktopLabel
+            DefaultBookCover
             {
-                Layout.fillWidth: true
-                text: root.author.toUpperCase()
-                horizontalAlignment: Text.AlignHCenter
-                font.pixelSize: Math.max(1, Math.round(root.width * AppMetrics.bookAuthorScale))
-                font.weight: Font.DemiBold
-                color: root.coverStyle.ink
-                opacity: AppTheme.opacityHover
-                elide: Text.ElideRight
-            }
-
-            DesktopLabel
-            {
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                text: root.title
-                horizontalAlignment: Text.AlignHCenter
-                verticalAlignment: Text.AlignVCenter
-                font.pixelSize: Math.max(1, Math.round(root.width * AppMetrics.bookTitleScale))
-                font.weight: Font.DemiBold
-                color: root.coverStyle.ink
-                wrapMode: Text.WordWrap
-                elide: Text.ElideRight
-            }
-
-            Rectangle
-            {
-                Layout.alignment: Qt.AlignHCenter
-                Layout.preferredWidth: Math.round(root.width * AppMetrics.bookOrnamentWidth)
-                Layout.preferredHeight: AppMetrics.borderWidth
-                color: root.coverStyle.foil
+                title: root.title
+                author: root.author
+                coverStyle: root.coverStyle
+                radius: root.radius
             }
         }
     }
@@ -100,7 +60,7 @@ Rectangle
         anchors.top: parent.top
         anchors.bottom: parent.bottom
         width: AppMetrics.gapCompact
-        visible: !root.missing
+        visible: root.imageShown
 
         gradient: Gradient
         {

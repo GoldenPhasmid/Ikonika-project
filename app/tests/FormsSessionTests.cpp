@@ -69,7 +69,7 @@ struct FFormsTestBed
 static FTCard MakeStoredCard(const std::string& Word, const std::string& Translation = "translation",
                              const std::string& Kind = FormsKindVerb)
 {
-    for (const FTDictionaryEntry& Entry : AppDictionary::Get().GetRepository().LookUp(Word))
+    for (const FTDictionaryEntry& Entry : AppDictionary::GetActive().GetRepository().LookUp(Word))
     {
         if (std::optional<FTCard> Card = MakeFormsCard(Kind, Entry, "fr", Translation))
         {
@@ -1791,7 +1791,7 @@ static FSeededForms SeedSpanishVerbs(const std::vector<std::string>& Verbs)
 
     for (const std::string& Verb : Verbs)
     {
-        for (const FTDictionaryEntry& Entry : AppDictionary::Get().GetRepository().LookUp(Verb))
+        for (const FTDictionaryEntry& Entry : AppDictionary::GetActive().GetRepository().LookUp(Verb))
         {
             if (std::optional<FTCard> Card = MakeFormsCard(FormsKindVerb, Entry, "es", "translation"))
             {

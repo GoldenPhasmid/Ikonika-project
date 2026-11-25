@@ -50,6 +50,33 @@ std::vector<FTWebSearchSource> GetBuiltInWebSearchSources()
                 {"de", "de"}, {"en", "en"}, {"es", "es"}, {"fr", "fr"},
                 {"it", "it"}, {"pt", "pt"}, {"ru", "ru"}, {"uk", "uk"}
             }
+        },
+        FTWebSearchSource{
+            "wordreference",
+            "WordReference",
+            "https://www.wordreference.com/{target}{native}/{word}",
+            {
+                {"en", "en"}, {"es", "es"}, {"fr", "fr"}, {"de", "de"},
+                {"it", "it"}, {"pt", "pt"}, {"ru", "ru"}
+            }
+        },
+        FTWebSearchSource{
+            "collins",
+            "Collins",
+            "https://www.collinsdictionary.com/dictionary/{target}-{native}/{word}",
+            {
+                {"de", "german"}, {"en", "english"}, {"es", "spanish"}, {"fr", "french"},
+                {"it", "italian"}, {"pt", "portuguese"}
+            }
+        },
+        FTWebSearchSource{
+            "forvo",
+            "Forvo",
+            "https://forvo.com/word/{word}/#{target}",
+            {
+                {"de", "de"}, {"en", "en"}, {"es", "es"}, {"fr", "fr"},
+                {"it", "it"}, {"pt", "pt"}, {"ru", "ru"}, {"uk", "uk"}
+            }
         }
     };
 }

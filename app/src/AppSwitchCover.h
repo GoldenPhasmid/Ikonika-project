@@ -20,8 +20,10 @@ public:
     void HandOver(QQuickWindow& To);
 
 private:
+    void FadeOut();
     void Hide();
 
     std::unique_ptr<QQmlEngine> Engine;
     QPointer<QQuickItem> Overlay;
+    bool bFading{false};
 };

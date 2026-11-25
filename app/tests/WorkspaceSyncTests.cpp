@@ -1112,7 +1112,7 @@ TEST_CASE("A cloud copy made before the journal keeps its progress through the r
     Harness.Store.FinishUpload(std::nullopt, AppCloudCopy{"copy-1", "6"});
 
     REQUIRE(Harness.Finished == std::vector<bool>{true});
-    CHECK(ReadStage(*Harness.Workspace, CardId) == 3);
+    CHECK(ReadStage(*Harness.Workspace, CardId) == 2);
     CHECK(CountCardsIn(ReadArchiveEntry(Harness.Store.UploadedBytes, DatabaseEntryName)) == 1);
 }
 

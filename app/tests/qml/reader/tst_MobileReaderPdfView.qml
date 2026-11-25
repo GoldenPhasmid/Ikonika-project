@@ -41,6 +41,23 @@ TestCase
         fail("Reader has no scroll viewport")
     }
 
+    function test_tapOnPdfLinkJumpsToItsDestination()
+    {
+        const view = createTemporaryObject(readerComponent, test, { topChrome: 32 })
+        tryCompare(view, "initialPageApplied", true)
+        const viewport = viewportOf(view)
+        const sheet = view.currentSheet
+        const target = sheet.mapToItem(view, 150 * sheet.renderScale, 180 * sheet.renderScale)
+        let lookups = 0
+        view.wordPicked.connect(function() { ++lookups })
+
+        touchEvent(view).press(0, view, target.x, target.y).commit()
+        touchEvent(view).release(0, view, target.x, target.y).commit()
+        tryCompare(view, "pageIndex", 4)
+        compare(lookups, 0)
+        fuzzyCompare(view.currentSheet.y + 225 * view.currentSheet.renderScale - viewport.contentY, view.topChrome, 0.1)
+    }
+
     function test_scrollCrossesPagesWithoutMovingTheVisiblePage()
     {
         const view = createTemporaryObject(readerComponent, test)

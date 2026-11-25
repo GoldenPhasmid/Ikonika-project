@@ -1,6 +1,5 @@
 #include "AppDictionary.h"
 
-#include "AppCards.h"
 #include "AppDatabase.h"
 #include "AppPaths.h"
 
@@ -18,6 +17,20 @@ AppDictionary& AppDictionary::Get()
     static AppDictionary Instance;
 
     return Instance;
+}
+
+AppLanguageDictionary& AppDictionary::Get(const std::string& TargetLanguage)
+{
+    return Get().Find(TargetLanguage);
+}
+
+AppLanguageDictionary& AppDictionary::GetActive()
+{
+    AppDictionary& Registry{Get()};
+    const std::lock_guard<std::recursive_mutex> Guard{Registry.Lock};
+
+    return Registry.Find(Registry.ActiveLanguage.empty() ? FTSettings::Get().GetLanguageRules().TargetLanguage
+                                                         : Registry.ActiveLanguage);
 }
 
 AppDictionaryNotifier& AppDictionary::Notifier()
@@ -58,6 +71,8 @@ QStringList AppDictionary::GetSearchPaths()
 
 void AppDictionary::Discover()
 {
+    const std::lock_guard<std::recursive_mutex> Guard{Lock};
+
     Packages.clear();
     OutdatedPackages.clear();
 
@@ -161,27 +176,68 @@ void AppDictionary::Discover()
     AppDatabase::Get().ApplyActiveLanguages();
 }
 
-void AppDictionary::Close()
+AppLanguageDictionary& AppDictionary::Find(const std::string& TargetLanguage)
 {
-    if (Connection == nullptr)
+    const std::lock_guard<std::recursive_mutex> Guard{Lock};
+
+    std::unique_ptr<AppLanguageDictionary>& Found = Dictionaries[TargetLanguage];
+
+    if (Found == nullptr)
+    {
+        Found = std::make_unique<AppLanguageDictionary>(TargetLanguage);
+    }
+
+    return *Found;
+}
+
+void AppDictionary::Release(AppLanguageDictionary& Dictionary)
+{
+    if (!Dictionary.IsOpen())
     {
         return;
     }
 
-    qCInfo(LogDatabase) << "Closing the open dictionary";
+    qCInfo(LogDatabase) << "Closing the dictionary for" << QString::fromStdString(Dictionary.TargetLanguage);
 
-    Repository.reset();
-    Connection.reset();
-    SentenceTree.reset();
-    bSentenceTreeLoaded = false;
-    ActiveIndex = -1;
-    OpenNativeLanguage.clear();
-    ++Generation;
+    Dictionary.Release();
+
+    emit Notifier().dictionaryClosed(QString::fromStdString(Dictionary.TargetLanguage));
+}
+
+void AppDictionary::Close()
+{
+    const std::lock_guard<std::recursive_mutex> Guard{Lock};
+
+    for (const auto& [Language, Dictionary] : Dictionaries)
+    {
+        Release(*Dictionary);
+    }
+
+    ActiveLanguage.clear();
+}
+
+void AppDictionary::Close(const std::string& TargetLanguage)
+{
+    const std::lock_guard<std::recursive_mutex> Guard{Lock};
+
+    const auto Found = Dictionaries.find(TargetLanguage);
+
+    if (Found != Dictionaries.end())
+    {
+        Release(*Found->second);
+    }
+
+    if (TargetLanguage == ActiveLanguage)
+    {
+        ActiveLanguage.clear();
+    }
 }
 
 bool AppDictionary::Initialise()
 {
-    if (Connection != nullptr && Repository != nullptr)
+    const std::lock_guard<std::recursive_mutex> Guard{Lock};
+
+    if (!ActiveLanguage.empty() && Find(ActiveLanguage).IsOpen())
     {
         return true;
     }
@@ -196,7 +252,7 @@ bool AppDictionary::Initialise()
         return false;
     }
 
-    const FTLanguageRules& Wanted = FTSettings::Get().GetLanguageRules();
+    const FTLanguageRules Wanted{FTSettings::Get().GetLanguageRules()};
 
     if (Open(Wanted.TargetLanguage, Wanted.NativeLanguage))
     {
@@ -211,7 +267,7 @@ bool AppDictionary::Initialise()
     // The saved pair is not installed, which is what happens when a package is removed. Rather than
     // leaving the app with no dictionary at all, the first installed one is opened and the setting
     // follows it.
-    const FTDictionaryPackage& First = Packages.front();
+    const FTDictionaryPackage First{Packages.front()};
 
     qCWarning(LogDatabase) << "No dictionary for the saved language pair"
                            << QString::fromStdString(Wanted.TargetLanguage) << "->"
@@ -221,8 +277,57 @@ bool AppDictionary::Initialise()
     return Open(First.TargetLanguage, First.NativeLanguages.front());
 }
 
+bool AppDictionary::OpenOnDemand(AppLanguageDictionary& Dictionary)
+{
+    const std::lock_guard<std::recursive_mutex> Guard{Lock};
+
+    if (Dictionary.IsOpen())
+    {
+        return true;
+    }
+
+    if (!bDiscovered)
+    {
+        Discover();
+    }
+
+    const FTLanguageRules Rules{FTSettings::Get().GetLanguageRules()};
+
+    if (ActiveLanguage.empty() && Dictionary.TargetLanguage == Rules.TargetLanguage)
+    {
+        Initialise();
+
+        return Dictionary.IsOpen();
+    }
+
+    const auto Teaches = [&Dictionary](const FTDictionaryPackage& Package)
+    {
+        return Package.TargetLanguage == Dictionary.TargetLanguage;
+    };
+
+    const auto Native = std::find_if(Packages.begin(), Packages.end(),
+        [&Teaches, &Rules](const FTDictionaryPackage& Package)
+        {
+            return Teaches(Package) && Package.SupportsNative(Rules.NativeLanguage);
+        });
+
+    const auto Match = Native != Packages.end() ? Native : std::find_if(Packages.begin(), Packages.end(), Teaches);
+
+    if (Match == Packages.end())
+    {
+        return false;
+    }
+
+    const std::string Translation{Match->SupportsNative(Rules.NativeLanguage) ? Rules.NativeLanguage
+                                                                              : Match->NativeLanguages.front()};
+
+    return Dictionary.OpenPackage(*Match, Rules.NativeLanguage, Translation);
+}
+
 bool AppDictionary::Open(const std::string& TargetLanguage, const std::string& NativeLanguage)
 {
+    const std::lock_guard<std::recursive_mutex> Guard{Lock};
+
     const auto Match = std::find_if(Packages.begin(), Packages.end(),
         [&TargetLanguage, &NativeLanguage](const FTDictionaryPackage& Package)
         {
@@ -235,44 +340,44 @@ bool AppDictionary::Open(const std::string& TargetLanguage, const std::string& N
         return false;
     }
 
-    std::optional<FTDatabase> Opened = FTDatabase::Open(Match->FilePath);
+    AppLanguageDictionary& Dictionary{Find(TargetLanguage)};
 
-    if (!Opened.has_value())
+    const bool bAlreadyOpen{Dictionary.IsOpen() && Dictionary.Package->FilePath == Match->FilePath
+                            && Dictionary.TranslationLanguage == NativeLanguage};
+
+    if (!bAlreadyOpen)
     {
-        qCWarning(LogDatabase) << "Could not open the dictionary at"
-                               << QString::fromStdString(Match->FilePath);
+        const bool bWasOpen{Dictionary.IsOpen()};
 
-        return false;
+        // Replaced only once the new one is open, so a failed switch leaves the working dictionary in
+        // place rather than closing it first and ending up with none.
+        if (!Dictionary.OpenPackage(*Match, NativeLanguage, NativeLanguage))
+        {
+            return false;
+        }
+
+        if (bWasOpen)
+        {
+            emit Notifier().dictionaryClosed(QString::fromStdString(TargetLanguage));
+        }
     }
 
-    // Replaced only once the new one is open, so a failed switch leaves the working dictionary in
-    // place rather than closing it first and ending up with none.
-    Connection = std::make_unique<FTDatabase>(std::move(*Opened));
+    const std::string Previous{ActiveLanguage};
 
-    if (!FTDictionaryRepository::HasSearchIndices(*Connection))
+    ActiveLanguage = TargetLanguage;
+
+    for (const auto& [Language, Other] : Dictionaries)
     {
-        qCWarning(LogDatabase) << "The dictionary has no search indices, so lookups scan whole tables:"
-                               << QString::fromStdString(Match->FilePath);
+        // The previous language is no longer learned, and a dictionary opened for another native
+        // language translates into the wrong one.
+        if (Language != TargetLanguage && Other->IsOpen()
+            && (Language == Previous || Other->RequestedNative != NativeLanguage))
+        {
+            Release(*Other);
+        }
     }
 
-    // The file holds every native language it was built with, so the repository is told which one to
-    // read. Opening the same file for a different native language is a new repository, not a filter
-    // applied later.
-    Repository = std::make_unique<FTDictionaryRepository>(*Connection, NativeLanguage);
-
-    ++Generation;
-
-    SentenceTree.reset();
-    bSentenceTreeLoaded = false;
-
-    // What the old dictionary said about which spellings are also verbs was about that dictionary.
-    AppCards::ForgetAnnotations();
-
-    ActiveIndex = static_cast<int>(std::distance(Packages.begin(), Match));
-    OpenNativeLanguage = NativeLanguage;
-
-    qCInfo(LogDatabase) << "Dictionary opened:" << QString::fromStdString(Match->FilePath)
-                        << QString::fromStdString(TargetLanguage) << "->"
+    qCInfo(LogDatabase) << "Learning" << QString::fromStdString(TargetLanguage) << "->"
                         << QString::fromStdString(NativeLanguage);
 
     emit Notifier().languagesChanged();
@@ -317,32 +422,38 @@ bool AppDictionary::IsReplacedBy(const FTCatalogPackage& Published) const
                        });
 }
 
-const FTDictionaryPackage* AppDictionary::GetActivePackage() const
+std::string AppDictionary::FindOpenLanguageReplacedBy(const FTCatalogPackage& Published)
 {
-    if (ActiveIndex < 0 || ActiveIndex >= static_cast<int>(Packages.size()))
+    const std::lock_guard<std::recursive_mutex> Guard{Lock};
+
+    for (const auto& [Language, Dictionary] : Dictionaries)
     {
-        return nullptr;
+        if (Dictionary->IsOpen() && Published.Replaces(*Dictionary->Package))
+        {
+            return Language;
+        }
     }
 
-    return &Packages[static_cast<size_t>(ActiveIndex)];
+    return {};
 }
 
-uint64_t AppDictionary::GetGeneration() const
+bool AppDictionary::IsOpenFor(const std::string& TargetLanguage, const std::string& NativeLanguage)
 {
-    return Generation;
-}
+    const std::lock_guard<std::recursive_mutex> Guard{Lock};
 
-bool AppDictionary::IsOpenFor(const std::string& TargetLanguage, const std::string& NativeLanguage) const
-{
-    const FTDictionaryPackage* Active = GetActivePackage();
+    if (ActiveLanguage != TargetLanguage)
+    {
+        return false;
+    }
 
-    return Connection != nullptr && Repository != nullptr && Active != nullptr
-        && Active->TargetLanguage == TargetLanguage && OpenNativeLanguage == NativeLanguage;
+    const AppLanguageDictionary& Dictionary{Find(TargetLanguage)};
+
+    return Dictionary.IsOpen() && Dictionary.TranslationLanguage == NativeLanguage;
 }
 
 bool AppDictionary::OpenSettingsPair()
 {
-    const FTLanguageRules& Wanted = FTSettings::Get().GetLanguageRules();
+    const FTLanguageRules Wanted{FTSettings::Get().GetLanguageRules()};
 
     if (IsOpenFor(Wanted.TargetLanguage, Wanted.NativeLanguage))
     {
@@ -352,22 +463,106 @@ bool AppDictionary::OpenSettingsPair()
     return Open(Wanted.TargetLanguage, Wanted.NativeLanguage);
 }
 
-bool AppDictionary::IsReady()
+AppLanguageDictionary::AppLanguageDictionary(std::string InTargetLanguage)
+    : TargetLanguage(std::move(InTargetLanguage))
 {
-    if (Connection == nullptr || Repository == nullptr)
-    {
-        Initialise();
-    }
+}
 
+bool AppLanguageDictionary::IsReady()
+{
+    AppDictionary& Registry{AppDictionary::Get()};
+    const std::lock_guard<std::recursive_mutex> Guard{Registry.Lock};
+
+    return IsOpen() || Registry.OpenOnDemand(*this);
+}
+
+bool AppLanguageDictionary::IsOpen() const
+{
     return Connection != nullptr && Repository != nullptr;
 }
 
-FTDictionaryRepository& AppDictionary::GetRepository()
+const std::string& AppLanguageDictionary::GetTargetLanguage() const
+{
+    return TargetLanguage;
+}
+
+const std::string& AppLanguageDictionary::GetTranslationLanguage() const
+{
+    return TranslationLanguage;
+}
+
+const FTDictionaryPackage* AppLanguageDictionary::GetPackage() const
+{
+    return Package.has_value() ? &*Package : nullptr;
+}
+
+uint64_t AppLanguageDictionary::GetGeneration() const
+{
+    return Generation;
+}
+
+FTDictionaryRepository& AppLanguageDictionary::GetRepository()
 {
     return *Repository;
 }
 
-const FTSentenceTree* AppDictionary::GetSentenceTree()
+bool AppLanguageDictionary::OpenPackage(const FTDictionaryPackage& InPackage, const std::string& InRequestedNative,
+                                        const std::string& InTranslationLanguage)
+{
+    std::optional<FTDatabase> Opened = FTDatabase::Open(InPackage.FilePath);
+
+    if (!Opened.has_value())
+    {
+        qCWarning(LogDatabase) << "Could not open the dictionary at" << QString::fromStdString(InPackage.FilePath);
+
+        return false;
+    }
+
+    if (IsOpen())
+    {
+        ++Generation;
+    }
+
+    Repository.reset();
+    Connection = std::make_unique<FTDatabase>(std::move(*Opened));
+
+    if (!FTDictionaryRepository::HasSearchIndices(*Connection))
+    {
+        qCWarning(LogDatabase) << "The dictionary has no search indices, so lookups scan whole tables:"
+                               << QString::fromStdString(InPackage.FilePath);
+    }
+
+    // The file holds every native language it was built with, so the repository is told which one to
+    // read. Opening the same file for a different native language is a new repository, not a filter
+    // applied later.
+    Repository = std::make_unique<FTDictionaryRepository>(*Connection, InTranslationLanguage);
+
+    Package = InPackage;
+    RequestedNative = InRequestedNative;
+    TranslationLanguage = InTranslationLanguage;
+    SentenceTree.reset();
+    bSentenceTreeLoaded = false;
+
+    qCInfo(LogDatabase) << "Dictionary opened:" << QString::fromStdString(InPackage.FilePath)
+                        << QString::fromStdString(TargetLanguage) << "->"
+                        << QString::fromStdString(TranslationLanguage);
+
+    return true;
+}
+
+void AppLanguageDictionary::Release()
+{
+    Repository.reset();
+    Connection.reset();
+    SentenceTree.reset();
+    bSentenceTreeLoaded = false;
+    Package.reset();
+    RequestedNative.clear();
+    TranslationLanguage.clear();
+    ++Generation;
+}
+
+const FTSentenceTree* AppLanguageDictionary::GetSentenceTree()
 {
     if (!IsReady())
     {
@@ -389,12 +584,12 @@ const FTSentenceTree* AppDictionary::GetSentenceTree()
     return SentenceTree.get();
 }
 
-std::shared_ptr<const FTSentenceTree> AppDictionary::GetLoadedSentenceTree() const
+std::shared_ptr<const FTSentenceTree> AppLanguageDictionary::GetLoadedSentenceTree() const
 {
     return SentenceTree;
 }
 
-void AppDictionary::AdoptSentenceTree(std::shared_ptr<const FTSentenceTree> Tree, uint64_t ForGeneration)
+void AppLanguageDictionary::AdoptSentenceTree(std::shared_ptr<const FTSentenceTree> Tree, uint64_t ForGeneration)
 {
     if (Tree == nullptr || ForGeneration != Generation || bSentenceTreeLoaded)
     {

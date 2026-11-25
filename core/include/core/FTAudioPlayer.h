@@ -7,6 +7,9 @@
 class FTAudioPlayer
 {
 public:
+    static void SetPlaybackSuspended(bool bSuspended);
+    static bool IsPlaybackSuspended();
+
     /** A rate of zero or less opens no device, which is the harmless unavailable state. */
     explicit FTAudioPlayer(int InSampleRate);
 

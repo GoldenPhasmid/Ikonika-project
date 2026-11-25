@@ -11,19 +11,23 @@ ColumnLayout
     property bool learned: false
     property int stageCount: 1
     property color pickedColour: AppTheme.colourAccent
+    property bool narrow: false
 
     readonly property var translations: root.meaning.translations || []
 
     spacing: AppMetrics.gapTight
 
-    RowLayout
+    GridLayout
     {
         Layout.fillWidth: true
-        spacing: AppMetrics.gapSmall
+        columnSpacing: AppMetrics.gapSmall
+        rowSpacing: AppMetrics.gapTight
 
         DesktopLabel
         {
-            visible: root.number > 0
+            Layout.row: 0
+            Layout.column: 0
+            visible: root.number > 0 && !root.narrow
             text: root.number
             font.weight: Font.Bold
             color: AppTheme.colourMuted
@@ -31,11 +35,24 @@ ColumnLayout
 
         DesktopGistBadge
         {
+            Layout.row: 0
+            Layout.column: root.narrow ? 0 : 1
             label: root.meaning.gist || ""
+        }
+
+        Item
+        {
+            Layout.row: 0
+            Layout.column: 2
+            Layout.fillWidth: true
+            visible: root.narrow
         }
 
         Flow
         {
+            Layout.row: root.narrow ? 1 : 0
+            Layout.column: root.narrow ? 0 : 2
+            Layout.columnSpan: root.narrow ? 5 : 1
             Layout.fillWidth: true
             Layout.preferredWidth: 0
 
@@ -71,6 +88,8 @@ ColumnLayout
 
         DesktopProgressRing
         {
+            Layout.row: 0
+            Layout.column: 3
             visible: root.learned
             stage: root.meaning.learnedStage
             stageCount: root.stageCount
@@ -79,6 +98,8 @@ ColumnLayout
 
         DesktopIcon
         {
+            Layout.row: 0
+            Layout.column: 4
             name: "chevron_down"
             width: AppMetrics.iconSizeSmall
             height: AppMetrics.iconSizeSmall

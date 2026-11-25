@@ -12,7 +12,7 @@ Item
 
     signal done()
     signal editCardRequested(var exercise)
-    signal lookupRequested(string word, string sentence)
+    signal lookupRequested(string word, string sentence, var place)
 
     function startDueToday()
     {
@@ -173,7 +173,7 @@ Item
         onLoaded: root.bindStage(item)
     }
 
-    Component { id: reviewComponent; MobileCorrectIncorrectScreen { store: root.store } }
+    Component { id: reviewComponent; MobileFlipScreen { store: root.store } }
     Component { id: choiceComponent; MobileMultipleChoiceScreen { store: root.store } }
     Component
     {
@@ -198,7 +198,18 @@ Item
         wordCount: root.controller.cardCount
         countLabel: qsTr("words trained")
         elapsedSeconds: root.controller.elapsedSeconds
+        doneText: root.controller.followUpPending ? qsTr("Continue") : qsTr("Done")
 
-        onDoneClicked: root.done()
+        onDoneClicked:
+        {
+            if (root.controller.followUpPending)
+            {
+                root.controller.continueToFollowUp()
+
+                return
+            }
+
+            root.done()
+        }
     }
 }

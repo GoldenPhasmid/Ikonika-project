@@ -68,6 +68,7 @@ Item
         anchors.fill: parent
 
         activeTab: "today"
+        contentMaximumWidth: AppMetrics.shellMaximumWidth
         headerTitle: qsTr("Sentences")
         showBack: true
         showTabBar: false

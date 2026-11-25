@@ -19,7 +19,7 @@ Button
     readonly property color contentColour: root.filledInUse ? AppTheme.colourPanel : AppTheme.colourText
 
     Layout.fillWidth: true
-    implicitHeight: AppMetrics.buttonHeightLarge
+    implicitHeight: Math.max(AppMetrics.buttonHeightLarge, contentItem.implicitHeight + AppMetrics.gapSmall * 2)
 
     leftPadding: AppMetrics.gapMedium
     rightPadding: AppMetrics.gapMedium
@@ -47,7 +47,7 @@ Button
             text: root.text
             font.weight: Font.Medium
             color: root.contentColour
-            elide: Text.ElideRight
+            wrapMode: Text.Wrap
         }
 
         DesktopLearnedMark

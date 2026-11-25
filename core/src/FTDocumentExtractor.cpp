@@ -16,6 +16,7 @@
 #include <QUrl>
 #include <QXmlStreamReader>
 
+#include <algorithm>
 #include <array>
 #include <functional>
 #include <cstring>
@@ -1049,6 +1050,152 @@ std::optional<FTReaderDocument> FTFb2DocumentExtractor::Extract(const std::strin
     return Result;
 }
 
+namespace
+{
+    struct FTEpubPackage
+    {
+        QString OpfPath;
+        QString Title;
+        QString NcxId;
+        QString NavHref;
+        QHash<QString, QString> ManifestById;
+        QHash<QString, QString> MediaTypeById;
+        QStringList SpineOrder;
+    };
+
+    std::optional<QByteArray> ReadZipEntry(mz_zip_archive& Zip, const QString& Name)
+    {
+        size_t Size = 0;
+        void* Data = mz_zip_reader_extract_file_to_heap(&Zip, Name.toUtf8().constData(), &Size, 0);
+
+        if (Data == nullptr)
+        {
+            return std::nullopt;
+        }
+
+        QByteArray Result(static_cast<const char*>(Data), static_cast<int>(Size));
+        MZ_FREE(Data);
+
+        return Result;
+    }
+
+    std::optional<FTEpubPackage> ReadEpubPackage(mz_zip_archive& Zip)
+    {
+        const std::optional<QByteArray> Container = ReadZipEntry(Zip, QStringLiteral("META-INF/container.xml"));
+
+        if (!Container.has_value())
+        {
+            return std::nullopt;
+        }
+
+        QXmlStreamReader ContainerReader(*Container);
+        FTEpubPackage Package;
+
+        while (!ContainerReader.atEnd())
+        {
+            if (ContainerReader.readNext() == QXmlStreamReader::StartElement
+                && ContainerReader.name() == QStringLiteral("rootfile"))
+            {
+                Package.OpfPath = ContainerReader.attributes().value(QStringLiteral("full-path")).toString();
+                break;
+            }
+        }
+
+        if (Package.OpfPath.isEmpty())
+        {
+            return std::nullopt;
+        }
+
+        const std::optional<QByteArray> OpfData = ReadZipEntry(Zip, Package.OpfPath);
+
+        if (!OpfData.has_value())
+        {
+            return std::nullopt;
+        }
+
+        QXmlStreamReader OpfReader(*OpfData);
+        bool bInManifest = false;
+        bool bInSpine = false;
+
+        while (!OpfReader.atEnd())
+        {
+            switch (OpfReader.readNext())
+            {
+            case QXmlStreamReader::StartElement:
+            {
+                if (OpfReader.namespaceUri() == QStringLiteral("http://purl.org/dc/elements/1.1/")
+                    && OpfReader.qualifiedName() == QStringLiteral("dc:title"))
+                {
+                    Package.Title = OpfReader.readElementText().trimmed();
+                }
+                else if (OpfReader.name() == QStringLiteral("manifest"))
+                {
+                    bInManifest = true;
+                }
+                else if (OpfReader.name() == QStringLiteral("spine"))
+                {
+                    bInSpine = true;
+                    Package.NcxId = OpfReader.attributes().value(QStringLiteral("toc")).toString();
+                }
+                else if (bInManifest && OpfReader.name() == QStringLiteral("item"))
+                {
+                    const QXmlStreamAttributes Attributes = OpfReader.attributes();
+                    const QString Id = Attributes.value(QStringLiteral("id")).toString();
+                    const QString Href = Attributes.value(QStringLiteral("href")).toString();
+                    const QString Properties = Attributes.value(QStringLiteral("properties")).toString();
+
+                    if (!Id.isEmpty())
+                    {
+                        Package.ManifestById.insert(Id, Href);
+                        Package.MediaTypeById.insert(Id, Attributes.value(QStringLiteral("media-type")).toString());
+                    }
+
+                    if (Properties.split(QLatin1Char(' ')).contains(QStringLiteral("nav")))
+                    {
+                        Package.NavHref = Href;
+                    }
+                }
+                else if (bInSpine && OpfReader.name() == QStringLiteral("itemref"))
+                {
+                    const QString Id = OpfReader.attributes().value(QStringLiteral("idref")).toString();
+
+                    if (!Id.isEmpty())
+                    {
+                        Package.SpineOrder.append(Id);
+                    }
+                }
+
+                break;
+            }
+
+            case QXmlStreamReader::EndElement:
+            {
+                if (OpfReader.name() == QStringLiteral("manifest"))
+                {
+                    bInManifest = false;
+                }
+                else if (OpfReader.name() == QStringLiteral("spine"))
+                {
+                    bInSpine = false;
+                }
+
+                break;
+            }
+
+            default:
+                break;
+            }
+        }
+
+        if (Package.SpineOrder.isEmpty())
+        {
+            return std::nullopt;
+        }
+
+        return Package;
+    }
+}
+
 std::optional<FTReaderDocument> FTEpubDocumentExtractor::Extract(const std::string& FilePath) const
 {
     const QString Path = QString::fromStdString(FilePath);
@@ -1067,147 +1214,27 @@ std::optional<FTReaderDocument> FTEpubDocumentExtractor::Extract(const std::stri
         return std::nullopt;
     }
 
-    const auto ReadEntry = [&Zip](const QString& Name) -> std::optional<QByteArray>
+    const auto ReadEntry = [&Zip](const QString& Name)
     {
-        size_t Size = 0;
-        void* Data = mz_zip_reader_extract_file_to_heap(&Zip, Name.toUtf8().constData(), &Size, 0);
-
-        if (Data == nullptr)
-        {
-            return std::nullopt;
-        }
-
-        QByteArray Result(static_cast<const char*>(Data), static_cast<int>(Size));
-        MZ_FREE(Data);
-
-        return Result;
+        return ReadZipEntry(Zip, Name);
     };
 
-    const std::optional<QByteArray> Container = ReadEntry(QStringLiteral("META-INF/container.xml"));
+    const std::optional<FTEpubPackage> Package = ReadEpubPackage(Zip);
 
-    if (!Container.has_value())
+    if (!Package.has_value())
     {
         mz_zip_reader_end(&Zip);
 
         return std::nullopt;
     }
 
-    QXmlStreamReader ContainerReader(*Container);
-    QString OpfPath;
-
-    while (!ContainerReader.atEnd())
-    {
-        if (ContainerReader.readNext() == QXmlStreamReader::StartElement
-            && ContainerReader.name() == QStringLiteral("rootfile"))
-        {
-            OpfPath = ContainerReader.attributes().value(QStringLiteral("full-path")).toString();
-            break;
-        }
-    }
-
-    if (OpfPath.isEmpty())
-    {
-        mz_zip_reader_end(&Zip);
-
-        return std::nullopt;
-    }
-
-    const std::optional<QByteArray> OpfData = ReadEntry(OpfPath);
-
-    if (!OpfData.has_value())
-    {
-        mz_zip_reader_end(&Zip);
-
-        return std::nullopt;
-    }
-
-    QXmlStreamReader OpfReader(*OpfData);
-
-    QString Title;
-    QString NcxId;
-    QString NavHref;
-    QHash<QString, QString> ManifestById;
-    QHash<QString, QString> MediaTypeById;
-    QStringList SpineOrder;
-    bool bInManifest = false;
-    bool bInSpine = false;
-
-    while (!OpfReader.atEnd())
-    {
-        switch (OpfReader.readNext())
-        {
-        case QXmlStreamReader::StartElement:
-        {
-            if (OpfReader.namespaceUri() == QStringLiteral("http://purl.org/dc/elements/1.1/")
-                && OpfReader.qualifiedName() == QStringLiteral("dc:title"))
-            {
-                Title = OpfReader.readElementText().trimmed();
-            }
-            else if (OpfReader.name() == QStringLiteral("manifest"))
-            {
-                bInManifest = true;
-            }
-            else if (OpfReader.name() == QStringLiteral("spine"))
-            {
-                bInSpine = true;
-                NcxId = OpfReader.attributes().value(QStringLiteral("toc")).toString();
-            }
-            else if (bInManifest && OpfReader.name() == QStringLiteral("item"))
-            {
-                const QXmlStreamAttributes Attributes = OpfReader.attributes();
-                const QString Id = Attributes.value(QStringLiteral("id")).toString();
-                const QString Href = Attributes.value(QStringLiteral("href")).toString();
-                const QString Properties = Attributes.value(QStringLiteral("properties")).toString();
-
-                if (!Id.isEmpty())
-                {
-                    ManifestById.insert(Id, Href);
-                    MediaTypeById.insert(Id, Attributes.value(QStringLiteral("media-type")).toString());
-                }
-
-                if (Properties.split(QLatin1Char(' ')).contains(QStringLiteral("nav")))
-                {
-                    NavHref = Href;
-                }
-            }
-            else if (bInSpine && OpfReader.name() == QStringLiteral("itemref"))
-            {
-                const QString Id = OpfReader.attributes().value(QStringLiteral("idref")).toString();
-
-                if (!Id.isEmpty())
-                {
-                    SpineOrder.append(Id);
-                }
-            }
-
-            break;
-        }
-
-        case QXmlStreamReader::EndElement:
-        {
-            if (OpfReader.name() == QStringLiteral("manifest"))
-            {
-                bInManifest = false;
-            }
-            else if (OpfReader.name() == QStringLiteral("spine"))
-            {
-                bInSpine = false;
-            }
-
-            break;
-        }
-
-        default:
-            break;
-        }
-    }
-
-    if (SpineOrder.isEmpty())
-    {
-        mz_zip_reader_end(&Zip);
-
-        return std::nullopt;
-    }
+    const QString& OpfPath = Package->OpfPath;
+    const QString& Title = Package->Title;
+    const QString& NavHref = Package->NavHref;
+    const QHash<QString, QString>& ManifestById = Package->ManifestById;
+    const QHash<QString, QString>& MediaTypeById = Package->MediaTypeById;
+    const QStringList& SpineOrder = Package->SpineOrder;
+    QString NcxId = Package->NcxId;
 
     FTReaderDocument Result;
     Result.Title = Title.toStdString();
@@ -1764,4 +1791,233 @@ std::optional<FTBookMetadata> ReadBookMetadata(const std::string& FilePath)
     }
 
     return ReadFb2Metadata(*Bytes);
+}
+
+namespace
+{
+    constexpr qsizetype SampleBytes = 32 * 1024;
+    constexpr int SampleSpineEntries = 12;
+    constexpr int64_t MinSampleEntryBytes = 2048;
+    constexpr double TxtBytesPerWord = 6.0;
+    constexpr double Fb2BytesPerWord = 7.0;
+    constexpr double EpubBytesPerWord = 7.5;
+
+    void AppendLines(const QString& Text, FTBookSample& Sample)
+    {
+        for (const QString& Line : Text.split(QLatin1Char('\n'), Qt::SkipEmptyParts))
+        {
+            const QString Trimmed = Line.trimmed();
+
+            if (!Trimmed.isEmpty())
+            {
+                Sample.Paragraphs.push_back(Trimmed.toStdString());
+            }
+        }
+    }
+
+    QString ReadPlainText(const QByteArray& Xhtml)
+    {
+        QXmlStreamReader Reader(ReplaceHtmlEntities(Xhtml));
+        QString Text;
+        int SkipDepth = 0;
+
+        while (!Reader.atEnd())
+        {
+            switch (Reader.readNext())
+            {
+            case QXmlStreamReader::StartElement:
+                if (SkipDepth > 0 || IsSkippedElement(Reader.name()))
+                {
+                    ++SkipDepth;
+                }
+                else if (IsBlockElement(Reader.name()))
+                {
+                    Text += QLatin1Char('\n');
+                }
+
+                break;
+
+            case QXmlStreamReader::EndElement:
+                if (SkipDepth > 0)
+                {
+                    --SkipDepth;
+                }
+                else if (IsBlockElement(Reader.name()))
+                {
+                    Text += QLatin1Char('\n');
+                }
+
+                break;
+
+            case QXmlStreamReader::Characters:
+                if (SkipDepth == 0)
+                {
+                    Text += Reader.text();
+                }
+
+                break;
+
+            default:
+                break;
+            }
+        }
+
+        return Text;
+    }
+
+    qsizetype MiddleSampleStart(qsizetype Size)
+    {
+        return std::max<qsizetype>(0, Size / 2 - SampleBytes / 2);
+    }
+
+    std::optional<FTBookSample> SampleTxt(const QByteArray& Bytes)
+    {
+        FTBookSample Sample;
+        Sample.EstimatedWords = static_cast<int64_t>(Bytes.size() / TxtBytesPerWord);
+        AppendLines(QString::fromUtf8(Bytes.mid(MiddleSampleStart(Bytes.size()), SampleBytes)), Sample);
+
+        return Sample;
+    }
+
+    std::optional<FTBookSample> SampleFb2(const QByteArray& Bytes)
+    {
+        const QString Content = DecodeXml(Bytes);
+        const qsizetype BodyStart = std::max<qsizetype>(0, Content.indexOf(QStringLiteral("<body")));
+        const qsizetype BinaryStart = Content.indexOf(QStringLiteral("<binary"), BodyStart);
+        const qsizetype BodyEnd = BinaryStart > BodyStart ? BinaryStart : Content.size();
+        const QString Body = Content.mid(BodyStart, BodyEnd - BodyStart);
+
+        static const QRegularExpression Tags(QStringLiteral("<[^>]*>"));
+
+        FTBookSample Sample;
+        Sample.EstimatedWords = static_cast<int64_t>(Body.size() / Fb2BytesPerWord);
+        AppendLines(Body.mid(MiddleSampleStart(Body.size()), SampleBytes).replace(Tags, QStringLiteral(" ")), Sample);
+
+        return Sample;
+    }
+
+    std::optional<FTBookSample> SampleEpub(const QByteArray& Bytes)
+    {
+        mz_zip_archive Zip;
+        std::memset(&Zip, 0, sizeof(Zip));
+
+        if (!mz_zip_reader_init_mem(&Zip, Bytes.constData(), static_cast<size_t>(Bytes.size()), 0))
+        {
+            return std::nullopt;
+        }
+
+        const std::optional<FTEpubPackage> Package = ReadEpubPackage(Zip);
+
+        if (!Package.has_value())
+        {
+            mz_zip_reader_end(&Zip);
+
+            return std::nullopt;
+        }
+
+        std::vector<std::pair<QString, int64_t>> Entries;
+        int64_t SpineBytes = 0;
+
+        for (const QString& Id : Package->SpineOrder)
+        {
+            const QString Href = Package->ManifestById.value(Id);
+
+            if (Href.isEmpty())
+            {
+                continue;
+            }
+
+            const QString Entry = ResolveZipPath(Package->OpfPath, Href);
+            const int Index = Entry.startsWith(QStringLiteral("../"))
+                                  ? -1
+                                  : mz_zip_reader_locate_file(&Zip, Entry.toUtf8().constData(), nullptr, 0);
+            mz_zip_archive_file_stat Stat;
+
+            if (Index < 0 || !mz_zip_reader_file_stat(&Zip, static_cast<mz_uint>(Index), &Stat))
+            {
+                continue;
+            }
+
+            Entries.emplace_back(Entry, static_cast<int64_t>(Stat.m_uncomp_size));
+            SpineBytes += static_cast<int64_t>(Stat.m_uncomp_size);
+        }
+
+        FTBookSample Sample;
+        Sample.EstimatedWords = static_cast<int64_t>(SpineBytes / EpubBytesPerWord);
+
+        const bool bHasTextEntries = std::any_of(Entries.begin(), Entries.end(), [](const auto& Entry)
+        {
+            return Entry.second >= MinSampleEntryBytes;
+        });
+        const int64_t MinimumSize = bHasTextEntries ? MinSampleEntryBytes : 0;
+
+        qsizetype SampledBytes = 0;
+        int ReadEntries = 0;
+
+        for (size_t Offset = 0; Offset < Entries.size() && SampledBytes < SampleBytes && ReadEntries < SampleSpineEntries;
+             ++Offset)
+        {
+            const auto& [Entry, Size] = Entries[(Entries.size() / 2 + Offset) % Entries.size()];
+
+            if (Size < MinimumSize)
+            {
+                continue;
+            }
+
+            const std::optional<QByteArray> Content = ReadZipEntry(Zip, Entry);
+            ++ReadEntries;
+
+            if (!Content.has_value())
+            {
+                continue;
+            }
+
+            const QString Text = ReadPlainText(*Content);
+            SampledBytes += Text.size();
+            AppendLines(Text, Sample);
+        }
+
+        mz_zip_reader_end(&Zip);
+
+        return Sample;
+    }
+}
+
+std::optional<FTBookSample> SampleBookText(const std::string& FilePath)
+{
+    const EFTDocumentFormat Format = DetectDocumentFormat(FilePath);
+
+    if (Format != EFTDocumentFormat::Epub && Format != EFTDocumentFormat::Fb2 && Format != EFTDocumentFormat::Txt)
+    {
+        return std::nullopt;
+    }
+
+    std::optional<QByteArray> Bytes = ReadBytes(QString::fromStdString(FilePath));
+
+    if (!Bytes.has_value())
+    {
+        return std::nullopt;
+    }
+
+    if (Format == EFTDocumentFormat::Epub)
+    {
+        return SampleEpub(*Bytes);
+    }
+
+    if (Format == EFTDocumentFormat::Txt)
+    {
+        return SampleTxt(*Bytes);
+    }
+
+    if (Bytes->startsWith("PK"))
+    {
+        Bytes = ReadFirstZipEntryEndingWith(*Bytes, QStringLiteral(".fb2"));
+
+        if (!Bytes.has_value())
+        {
+            return std::nullopt;
+        }
+    }
+
+    return SampleFb2(*Bytes);
 }

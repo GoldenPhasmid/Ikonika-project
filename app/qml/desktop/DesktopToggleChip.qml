@@ -9,6 +9,10 @@ Button
 
     property string iconName: ""
     property bool on: false
+    property bool selected: false
+    property bool locked: false
+
+    readonly property bool emphasised: root.hovered && !root.locked && !root.selected
 
     readonly property real dashStrokeWidth: AppMetrics.dashStrokeWidth
     readonly property real dashInset: root.dashStrokeWidth / 2
@@ -18,8 +22,10 @@ Button
     implicitHeight: AppMetrics.toggleChipHeight
 
     padding: 0
+    leftPadding: root.locked ? AppMetrics.gapMedium : 0
+    rightPadding: root.locked ? AppMetrics.gapMedium : 0
     hoverEnabled: true
-    focusPolicy: Qt.StrongFocus
+    focusPolicy: root.locked ? Qt.NoFocus : Qt.StrongFocus
 
     Accessible.role: Accessible.CheckBox
     Accessible.name: root.text
@@ -39,16 +45,30 @@ Button
             Layout.preferredHeight: AppMetrics.iconSize
             visible: root.iconName.length > 0
             name: root.iconName
-            color: root.on ? AppTheme.colourAccent : AppTheme.colourMuted
+            color: root.on && !root.locked ? AppTheme.colourAccent : AppTheme.colourMuted
         }
 
-        DesktopLabel
+        RowLayout
         {
             Layout.alignment: Qt.AlignHCenter
-            text: root.text
-            font.pixelSize: AppMetrics.fontSmall
-            font.weight: Font.Medium
-            color: root.on ? AppTheme.colourText : AppTheme.colourMuted
+            spacing: AppMetrics.gapTight
+
+            DesktopIcon
+            {
+                visible: root.locked
+                Layout.preferredWidth: AppMetrics.iconSizeSmall
+                Layout.preferredHeight: AppMetrics.iconSizeSmall
+                name: "lock"
+                color: AppTheme.colourMuted
+            }
+
+            DesktopLabel
+            {
+                text: root.text
+                font.pixelSize: AppMetrics.fontSmall
+                font.weight: Font.Medium
+                color: root.locked ? AppTheme.colourSubtle : root.on ? AppTheme.colourText : AppTheme.colourMuted
+            }
         }
 
         Item { Layout.fillHeight: true }
@@ -57,17 +77,29 @@ Button
     background: Rectangle
     {
         radius: root.dashRadius
+        bottomLeftRadius: root.selected ? 0 : root.dashRadius
+        bottomRightRadius: root.selected ? 0 : root.dashRadius
         color:
         {
+            if (root.locked)
+            {
+                return AppTheme.colourFaint
+            }
+
+            if (root.selected)
+            {
+                return AppTheme.colourPanel
+            }
+
             if (root.on)
             {
                 return Qt.tint(AppTheme.colourPanel, AppTheme.faded(AppTheme.colourAccent,
-                                                                    root.hovered ? AppTheme.alphaMedium : AppTheme.alphaSoft))
+                                                                    root.emphasised ? AppTheme.alphaMedium : AppTheme.alphaSoft))
             }
 
-            return root.hovered ? AppTheme.colourHover : AppTheme.faded(AppTheme.colourHover, 0)
+            return root.emphasised ? AppTheme.colourHover : AppTheme.faded(AppTheme.colourHover, 0)
         }
-        border.width: root.on ? root.dashStrokeWidth : 0
+        border.width: (root.on || root.selected) && !root.locked ? root.dashStrokeWidth : 0
         border.color: AppTheme.colourAccent
 
         Behavior on color { ColorAnimation { duration: AppMetrics.motionFast } }
@@ -75,12 +107,12 @@ Button
         Shape
         {
             anchors.fill: parent
-            visible: !root.on
+            visible: !root.on && !root.selected && !root.locked
             preferredRendererType: Shape.CurveRenderer
 
             ShapePath
             {
-                strokeColor: root.hovered ? AppTheme.colourOutline : AppTheme.colourBorder
+                strokeColor: root.emphasised ? AppTheme.colourOutline : AppTheme.colourBorder
                 strokeWidth: root.dashStrokeWidth
                 fillColor: "transparent"
                 strokeStyle: ShapePath.DashLine
@@ -124,6 +156,6 @@ Button
 
     HoverHandler
     {
-        cursorShape: Qt.PointingHandCursor
+        cursorShape: root.locked ? Qt.ArrowCursor : Qt.PointingHandCursor
     }
 }

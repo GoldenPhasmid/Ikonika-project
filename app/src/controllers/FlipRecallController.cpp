@@ -57,6 +57,16 @@ void FlipRecallController::advance()
     emit stateChanged();
 }
 
+void FlipRecallController::reveal()
+{
+    if (bAnswered)
+    {
+        return;
+    }
+
+    advance();
+}
+
 void FlipRecallController::answerYes()
 {
     Answer(true);

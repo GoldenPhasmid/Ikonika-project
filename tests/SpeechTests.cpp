@@ -264,7 +264,7 @@ TEST_CASE("Supertonic below its own speed range is slowed by stretching", "[spee
         return;
     }
 
-    const std::vector<int16_t> Floor = Synthesizer->Synthesize("chien", 0, 0.8f);
+    const std::vector<int16_t> Floor = Synthesizer->Synthesize("chien", 0, 0.85f);
     const std::vector<int16_t> Stretched = Synthesizer->Synthesize("chien", 0, 0.5f);
 
     REQUIRE_FALSE(Floor.empty());
@@ -272,8 +272,8 @@ TEST_CASE("Supertonic below its own speed range is slowed by stretching", "[spee
 
     const double Ratio = static_cast<double>(Stretched.size()) / static_cast<double>(Floor.size());
 
-    CHECK(Ratio > 1.5);
-    CHECK(Ratio < 1.7);
+    CHECK(Ratio > 1.6);
+    CHECK(Ratio < 1.8);
 }
 
 TEST_CASE("Supertonic renders the same text the same way twice", "[speech]")

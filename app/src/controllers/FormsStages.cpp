@@ -100,7 +100,7 @@ static void AddMatchStage(QObject* Parent, const FTSessionStartParams& Params, F
 
 static std::vector<uint32_t> ListFocusWordIds(const std::vector<FTCardHandle>& Forms, const std::vector<int>& Word)
 {
-    const FTDictionaryRepository& Dictionary = AppDictionary::Get().GetRepository();
+    const FTDictionaryRepository& Dictionary = AppDictionary::GetActive().GetRepository();
 
     std::vector<std::string> Spellings;
 
@@ -143,7 +143,7 @@ static std::vector<std::vector<uint32_t>> OrderSentencesByWord(const std::vector
 {
     std::vector<std::vector<uint32_t>> SentencesByWord(FocusWordIds.size());
 
-    const FTSentenceTree* Tree = AppDictionary::Get().GetSentenceTree();
+    const FTSentenceTree* Tree = AppDictionary::GetActive().GetSentenceTree();
 
     if (Tree == nullptr)
     {
@@ -187,7 +187,7 @@ static std::vector<std::vector<FFormCandidate>> SortSentencesByForm(const std::v
 {
     std::vector<std::vector<FFormCandidate>> Buckets(Word.size());
 
-    std::vector<FTTreeSentence> Loaded = AppDictionary::Get().GetRepository().LoadTreeSentences(Ordered);
+    std::vector<FTTreeSentence> Loaded = AppDictionary::GetActive().GetRepository().LoadTreeSentences(Ordered);
     LoadedCount += Loaded.size();
 
     std::unordered_map<uint32_t, size_t> OrderById;
@@ -272,7 +272,7 @@ static void PlaceWordForms(const std::vector<FTCardHandle>& Forms, const std::ve
 static void PlaceLockedForms(const std::vector<FTCardHandle>& Forms, const std::vector<std::vector<int>>& Words,
                              std::unordered_map<std::string, std::vector<FTTreeSentence>>& Picked, size_t& LoadedCount)
 {
-    const FTDictionaryRepository& Dictionary = AppDictionary::Get().GetRepository();
+    const FTDictionaryRepository& Dictionary = AppDictionary::GetActive().GetRepository();
 
     std::vector<std::pair<const FTCard*, uint32_t>> Locked;
 
@@ -346,7 +346,7 @@ static std::unordered_map<std::string, std::vector<FTTreeSentence>> PickFormSent
 {
     std::unordered_map<std::string, std::vector<FTTreeSentence>> Picked;
 
-    if (!AppDictionary::Get().IsReady() || Forms.empty())
+    if (!AppDictionary::GetActive().IsReady() || Forms.empty())
     {
         return Picked;
     }
@@ -364,7 +364,7 @@ static std::unordered_map<std::string, std::vector<FTTreeSentence>> PickFormSent
         });
     };
 
-    if (AppDictionary::Get().GetRepository().HasFormSentences())
+    if (AppDictionary::GetActive().GetRepository().HasFormSentences())
     {
         size_t LoadedCount = 0;
         PlaceLockedForms(Forms, Words, Picked, LoadedCount);

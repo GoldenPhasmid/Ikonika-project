@@ -1,6 +1,8 @@
 import QtQuick
 import QtQuick.Layouts
+import Ikonika
 import "MobileIcons.js" as Icons
+import "../ReaderShelf.js" as Shelf
 
 Item
 {
@@ -13,6 +15,8 @@ Item
     property var intensive: null
     property var sentences: null
     property var discovery: null
+    property var reader: null
+    property bool lufiActive: root.visible
 
     readonly property bool sentencesReady: root.sentences
         ? root.sentences.savedExercises.length > 0 || root.sentences.unlocked
@@ -42,126 +46,26 @@ Item
     signal repetitionRequested()
     signal sentencesRequested()
     signal practiceRequested()
-    signal formsTrainingRequested(string training)
     signal dictionaryRequested()
     signal settingsRequested()
     signal wordListRequested(string source)
     signal wordLookupRequested(string term)
     signal tabSelected(string key)
+    signal bookRequested(var book)
+    signal freeBookRequested(var book)
+    signal messageRequested(string message)
 
     function startFromPool()
     {
         root.intensiveRequested()
     }
 
-    readonly property var formsTrainingKinds: [
-        { key: "conjugation", iconSvg: Icons.Icons.session_conjugation.path, label: qsTr("Conjugations") },
-        { key: "forms", iconSvg: Icons.Icons.session_forms.path, label: qsTr("Forms") }
-    ]
-
-    property var formsTrainings: []
-
     readonly property int vocabularyTotal: root.daily.ladder.reduce((Sum, Entry) => Sum + Entry.count, 0)
-
-    readonly property var practiceItems:
-    {
-        const items = []
-
-        for (const training of root.formsTrainings)
-        {
-            items.push({
-                key: training.key,
-                iconSvg: training.iconSvg,
-                label: training.label,
-                caption: training.resumable ? qsTr("Continue") : "",
-                resumable: training.resumable,
-                count: training.wordCount >= 0 ? training.wordCount.toString() : "",
-                ready: training.ready,
-                blockedReason: root.lockedHint
-            })
-        }
-
-        items.push({
-            key: "sentences",
-            iconSvg: Icons.Icons.session_sentences.path,
-            label: qsTr("Sentences"),
-            caption: root.sentences && root.sentences.savedExercises.length > 0 ? qsTr("Continue") : "",
-            resumable: root.sentences && root.sentences.savedExercises.length > 0,
-            count: "",
-            ready: root.sentencesReady,
-            blockedReason: root.sentencesBlockedReason
-        })
-
-        items.push({
-            key: "practice",
-            iconSvg: Icons.Icons.exercise_flashcards.path,
-            label: qsTr("Practice"),
-            caption: "",
-            resumable: false,
-            count: root.vocabularyTotal.toString(),
-            ready: root.vocabularyTotal > 0,
-            blockedReason: qsTr("Learn some words to practise them")
-        })
-
-        return items
-    }
-
-    readonly property var readyPractice: root.practiceItems.filter(Item => Item.ready)
-    readonly property var lockedPractice: root.practiceItems.filter(Item => !Item.ready)
-
-    function startPractice(key)
-    {
-        if (key === "sentences")
-        {
-            root.sentencesRequested()
-
-            return
-        }
-
-        if (key === "practice")
-        {
-            root.practiceRequested()
-
-            return
-        }
-
-        root.formsTrainingRequested(key)
-    }
-
-    function listFormsTrainings()
-    {
-        const offered = []
-
-        for (const kind of root.formsTrainingKinds)
-        {
-            const trainingId = root.daily.formsTrainingId(kind.key)
-
-            if (trainingId.length === 0)
-            {
-                continue
-            }
-
-            const resumable = root.intensive ? root.intensive.controller.hasSessionFor(trainingId) : false
-
-            offered.push({
-                key: kind.key,
-                iconSvg: kind.iconSvg,
-                label: kind.label,
-                resumable: resumable,
-                wordCount: resumable ? root.intensive.controller.wordCountFor(trainingId)
-                                     : root.daily.formsWordCount(trainingId),
-                ready: resumable || root.daily.canStartFormsTraining(trainingId)
-            })
-        }
-
-        return offered
-    }
 
     function refresh()
     {
         root.daily.refresh()
         root.hasLearnSession = root.findLearnSession()
-        root.formsTrainings = root.listFormsTrainings()
 
         if (root.sentences)
         {
@@ -183,13 +87,23 @@ Item
 
     Connections
     {
+        target: Qt.application
+
+        function onStateChanged()
+        {
+            if (root.visible && Qt.application.state === Qt.ApplicationActive)
+                root.daily.refresh()
+        }
+    }
+
+    Connections
+    {
         target: root.intensive ? root.intensive.controller : null
         enabled: root.visible
 
         function onStateChanged()
         {
             root.hasLearnSession = root.findLearnSession()
-            root.formsTrainings = root.listFormsTrainings()
         }
     }
 
@@ -198,7 +112,6 @@ Item
         target: root.daily
 
         function onCountsChanged() { root.publishWidget() }
-        function onFormsCountsChanged() { root.formsTrainings = root.listFormsTrainings() }
     }
 
     Connections
@@ -235,21 +148,38 @@ Item
     readonly property var weekDays:
     {
         const locale = Qt.locale(AppLocalization.localeName)
-        const todayIndex = root.daily.weekday - Qt.Monday
+        const dayName = function(offset)
+        {
+            const date = new Date(root.daily.learningDate)
+            date.setDate(date.getDate() + offset)
+
+            return locale.dayName(date.getDay(), Locale.ShortFormat)
+        }
+
         const days = []
 
-        for (let index = 0; index < 7; ++index)
+        for (const entry of root.daily.recentProgress)
         {
-            const today = index === todayIndex
-            const recorded = root.daily.recentProgress.find(Entry => Entry.daysAgo === todayIndex - index)
+            if (entry.daysAgo === 0)
+            {
+                continue
+            }
 
-            days.push({
-                letter: locale.dayName((Qt.Monday + index) % 7, Locale.NarrowFormat),
-                today: today,
-                past: index < todayIndex,
-                review: today ? root.reviewRatio : (recorded ? recorded.review : 0),
-                learn: today ? root.shownGoalRatio : (recorded ? recorded.learn : 0)
-            })
+            days.push({ kind: "past", name: dayName(-entry.daysAgo), recorded: entry.recorded,
+                        review: entry.review, learn: entry.learn })
+        }
+
+        days.push({ kind: "today", name: dayName(0) })
+
+        for (const entry of root.daily.reviewTimeline)
+        {
+            if (entry.daysFromToday === 0)
+            {
+                continue
+            }
+
+            days.push({ kind: "coming", name: dayName(entry.daysFromToday), count: entry.count,
+                        daysFromToday: entry.daysFromToday })
         }
 
         return days
@@ -285,12 +215,25 @@ Item
         AppSoundEffects.celebrateDailyGoal()
     }
 
+    readonly property bool compactPhone: root.height < 840
+
+    readonly property var continueBooks: root.reader ? Shelf.continueBooks(root.reader.documents) : []
+    readonly property var startBooks: root.reader && root.continueBooks.length === 0
+        ? Shelf.startBooks(root.reader.freeBooks, root.vocabularyTotal) : []
+    readonly property var shownBook: root.continueBooks.length > 0 ? root.continueBooks[0]
+                                   : root.startBooks.length > 0 ? root.startBooks[0] : null
+    readonly property bool shownBookFree: root.continueBooks.length === 0 && root.shownBook !== null
+
+    readonly property int learnRemaining: root.hasLearnSession
+        ? root.intensive.controller.wordCountFor(root.intensive.controller.vocabularyKey)
+        : Math.max(root.daily.dailyGoal - root.shownDoneToday, 0)
+
     MobileShell
     {
         anchors.fill: parent
 
         activeTab: "today"
-        contentMaximumWidth: 632
+        contentMaximumWidth: AppMetrics.shellMaximumWidth
         headerTitle: root.store.targetLanguageName
         headerTitleTappable: true
         showSearch: true
@@ -304,311 +247,233 @@ Item
 
         Flickable
         {
+            id: scroll
+
             anchors.fill: parent
-            contentHeight: content.implicitHeight + AppMetrics.contentPadding + AppMetrics.gapLarge
+            contentHeight: content.implicitHeight + 16
+            interactive: contentHeight > height
+            boundsBehavior: Flickable.StopAtBounds
             clip: true
 
             ColumnLayout
             {
                 id: content
+
                 anchors.left: parent.left
                 anchors.right: parent.right
                 anchors.top: parent.top
-                anchors.margins: AppMetrics.contentPadding
-                anchors.topMargin: AppMetrics.contentPadding
-                anchors.bottomMargin: AppMetrics.gapLarge
-                spacing: AppMetrics.gapMedium
+                spacing: 12
 
                 MobileReconnectBanner
                 {
                     objectName: "today_reconnect_banner"
+
+                    Layout.leftMargin: 12
+                    Layout.rightMargin: 12
+                }
+
+                MobileWeekStrip
+                {
+                    objectName: "today_week"
+
+                    Layout.topMargin: AppMetrics.gapSmall
+
+                    days: root.weekDays
+                    todayReview: root.reviewRatio
+                    todayLearn: root.shownGoalRatio
+                    showTodayReview: root.reviewTotal > 0
+                    showTodayLearn: root.daily.dailyGoal > 0
+                    reviewColour: root.reviewColour
+                    learnColour: root.learnColour
+
+                    onDayRequested: function(daysFromToday) { root.wordListRequested("due:" + daysFromToday) }
+                }
+
+                MobileStudyBand
+                {
+                    id: reviewBand
+                    objectName: "today_review"
+
+                    Layout.leftMargin: 12
+                    Layout.rightMargin: 12
+
+                    label: root.hasReviewSession ? qsTr("Continue") : qsTr("Review")
+                    count: root.daily.dueCount
+                    unit: qsTr("due")
+                    progress: root.reviewTotal > 0 ? root.reviewRatio : -1
+                    active: root.reviewReady
+                    compactPhone: root.compactPhone
+                    tone: AppTheme.colourReviewBand
+                    ink: AppTheme.colourReviewInk
+                    deep: AppTheme.colourReviewDeep
+
+                    onClicked: root.repetitionRequested()
+                }
+
+                MobileStudyBand
+                {
+                    id: learnBand
+                    objectName: "today_learn"
+
+                    Layout.leftMargin: 12
+                    Layout.rightMargin: 12
+
+                    label: root.hasLearnSession ? qsTr("Continue") : qsTr("Learn")
+                    count: root.learnRemaining
+                    counted: root.hasLearnSession || root.daily.dailyGoal > 0
+                    unit: root.learnRemaining > 0 || root.hasLearnSession ? qsTr("new") : qsTr("Goal reached")
+                    active: !root.reviewReady
+                    compactPhone: root.compactPhone
+                    tone: AppTheme.colourLearnBand
+                    ink: AppTheme.colourLearnInk
+                    deep: AppTheme.colourLearnDeep
+
+                    onClicked: root.startFromPool()
                 }
 
                 RowLayout
                 {
-                    id: weekSection
                     Layout.fillWidth: true
-                    spacing: 0
+                    Layout.leftMargin: 12
+                    Layout.rightMargin: 12
+                    spacing: AppMetrics.gapSmall
 
-                    Repeater
+                    MobileTodayTile
                     {
-                        model: root.weekDays
+                        objectName: "today_discover"
 
-                        delegate: ColumnLayout
-                        {
-                            id: dayCell
+                        label: qsTr("Discover")
+                        iconSvg: Icons.Icons.nav_decks.path
+                        primary: !!root.discovery && root.discovery.hasActiveSession
+                        compactPhone: root.compactPhone
 
-                            required property var modelData
+                        onClicked: root.discoverRequested()
+                    }
 
-                            Layout.fillWidth: true
-                            Layout.preferredWidth: 1
-                            spacing: AppMetrics.gapTight
+                    MobileTodayTile
+                    {
+                        objectName: "today_practice"
 
-                            Text
-                            {
-                                Layout.fillWidth: true
-                                horizontalAlignment: Text.AlignHCenter
-                                text: dayCell.modelData.letter
-                                font.pixelSize: AppMetrics.fontMeta
-                                font.weight: dayCell.modelData.today ? Font.Bold : Font.Medium
-                                font.family: AppMetrics.fontFamily
-                                color: dayCell.modelData.today ? AppTheme.colourText : AppTheme.colourMuted
-                            }
+                        label: qsTr("Practice")
+                        iconSvg: Icons.Icons.exercise_flashcards.path
+                        locked: root.vocabularyTotal === 0
+                        compactPhone: root.compactPhone
 
-                            Rectangle
-                            {
-                                Layout.alignment: Qt.AlignHCenter
-                                Layout.preferredWidth: 40
-                                Layout.preferredHeight: 40
-                                radius: width / 2
-                                color: dayCell.modelData.today ? AppTheme.colourFaint : "transparent"
+                        onClicked: root.practiceRequested()
+                        onBlockedClicked: root.messageRequested(qsTr("Learn some words to practise them"))
+                    }
 
-                                MobileDoubleRing
-                                {
-                                    anchors.centerIn: parent
-                                    width: 28
-                                    height: 28
-                                    visible: dayCell.modelData.today || dayCell.modelData.past
+                    MobileTodayTile
+                    {
+                        objectName: "today_sentences"
 
-                                    stroke: 3
-                                    outerProgress: dayCell.modelData.review
-                                    innerProgress: dayCell.modelData.learn
-                                    outerColour: root.reviewColour
-                                    innerColour: root.learnColour
-                                }
-                            }
-                        }
+                        label: qsTr("Sentences")
+                        iconSvg: Icons.Icons.session_sentences.path
+                        primary: !!root.sentences && root.sentences.savedExercises.length > 0
+                        locked: !root.sentencesReady
+                        compactPhone: root.compactPhone
+
+                        onClicked: root.sentencesRequested()
+                        onBlockedClicked: root.messageRequested(root.sentencesBlockedReason)
                     }
                 }
 
-                RowLayout
+                MobileTodayBook
                 {
-                    id: doubleSection
-                    Layout.fillWidth: true
-                    spacing: AppMetrics.gapMedium
+                    objectName: "today_book"
 
-                    MobileDoubleRing
+                    Layout.leftMargin: 12
+                    Layout.rightMargin: 12
+
+                    book: root.shownBook
+                    level: root.shownBookFree ? Shelf.levelLabel(root.shownBook.level) || qsTr("Free book") : ""
+                    needsDownload: root.shownBookFree && !root.shownBook.local
+                    downloadProgress:
                     {
-                        id: doubleRing
-                        Layout.preferredWidth: 148
-                        Layout.preferredHeight: 148
-
-                        stroke: 14
-                        outerProgress: root.reviewRatio
-                        innerProgress: root.shownGoalRatio
-                        showOuter: root.reviewTotal > 0
-                        showInner: root.daily.dailyGoal > 0
-                        outerColour: root.reviewColour
-                        innerColour: root.learnColour
-
-                        ColumnLayout
+                        if (!root.shownBookFree || root.shownBook.local || !root.reader)
                         {
-                            anchors.centerIn: parent
-                            visible: root.daily.dailyGoal > 0
-                            spacing: 0
-
-                            Text
-                            {
-                                Layout.alignment: Qt.AlignHCenter
-                                text: root.shownDoneToday
-                                font.family: AppMetrics.fontFamily
-                                font.pixelSize: AppMetrics.heroFigureSize
-                                font.weight: Font.Bold
-                                color: AppTheme.colourText
-                            }
-
-                            Text
-                            {
-                                Layout.alignment: Qt.AlignHCenter
-                                text: qsTr("of %1").arg(root.daily.dailyGoal)
-                                font.family: AppMetrics.fontFamily
-                                font.pixelSize: AppMetrics.fontSmall
-                                color: AppTheme.colourMuted
-                            }
+                            return -1
                         }
+
+                        const value = root.reader.freeTransfers[root.shownBook.freeId]
+
+                        return value === undefined ? -1 : value
                     }
 
-                    ColumnLayout
+                    onClicked:
                     {
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: doubleRing.height
-                        spacing: AppMetrics.gapSmall
-
-                        MobileRingTile
+                        if (root.shownBook === null)
                         {
-                            objectName: "today_review"
+                            root.tabSelected("reader")
 
-                            label: root.hasReviewSession ? qsTr("Continue") : qsTr("Review")
-                            remaining: root.daily.dueCount
-                            completed: !root.hasReviewSession && root.daily.dueCount === 0
-                            accent: root.reviewColour
-                            interactive: root.reviewReady
-
-                            onClicked: root.repetitionRequested()
+                            return
                         }
 
-                        MobileRingTile
+                        if (root.shownBookFree)
                         {
-                            objectName: "today_learn"
+                            root.freeBookRequested(root.shownBook)
 
-                            label: root.hasLearnSession ? qsTr("Continue") : qsTr("Learn")
-                            remaining: root.hasLearnSession ? root.intensive.controller.wordCountFor(root.intensive.controller.vocabularyKey)
-                                                           : Math.max(root.daily.dailyGoal - root.shownDoneToday, 0)
-                            showRemaining: root.hasLearnSession || root.daily.dailyGoal > 0
-                            completed: !root.hasLearnSession && root.goalReached
-                            accent: root.learnColour
-
-                            onClicked: root.startFromPool()
+                            return
                         }
+
+                        root.bookRequested(root.shownBook)
                     }
                 }
+            }
 
-                MobileActionButton
+            Item
+            {
+                id: cat
+
+                readonly property Item band: root.reviewReady ? reviewBand : learnBand
+                readonly property real headroom: band.heroHeight - band.catHeight + 32
+                readonly property real sideRoom: 8
+                readonly property real riseOffset: band.catRise * band.catHeight
+                readonly property real pictureWidth: Math.round(band.catHeight * 535 / 675)
+                readonly property real fallbackScale: pictureWidth / 508.6
+
+                x: content.x + band.x + band.width - pictureWidth - 10 - sideRoom
+                y: content.y + band.y + band.height - height
+                width: pictureWidth + 2 * sideRoom
+                height: band.catHeight + headroom
+                visible: riseOffset < band.catHeight
+                clip: true
+                z: 1
+
+                Image
                 {
-                    objectName: "today_discover"
-
-                    readonly property bool resumable: !!root.discovery && root.discovery.hasActiveSession
-
-                    filled: resumable
-                    interactive: DecksController.categorised
-                    iconSvg: Icons.Icons.nav_decks.path
-                    label: qsTr("Discover")
-                    caption: !DecksController.categorised ? DecksController.discoverBlockedReason
-                           : resumable ? qsTr("Continue") : qsTr("Find new words")
-
-                    onClicked: root.discoverRequested()
+                    x: cat.sideRoom - 83.7 * cat.fallbackScale
+                    y: cat.headroom + cat.riseOffset + 21.9 * cat.fallbackScale
+                    width: 676 * cat.fallbackScale
+                    height: 1214 * cat.fallbackScale
+                    visible: !animation.ready
+                    source: "qrc:/images/LufiExcited.svg"
+                    sourceSize: Qt.size(width, height)
                 }
 
-                ColumnLayout
+                Lufi
                 {
-                    id: dueSection
-                    Layout.fillWidth: true
-                    spacing: AppMetrics.gapCompact
+                    id: animation
+                    objectName: "today_lufi"
 
-                    MobileSectionLabel { text: qsTr("COMING UP") }
-
-                    RowLayout
-                    {
-                        Layout.fillWidth: true
-                        spacing: AppMetrics.gapTight
-
-                        Repeater
-                        {
-                            model: root.daily.reviewTimeline.slice(0, 5)
-
-                            delegate: Rectangle
-                            {
-                                required property var modelData
-
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: 64
-                                readonly property bool tappable: modelData.count > 0
-
-                                radius: AppMetrics.radiusMedium
-                                color: Qt.tint(AppTheme.colourPanel,
-                                    Qt.rgba(AppTheme.colourAccent.r, AppTheme.colourAccent.g,
-                                            AppTheme.colourAccent.b,
-                                            !tappable ? 0 : dueTap.pressed ? 0.24 : 0.10))
-                                border.color: tappable
-                                    ? Qt.rgba(AppTheme.colourAccent.r, AppTheme.colourAccent.g,
-                                              AppTheme.colourAccent.b, 0.6)
-                                    : AppTheme.colourBorder
-                                border.width: AppMetrics.borderWidth
-                                scale: dueTap.pressed ? 0.95 : 1
-
-                                Behavior on scale
-                                {
-                                    NumberAnimation { duration: AppMetrics.motionFast; easing.type: AppMetrics.motionEasing }
-                                }
-
-                                TapHandler
-                                {
-                                    id: dueTap
-
-                                    enabled: parent.tappable
-
-                                    onTapped: root.wordListRequested("due:" + modelData.daysFromToday)
-                                }
-
-                                ColumnLayout
-                                {
-                                    anchors.centerIn: parent
-                                    spacing: 2
-
-                                    Text
-                                    {
-                                        text: modelData.count
-                                        font.pixelSize: AppMetrics.fontSubtitle
-                                        font.weight: Font.Bold
-                                        font.family: AppMetrics.fontFamily
-                                        color: modelData.count > 0 ? AppTheme.colourText : AppTheme.colourMuted
-                                        Layout.alignment: Qt.AlignHCenter
-                                    }
-
-                                    Text
-                                    {
-                                        text:
-                                        {
-                                            if (modelData.daysFromToday === 0) return qsTr("Today")
-
-                                            const date = new Date(root.daily.learningDate)
-                                            date.setDate(date.getDate() + modelData.daysFromToday)
-
-                                            return Qt.locale(AppLocalization.localeName).toString(date, "ddd")
-                                        }
-                                        font.pixelSize: AppMetrics.fontMeta
-                                        font.family: AppMetrics.fontFamily
-                                        color: AppTheme.colourMuted
-                                        Layout.alignment: Qt.AlignHCenter
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    anchors.fill: parent
+                    todayActive: root.lufiActive && Qt.application.state === Qt.ApplicationActive
+                        && cat.y + cat.height > scroll.contentY && cat.y < scroll.contentY + scroll.height
+                    goalComplete: root.goalReached || (root.daily.dailyGoal <= 0 && root.reviewTotal > 0 && root.reviewRatio >= 1)
+                    daily: root.daily
+                    training: root.intensive ? root.intensive.controller : null
+                    review: root.repetition ? root.repetition.controller : null
+                    tapEnabled: false
+                    crop: Qt.rect(-cat.sideRoom / cat.pictureWidth, -(cat.headroom + cat.riseOffset) / cat.band.catHeight,
+                                  cat.width / cat.pictureWidth, cat.height / cat.band.catHeight)
                 }
 
-                ColumnLayout
+                MouseArea
                 {
-                    id: practiceSection
-                    Layout.fillWidth: true
-                    spacing: AppMetrics.gapCompact
-
-                    MobileSectionLabel { text: qsTr("PRACTICE") }
-
-                    Repeater
-                    {
-                        model: root.readyPractice
-
-                        delegate: MobileActionButton
-                        {
-                            required property var modelData
-
-                            objectName: "today_" + modelData.key
-
-                            filled: modelData.resumable
-                            iconSvg: modelData.iconSvg
-                            label: modelData.label
-                            caption: modelData.caption
-                            trailing: modelData.count
-
-                            onClicked: root.startPractice(modelData.key)
-                        }
-                    }
-
-                    Repeater
-                    {
-                        model: root.lockedPractice
-
-                        delegate: MobileLockedRow
-                        {
-                            required property var modelData
-
-                            Layout.topMargin: AppMetrics.gapTight
-
-                            label: modelData.label
-                            reason: modelData.blockedReason
-                        }
-                    }
+                    y: Math.max(0, cat.headroom + cat.riseOffset - cat.band.catHeight / 7)
+                    width: parent.width
+                    height: Math.max(0, parent.height - y)
+                    onClicked: animation.reactToTap()
                 }
             }
         }

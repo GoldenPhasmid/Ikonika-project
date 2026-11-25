@@ -10,6 +10,14 @@ Loader
 
     Component.onCompleted: if (root.open) root.active = true
 
+    onVisibleChanged:
+    {
+        if (!root.visible && !root.open)
+        {
+            root.active = false
+        }
+    }
+
     onOpenChanged:
     {
         if (!root.open)

@@ -27,6 +27,10 @@ Item
     readonly property bool phraseTranslated: AppMachineTranslation.enabled && root.searching
         && root.dictionary.results.length === 0 && (root.dictionary.translating || root.dictionary.machineTranslation.length > 0)
 
+    readonly property string speechText: !root.searching ? ""
+        : root.dictionary.nativeSearch ? root.dictionary.machineTranslation
+        : searchField.term
+
     readonly property var sources: [
         { key: "history", label: qsTr("Recent searches") },
         { key: "studied", label: qsTr("Recently studied") }
@@ -67,8 +71,19 @@ Item
         return row.targetWord !== undefined ? row.targetWord : row.word
     }
 
-    function searchTerm(term)
+    function setLanguage(language)
     {
+        root.dictionary.language = language
+        root.entryDictionary.language = language
+    }
+
+    function searchTerm(term, language)
+    {
+        if (language !== undefined)
+        {
+            root.setLanguage(language)
+        }
+
         searchField.text = term
         root.dictionary.search(term)
         root.selectedIndex = -1
@@ -260,6 +275,31 @@ Item
         {
             Layout.fillWidth: true
             spacing: AppMetrics.gapTight
+
+            DesktopSpeakButton
+            {
+                objectName: "words_search_listen"
+
+                visible: root.searching && root.speechText.length > 0
+                focusPolicy: Qt.NoFocus
+                iconColour: AppTheme.colourMuted
+                text: root.dictionary.nativeSearch ? qsTr("Listen to the translation") : qsTr("Listen")
+
+                onSpeakRequested: root.dictionary.speak(root.speechText)
+            }
+
+            DesktopIconButton
+            {
+                objectName: "words_search_copy"
+
+                visible: root.searching && root.dictionary.machineTranslation.length > 0 && !root.dictionary.translating
+                focusPolicy: Qt.NoFocus
+                iconName: "copy"
+                iconColour: AppTheme.colourMuted
+                text: qsTr("Copy translation")
+
+                onClicked: root.dictionary.copyToClipboard(root.dictionary.machineTranslation)
+            }
 
             DesktopLabel
             {

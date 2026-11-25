@@ -1,0 +1,285 @@
+<meta charset="utf-8">
+<title>Ikonika Mobile Today</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geologica:wght,SHRP@500..900,100&family=Inter:wght@400;500;600;700&display=swap">
+<style>
+:root {
+  --stage: #d9d4c6; --stage-ink: #2e2a25; --stage-muted: #75716a; --stage-line: #c4beae; --stage-panel: #e9e6dd;
+  --ui: "Inter", "Segoe UI", sans-serif;
+  --display: "Geologica", "Inter", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --stage: #171716; --stage-ink: #f2f0e9; --stage-muted: #9c9a8f; --stage-line: #3a3937; --stage-panel: #222220; color-scheme: dark }
+}
+:root[data-theme="dark"] { --stage: #171716; --stage-ink: #f2f0e9; --stage-muted: #9c9a8f; --stage-line: #3a3937; --stage-panel: #222220; color-scheme: dark }
+
+* { box-sizing: border-box }
+body { margin: 0; padding-block: 24px 48px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); background: var(--stage); color: var(--stage-ink); font-family: var(--ui) }
+button { font: inherit; color: inherit; border: 0; background: none; padding: 0; text-align: left; cursor: pointer; -webkit-tap-highlight-color: transparent }
+
+.wrap { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; justify-items: center }
+.controls { display: flex; flex-wrap: wrap; gap: 10px 14px; justify-content: center }
+.seg { display: inline-flex; border: 1px solid var(--stage-line); border-radius: 8px; overflow: hidden; background: var(--stage-panel) }
+.seg button { font: 500 13px var(--ui); color: var(--stage-muted); padding: 8px 13px }
+.seg button + button { border-left: 1px solid var(--stage-line) }
+.seg button[aria-pressed="true"] { color: var(--stage-ink); background: var(--stage-line) }
+.seg button:focus-visible { outline: 2px solid #5b9cf8; outline-offset: -2px }
+
+.frame {
+  --text: #f2f0e9; --muted: #9c9a8f; --accent: #5b9cf8; --correct: #4caf7d; --page: #262624; --card: #30302e;
+  --faint: #363633; --border: #3a3937; --panel: #262624;
+  --review: #5b9cf8; --review-ink: #0b1a33; --review-deep: #4a89e2;
+  --learn: #4caf7d; --learn-ink: #06251a; --learn-deep: #429d6f;
+  --edge: rgba(255, 255, 255, .16); --lift: rgba(0, 0, 0, .34);
+}
+.frame[data-t="light"] {
+  --text: #2e2a25; --muted: #75716a; --accent: #3d63b0; --correct: #3b7a53; --page: #e4e1d7; --card: #efede5;
+  --faint: #d6d2c5; --border: #cbc6b8; --panel: #efede5;
+  --review: #86aef2; --review-ink: #10244c; --review-deep: #749ee6;
+  --learn: #7fc79d; --learn-ink: #0c3320; --learn-deep: #6fb98e;
+  --edge: rgba(255, 255, 255, .4); --lift: rgba(74, 56, 34, .2);
+}
+.frame {
+  --review-h: 186px; --learn-h: 96px; --lap: 28px; --tile: 96px; --cover: 174px; --pet: 138px; --count: 108px; --gap: 20px; --header: 72px;
+  --ease: cubic-bezier(.2, .85, .25, 1);
+  position: relative; display: flex; flex-direction: column; flex: none; overflow: hidden;
+  border-radius: 34px; background: var(--page); color: var(--text);
+  box-shadow: 0 0 0 1px var(--border), 0 34px 70px -28px rgba(0, 0, 0, .6);
+  font-variant-numeric: tabular-nums;
+}
+.frame[data-size="small"] { --review-h: 142px; --learn-h: 80px; --lap: 24px; --tile: 80px; --cover: 134px; --pet: 102px; --count: 80px; --gap: 16px; --header: 60px }
+
+.header { height: var(--header); flex: none; display: flex; align-items: center; justify-content: space-between; padding: 0 8px 0 16px }
+.header strong { font-size: 18px; font-weight: 600 }
+.header span { display: flex }
+.header button { width: 44px; height: 44px; display: grid; place-items: center }
+.icon { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round }
+
+.strip { --cell: 48px; --mark: 30px; --today: 68px; flex: none; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; padding-bottom: var(--gap) }
+.strip::-webkit-scrollbar { display: none }
+.days { position: relative; display: flex; align-items: flex-start; width: max-content }
+.day { width: var(--cell); display: grid; justify-items: center; row-gap: 6px; scroll-snap-align: center }
+.day.today { width: calc(var(--today) + 20px) }
+.name { height: 14px; font-size: 12px; line-height: 14px; font-weight: 500; color: var(--muted) }
+.today .name { color: var(--text); font-weight: 700 }
+.mark { width: var(--mark); height: var(--mark) }
+.today .mark { width: var(--today); height: var(--today) }
+.mark svg { display: block; width: 100%; height: 100%; transform: rotate(-90deg) }
+.mark circle { fill: none }
+.due {
+  --heat: 0;
+  width: var(--mark); height: var(--mark); border-radius: 50%; display: grid; place-items: center; font-size: 11px; font-weight: 700;
+  border: 1.5px solid color-mix(in srgb, var(--accent) 75%, transparent);
+  background: color-mix(in srgb, var(--accent) calc(6% + var(--heat) * 34%), var(--page));
+}
+.due.zero, .missed { border: 1.5px dashed var(--border); background: none; color: var(--muted); font-weight: 500 }
+.missed { display: block; width: 100%; height: 100%; border-radius: 50% }
+
+.sheets { flex: 1; min-height: 0; display: flex; flex-direction: column }
+.sheet { position: relative; flex: none; display: block; width: 100%; border-radius: var(--lap) var(--lap) 0 0; box-shadow: 0 -10px 24px -8px var(--lift), inset 0 1px 0 var(--edge) }
+.sheet + .sheet { margin-top: calc(-1 * var(--lap)) }
+.band { overflow: hidden; transition: filter 140ms }
+.band:active { filter: brightness(.94) }
+.band:focus-visible { outline: 3px solid var(--text); outline-offset: -5px }
+.band::before {
+  content: ""; position: absolute; inset: 0; background: var(--deep);
+  clip-path: polygon(46% 100%, 74% 100%, 100% 34%, 100% -28%);
+}
+.band > * { position: relative }
+.label { font-family: var(--display); font-variation-settings: "SHRP" 100; font-weight: 650; font-size: 22px; line-height: 1; letter-spacing: -.02em }
+.count { font-family: var(--display); font-variation-settings: "SHRP" 100; font-weight: 800; line-height: .8; letter-spacing: -.055em }
+
+.review { --deep: var(--review-deep); height: calc(var(--review-h) + var(--lap)); background: var(--review); color: var(--review-ink); padding: 24px 20px 0 }
+.review .label { position: absolute; left: 20px; top: 24px }
+.review .count { position: absolute; left: 16px; bottom: calc(var(--lap) + 20px); font-size: var(--count) }
+.lufi { position: absolute; right: 8px; bottom: var(--lap); height: var(--pet); aspect-ratio: 535 / 675 }
+.lufi svg { display: block; width: 100%; height: 100%; overflow: hidden }
+
+.learn { --deep: var(--learn-deep); height: calc(var(--learn-h) + var(--lap)); background: var(--learn); color: var(--learn-ink); padding: 0 24px var(--lap) 20px }
+.learn .row { display: flex; align-items: center; justify-content: space-between; height: 100% }
+.learn .count { font-size: calc(var(--count) * .52) }
+
+.base { flex: 1; background: var(--page); padding-top: var(--gap); box-shadow: 0 -10px 24px -8px var(--lift), inset 0 1px 0 color-mix(in srgb, var(--text) 9%, transparent) }
+.tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 0 16px }
+.tile {
+  height: var(--tile); border-radius: 14px; background: var(--card); padding: 14px; display: flex; flex-direction: column; justify-content: space-between;
+  font-size: 15px; font-weight: 600; transition: transform 140ms var(--ease);
+}
+.tile:active, .book:active { transform: scale(.96) }
+.tile:focus-visible, .book:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px }
+.frame[data-size="small"] .tile { padding: 12px; font-size: 14px }
+
+h2 { margin: var(--gap) 16px 10px; font: 600 15px/20px var(--ui) }
+.shelf { display: flex; gap: 10px; overflow-x: auto; padding: 0 16px; scroll-snap-type: x mandatory; scroll-padding: 16px; scrollbar-width: none }
+.shelf::-webkit-scrollbar { display: none }
+.book {
+  position: relative; flex: none; height: var(--cover); aspect-ratio: 2 / 3; border-radius: 4px; overflow: hidden; scroll-snap-align: start;
+  background: var(--paper); color: var(--ink); container-type: inline-size; transition: transform 140ms var(--ease);
+}
+.book::after { content: ""; position: absolute; inset: 0 auto 0 0; width: 12px; background: linear-gradient(90deg, rgba(0, 0, 0, .32), rgba(0, 0, 0, .06) 45%, transparent) }
+.plate { position: absolute; inset: 6.5cqw; border: 1px solid var(--foil); padding: 16cqw 6.5cqw; display: grid; grid-template-rows: auto 1fr auto; justify-items: center; text-align: center }
+.plate small { font-size: 7cqw; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; opacity: .85 }
+.plate b { align-self: center; font-size: 12cqw; line-height: 1.2; font-weight: 600 }
+.plate i { width: 16cqw; height: 1px; background: var(--foil) }
+
+.tabs { position: relative; height: 82px; flex: none; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); padding: 12px 4px; background: var(--panel); border-top: 1px solid var(--border) }
+.tab { display: grid; justify-items: center; align-content: center; gap: 6px; font-size: 10px; font-weight: 500; letter-spacing: .4px; text-transform: uppercase; color: var(--muted) }
+.tab span { width: 40px; height: 40px; border-radius: 8px; border: 1px solid var(--border); display: grid; place-items: center; color: var(--text) }
+.tab .icon { width: 20px; height: 20px }
+.frame[data-size="small"] .tab { font-size: 9px; letter-spacing: .2px }
+.tab.on { color: var(--text); font-weight: 600 }
+.tab.on span { background: var(--text); color: var(--panel); border-color: transparent }
+
+.done { width: .74em; height: .74em; display: block; fill: none; stroke: currentColor; stroke-width: 3.4; stroke-linecap: square; stroke-linejoin: miter }
+
+@media (prefers-reduced-motion: no-preference) {
+  .play .sheet { animation: rise 620ms var(--ease) backwards }
+  .play .learn { animation-delay: 70ms }
+  .play .base { animation-delay: 140ms }
+  .play .lufi { animation: peek 620ms var(--ease) 520ms backwards }
+  .play .arc { animation: draw 1000ms var(--ease) var(--delay, 0ms) backwards }
+  .eyes { transform-box: view-box; transform-origin: 338px 263px; animation: blink 5.2s 2.4s infinite }
+}
+@keyframes rise { from { transform: translateY(160px); opacity: 0 } }
+@keyframes peek { from { transform: translateY(105%) } }
+@keyframes draw { from { stroke-dashoffset: var(--length) } }
+@keyframes blink { 0%, 3.4%, 100% { transform: scaleY(1) } 1.6% { transform: scaleY(.06) } }
+</style>
+
+<div class="wrap">
+  <div class="controls">
+    <span class="seg" data-key="state"><button data-v="morning">Morning</button><button data-v="done">Goal reached</button></span>
+    <span class="seg" data-key="size"><button data-v="small">360 &times; 760</button><button data-v="medium">412 &times; 915</button></span>
+    <span class="seg" data-key="theme"><button data-v="dark">Dark</button><button data-v="light">Light</button></span>
+  </div>
+
+  <div class="frame play" id="frame">
+    <div class="header">
+      <strong>French</strong>
+      <span>
+        <button aria-label="Search"><svg class="icon" viewBox="0 0 24 24"><path d="M3 11a8 8 0 1 0 16 0a8 8 0 1 0 -16 0 M21 21L16.65 16.65"/></svg></button>
+        <button aria-label="Settings"><svg class="icon" viewBox="0 0 24 24"><path d="M12.22 2h-0.44a2 2 0 0 0 -2 2v0.18a2 2 0 0 1 -1 1.73l-0.43 0.25a2 2 0 0 1 -2 0l-0.15 -0.08a2 2 0 0 0 -2.73 0.73l-0.22 0.38a2 2 0 0 0 0.73 2.73l0.15 0.1a2 2 0 0 1 1 1.72v0.51a2 2 0 0 1 -1 1.74l-0.15 0.09a2 2 0 0 0 -0.73 2.73l0.22 0.38a2 2 0 0 0 2.73 0.73l0.15 -0.08a2 2 0 0 1 2 0l0.43 0.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h0.44a2 2 0 0 0 2 -2v-0.18a2 2 0 0 1 1 -1.73l0.43 -0.25a2 2 0 0 1 2 0l0.15 0.08a2 2 0 0 0 2.73 -0.73l0.22 -0.39a2 2 0 0 0 -0.73 -2.73l-0.15 -0.08a2 2 0 0 1 -1 -1.74v-0.5a2 2 0 0 1 1 -1.74l0.15 -0.09a2 2 0 0 0 0.73 -2.73l-0.22 -0.38a2 2 0 0 0 -2.73 -0.73l-0.15 0.08a2 2 0 0 1 -2 0l-0.43 -0.25a2 2 0 0 1 -1 -1.73V4a2 2 0 0 0 -2 -2z M15 12a3 3 0 1 1 -6 0a3 3 0 1 1 6 0z"/></svg></button>
+      </span>
+    </div>
+
+    <div class="strip" id="strip"><div class="days" id="days"></div></div>
+
+    <div class="sheets">
+      <button class="sheet band review">
+        <span class="label">Review</span>
+        <span class="count" id="review"></span>
+        <span class="lufi"><svg aria-hidden="true" viewBox="0 0 535 675" fill="none" xmlns="http://www.w3.org/2000/svg"><g transform="translate(-88.1 23) scale(1.052)"><path d="M195 1098H328L300.498 679H375.55L348 1098H481L513 563.492V462H163L163 563.492L195 1098Z" fill="#262525"/><path d="M163 462V563.492L195 1098H328L300.498 679H375.55L348 1098H481L513 563.492V462H163ZM337.979 1097.34L337.999 1097.67L338.021 1097.34L364.871 689H311.176L337.979 1097.34ZM523 563.791L522.982 564.09L490.419 1108H185.581L153.018 564.09L153 563.791V452H523V563.791Z" fill="#191818"/><path d="M376.5 625.999H329.5C327.917 622.712 326.245 619.544 324.492 616.485C307.416 586.677 282.771 567.232 260.056 549.31L260.054 549.309C251.225 542.343 242.688 535.607 235 528.582C189.676 487.168 184.994 480.271 173.041 462.666L173.039 462.663L173.039 462.662C170.303 458.632 167.186 454.041 163.113 448.347L163 448.189V415.999C163 344.478 241.35 274 338 274C434.65 274 513 344.478 513 415.999V496.424C509.326 498.414 505.732 500.482 502.215 502.62C457.495 529.808 425.18 568.345 396.926 602.04C395.036 604.293 393.165 606.525 391.309 608.731C386.274 614.714 381.354 620.502 376.5 625.999Z" fill="#EEEEEE"/><path d="M163 448.188L163.113 448.347C167.186 454.041 170.303 458.632 173.039 462.662V462.663L173.041 462.666C184.994 480.271 189.676 487.168 235 528.582C242.688 535.607 251.226 542.343 260.055 549.309L260.056 549.31C282.771 567.232 307.416 586.678 324.492 616.485C326.025 619.162 327.498 621.922 328.902 624.771L329.5 625.999H376.5L378.323 623.924C382.586 619.052 386.903 613.966 391.309 608.73L396.926 602.04C424.739 568.871 456.486 531.012 500.128 503.903L502.216 502.62C505.732 500.482 509.326 498.415 513 496.425V415.999C513 344.478 434.65 274 338 274C241.35 274 163 344.478 163 415.999V448.188ZM523 502.381L517.762 505.218C514.238 507.126 510.789 509.111 507.41 511.165C464.304 537.372 432.967 574.623 404.589 608.465C402.7 610.717 400.822 612.957 398.96 615.17C393.911 621.17 388.93 627.031 383.995 632.618L381.01 635.999H323.217L320.49 630.337C319.013 627.269 317.451 624.312 315.815 621.456C299.833 593.558 276.721 575.197 253.861 557.16V557.159H253.86C245.091 550.24 236.258 543.277 228.255 535.964C205.587 515.252 192.791 502.91 184.13 493.447C175.286 483.785 170.793 477.159 164.768 468.283L164.761 468.272L164.759 468.27L164.709 468.196L164.703 468.188C161.986 464.186 158.945 459.709 154.979 454.164L154.98 454.163L154.867 454.007L153 451.397V415.999C153 376.56 174.514 338.458 207.83 310.517C241.25 282.488 287.261 264 338 264C388.739 264 434.75 282.488 468.17 310.517C501.486 338.458 523 376.56 523 415.999V502.381Z" fill="#ADACAC"/><g clip-path="url(#lufi0_57_3941)"><path d="M482.016 18.3855C491.671 2.95058 512.787 10.2692 512.528 28.4686L513 229.778V419.101L523 413.607V229.755L522.528 28.4452C522.651 15.2079 514.825 4.93404 504.187 1.34822C493.374 -2.29629 480.958 1.43572 473.677 12.8684L390.129 134.868H285.003L201.455 12.8694C194.22 1.50623 181.918 -2.34043 171.1 1.36285C160.486 4.99646 152.871 15.3368 153.002 28.4686L153.002 413.607L163.002 423.097L163.002 28.4686C162.743 10.2692 183.461 2.95044 193.117 18.3855L279.728 144.859H395.404L482.016 18.3855Z" fill="#181818"/><path d="M512.999 229.778L512.528 28.4689C512.787 10.2693 491.671 2.95054 482.016 18.3857L395.404 144.858H279.728L193.116 18.3857C183.461 2.95054 162.743 10.2693 163.002 28.4689L163.002 229.778L163.002 423.097L217.002 424.595L266.002 385.138H406.501L439 413.606L471.5 426.599L512.999 419.101V229.778Z" fill="#262525"/><path d="M165.599 416.843L153.002 413.606L155.002 423.596L163 426.49C192.002 434.286 213.252 431.101 228.625 423.577C243.998 416.053 253.499 404.187 259 394.612H416.998C422.499 404.187 432 416.053 447.372 423.577C462.745 431.101 483.995 434.286 512.997 426.49L521 423.596L523 413.606L510.398 416.843C483.363 424.11 464.649 420.908 451.772 414.605C438.712 408.213 430.513 398.067 425.67 389.638L422.788 384.621H416.998H253.21L250.327 389.638C245.484 398.067 237.285 408.213 224.226 414.605C211.348 420.908 192.634 424.11 165.599 416.843Z" fill="#ADACAC"/></g><g clip-path="url(#lufi1_57_3941)"><path d="M393 384.5C393 391.657 391.59 398.744 388.851 405.356C386.113 411.969 382.098 417.977 377.037 423.037C371.977 428.098 365.968 432.113 359.356 434.851C352.744 437.59 345.657 439 338.5 439C331.343 439 324.256 437.59 317.644 434.851C311.032 432.113 305.023 428.098 299.963 423.037C294.902 417.977 290.887 411.969 288.149 405.356C285.41 398.744 284 391.657 284 384.5L284 374H393V384.5Z" fill="#EEEEEE"/><path d="M403 374V384.5C403 392.97 401.331 401.357 398.09 409.183C394.848 417.008 390.098 424.119 384.108 430.108C378.119 436.098 371.009 440.849 363.184 444.091C355.358 447.332 346.97 449 338.5 449C330.03 449 321.642 447.332 313.816 444.091C305.991 440.849 298.881 436.098 292.892 430.108C286.902 424.119 282.152 417.008 278.91 409.183C275.669 401.357 274 392.97 274 384.5V374V364H403V374ZM288.148 405.357C285.41 398.744 284 391.657 284 384.5V374H338.5H393V384.5C393 391.657 391.59 398.744 388.852 405.357L388.591 405.975C385.861 412.343 381.94 418.135 377.037 423.037C371.976 428.098 365.969 432.113 359.356 434.852L358.735 435.105C352.301 437.677 345.434 439 338.5 439L337.829 438.996C330.9 438.911 324.049 437.505 317.644 434.852C311.031 432.113 305.024 428.098 299.963 423.037C294.902 417.976 290.887 411.969 288.148 405.357Z" fill-rule="evenodd" clip-rule="evenodd" fill="#ADACAC"/><path d="M335.284 375.308C336.871 373.564 339.616 373.564 341.203 375.308L359.439 395.35C361.776 397.917 359.953 402.036 356.48 402.036H320.008C316.535 402.036 314.712 397.917 317.048 395.35L335.284 375.308Z" fill="#FFA393"/><path d="M328.169 368.297C333.67 362.568 342.856 362.568 348.358 368.297L348.622 368.578L366.857 388.62C375.034 397.606 368.654 412.023 356.5 412.023H320.027C307.872 412.023 301.492 397.606 309.67 388.62L327.905 368.578L328.169 368.297ZM341.222 375.302C339.635 373.558 336.891 373.558 335.304 375.302L317.068 395.343C314.732 397.91 316.554 402.03 320.027 402.03H356.5L356.82 402.018C360.082 401.774 361.722 397.83 359.459 395.343L341.222 375.302Z" fill="#E56E59"/></g><g clip-path="url(#lufi2_57_3941)"><path d="M321.996 221.004V275.346C321.996 310.508 315.608 321.697 293.248 331.819C268.256 331.819 247.996 345.559 247.996 370.62C247.996 395.681 268.256 415.996 293.248 415.996C318.24 415.996 338.5 395.681 338.5 370.62C338.5 395.681 358.76 415.996 383.752 415.996C408.743 415.996 429.003 395.681 429.003 370.62C429.003 340.343 401.852 346.566 383.752 331.819C363.521 318.5 361.924 307.312 359.795 289.731V238.052C355.984 237.099 342.226 245.511 342.226 245.511C342.226 245.511 327.944 221.004 321.996 221.004Z" fill="#EEEEEE"/><path d="M359.795 238.052C355.994 237.101 342.297 245.468 342.227 245.511C342.184 245.438 327.935 221.004 321.996 221.004V275.346C321.996 310.508 315.608 321.697 293.248 331.819C268.256 331.819 247.996 345.559 247.996 370.62C247.996 395.289 267.628 415.361 292.08 415.982L293.248 415.996C318.24 415.996 338.5 395.68 338.5 370.62C338.5 395.289 358.132 415.36 382.584 415.982L383.752 415.996C408.353 415.996 428.37 396.31 428.989 371.791L429.004 370.62C429.004 340.58 402.275 346.471 384.178 332.161L383.752 331.819C363.522 318.5 361.925 307.312 359.795 289.731V238.052ZM318.854 230.261C318.725 230.171 318.733 230.191 318.863 230.268C318.86 230.265 318.857 230.263 318.854 230.261ZM369.792 289.116C370.855 297.837 371.685 303.224 373.997 308.044C376.113 312.456 379.899 317.167 388.408 322.904L389.246 323.462L389.662 323.751C389.798 323.851 389.932 323.955 390.063 324.062C393.389 326.771 397.345 328.695 402.053 330.511C406.086 332.067 412.532 334.143 417.265 336.272C422.544 338.648 428.288 342.074 432.572 347.987C436.934 354.009 439 361.512 439 370.62C439 401.186 414.284 426 383.752 426C365.027 426 348.49 416.666 338.5 402.397C328.509 416.666 311.973 426 293.248 426C262.716 426 238 401.186 238 370.62C238 355.101 244.406 342.511 254.999 334.015C264.793 326.16 277.571 322.25 290.961 321.852C299.987 317.542 304.414 313.603 307.137 308.36C310.339 302.194 312 292.719 312 275.346V221.004C312 215.479 316.475 211 321.996 211C325.856 211 328.825 212.828 330.293 213.853C332.031 215.066 333.603 216.559 334.923 217.953C337.59 220.77 340.257 224.29 342.514 227.495C343.642 229.098 344.717 230.693 345.695 232.183C347.665 231.203 349.911 230.173 352.071 229.398C353.262 228.971 354.657 228.538 356.107 228.266C357.352 228.033 359.666 227.708 362.219 228.347C366.669 229.461 369.791 233.462 369.792 238.052V289.116Z" fill="#ADACAC"/><path d="M341.463 370.655C339.871 372.462 337.054 372.462 335.462 370.655L320.512 353.694C318.236 351.111 320.07 347.049 323.513 347.049L353.412 347.049C356.855 347.049 358.689 351.111 356.412 353.694L341.463 370.655Z" fill="#FFA393"/><path d="M348.7 377.559C343.173 383.493 333.752 383.493 328.225 377.559L327.96 377.267L313.011 360.306C305.042 351.265 311.462 337.049 323.514 337.049L353.411 337.049C365.463 337.049 371.883 351.265 363.914 360.306L348.965 377.267L348.7 377.559ZM335.462 370.655C337.054 372.461 339.87 372.461 341.463 370.655L356.412 353.694C358.618 351.191 356.966 347.302 353.729 347.061L353.411 347.049L323.514 347.049C320.178 347.049 318.352 350.861 320.312 353.448L320.513 353.694L335.462 370.655Z" fill="#E56E59"/></g><g class="eyes"><path d="M470.998 262.968C470.998 287.818 450.851 307.962 425.999 307.962C401.146 307.962 380.999 287.818 380.999 262.968C380.999 238.118 401.146 217.973 425.999 217.973C450.851 217.973 470.998 238.118 470.998 262.968Z" fill="#EAA545"/><path d="M470.998 262.968C470.998 238.118 450.851 217.973 425.999 217.973C401.146 217.973 380.999 238.118 380.999 262.968C380.999 287.818 401.146 307.962 425.999 307.962C450.851 307.962 470.998 287.818 470.998 262.968ZM480.998 262.968C480.998 293.34 456.374 317.961 425.999 317.961C395.623 317.961 370.999 293.34 370.999 262.968C370.999 232.596 395.623 207.975 425.999 207.975C456.374 207.975 480.998 232.596 480.998 262.968Z" fill="#181818"/><path d="M453.999 263.474C453.999 278.662 441.686 290.974 426.499 290.974C411.311 290.974 398.999 278.662 398.999 263.474C398.999 248.287 411.311 235.975 426.499 235.975C441.686 235.975 453.999 248.287 453.999 263.474Z" fill="#262525"/><path d="M453.999 263.474C453.999 248.287 441.686 235.974 426.499 235.974C411.311 235.974 398.999 248.287 398.999 263.474C398.999 278.662 411.311 290.974 426.499 290.974C441.686 290.974 453.999 278.662 453.999 263.474ZM463.998 263.474C463.998 284.185 447.209 300.974 426.499 300.974C405.788 300.974 388.999 284.185 388.999 263.474C388.999 242.764 405.788 225.975 426.499 225.975C447.209 225.975 463.998 242.764 463.998 263.474Z" fill="#181818"/><path d="M435.998 264.968C435.998 268.833 432.864 271.967 428.998 271.967C425.132 271.967 421.998 268.833 421.998 264.968C421.998 261.102 425.132 257.968 428.998 257.968C432.864 257.968 435.998 261.102 435.998 264.968Z" fill="#EEEEEE"/><path d="M456.998 247.47C456.998 253.268 452.297 257.968 446.498 257.968C440.699 257.968 435.998 253.268 435.998 247.47C435.998 241.671 440.699 236.971 446.498 236.971C452.297 236.971 456.998 241.671 456.998 247.47Z" fill="#EEEEEE"/><path d="M294.999 262.968C294.999 287.818 274.852 307.962 249.999 307.962C225.147 307.962 205 287.818 205 262.968C205 238.118 225.147 217.973 249.999 217.973C274.852 217.973 294.999 238.118 294.999 262.968Z" fill="#EAA545"/><path d="M294.999 262.968C294.999 238.118 274.852 217.973 249.999 217.973C225.147 217.973 205 238.118 205 262.968C205 287.818 225.147 307.962 249.999 307.962C274.852 307.962 294.999 287.818 294.999 262.968ZM304.999 262.968C304.999 293.34 280.375 317.961 249.999 317.961C219.624 317.961 195 293.34 195 262.968C195 232.596 219.624 207.975 249.999 207.975C280.375 207.975 304.999 232.596 304.999 262.968Z" fill="#181818"/><path d="M277.999 263.474C277.999 278.662 265.687 290.974 250.5 290.974C235.312 290.974 223 278.662 223 263.474C223 248.287 235.312 235.975 250.5 235.975C265.687 235.975 277.999 248.287 277.999 263.474Z" fill="#262525"/><path d="M277.999 263.474C277.999 248.287 265.687 235.974 250.499 235.974C235.312 235.974 223 248.287 223 263.474C223 278.662 235.312 290.974 250.499 290.974C265.687 290.974 277.999 278.662 277.999 263.474ZM287.999 263.474C287.999 284.185 271.21 300.974 250.499 300.974C229.789 300.974 213 284.185 213 263.474C213 242.764 229.789 225.975 250.499 225.975C271.21 225.975 287.999 242.764 287.999 263.474Z" fill="#181818"/><path d="M281.999 247.47C281.999 253.268 277.298 257.968 271.499 257.968C265.7 257.968 260.999 253.268 260.999 247.47C260.999 241.671 265.7 236.971 271.499 236.971C277.298 236.971 281.999 241.671 281.999 247.47Z" fill="#EEEEEE"/><path d="M260.999 264.968C260.999 268.833 257.865 271.967 253.999 271.967C250.133 271.967 246.999 268.833 246.999 264.968C246.999 261.102 250.133 257.968 253.999 257.968C257.865 257.968 260.999 261.102 260.999 264.968Z" fill="#EEEEEE"/></g><defs><clipPath id="lufi0_57_3941"><rect width="370" height="431" fill="white" transform="translate(153)"/></clipPath><clipPath id="lufi1_57_3941"><rect width="129" height="85" fill="white" transform="translate(274 364)"/></clipPath><clipPath id="lufi2_57_3941"><rect width="201" height="215" fill="white" transform="translate(238 211)"/></clipPath></defs></g></svg></span>
+      </button>
+      <button class="sheet band learn">
+        <span class="row"><span class="label">Learn</span><span class="count" id="learn"></span></span>
+      </button>
+      <div class="sheet base">
+        <div class="tiles">
+          <button class="tile"><svg class="icon" viewBox="0 0 24 24"><path d="M12.83 2.18a2 2 0 0 0 -1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58 -3.9a1 1 0 0 0 0 -1.83z M2 12a1 1 0 0 0 0.58 0.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58 -3.9A1 1 0 0 0 22 12 M2 17a1 1 0 0 0 0.58 0.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58 -3.9A1 1 0 0 0 22 17"/></svg>Discover</button>
+          <button class="tile"><svg class="icon" viewBox="0 0 24 24"><path d="M4 6h16 M4 10h16 M4 14h10 M4 18h7"/></svg>Sentences</button>
+          <button class="tile"><svg class="icon" viewBox="0 0 24 24"><path d="M8 3h12v12h-12z M4 7h12v12h-12z"/></svg>Practice</button>
+        </div>
+        <h2>Continue reading</h2>
+        <div class="shelf" id="shelf"></div>
+      </div>
+    </div>
+
+    <div class="tabs">
+      <button class="tab on"><span><svg class="icon" viewBox="0 0 24 24"><path d="M8 2v4 M16 2v4 M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2z M3 10h18"/></svg></span>Today</button>
+      <button class="tab"><span><svg class="icon" viewBox="0 0 24 24"><path d="M5 8l6 6 M4 14l6 -6l2 -3 M2 5h12 M7 2h1 M22 22l-5 -10l-5 10 M14 18h6"/></svg></span>Words</button>
+      <button class="tab"><span><svg class="icon" viewBox="0 0 24 24"><path d="M12 7v14 M3 18a1 1 0 0 1 -1 -1V4a1 1 0 0 1 1 -1h5a4 4 0 0 1 4 4a4 4 0 0 1 4 -4h5a1 1 0 0 1 1 1v13a1 1 0 0 1 -1 1h-6a3 3 0 0 0 -3 3a3 3 0 0 0 -3 -3z"/></svg></span>Reader</button>
+      <button class="tab"><span><svg class="icon" viewBox="0 0 24 24"><path d="M12.83 2.18a2 2 0 0 0 -1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58 -3.9a1 1 0 0 0 0 -1.83z M2 12a1 1 0 0 0 0.58 0.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58 -3.9A1 1 0 0 0 22 12 M2 17a1 1 0 0 0 0.58 0.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58 -3.9A1 1 0 0 0 22 17"/></svg></span>Decks</button>
+      <button class="tab"><span><svg class="icon" viewBox="0 0 24 24"><path d="M16 6l4 14 M12 6v14 M8 8v12 M4 4v16"/></svg></span>Vocabulary</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const GOAL = 15;
+const TODAY = new Date(2026, 10, 12);
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const PAST = [{ review: 1, learned: 15 }, { review: 0, learned: 0 }, { review: 1, learned: 9 }, { review: 1, learned: 15 },
+              { review: .6, learned: 15 }, { review: 1, learned: 12 }, { review: 1, learned: 15 }];
+const COMING = [20, 29, 0, 41, 8, 0, 12];
+const BOOKS = [['Voltaire', 'Candide'], ['Gustave Flaubert', 'Madame Bovary'], ['Jules Verne', 'Vingt mille lieues sous les mers'],
+               ['Guy de Maupassant', 'Le Horla'], ['Émile Zola', 'Germinal']];
+const COVERS = [['#1f3f66', '#bcc8d6', '#eef2f7'], ['#6b2a2a', '#d9b26f', '#f3e6d6'], ['#2f4a35', '#d39a6a', '#f1e9d6'], ['#4b2e4f', '#e2b3a3', '#f6ebee']];
+const STATES = { morning: { learned: 0, due: 76, reviewed: 0 }, done: { learned: 15, due: 0, reviewed: 76 } };
+const SIZES = { small: [360, 760], medium: [412, 915] };
+const CHECK = '<svg class="done" viewBox="0 0 24 24" role="img" aria-label="Done"><path d="M3 13l6 6L21 5"/></svg>';
+
+const view = { state: 'morning', size: 'medium', theme: 'dark' };
+try { Object.assign(view, JSON.parse(localStorage.getItem('today-mobile') || '{}')) } catch (e) {}
+for (const [key, value] of new URLSearchParams(location.search)) view[key] = value;
+
+const $ = id => document.getElementById(id);
+
+function ring(size, stroke, gap, outer, inner, delay) {
+  const arc = (radius, ratio, colour, offset) => {
+    const length = 2 * Math.PI * radius;
+    const shape = `cx="${size / 2}" cy="${size / 2}" r="${radius}" stroke-width="${stroke}"`;
+    return `<circle ${shape} stroke="var(--faint)"/>` + (ratio > 0
+      ? `<circle class="arc" style="--length:${length};--delay:${delay + offset}ms" ${shape} stroke="${colour}" stroke-linecap="round"
+          stroke-dasharray="${length}" stroke-dashoffset="${length * (1 - Math.min(ratio, 1))}"/>` : '');
+  };
+  const radius = (size - stroke) / 2;
+  return `<svg viewBox="0 0 ${size} ${size}">${arc(radius, outer, 'var(--accent)', 0)}${arc(radius - stroke - gap, inner, 'var(--correct)', 140)}</svg>`;
+}
+
+function dayName(offset) {
+  const date = new Date(TODAY);
+  date.setDate(date.getDate() + offset);
+  return WEEKDAYS[date.getDay()];
+}
+
+function day(offset, mark) {
+  return `<div class="day ${offset === 0 ? 'today' : ''}"><div class="name">${dayName(offset)}</div><div class="mark">${mark}</div></div>`;
+}
+
+function fit() {
+  const frame = $('frame');
+  frame.style.zoom = Math.min(1, frame.parentElement.clientWidth / SIZES[view.size][0]);
+}
+
+function render() {
+  const state = STATES[view.state];
+  const frame = $('frame');
+  frame.dataset.t = view.theme;
+  frame.dataset.size = view.size;
+  [frame.style.width, frame.style.height] = SIZES[view.size].map(value => value + 'px');
+  fit();
+
+  const total = state.reviewed + state.due;
+  const busiest = Math.max(...COMING, 1);
+  $('days').innerHTML = [
+    ...PAST.map((entry, index) => day(index - PAST.length, entry.review || entry.learned ? ring(30, 3, 2, entry.review, entry.learned / GOAL, 0) : '<span class="missed"></span>')),
+    day(0, ring(68, 6, 3, total ? state.reviewed / total : 1, state.learned / GOAL, 80)),
+    ...COMING.map((count, index) => day(index + 1, `<div class="due ${count ? '' : 'zero'}" style="--heat:${count / busiest}">${count}</div>`))
+  ].join('');
+
+  $('review').innerHTML = state.due || CHECK;
+  $('learn').innerHTML = GOAL - state.learned || CHECK;
+  $('shelf').innerHTML = BOOKS.map(([author, title], index) => {
+    const [paper, foil, ink] = COVERS[index % COVERS.length];
+    return `<button class="book" aria-label="${title}" style="--paper:${paper};--foil:${foil};--ink:${ink}"><span class="plate"><small>${author}</small><b>${title}</b><i></i></span></button>`;
+  }).join('');
+
+  const strip = $('strip');
+  const today = strip.querySelector('.today');
+  strip.scrollLeft = today.offsetLeft + today.offsetWidth / 2 - strip.clientWidth / 2;
+
+  for (const seg of document.querySelectorAll('.seg'))
+    for (const button of seg.children) button.setAttribute('aria-pressed', button.dataset.v === view[seg.dataset.key]);
+  try { localStorage.setItem('today-mobile', JSON.stringify(view)) } catch (e) {}
+}
+
+for (const seg of document.querySelectorAll('.seg'))
+  seg.addEventListener('click', event => {
+    if (!event.target.dataset.v) return;
+    view[seg.dataset.key] = event.target.dataset.v;
+    render();
+  });
+addEventListener('resize', fit);
+render();
+</script>

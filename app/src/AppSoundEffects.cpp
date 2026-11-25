@@ -168,6 +168,14 @@ void AppSoundEffects::SetEnabled(bool bValue)
     emit enabledChanged();
 }
 
+void AppSoundEffects::Stop()
+{
+    if (Player)
+    {
+        Player->Stop();
+    }
+}
+
 void AppSoundEffects::PlayIncorrect()
 {
     Play(QStringLiteral("sfx_incorrect"));
@@ -206,6 +214,15 @@ bool AppSoundEffects::ClaimDailyGoal()
 
 void AppSoundEffects::Play(const QString& Name)
 {
+#if defined(IKONIKA_DESKTOP)
+    if (FTAudioPlayer::IsPlaybackSuspended())
+    {
+        qCDebug(LogApp) << "sound effect skipped while the window is hidden or minimised:" << Name;
+
+        return;
+    }
+#endif
+
     if (!IsEnabled() || IsSpeechMuted())
     {
         return;

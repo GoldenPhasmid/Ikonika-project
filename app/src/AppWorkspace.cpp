@@ -4,6 +4,7 @@
 
 #include "core/FTDatabase.h"
 #include "core/FTBookShelfRepository.h"
+#include "core/FTUserDeckRepository.h"
 #include "core/FTCardRepository.h"
 #include "core/FTCloudBookRepository.h"
 #include "core/FTReaderRepository.h"
@@ -195,6 +196,7 @@ std::unique_ptr<AppWorkspace> AppWorkspace::Open(const AppWorkspaceFolder& Folde
     Workspace->ReaderLibrary = std::make_unique<FTReaderRepository>(*Workspace->DeviceConnection);
     Workspace->CloudBooks = std::make_unique<FTCloudBookRepository>(*Workspace->Connection);
     Workspace->BookShelf = std::make_unique<FTBookShelfRepository>(*Workspace->Connection);
+    Workspace->UserDecks = std::make_unique<FTUserDeckRepository>(*Workspace->Connection);
     Workspace->YoutubeLibrary = std::make_unique<FTYoutubeRepository>(*Workspace->DeviceConnection);
 
     Workspace->ApplyActiveLanguages();
@@ -230,6 +232,28 @@ FTCardRepository& AppWorkspace::GetCardRepository()
     return *CardRepository;
 }
 
+FTCardRepository& AppWorkspace::GetCardRepository(const std::string& TargetLanguage,
+                                                   const std::string& NativeLanguage)
+{
+    const FTLanguageRules& Languages{Settings->GetLanguageRules()};
+
+    if (TargetLanguage.empty() || TargetLanguage == Languages.TargetLanguage)
+    {
+        return *CardRepository;
+    }
+
+    const std::string Native{NativeLanguage.empty() ? Languages.NativeLanguage : NativeLanguage};
+    std::unique_ptr<FTCardRepository>& Found{LanguageCardRepositories[{TargetLanguage, Native}]};
+
+    if (Found == nullptr)
+    {
+        Found = std::make_unique<FTCardRepository>(*Connection);
+        Found->SetActiveLanguages(TargetLanguage, Native);
+    }
+
+    return *Found;
+}
+
 FTReaderRepository& AppWorkspace::GetReaderLibrary()
 {
     return *ReaderLibrary;
@@ -243,6 +267,11 @@ FTCloudBookRepository& AppWorkspace::GetCloudBooks()
 FTBookShelfRepository& AppWorkspace::GetBookShelf()
 {
     return *BookShelf;
+}
+
+FTUserDeckRepository& AppWorkspace::GetUserDecks()
+{
+    return *UserDecks;
 }
 
 FTYoutubeRepository& AppWorkspace::GetYoutubeLibrary()
@@ -265,6 +294,7 @@ void AppWorkspace::ApplyActiveLanguages()
     const FTLanguageRules& Languages{Settings->GetLanguageRules()};
 
     CardRepository->SetActiveLanguages(Languages.TargetLanguage, Languages.NativeLanguage);
+    UserDecks->SetActiveLanguages(Languages.TargetLanguage, Languages.NativeLanguage);
 
     qCInfo(LogDatabase) << "Cards scoped to" << QString::fromStdString(Languages.TargetLanguage)
                         << "->" << QString::fromStdString(Languages.NativeLanguage);

@@ -23,6 +23,10 @@ DecksController::DecksController(QObject* Parent)
     : QObject(Parent)
 {
     connect(&AppDictionary::Notifier(), &AppDictionaryNotifier::languagesChanged, this, &DecksController::refresh);
+    connect(&AppDictionary::Notifier(), &AppDictionaryNotifier::dictionaryClosed, this, [this]()
+    {
+        bDeckDataLoaded = false;
+    });
 
     refresh();
 }
@@ -32,10 +36,10 @@ void DecksController::refresh()
     QElapsedTimer Timer;
     Timer.start();
 
-    if (!AppDictionary::Get().IsReady() || !AppDatabase::Get().IsReady())
+    if (!AppDictionary::GetActive().IsReady() || !AppDatabase::Get().IsReady())
     {
         Decks.clear();
-        LoadedGeneration.reset();
+        bDeckDataLoaded = false;
 
         emit decksChanged();
 
@@ -83,6 +87,7 @@ void DecksController::refresh()
         Entry[QStringLiteral("id")] = static_cast<qint64>(Deck.Id);
         Entry[QStringLiteral("name")] = QString::fromStdString(Deck.Name);
         Entry[QStringLiteral("category")] = QString::fromStdString(Deck.Category);
+        Entry[QStringLiteral("description")] = QString::fromStdString(Deck.Description);
         Entry[QStringLiteral("icon")] = Deck.Id >= FirstExamDeckId ? QStringLiteral("deck_exam")
                                                                    : QStringLiteral("deck_%1").arg(Deck.Id);
         Entry[QStringLiteral("wordCount")] = Deck.WordCount;
@@ -108,20 +113,19 @@ void DecksController::refresh()
 
 void DecksController::LoadDeckData()
 {
-    const uint64_t Generation = AppDictionary::Get().GetGeneration();
-
-    if (LoadedGeneration == Generation)
+    if (bDeckDataLoaded)
     {
         return;
     }
 
-    FTDictionaryRepository& Dictionary = AppDictionary::Get().GetRepository();
+    FTDictionaryRepository& Dictionary = AppDictionary::GetActive().GetRepository();
 
     DeckList = Dictionary.ListDecks();
     Readings = Dictionary.LoadDeckReadings();
-    LoadedGeneration = Generation;
+    bDeckDataLoaded = true;
 
-    qCDebug(LogApp) << "Decks: read" << static_cast<int>(DeckList.size()) << "decks from dictionary generation" << Generation;
+    qCDebug(LogApp) << "Decks: read" << static_cast<int>(DeckList.size()) << "decks from the"
+                    << QString::fromStdString(AppDictionary::GetActive().GetTargetLanguage()) << "dictionary";
 }
 
 bool DecksController::IsAvailable() const

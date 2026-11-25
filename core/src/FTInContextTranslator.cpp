@@ -620,7 +620,8 @@ std::optional<FTInContextTranslator> FTInContextTranslator::Create(const std::st
     return Result;
 }
 
-std::string FTInContextTranslator::Translate(std::string_view Text) const
+std::string FTInContextTranslator::Translate(std::string_view Text,
+                                             const std::function<bool(const std::string&)>& OnSentence) const
 {
     const QString Source = QString::fromUtf8(Text.data(), static_cast<qsizetype>(Text.size()));
 
@@ -643,6 +644,11 @@ std::string FTInContextTranslator::Translate(std::string_view Text) const
         }
 
         Result += Translation;
+
+        if (OnSentence && !OnSentence(Result))
+        {
+            break;
+        }
     }
 
     return Result;

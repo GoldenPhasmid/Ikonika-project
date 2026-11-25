@@ -18,7 +18,7 @@ Item
     anchors.bottom: parent ? parent.bottom : undefined
     x: root.onLeft ? -width / 2 : (parent ? parent.width - width / 2 : 0)
     z: 2
-    width: AppMetrics.gapSmall
+    width: AppMetrics.touchInput ? AppMetrics.gapLarge + AppMetrics.gapMedium : AppMetrics.gapSmall
 
     Accessible.ignored: true
 

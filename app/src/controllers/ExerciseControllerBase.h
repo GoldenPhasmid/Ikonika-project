@@ -58,7 +58,6 @@ class ExerciseControllerBase : public QObject
 
     Q_PROPERTY(QString gender READ GetGender NOTIFY stateChanged)
     Q_PROPERTY(QString cardMeta READ GetCardMeta NOTIFY stateChanged)
-    Q_PROPERTY(QString definition READ GetDefinition NOTIFY stateChanged)
     Q_PROPERTY(QString example READ GetExample NOTIFY stateChanged)
     Q_PROPERTY(QString exampleTranslation READ GetExampleTranslation NOTIFY stateChanged)
     Q_PROPERTY(QString phonetic READ GetPhonetic NOTIFY stateChanged)
@@ -166,7 +165,6 @@ public:
     int GetLastCardIndex() const;
 
     QString GetCardMeta() const;
-    QString GetDefinition() const;
     QString GetExample() const;
     QString GetExampleTranslation() const;
     QString GetPhonetic() const;
@@ -221,7 +219,7 @@ protected:
     std::string GetLastWordWithoutArticle() const;
     void Speak(const QString& Text) const;
     void SpeakAutomatically(const QString& Text) const;
-    void SpeakAtScale(const QString& Text, float RateScale) const;
+    void SpeakAtScale(const QString& Text, float RateScale, bool bVerbatim = false) const;
     void SpeakSlowlyText(const QString& Text) const;
     QString GetVoicedText(const QString& Text) const;
     const FTCard* FindCardByWord(const std::string& Word) const;

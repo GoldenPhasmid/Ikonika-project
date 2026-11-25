@@ -17,7 +17,7 @@ Rectangle
     signal fitRequested()
     signal immersiveRequested()
 
-    readonly property int shownIndex: slider.pressed ? Math.round(slider.value) : root.index
+    readonly property int shownIndex: scrubber.shownIndex
 
     function percentOf(position)
     {
@@ -54,6 +54,8 @@ Rectangle
         {
             objectName: "reader_previous"
 
+            focusPolicy: Qt.NoFocus
+
             iconName: "chevron_left"
             text: root.paged ? qsTr("Previous page (Left)") : qsTr("Page up (Left)")
             enabled: root.index > 0
@@ -76,6 +78,8 @@ Rectangle
         {
             objectName: "reader_next"
 
+            focusPolicy: Qt.NoFocus
+
             iconName: "chevron_right"
             text: root.paged ? qsTr("Next page (Right)") : qsTr("Page down (Right)")
             enabled: root.index + 1 < root.count
@@ -83,80 +87,27 @@ Rectangle
             onClicked: root.stepRequested(true)
         }
 
-        Slider
+        ReaderScrubber
         {
-            id: slider
+            id: scrubber
 
             objectName: "reader_scrubber"
 
             Layout.fillWidth: true
             Layout.leftMargin: AppMetrics.gapSmall
             Layout.rightMargin: AppMetrics.gapSmall
-            implicitHeight: AppMetrics.chipHeight
 
-            from: 0
-            to: Math.max(1, root.count - 1)
-            stepSize: 1
-            value: root.index
-            enabled: root.count > 1
-            focusPolicy: Qt.NoFocus
-            hoverEnabled: true
-            padding: 0
+            count: root.count
+            index: root.index
 
-            Accessible.name: qsTr("Position in the book")
-
-            onPressedChanged:
-            {
-                if (!slider.pressed)
-                {
-                    root.positionRequested(Math.round(slider.value))
-                    slider.value = Qt.binding(function() { return root.index })
-                }
-            }
-
-            background: Item
-            {
-                y: slider.availableHeight / 2 - height / 2
-                width: slider.availableWidth
-                height: AppMetrics.progressBarHeight
-
-                Rectangle
-                {
-                    anchors.fill: parent
-                    radius: height / 2
-                    color: AppTheme.colourFaint
-                }
-
-                Rectangle
-                {
-                    width: slider.visualPosition * parent.width
-                    height: parent.height
-                    radius: height / 2
-                    color: AppTheme.colourText
-                }
-            }
-
-            handle: Rectangle
-            {
-                x: slider.visualPosition * (slider.availableWidth - width)
-                y: slider.availableHeight / 2 - height / 2
-                width: AppMetrics.gapLarge - AppMetrics.gapTight
-                height: width
-                radius: width / 2
-                color: AppTheme.colourPanel
-                border.width: AppMetrics.focusRingWidth
-                border.color: AppTheme.colourText
-            }
-
-            HoverHandler
-            {
-                cursorShape: Qt.PointingHandCursor
-            }
+            onPositionRequested: function(position) { root.positionRequested(position) }
         }
 
         DesktopIconButton
         {
             objectName: "reader_zoom_out"
+
+            focusPolicy: Qt.NoFocus
 
             iconName: "minus"
             shortcutKey: "-"
@@ -168,6 +119,8 @@ Rectangle
         DesktopButton
         {
             objectName: "reader_fit"
+
+            focusPolicy: Qt.NoFocus
 
             visible: root.paged
             tone: "ghost"
@@ -183,6 +136,8 @@ Rectangle
         {
             objectName: "reader_zoom_in"
 
+            focusPolicy: Qt.NoFocus
+
             iconName: "plus"
             shortcutKey: "+"
             text: root.paged ? qsTr("Zoom in (Ctrl++)") : qsTr("Larger text (Ctrl++)")
@@ -193,6 +148,8 @@ Rectangle
         DesktopIconButton
         {
             objectName: "reader_immersive"
+
+            focusPolicy: Qt.NoFocus
 
             iconName: "fullscreen"
             shortcutKey: "F11"

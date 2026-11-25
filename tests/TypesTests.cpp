@@ -74,7 +74,6 @@ TEST_CASE("A new card carries no assumptions", "[types]")
 
     CHECK(Fresh.TargetWord.empty());
     CHECK(Fresh.Translation.empty());
-    CHECK(Fresh.Definition.empty());
 
     // A new card is in the pool, which is not a box and has no due date.
     CHECK(Fresh.LeitnerStage == PoolStage);
@@ -85,7 +84,7 @@ TEST_CASE("A new card carries no assumptions", "[types]")
 
     // Nothing overridden, so a dictionary import may fill every field.
     CHECK_FALSE(IsUserEdited(Fresh, EFTCardField::Translation));
-    CHECK_FALSE(IsUserEdited(Fresh, EFTCardField::Definition));
+    CHECK_FALSE(IsUserEdited(Fresh, EFTCardField::Gender));
 }
 
 // The test that checked bPassed and FailureCount is gone with the per-exercise progress type it

@@ -54,7 +54,7 @@ Item
         anchors.fill: parent
 
         activeTab: "dictionary"
-        contentMaximumWidth: 632
+        contentMaximumWidth: AppMetrics.shellMaximumWidth
         headerTitle: qsTr("Dictionary")
         showBack: true
         showSearchField: true

@@ -7,6 +7,7 @@
 
 #include "core/FTCard.h"
 #include "core/FTLog.h"
+#include "core/FTSettings.h"
 #include "core/FTWordForms.h"
 
 #include <QElapsedTimer>
@@ -49,6 +50,11 @@ ReaderVocabulary::ReaderVocabulary(QObject* Parent)
     , bEnabled{AppReaderSettings::Get().IsHighlightingVocabulary()}
     , bHighlightUnknown{AppReaderSettings::Get().IsHighlightingUnknownWords()}
 {
+    connect(&AppDictionary::Notifier(), &AppDictionaryNotifier::dictionaryClosed, this, [this]()
+    {
+        BuiltRevision.clear();
+    });
+
     connect(&AppReaderSettings::Get(), &AppReaderSettings::changed, this, [this]()
     {
         const bool bNowEnabled{AppReaderSettings::Get().IsHighlightingVocabulary()};
@@ -109,6 +115,26 @@ void ReaderVocabulary::refresh()
     emit changed();
 }
 
+void ReaderVocabulary::SetLanguage(const std::string& Value)
+{
+    if (Language == Value)
+    {
+        return;
+    }
+
+    Language = Value;
+    BuiltRevision.clear();
+
+    qCInfo(LogApp) << "Reader: vocabulary marks follow" << QString::fromStdString(GetTargetLanguage());
+
+    refresh();
+}
+
+std::string ReaderVocabulary::GetTargetLanguage() const
+{
+    return Language.empty() ? FTSettings::Get().GetLanguageRules().TargetLanguage : Language;
+}
+
 bool ReaderVocabulary::IsEnabled() const
 {
     return bEnabled;
@@ -128,7 +154,7 @@ std::string ReaderVocabulary::MakeRevision() const
         return {};
     }
 
-    return Data + "|" + std::to_string(AppDictionary::Get().GetGeneration());
+    return Data + "|" + GetTargetLanguage();
 }
 
 void ReaderVocabulary::Rebuild()
@@ -144,7 +170,11 @@ void ReaderVocabulary::Rebuild()
     std::vector<std::string> Headwords;
     int CardCount{0};
 
-    for (const FTCardHandle& Card : AppCards::LoadCards())
+    AppLanguageDictionary& Dictionary{AppDictionary::Get(GetTargetLanguage())};
+    FTCardRepository* Repository{AppDatabase::Get().IsReady() ? &AppCards::GetCardRepository(Dictionary) : nullptr};
+    const std::vector<FTCardHandle> Cards{Repository != nullptr ? Repository->LoadCards() : std::vector<FTCardHandle>{}};
+
+    for (const FTCardHandle& Card : Cards)
     {
         if (Card == nullptr || IsFormsCard(*Card))
         {
@@ -177,12 +207,12 @@ void ReaderVocabulary::Rebuild()
         }
     }
 
-    if (bHighlightUnknown && AppDictionary::Get().IsReady())
+    if (bHighlightUnknown && Repository != nullptr && Dictionary.IsReady())
     {
-        const int Cutoff{AppDatabase::Get().GetCardRepository().GetPlacementCutoff()};
+        const int Cutoff{Repository->GetPlacementCutoff()};
         const FTVocabularyProgress Known{true};
 
-        for (const FTRankedWord& Word : AppDictionary::Get().GetRepository().ListWordsUpToTeachingRank(Cutoff))
+        for (const FTRankedWord& Word : Dictionary.GetRepository().ListWordsUpToTeachingRank(Cutoff))
         {
             Marks.AddSpelling(QString::fromStdString(Word.Headword), Known);
             MergeProgress(Readings, MakeReadingKey(Word.Headword, Word.PartOfSpeech), Known);
@@ -194,11 +224,27 @@ void ReaderVocabulary::Rebuild()
         }
     }
 
+    if (bHighlightUnknown && Repository != nullptr)
+    {
+        const FTVocabularyProgress Known{true};
+
+        for (const FTKnownWord& Word : Repository->ListKnownWords())
+        {
+            Marks.AddSpelling(QString::fromStdString(Word.TargetWord), Known);
+            MergeProgress(Readings, MakeReadingKey(Word.TargetWord, Word.PartOfSpeech), Known);
+
+            if (Seen.insert(Word.TargetWord).second)
+            {
+                Headwords.push_back(Word.TargetWord);
+            }
+        }
+    }
+
     size_t FormCount{0};
 
-    if (!Headwords.empty() && AppDictionary::Get().IsReady())
+    if (!Headwords.empty() && Dictionary.IsReady())
     {
-        for (const FTHeadwordForm& Row : AppDictionary::Get().GetRepository().ListHeadwordForms(Headwords))
+        for (const FTHeadwordForm& Row : Dictionary.GetRepository().ListHeadwordForms(Headwords))
         {
             const std::optional<FTVocabularyProgress> ByReading{
                 FindProgress(Readings, MakeReadingKey(Row.Headword, Row.PartOfSpeech))};

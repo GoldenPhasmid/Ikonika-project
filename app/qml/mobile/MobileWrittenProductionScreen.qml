@@ -35,7 +35,7 @@ Item
     signal restartRequested()
     signal completeRequested()
     signal wordHeld(string word)
-    signal wordTapped(string word, string sentence)
+    signal wordTapped(string word, string sentence, var place)
 
     function submitOrAdvance()
     {
@@ -161,7 +161,14 @@ Item
                 return
             }
 
-            if (root.manualAdvance || !(root.controller.lastAnswerCorrect || root.retyped) || correctAdvanceDelay.running)
+            if (root.manualAdvance || !(root.controller.lastAnswerCorrect || root.retyped))
+            {
+                Qt.inputMethod.hide()
+
+                return
+            }
+
+            if (correctAdvanceDelay.running)
             {
                 return
             }
@@ -256,7 +263,7 @@ Item
                     tapEnabled: true
 
                     onWordHeld: function(word) { root.wordHeld(word) }
-                    onWordTapped: function(word, sentence) { root.wordTapped(word, sentence) }
+                    onWordTapped: function(word, sentence, place) { root.wordTapped(word, sentence, place) }
                 },
                 MobilePromptText
                 {
@@ -364,7 +371,7 @@ Item
                     sentence: root.revealed && !root.controller.lastAnswerCorrect && !root.sentenceMode ? root.controller.example : ""
                     translation: root.controller.exampleTranslation
 
-                    onWordTapped: function(word, sentence) { root.wordTapped(word, sentence) }
+                    onWordTapped: function(word, sentence, place) { root.wordTapped(word, sentence, place) }
                 }
             ]
         }

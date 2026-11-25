@@ -5,6 +5,7 @@
 #include "core/FTCardRepository.h"
 #include "core/FTCloudBookRepository.h"
 #include "core/FTReaderRepository.h"
+#include "core/FTUserDeckRepository.h"
 #include "core/FTYoutubeRepository.h"
 
 #include <QString>
@@ -25,11 +26,16 @@ public:
 
     virtual FTCardRepository& GetCardRepository() = 0;
 
+    virtual FTCardRepository& GetCardRepository(const std::string& TargetLanguage,
+                                                const std::string& NativeLanguage) = 0;
+
     virtual FTReaderRepository& GetReaderLibrary() = 0;
 
     virtual FTCloudBookRepository& GetCloudBooks() = 0;
 
     virtual FTBookShelfRepository& GetBookShelf() = 0;
+
+    virtual FTUserDeckRepository& GetUserDecks() = 0;
 
     virtual FTYoutubeRepository& GetYoutubeLibrary() = 0;
 

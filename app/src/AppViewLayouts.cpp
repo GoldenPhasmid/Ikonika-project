@@ -12,6 +12,16 @@ namespace
         return QStringLiteral("views/") + Key + QStringLiteral("List");
     }
 
+    QString MakeSortKey(const QString& Key)
+    {
+        return QStringLiteral("views/") + Key + QStringLiteral("Sort");
+    }
+
+    QString MakeSortReversedKey(const QString& Key)
+    {
+        return QStringLiteral("views/") + Key + QStringLiteral("SortReversed");
+    }
+
     const QString NavigationOrderKey = QStringLiteral("views/navigationOrder");
 
     const QStringList DefaultNavigationOrder{
@@ -72,6 +82,39 @@ void AppViewLayouts::setList(const QString& Key, bool bList)
     Settings.setValue(MakeKey(Key), bList);
 
     qCInfo(LogApp) << "View" << Key << "shows" << (bList ? "a list" : "tiles");
+
+    ++Revision;
+
+    emit changed();
+}
+
+QString AppViewLayouts::sortOrder(const QString& Key, const QString& Default) const
+{
+    const QSettings Settings(FTSettings::Get().OpenStore());
+
+    return Settings.value(MakeSortKey(Key), Default).toString();
+}
+
+bool AppViewLayouts::sortReversed(const QString& Key) const
+{
+    const QSettings Settings(FTSettings::Get().OpenStore());
+
+    return Settings.value(MakeSortReversedKey(Key), false).toBool();
+}
+
+void AppViewLayouts::setSort(const QString& Key, const QString& Order, bool bReversed)
+{
+    QSettings Settings(FTSettings::Get().OpenStore());
+
+    if (Settings.value(MakeSortKey(Key)).toString() == Order && Settings.value(MakeSortReversedKey(Key), false).toBool() == bReversed)
+    {
+        return;
+    }
+
+    Settings.setValue(MakeSortKey(Key), Order);
+    Settings.setValue(MakeSortReversedKey(Key), bReversed);
+
+    qCInfo(LogApp) << "View" << Key << "sorts by" << Order << (bReversed ? "reversed" : "");
 
     ++Revision;
 

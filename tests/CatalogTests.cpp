@@ -475,6 +475,25 @@ TEST_CASE("A web search address spells the pair the way its site does", "[catalo
             "https://translate.google.com/?sl=fr&tl=en&text=pomme%20de%20terre&op=translate");
 }
 
+TEST_CASE("The built-in dictionary sites build their addresses", "[catalog]")
+{
+    const std::vector<FTWebSearchSource> Sources = GetBuiltInWebSearchSources();
+    const int WordReference = FindWebSearchSourceIndex(Sources, "wordreference");
+    const int Collins = FindWebSearchSourceIndex(Sources, "collins");
+    const int Forvo = FindWebSearchSourceIndex(Sources, "forvo");
+
+    REQUIRE(Sources[WordReference].Id == "wordreference");
+    REQUIRE(Sources[Collins].Id == "collins");
+    REQUIRE(Sources[Forvo].Id == "forvo");
+
+    REQUIRE(Sources[WordReference].BuildUrl("fr", "en", "élève") ==
+            "https://www.wordreference.com/fren/%C3%A9l%C3%A8ve");
+    REQUIRE(Sources[Collins].BuildUrl("fr", "en", "élève") ==
+            "https://www.collinsdictionary.com/dictionary/french-english/%C3%A9l%C3%A8ve");
+    REQUIRE(Sources[Forvo].BuildUrl("fr", "en", "élève") ==
+            "https://forvo.com/word/%C3%A9l%C3%A8ve/#fr");
+}
+
 TEST_CASE("A web search source not serving the pair builds nothing and is left out", "[catalog]")
 {
     const FTWebSearchSource Source{"one", "One", "https://example.invalid/{target}/{native}/{word}",

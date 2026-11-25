@@ -19,6 +19,10 @@ public:
     Q_INVOKABLE bool isList(const QString& Key) const;
     Q_INVOKABLE void setList(const QString& Key, bool bList);
 
+    Q_INVOKABLE QString sortOrder(const QString& Key, const QString& Default) const;
+    Q_INVOKABLE bool sortReversed(const QString& Key) const;
+    Q_INVOKABLE void setSort(const QString& Key, const QString& Order, bool bReversed);
+
     Q_INVOKABLE QStringList navigationOrder() const;
     Q_INVOKABLE void setNavigationOrder(const QStringList& Order);
 

@@ -9,7 +9,7 @@ Item
     property var store: null
 
     signal done()
-    signal wordTapped(string word, string sentence)
+    signal wordTapped(string word, string sentence, var place)
     signal editRequested(var card)
 
     readonly property bool roundOver: root.controller.roundOver
@@ -300,7 +300,7 @@ Item
                     holdEnabled: false
                     horizontalAlignment: Text.AlignHCenter
 
-                    onWordTapped: function(word, sentence) { root.wordTapped(word, sentence) }
+                    onWordTapped: function(word, sentence, place) { root.wordTapped(word, sentence, place) }
                 },
                 Text
                 {
@@ -394,7 +394,7 @@ Item
                     stageCount: root.store ? root.store.stageCount : 1
 
                     onTranslationPicked: function(text) { root.pickTranslation(text) }
-                    onWordTapped: function(word, sentence) { root.wordTapped(word, sentence) }
+                    onWordTapped: function(word, sentence, place) { root.wordTapped(word, sentence, place) }
                 }
             ]
         }

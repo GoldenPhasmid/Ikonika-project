@@ -1,7 +1,9 @@
 #include "AppSwitchCover.h"
 
+#include "AppMetrics.h"
 #include "core/FTLog.h"
 
+#include <QPropertyAnimation>
 #include <QQmlComponent>
 #include <QQmlContext>
 #include <QQmlEngine>
@@ -71,7 +73,7 @@ void AppSwitchCover::Show(QQuickWindow& Over, std::function<void()> Drawn)
 
 bool AppSwitchCover::IsShown() const
 {
-    return Overlay != nullptr;
+    return Overlay != nullptr && !bFading;
 }
 
 void AppSwitchCover::HandOver(QQuickWindow& To)
@@ -88,13 +90,54 @@ void AppSwitchCover::HandOver(QQuickWindow& To)
         return;
     }
 
-    QObject::connect(&To, &QQuickWindow::frameSwapped, &To, [this] { Hide(); },
+    QObject::connect(&To, &QQuickWindow::frameSwapped, &To, [this] { FadeOut(); },
                      static_cast<Qt::ConnectionType>(Qt::QueuedConnection | Qt::SingleShotConnection));
     To.update();
 }
 
+void AppSwitchCover::FadeOut()
+{
+    if (Overlay == nullptr || bFading)
+    {
+        return;
+    }
+
+    const AppMetrics* Metrics{Engine->singletonInstance<AppMetrics*>("Ikonika", "AppMetrics")};
+    const int Duration{Metrics != nullptr ? Metrics->GetMotionBase() : 0};
+
+    if (Duration <= 0)
+    {
+        Hide();
+
+        return;
+    }
+
+    bFading = true;
+    Overlay->setEnabled(false);
+
+    QPropertyAnimation* Fade{new QPropertyAnimation{Overlay.data(), "opacity", Overlay.data()}};
+    Fade->setDuration(Duration);
+    Fade->setStartValue(1.0);
+    Fade->setEndValue(0.0);
+    Fade->setEasingCurve(QEasingCurve::OutCubic);
+
+    const QPointer<QQuickItem> Faded{Overlay};
+
+    QObject::connect(Fade, &QPropertyAnimation::finished, Overlay->window(), [this, Faded]()
+    {
+        if (Overlay == Faded)
+        {
+            Hide();
+        }
+    }, Qt::QueuedConnection);
+
+    Fade->start();
+}
+
 void AppSwitchCover::Hide()
 {
+    bFading = false;
+
     if (Overlay != nullptr)
     {
         delete Overlay.data();

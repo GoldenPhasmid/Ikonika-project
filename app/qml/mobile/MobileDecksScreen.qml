@@ -1,6 +1,6 @@
 import QtQuick
+import QtQuick.Dialogs
 import QtQuick.Layouts
-import "MobileIcons.js" as Icons
 import "../Decks.js" as Decks
 
 Item
@@ -8,123 +8,357 @@ Item
     id: root
 
     signal deckOpened(var deckId)
-    signal trainRequested(var deckId)
+    signal userDeckOpened(string deckId)
     signal tabSelected(string key)
-    signal searchRequested()
+    signal messageRequested(string message)
 
-    property string category: ""
+    property bool searchOpen: false
+    property var afterPicker: null
+    property string section: "all"
+
+    readonly property string categoryPrefix: "category:"
+    readonly property string customPrefix: "mine:"
+    readonly property bool builtinSection: !root.section.startsWith("mine")
+    readonly property string customCategoryId: root.section.startsWith(root.customPrefix) ? root.section.slice(root.customPrefix.length) : ""
+    readonly property string category: root.section.startsWith(root.categoryPrefix) ? root.section.slice(root.categoryPrefix.length) : ""
 
     readonly property var categories: Decks.categories(DecksController.decks)
     readonly property bool listLayout: AppViewLayouts.revision >= 0 && AppViewLayouts.isList("decks")
+    readonly property string searchTerm: (decksShell.searchFieldText + decksShell.searchFieldPreeditText).trim()
 
-    readonly property var shownCategories: root.category.length > 0 ? [root.category] : root.categories
+    readonly property var builtinCategories: root.categories.map(name => ({
+        name: name,
+        count: DecksController.decks.filter(deck => deck.category === name).length,
+        tint: root.categoryTint(name)
+    }))
 
-    function decksIn(category)
+    readonly property var customCategories: UserDecksController.categories.map(category => ({
+        id: category.id,
+        name: category.name,
+        count: category.count,
+        tint: root.customTint(category.id)
+    }))
+
+    readonly property string sectionTitle:
     {
-        return DecksController.decks.filter(deck => deck.category === category)
+        if (root.section === "all")
+        {
+            return qsTr("All built-in decks")
+        }
+
+        if (root.section === "mine")
+        {
+            return qsTr("My Decks")
+        }
+
+        const custom = root.customCategories.find(entry => root.customPrefix + entry.id === root.section)
+
+        return custom ? custom.name : root.category
+    }
+
+    readonly property string sortOrder: AppViewLayouts.revision >= 0 ? AppViewLayouts.sortOrder("userDecks", Decks.sortOrders[0]) : Decks.sortOrders[0]
+    readonly property bool sortReversed: AppViewLayouts.revision >= 0 && AppViewLayouts.sortReversed("userDecks")
+
+    readonly property var groups:
+    {
+        const term = root.searchTerm
+
+        if (root.section === "mine" || root.customCategoryId.length > 0)
+        {
+            const decks = Decks.sorted(UserDecksController.decks.filter(deck => Decks.matches(deck, term)),
+                                       root.sortOrder, root.sortReversed)
+            const list = [{
+                name: "",
+                tint: AppTheme.colourCoverMuted,
+                headed: false,
+                custom: true,
+                showNew: true,
+                decks: decks.filter(deck => deck.categoryId === root.customCategoryId)
+            }]
+
+            if (root.section === "mine")
+            {
+                for (const category of root.customCategories)
+                {
+                    list.push({
+                        name: category.name,
+                        tint: category.tint,
+                        headed: true,
+                        custom: true,
+                        showNew: false,
+                        decks: decks.filter(deck => deck.categoryId === category.id)
+                    })
+                }
+            }
+
+            return list.filter(group => group.showNew || group.decks.length > 0)
+        }
+
+        const names = root.category.length > 0 ? [root.category] : root.categories
+
+        return names.map(name => ({
+            name: name,
+            tint: root.categoryTint(name),
+            headed: root.category.length === 0,
+            custom: false,
+            showNew: false,
+            decks: DecksController.decks.filter(deck => deck.category === name && Decks.matches(deck, term))
+        })).filter(group => group.decks.length > 0)
+    }
+
+    function categoryTint(name)
+    {
+        return Decks.tint(root.categories, name, AppTheme.coverColours)
+    }
+
+    function customTint(categoryId)
+    {
+        return Decks.customTint(UserDecksController.categories, categoryId, AppTheme.coverColours, AppTheme.colourCoverMuted)
     }
 
     function refresh()
     {
         DecksController.refresh()
+        UserDecksController.refresh()
+    }
+
+    function closeSearch()
+    {
+        root.searchOpen = false
+        decksShell.searchFieldText = ""
+        root.forceActiveFocus()
+    }
+
+    function dismissSheet()
+    {
+        if (levelPicker.visible)
+        {
+            levelPicker.close()
+
+            return true
+        }
+
+        if (confirmSheet.visible)
+        {
+            confirmSheet.close()
+
+            return true
+        }
+
+        if (nameSheet.visible)
+        {
+            nameSheet.close()
+
+            return true
+        }
+
+        if (sortSheet.visible)
+        {
+            sortSheet.close()
+
+            return true
+        }
+
+        if (sectionsSheet.visible)
+        {
+            sectionsSheet.close()
+
+            return true
+        }
+
+        if (root.searchOpen)
+        {
+            root.closeSearch()
+
+            return true
+        }
+
+        return false
+    }
+
+    function chooseSection(section)
+    {
+        root.section = section
+        deckPage.contentY = 0
+    }
+
+    function createDeck()
+    {
+        const categoryId = root.customCategoryId
+
+        nameSheet.openDeck(qsTr("New deck"), "", "",
+                           function(name, description) { UserDecksController.createDeck(name, categoryId, description) })
+    }
+
+    function createCategory()
+    {
+        nameSheet.open(qsTr("New category"), "", qsTr("Category name"), true,
+                       UserDecksController.categories.length % AppTheme.coverColours.length,
+                       function(name, colour) { UserDecksController.createCategory(name, colour) })
+    }
+
+    function showCategoryActions(categoryId, name)
+    {
+        levelPicker.open(name, [qsTr("Rename"), qsTr("Delete category")], -1, function(index)
+        {
+            if (index === 0)
+            {
+                root.afterPicker = function()
+                {
+                    nameSheet.open(qsTr("Rename category"), name, qsTr("Category name"), false, 0,
+                                   function(newName) { UserDecksController.renameCategory(categoryId, newName) })
+                }
+
+                return
+            }
+
+            confirmSheet.ask(qsTr("Delete the category \"%1\"?").arg(name),
+                             qsTr("Its decks move to My Decks."),
+                             qsTr("Delete"),
+                             function() { UserDecksController.deleteCategory(categoryId) })
+        })
+    }
+
+    function showMoveTargets(deck)
+    {
+        const targets = UserDecksController.categories.filter(category => category.id !== deck.categoryId)
+
+        levelPicker.open(qsTr("Move to"), targets.map(category => category.name), -1,
+                         function(index) { UserDecksController.moveDeck(deck.id, targets[index].id) })
+    }
+
+    function showDeckActions(deck)
+    {
+        const inCategory = deck.categoryId.length > 0
+        const movable = UserDecksController.categories.some(category => category.id !== deck.categoryId)
+        const actions = [qsTr("Edit deck")]
+
+        if (inCategory)
+        {
+            actions.push(qsTr("Remove from category"))
+        }
+
+        if (movable)
+        {
+            actions.push(qsTr("Move to…"))
+        }
+
+        actions.push(qsTr("Delete deck"))
+
+        levelPicker.open(deck.name, actions, -1, function(index)
+        {
+            const action = actions[index]
+
+            if (action === qsTr("Edit deck"))
+            {
+                root.afterPicker = function()
+                {
+                    nameSheet.openDeck(qsTr("Edit deck"), deck.name, deck.description ?? "",
+                                       function(name, description) { UserDecksController.editDeck(deck.id, name, description) })
+                }
+
+                return
+            }
+
+            if (action === qsTr("Remove from category"))
+            {
+                UserDecksController.moveDeck(deck.id, "")
+
+                return
+            }
+
+            if (action === qsTr("Move to…"))
+            {
+                Qt.callLater(function() { root.showMoveTargets(deck) })
+
+                return
+            }
+
+            confirmSheet.ask(qsTr("Delete the deck \"%1\"?").arg(deck.name),
+                             qsTr("Its cards stay in My Vocabulary."),
+                             qsTr("Delete"),
+                             function() { UserDecksController.deleteDeck(deck.id) })
+        })
     }
 
     onCategoriesChanged:
     {
-        if (root.categories.indexOf(root.category) < 0)
+        if (root.category.length > 0 && root.categories.indexOf(root.category) < 0)
         {
-            root.category = ""
+            root.section = "all"
+        }
+    }
+
+    Connections
+    {
+        target: UserDecksController
+
+        function onChanged()
+        {
+            if (root.customCategoryId.length > 0 && !root.customCategories.some(entry => entry.id === root.customCategoryId))
+            {
+                root.section = "mine"
+            }
         }
     }
 
     MobileShell
     {
+        id: decksShell
+
         anchors.fill: parent
 
         activeTab: "decks"
-        headerTitle: qsTr("Decks")
-        showSearch: true
+        headerTitle: root.sectionTitle
+        showBack: root.searchOpen
+        leadingIcon: "menu"
+        showSearchField: root.searchOpen
 
+        onLeadingActivated: sectionsSheet.open()
+        onBackRequested: root.closeSearch()
+        onSearchFieldAccepted: root.forceActiveFocus()
         onTabSelected: function(key) { root.tabSelected(key) }
-        onSearchRequested: root.searchRequested()
 
-        RowLayout
+        headerStatus: RowLayout
         {
-            id: chipBar
-
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.top: parent.top
-            anchors.topMargin: AppMetrics.gapCompact
-            anchors.rightMargin: AppMetrics.contentPadding - AppMetrics.gapSmall
-            height: AppMetrics.chipHeight
+            Layout.fillWidth: false
             spacing: 0
 
-            ListView
+            MobileIconButton
             {
-                id: chipRow
+                objectName: "decks_search"
 
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                visible: root.categories.length > 1
+                visible: !root.searchOpen
+                iconName: "search"
+                text: qsTr("Search decks")
 
-                orientation: ListView.Horizontal
-                spacing: AppMetrics.gapSmall
-                leftMargin: AppMetrics.contentPadding
-                rightMargin: AppMetrics.gapSmall
-                boundsBehavior: Flickable.StopAtBounds
-                clip: true
-
-                Accessible.role: Accessible.ToolBar
-                Accessible.name: qsTr("Deck categories")
-
-                model: [""].concat(root.categories)
-
-                delegate: MobileFilterChip
+                onClicked:
                 {
-                    required property string modelData
-
-                    objectName: modelData.length > 0 ? "deck_category_" + modelData : "deck_category_all"
-
-                    label: modelData.length > 0 ? modelData : qsTr("All")
-                    count: (modelData.length > 0 ? root.decksIn(modelData).length : DecksController.decks.length).toString()
-                    dotColour: modelData.length > 0 ? Decks.tint(root.categories, modelData, AppTheme.coverColours) : "transparent"
-                    selected: root.category === modelData
-
-                    onClicked:
-                    {
-                        root.category = modelData
-                        deckPage.contentY = 0
-                    }
+                    root.searchOpen = true
+                    Qt.callLater(decksShell.focusSearchField)
                 }
             }
 
-            Item
+            MobileIconButton
+            {
+                objectName: "decks_sort"
+
+                visible: !root.searchOpen && !root.builtinSection
+                iconName: root.sortReversed ? "arrow_up_narrow_wide" : "arrow_down_wide_narrow"
+                text: qsTr("Sort decks")
+
+                onClicked: sortSheet.open()
+            }
+
+            MobileIconButton
             {
                 objectName: "decks_layout_switch"
 
-                Layout.preferredWidth: AppMetrics.chipHeight
-                Layout.preferredHeight: AppMetrics.chipHeight
+                visible: !root.searchOpen
+                iconName: root.listLayout ? "layout_grid" : "layout_rows"
+                text: root.listLayout ? qsTr("Show as tiles") : qsTr("Show as a list")
 
-                Accessible.role: Accessible.Button
-                Accessible.name: root.listLayout ? qsTr("Show as tiles") : qsTr("Show as a list")
-
-                MobileVectorIcon
-                {
-                    anchors.centerIn: parent
-                    width: AppMetrics.headerActionIconSize + 2
-                    height: width
-
-                    svgPath: root.listLayout ? Icons.Icons.layout_grid.path : Icons.Icons.contents.path
-                    color: AppTheme.colourText
-                }
-
-                TapHandler
-                {
-                    margin: AppMetrics.gapSmall
-
-                    onTapped: AppViewLayouts.setList("decks", !root.listLayout)
-                }
+                onClicked: AppViewLayouts.setList("decks", !root.listLayout)
             }
         }
 
@@ -132,10 +366,7 @@ Item
         {
             id: deckPage
 
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.top: chipBar.bottom
-            anchors.bottom: parent.bottom
+            anchors.fill: parent
             contentWidth: width
             contentHeight: sectionColumn.implicitHeight + AppMetrics.contentPadding * 2
             boundsBehavior: Flickable.StopAtBounds
@@ -150,17 +381,26 @@ Item
                 width: deckPage.width - AppMetrics.contentPadding * 2
                 spacing: AppMetrics.gapWide
 
+                Text
+                {
+                    Layout.fillWidth: true
+                    visible: root.groups.length === 0
+                    text: root.searchTerm.length > 0 ? qsTr("No decks match \"%1\"").arg(root.searchTerm) : qsTr("No decks here yet.")
+                    color: AppTheme.colourMuted
+                    font.pixelSize: AppMetrics.fontBody
+                    font.family: AppMetrics.fontFamily
+                    wrapMode: Text.Wrap
+                }
+
                 Repeater
                 {
-                    model: root.shownCategories
+                    model: root.groups
 
                     delegate: ColumnLayout
                     {
-                        id: section
+                        id: group
 
-                        required property string modelData
-
-                        readonly property var decks: root.decksIn(section.modelData)
+                        required property var modelData
 
                         Layout.fillWidth: true
                         spacing: root.listLayout ? AppMetrics.gapTight : AppMetrics.gapCompact
@@ -168,17 +408,17 @@ Item
                         RowLayout
                         {
                             Layout.fillWidth: true
-                            visible: section.modelData.length > 0
+                            visible: group.modelData.headed
                             spacing: AppMetrics.gapSmall
 
                             CategoryDot
                             {
-                                colour: Decks.tint(root.categories, section.modelData, AppTheme.coverColours)
+                                colour: group.modelData.tint
                             }
 
                             MobileSectionLabel
                             {
-                                text: section.modelData.toUpperCase()
+                                text: group.modelData.name.toUpperCase()
                             }
 
                             Rectangle
@@ -190,7 +430,7 @@ Item
 
                             Text
                             {
-                                text: Decks.summary(DecksController.decks, section.modelData, Qt.locale())
+                                text: Decks.summarise(group.modelData.decks, Qt.locale())
                                 font.pixelSize: AppMetrics.fontMicro
                                 font.family: AppMetrics.fontFamily
                                 color: AppTheme.colourMuted
@@ -204,31 +444,47 @@ Item
                             listLayout: root.listLayout
 
                             Accessible.role: Accessible.List
-                            Accessible.name: section.modelData.length > 0 ? section.modelData : qsTr("Decks")
+                            Accessible.name: group.modelData.name.length > 0 ? group.modelData.name : root.sectionTitle
+
+                            MobileNewDeckTile
+                            {
+                                objectName: "deck_new"
+
+                                visible: group.modelData.showNew
+                                width: coverGrid.tileWidth
+                                compact: root.listLayout
+
+                                onClicked: root.createDeck()
+                            }
 
                             Repeater
                             {
-                                model: section.decks
+                                model: group.modelData.decks
 
                                 delegate: MobileDeck
                                 {
                                     required property var modelData
 
-                                    objectName: "deck_" + modelData.id
+                                    objectName: (group.modelData.custom ? "user_deck_" : "deck_") + modelData.id
 
                                     width: coverGrid.tileWidth
                                     compact: root.listLayout
 
                                     title: modelData.name
                                     iconName: modelData.icon
-                                    tint: Decks.tint(root.categories, section.modelData, AppTheme.coverColours)
+                                    tint: group.modelData.custom ? root.customTint(modelData.categoryId) : group.modelData.tint
                                     wordCount: modelData.wordCount
                                     learningCount: modelData.learningCount
                                     learnedCount: modelData.learnedCount
-                                    untriagedCount: modelData.untriagedCount
 
-                                    onTrainRequested: root.trainRequested(modelData.id)
-                                    onOpenRequested: root.deckOpened(modelData.id)
+                                    onOpenRequested: group.modelData.custom ? root.userDeckOpened(modelData.id) : root.deckOpened(modelData.id)
+                                    onHeld:
+                                    {
+                                        if (group.modelData.custom)
+                                        {
+                                            root.showDeckActions(modelData)
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -236,5 +492,95 @@ Item
                 }
             }
         }
+    }
+
+    MobileDecksSectionsSheet
+    {
+        id: sectionsSheet
+
+        anchors.fill: parent
+        z: 40
+
+        section: root.section
+        builtinCategories: root.builtinCategories
+        builtinCount: DecksController.decks.length
+        customCategories: root.customCategories
+        myDecksCount: UserDecksController.decks.length
+
+        onSectionChosen: function(section) { root.chooseSection(section) }
+        onNewCategoryRequested: root.createCategory()
+        onCategoryHeld: function(categoryId, name)
+        {
+            sectionsSheet.close()
+            root.showCategoryActions(categoryId, name)
+        }
+        onImportRequested: importDialog.open()
+    }
+
+    MobileDecksSortSheet
+    {
+        id: sortSheet
+
+        z: 50
+
+        order: root.sortOrder
+        reversed: root.sortReversed
+
+        onSortChosen: function(order, reversed) { AppViewLayouts.setSort("userDecks", order, reversed) }
+    }
+
+    FileDialog
+    {
+        id: importDialog
+
+        title: qsTr("Choose a file to import")
+        nameFilters: [qsTr("Word lists (*.txt *.csv *.anki2)")]
+
+        onAccepted:
+        {
+            const result = UserDecksController.importFromFile(importDialog.selectedFile, root.customCategoryId)
+
+            if (!result.ok)
+            {
+                root.messageRequested(qsTr("No words could be imported from that file."))
+
+                return
+            }
+
+            root.section = root.customCategoryId.length > 0 ? root.section : "mine"
+            root.messageRequested(Decks.importMessage(result))
+        }
+    }
+
+    MobileSettingsPicker
+    {
+        id: levelPicker
+
+        anchors.fill: parent
+        z: 60
+
+        onHidden:
+        {
+            const action = root.afterPicker
+
+            root.afterPicker = null
+
+            if (action)
+            {
+                action()
+            }
+        }
+    }
+
+    MobileNameSheet
+    {
+        id: nameSheet
+
+        z: 55
+    }
+
+    MobileConfirmSheet
+    {
+        id: confirmSheet
     }
 }

@@ -1,9 +1,11 @@
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/matchers/catch_matchers_floating_point.hpp>
 
 #include "core/FTDictionaryPackage.h"
 #include "core/FTSchedule.h"
 #include "core/FTSettings.h"
 
+#include <utility>
 #include <vector>
 
 using namespace std;
@@ -21,525 +23,346 @@ namespace
         return Result;
     }
 
-    FTCard MakeCardInStage(int Stage, FTDayNumber EnteredOn, FTDayNumber DueOn)
+    FTCard MakeLearnedCard(FTDayNumber LearnedOn)
     {
         FTCard Result = MakeCard();
-        Result.LeitnerStage = Stage;
-        Result.BoxChangedDate = EnteredOn;
-        Result.DueDate = DueOn;
+        LearnCard(Result, LearnedOn);
 
         return Result;
     }
 
-    /** Restores the default ladder on destruction, since FTSettings is a process-wide singleton. */
     struct RulesGuard
     {
         ~RulesGuard()
         {
             const FTScheduleRules Defaults;
-            FTSettings::Get().SetIntervalDays(QList<int>(Defaults.IntervalDays.begin(), Defaults.IntervalDays.end()));
-            FTSettings::Get().SetMaximumDaysInFirstStage(Defaults.MaximumDaysInFirstStage);
-            FTSettings::Get().SetFirstStageFailureReturnsToPool(Defaults.bFirstStageFailureReturnsToPool);
-            FTSettings::Get().SetMissedReviewDemotes(Defaults.bMissedReviewDemotes);
+            FTSettings::Get().SetCustomIntensity(Defaults.Custom);
+            FTSettings::Get().SetLearningIntensity(Defaults.IntensityIndex);
         }
     };
 
-    void SetIntervals(std::initializer_list<int> Days)
+    std::vector<int> AnswerEveryReview(FTCard& Subject, FTDayNumber LearnedOn, int ForgottenReview)
     {
-        FTSettings::Get().SetIntervalDays(QList<int>(Days.begin(), Days.end()));
+        std::vector<int> Days;
+
+        while (Subject.DueDate.has_value() && Days.size() < 50)
+        {
+            const FTDayNumber Day = *Subject.DueDate;
+            const bool bRemembered = static_cast<int>(Days.size()) != ForgottenReview;
+
+            Days.push_back(Day - LearnedOn);
+            AnswerReview(Subject, bRemembered, Day);
+        }
+
+        return Days;
     }
 }
 
-TEST_CASE("The default ladder brings a word back on days 1, 3, 7, 21, 61 and 181", "[schedule]")
-{
-    RulesGuard Guard;
-
-    CHECK(GetLastStage() == 6);
-
-    CHECK(GetIntervalDays(1) == 1);
-    CHECK(GetIntervalDays(2) == 2);
-    CHECK(GetIntervalDays(3) == 4);
-    CHECK(GetIntervalDays(4) == 14);
-    CHECK(GetIntervalDays(5) == 40);
-    CHECK(GetIntervalDays(6) == 120);
-
-    int Day = 0;
-    std::vector<int> Days;
-
-    for (int Stage = 1; Stage <= GetLastStage(); ++Stage)
-    {
-        Day += GetIntervalDays(Stage);
-        Days.push_back(Day);
-    }
-
-    CHECK(Days == std::vector<int>{1, 3, 7, 21, 61, 181});
-}
-
-TEST_CASE("A stage outside the ladder still returns a usable interval", "[schedule]")
-{
-    RulesGuard Guard;
-
-    CHECK(GetIntervalDays(0) == 1);
-    CHECK(GetIntervalDays(-4) == 1);
-
-    // Clamped to the last box rather than failing, so a card from a longer ladder still schedules.
-    CHECK(GetIntervalDays(99) == GetIntervalDays(GetLastStage()));
-}
-
-TEST_CASE("A new card sits in the pool with no dates", "[schedule]")
-{
-    const FTCard Fresh = MakeCard();
-
-    CHECK(IsInPool(Fresh));
-    CHECK_FALSE(IsDue(Fresh, Today));
-    CHECK_FALSE(IsExpired(Fresh, Today));
-}
-
-TEST_CASE("Promoting a pool card puts it in the first stage, due tomorrow", "[schedule]")
-{
-    RulesGuard Guard;
-    FTCard Card = MakeCard();
-
-    Promote(Card, Today);
-
-    CHECK(Card.LeitnerStage == FirstLadderStage);
-    CHECK(Card.DueDate == Today + 1);
-    CHECK(Card.BoxChangedDate == Today);
-    CHECK_FALSE(IsCompleted(Card));
-}
-
-TEST_CASE("Promoting walks up the ladder, one stage at a time", "[schedule]")
-{
-    RulesGuard Guard;
-    FTCard Card = MakeCard();
-
-    Promote(Card, Today);
-    CHECK(Card.LeitnerStage == 1);
-    CHECK(Card.DueDate == Today + 1);
-
-    Promote(Card, Today + 1);
-    CHECK(Card.LeitnerStage == 2);
-    CHECK(Card.DueDate == Today + 1 + 2);
-
-    Promote(Card, Today + 3);
-    CHECK(Card.LeitnerStage == 3);
-    CHECK(Card.DueDate == Today + 3 + 4);
-}
-
-TEST_CASE("Promoting past the last stage completes the card", "[schedule]")
-{
-    RulesGuard Guard;
-    FTCard Card = MakeCardInStage(GetLastStage(), Today - 16, Today);
-
-    Promote(Card, Today);
-
-    CHECK(IsCompleted(Card));
-    CHECK(Card.CompletedDate == Today);
-    CHECK_FALSE(Card.DueDate.has_value());
-    CHECK_FALSE(IsDue(Card, Today + 100));
-    CHECK_FALSE(IsExpired(Card, Today + 100));
-}
-
-TEST_CASE("A completed card is left alone by a further promotion", "[schedule]")
-{
-    RulesGuard Guard;
-    FTCard Card = MakeCardInStage(GetLastStage(), Today - 16, Today);
-    Promote(Card, Today);
-
-    Promote(Card, Today + 5);
-
-    CHECK(Card.CompletedDate == Today);
-    CHECK_FALSE(Card.DueDate.has_value());
-}
-
-TEST_CASE("Demoting drops one stage and schedules the new stage's own interval", "[schedule]")
-{
-    RulesGuard Guard;
-    FTCard Card = MakeCardInStage(3, Today - 8, Today);
-
-    Demote(Card, Today);
-
-    CHECK(Card.LeitnerStage == 2);
-    CHECK(Card.DueDate == Today + GetIntervalDays(2));
-    CHECK(Card.BoxChangedDate == Today);
-}
-
-TEST_CASE("Demoting in the first stage keeps the card there by default", "[schedule]")
-{
-    RulesGuard Guard;
-    FTCard Card = MakeCardInStage(1, Today - 1, Today);
-
-    Demote(Card, Today);
-
-    CHECK(Card.LeitnerStage == FirstLadderStage);
-    CHECK(Card.DueDate == Today + GetIntervalDays(FirstLadderStage));
-}
-
-TEST_CASE("The stage the card entered on is kept when the stage does not change", "[schedule]")
-{
-    RulesGuard Guard;
-    FTCard Card = MakeCardInStage(1, Today, Today + 1);
-
-    Demote(Card, Today + 1);
-    Demote(Card, Today + 2);
-
-    CHECK(Card.BoxChangedDate == Today);
-}
-
-TEST_CASE("Failing in the first stage can be set to return the card to the pool", "[schedule]")
-{
-    RulesGuard Guard;
-    FTSettings::Get().SetFirstStageFailureReturnsToPool(true);
-
-    FTCard Card = MakeCardInStage(1, Today - 1, Today);
-
-    Demote(Card, Today);
-
-    CHECK(IsInPool(Card));
-    CHECK_FALSE(Card.DueDate.has_value());
-}
-
-TEST_CASE("A completed card is demoted back into the last stage", "[schedule]")
-{
-    RulesGuard Guard;
-    FTCard Card = MakeCardInStage(GetLastStage(), Today - 16, Today);
-    Promote(Card, Today);
-    REQUIRE(IsCompleted(Card));
-
-    Demote(Card, Today + 30);
-
-    CHECK(Card.LeitnerStage == GetLastStage());
-    CHECK_FALSE(IsCompleted(Card));
-    CHECK(Card.DueDate == Today + 30 + GetIntervalDays(GetLastStage()));
-}
-
-TEST_CASE("Returning to the pool clears every date the schedule set", "[schedule]")
-{
-    FTCard Card = MakeCardInStage(3, Today - 4, Today);
-
-    ReturnToPool(Card, Today);
-
-    CHECK(Card.LeitnerStage == PoolStage);
-    CHECK(IsInPool(Card));
-    CHECK_FALSE(Card.DueDate.has_value());
-    CHECK_FALSE(IsCompleted(Card));
-    CHECK(Card.BoxChangedDate == Today);
-}
-
-TEST_CASE("A completed card can be sent back to the pool by hand", "[schedule]")
-{
-    RulesGuard Guard;
-    FTCard Card = MakeCardInStage(GetLastStage(), Today - 16, Today);
-    Promote(Card, Today);
-    REQUIRE(IsCompleted(Card));
-
-    ReturnToPool(Card, Today + 40);
-
-    CHECK(IsInPool(Card));
-    CHECK_FALSE(IsCompleted(Card));
-}
-
-TEST_CASE("Marking a pool card complete by hand sends it straight to the last stage", "[schedule]")
-{
-    RulesGuard Guard;
-    FTCard Card = MakeCard();
-
-    MarkCompleted(Card, Today);
-
-    CHECK(Card.LeitnerStage == GetLastStage());
-    CHECK(IsCompleted(Card));
-    CHECK_FALSE(Card.DueDate.has_value());
-    CHECK(Card.BoxChangedDate == Today);
-}
-
-TEST_CASE("Marking a mid-ladder card complete by hand skips the rest of the ladder", "[schedule]")
-{
-    RulesGuard Guard;
-    FTCard Card = MakeCardInStage(2, Today - 1, Today);
-
-    MarkCompleted(Card, Today);
-
-    CHECK(Card.LeitnerStage == GetLastStage());
-    CHECK(IsCompleted(Card));
-    CHECK_FALSE(Card.DueDate.has_value());
-}
-
-TEST_CASE("Marking an already-completed card complete again just restamps the date", "[schedule]")
-{
-    RulesGuard Guard;
-    FTCard Card = MakeCardInStage(GetLastStage(), Today - 16, Today);
-    Promote(Card, Today);
-    REQUIRE(IsCompleted(Card));
-
-    MarkCompleted(Card, Today + 10);
-
-    CHECK(Card.LeitnerStage == GetLastStage());
-    CHECK(Card.CompletedDate == Today + 10);
-}
-
-TEST_CASE("The effective stage clamps a stranded card but leaves the pool and a normal stage "
-          "alone", "[schedule]")
-{
-    RulesGuard Guard;
-
-    CHECK(GetEffectiveStage(MakeCard()) == PoolStage);
-    CHECK(GetEffectiveStage(MakeCardInStage(3, Today - 4, Today)) == 3);
-
-    // Stranded above a since-shortened ladder: never higher than the real last stage.
-    SetIntervals({1, 2, 4});
-    CHECK(GetEffectiveStage(MakeCardInStage(5, Today - 16, Today)) == 3);
-}
-
-TEST_CASE("Promoting a card stranded above a shortened ladder completes it instead of erroring",
+TEST_CASE("A word answered I know it every time comes back on days 2, 8, 23, 58 and 137, then is learned",
           "[schedule]")
 {
     RulesGuard Guard;
-    FTCard Card = MakeCardInStage(5, Today - 16, Today);
 
-    SetIntervals({1, 2, 4});
-    Promote(Card, Today);
+    FTCard Card = MakeLearnedCard(Today);
 
+    CHECK(AnswerEveryReview(Card, Today, -1) == std::vector<int>{2, 8, 23, 58, 137});
     CHECK(IsCompleted(Card));
-    CHECK(Card.CompletedDate == Today);
+    CHECK(Card.CompletedDate == Today + 137);
     CHECK_FALSE(Card.DueDate.has_value());
 }
 
-TEST_CASE("A completed card stays completed when the ladder later grows", "[schedule]")
+TEST_CASE("One I forgot at the third review adds reviews", "[schedule]")
 {
     RulesGuard Guard;
-    SetIntervals({1, 2, 4});
-    FTCard Card = MakeCardInStage(3, Today - 8, Today);
-    Promote(Card, Today);
-    REQUIRE(IsCompleted(Card));
 
-    SetIntervals({1, 2, 4, 7, 14});
+    FTCard Card = MakeLearnedCard(Today);
 
+    CHECK(AnswerEveryReview(Card, Today, 2) == std::vector<int>{2, 8, 23, 27, 36, 57, 102, 195});
     CHECK(IsCompleted(Card));
-    CHECK_FALSE(IsDue(Card, Today + 100));
-    CHECK_FALSE(IsExpired(Card, Today + 100));
 }
 
-TEST_CASE("Due means today or earlier, expired means strictly earlier", "[schedule]")
+TEST_CASE("A new card sits in the pool with no dates and no stability", "[schedule]")
 {
-    const FTCard Tomorrow = MakeCardInStage(2, Today - 2, Today + 1);
-    const FTCard Now = MakeCardInStage(2, Today - 2, Today);
-    const FTCard Yesterday = MakeCardInStage(2, Today - 3, Today - 1);
-
-    CHECK_FALSE(IsDue(Tomorrow, Today));
-    CHECK_FALSE(IsExpired(Tomorrow, Today));
-
-    CHECK(IsDue(Now, Today));
-    CHECK_FALSE(IsExpired(Now, Today));
-
-    CHECK(IsDue(Yesterday, Today));
-    CHECK(IsExpired(Yesterday, Today));
-}
-
-TEST_CASE("A missed day demotes the card once", "[schedule]")
-{
-    RulesGuard Guard;
-    FTCard Card = MakeCardInStage(3, Today - 5, Today - 1);
-
-    CHECK(ApplyExpiry(Card, Today));
-
-    CHECK(Card.LeitnerStage == 2);
-    CHECK(Card.DueDate == Today);
-}
-
-TEST_CASE("With the box penalty off a missed day keeps the card's box and leaves it due", "[schedule]")
-{
-    RulesGuard Guard;
-    FTSettings::Get().SetMissedReviewDemotes(false);
-
-    FTCard Card = MakeCardInStage(3, Today - 5, Today - 1);
-
-    CHECK_FALSE(ApplyExpiry(Card, Today));
-
-    CHECK(Card.LeitnerStage == 3);
-    CHECK(IsDue(Card, Today));
-}
-
-TEST_CASE("With the box penalty off a stale first-box card still returns to the pool", "[schedule]")
-{
-    RulesGuard Guard;
-    FTSettings::Get().SetMissedReviewDemotes(false);
-    FTSettings::Get().SetMaximumDaysInFirstStage(1);
-
-    FTCard Card = MakeCardInStage(FirstLadderStage, Today - 5, Today - 1);
-
-    CHECK(ApplyExpiry(Card, Today));
-
-    CHECK(IsInPool(Card));
-}
-
-TEST_CASE("A card punished for missing its date is still owed a review today", "[schedule]")
-{
-    RulesGuard Guard;
-    FTCard Card = MakeCardInStage(3, Today - 30, Today - 20);
-
-    CHECK(ApplyExpiry(Card, Today));
-
-    CHECK(Card.LeitnerStage == 2);
-    CHECK(IsDue(Card, Today));
-    CHECK(Card.DueDate == Today);
-}
-
-TEST_CASE("Applying expiry twice on the same day moves the card once", "[schedule]")
-{
-    RulesGuard Guard;
-    FTCard Card = MakeCardInStage(3, Today - 5, Today - 1);
-
-    CHECK(ApplyExpiry(Card, Today));
-    CHECK_FALSE(ApplyExpiry(Card, Today));
-
-    CHECK(Card.LeitnerStage == 2);
-}
-
-TEST_CASE("A card that is merely due is not expired and does not move", "[schedule]")
-{
-    RulesGuard Guard;
-    FTCard Card = MakeCardInStage(3, Today - 4, Today);
-
-    CHECK_FALSE(ApplyExpiry(Card, Today));
-
-    CHECK(Card.LeitnerStage == 3);
-    CHECK(Card.DueDate == Today);
-}
-
-TEST_CASE("Longer than three days in the first stage returns the card to the pool", "[schedule]")
-{
-    RulesGuard Guard;
-    FTCard Card = MakeCardInStage(1, Today - 4, Today - 3);
-
-    CHECK(ApplyExpiry(Card, Today));
+    const FTCard Card = MakeCard();
 
     CHECK(IsInPool(Card));
     CHECK_FALSE(Card.DueDate.has_value());
+    CHECK_FALSE(Card.Stability.has_value());
+    CHECK_FALSE(Card.Difficulty.has_value());
 }
 
-TEST_CASE("Exactly three days in the first stage does not reach the pool", "[schedule]")
+TEST_CASE("Learning a pool card schedules its first review two days later", "[schedule]")
 {
     RulesGuard Guard;
-    FTCard Card = MakeCardInStage(1, Today - 3, Today - 2);
 
-    CHECK(ApplyExpiry(Card, Today));
+    const FTCard Card = MakeLearnedCard(Today);
 
     CHECK(Card.LeitnerStage == FirstLadderStage);
-    CHECK(Card.DueDate == Today);
+    CHECK(Card.DueDate == Today + 2);
+    CHECK(Card.BoxChangedDate == Today);
+    REQUIRE(Card.Stability.has_value());
+    CHECK_THAT(*Card.Stability, Catch::Matchers::WithinAbs(3.173, 0.001));
+    REQUIRE(Card.Difficulty.has_value());
+    CHECK_THAT(*Card.Difficulty, Catch::Matchers::WithinAbs(5.283, 0.001));
 }
 
-TEST_CASE("The days allowed in the first stage is a setting", "[schedule]")
+TEST_CASE("I know it raises stability and I forgot lowers it", "[schedule]")
 {
     RulesGuard Guard;
-    FTSettings::Get().SetMaximumDaysInFirstStage(1);
 
-    FTCard Card = MakeCardInStage(1, Today - 2, Today - 1);
+    FTCard Remembered = MakeLearnedCard(Today);
+    FTCard Forgotten = Remembered;
 
-    CHECK(ApplyExpiry(Card, Today));
+    AnswerReview(Remembered, true, Today + 3);
+    AnswerReview(Forgotten, false, Today + 3);
+
+    CHECK(*Remembered.Stability > 3.173);
+    CHECK(*Forgotten.Stability < 3.173);
+    CHECK(*Forgotten.Difficulty > *Remembered.Difficulty);
+    CHECK(*Forgotten.DueDate < *Remembered.DueDate);
+    CHECK(Forgotten.DueDate >= Today + 4);
+}
+
+TEST_CASE("A late I know it grows stability more than one on time", "[schedule]")
+{
+    RulesGuard Guard;
+
+    FTCard OnTime = MakeLearnedCard(Today);
+    FTCard Late = OnTime;
+
+    AnswerReview(OnTime, true, Today + 3);
+    AnswerReview(Late, true, Today + 10);
+
+    CHECK(*Late.Stability > *OnTime.Stability);
+}
+
+TEST_CASE("A missed day leaves the card as it was, still due", "[schedule]")
+{
+    RulesGuard Guard;
+
+    const FTCard Card = MakeLearnedCard(Today);
+
+    CHECK(IsDue(Card, Today + 30));
+    CHECK(Card.LeitnerStage == FirstLadderStage);
+    CHECK(Card.DueDate == Today + 2);
+}
+
+TEST_CASE("Due means today or earlier", "[schedule]")
+{
+    RulesGuard Guard;
+
+    const FTCard Card = MakeLearnedCard(Today);
+
+    CHECK_FALSE(IsDue(Card, Today + 1));
+    CHECK(IsDue(Card, Today + 2));
+    CHECK(IsDue(Card, Today + 3));
+}
+
+TEST_CASE("Two answers on the same day still move stability", "[schedule]")
+{
+    RulesGuard Guard;
+
+    FTCard Card = MakeLearnedCard(Today);
+    const double Before = *Card.Stability;
+
+    AnswerReview(Card, false, Today);
+
+    CHECK(*Card.Stability < Before);
+    CHECK(Card.DueDate >= Today + 1);
+}
+
+TEST_CASE("A higher recall target brings reviews sooner", "[schedule]")
+{
+    RulesGuard Guard;
+
+    FTSettings::Get().SetLearningIntensity(2);
+    FTCard Strict = MakeLearnedCard(Today);
+    CHECK(AnswerEveryReview(Strict, Today, -1) == std::vector<int>{1, 4, 10, 22, 46, 91, 173});
+
+    FTSettings::Get().SetLearningIntensity(0);
+    FTCard Relaxed = MakeLearnedCard(Today);
+    CHECK(AnswerEveryReview(Relaxed, Today, -1) == std::vector<int>{3, 14, 49});
+}
+
+TEST_CASE("At 90% recall the next gap equals stability", "[schedule]")
+{
+    RulesGuard Guard;
+
+    FTSettings::Get().SetLearningIntensity(0);
+
+    CHECK(GetNextIntervalDays(10.0) == 10);
+    CHECK(GetNextIntervalDays(100.4) == 100);
+    CHECK(GetNextIntervalDays(0.01) == 1);
+    CHECK(GetNextIntervalDays(100000.0) == MaximumIntervalDays);
+    CHECK_THAT(GetRetrievability(10.0, 10), Catch::Matchers::WithinAbs(0.9, 0.0001));
+    CHECK_THAT(GetRetrievability(10.0, 0), Catch::Matchers::WithinAbs(1.0, 0.0001));
+}
+
+TEST_CASE("A word is learned once it is as strong as the learning intensity asks", "[schedule]")
+{
+    RulesGuard Guard;
+
+    for (size_t Index = 0; Index < LearningIntensities.size(); ++Index)
+    {
+        const FTLearningIntensity& Intensity{LearningIntensities[Index]};
+        FTSettings::Get().SetLearningIntensity(Index);
+
+        FTCard Below{MakeLearnedCard(Today)};
+        PlaceWithStability(Below, Intensity.LearnedStability - 1.0, Today);
+        CHECK_FALSE(IsCompleted(Below));
+
+        FTCard Strong{MakeLearnedCard(Today)};
+        PlaceWithStability(Strong, Intensity.LearnedStability, Today);
+        CHECK(IsCompleted(Strong));
+        CHECK_FALSE(Strong.DueDate.has_value());
+    }
+}
+
+TEST_CASE("A single mistake never makes a new word learned sooner", "[schedule]")
+{
+    RulesGuard Guard;
+
+    for (size_t Index = 0; Index < LearningIntensities.size(); ++Index)
+    {
+        const FTLearningIntensity& Intensity{LearningIntensities[Index]};
+        FTSettings::Get().SetLearningIntensity(Index);
+
+        const FTSchedulePreview Remembered{PreviewSchedule(-1)};
+
+        for (int ForgottenReview = 0; ForgottenReview < static_cast<int>(Remembered.ReviewDays.size()); ++ForgottenReview)
+        {
+            const FTSchedulePreview Forgotten{PreviewSchedule(ForgottenReview)};
+
+            CAPTURE(Intensity.TargetRetention, ForgottenReview);
+            CHECK(Forgotten.CompletedDay > Remembered.CompletedDay);
+            CHECK(Forgotten.ReviewDays.size() > Remembered.ReviewDays.size());
+        }
+    }
+}
+
+TEST_CASE("Only a word as strong as the intensity's quick review stability asks yes or no", "[schedule]")
+{
+    RulesGuard Guard;
+
+    FTCard Card = MakeCard();
+    CHECK_FALSE(IsQuickReviewCard(Card));
+
+    Card.Stability = 13.9;
+    CHECK_FALSE(IsQuickReviewCard(Card));
+
+    Card.Stability = 14.0;
+    CHECK(IsQuickReviewCard(Card));
+
+    FTSettings::Get().SetCustomIntensity({93, 180, 30});
+    FTSettings::Get().SetLearningIntensity(CustomIntensityIndex);
+    CHECK_FALSE(IsQuickReviewCard(Card));
+}
+
+TEST_CASE("Every intensity starts quick reviews at the same stability", "[schedule]")
+{
+    for (const FTLearningIntensity& Intensity : LearningIntensities)
+    {
+        CHECK(Intensity.QuickReviewStability == LearningIntensities.front().QuickReviewStability);
+    }
+}
+
+TEST_CASE("Custom intensity drives the schedule", "[schedule]")
+{
+    RulesGuard Guard;
+
+    FTSettings::Get().SetCustomIntensity({90, 30, 5});
+    FTSettings::Get().SetLearningIntensity(CustomIntensityIndex);
+
+    FTCard Card{MakeLearnedCard(Today)};
+
+    CHECK(AnswerEveryReview(Card, Today, -1) == std::vector<int>{3, 14});
+    CHECK(IsCompleted(Card));
+}
+
+TEST_CASE("Progress stages climb with stability and stay within the shown count", "[schedule]")
+{
+    RulesGuard Guard;
+
+    CHECK(GetLastStage() == ProgressStageCount);
+    CHECK(GetProgressStage(0.4) == FirstLadderStage);
+    CHECK(GetProgressStage(3.2) == 1);
+    CHECK(GetProgressStage(11.1) == 2);
+    CHECK(GetProgressStage(35.0) == 3);
+    CHECK(GetProgressStage(102.0) == 4);
+    CHECK(GetProgressStage(5000.0) == ProgressStageCount);
+}
+
+TEST_CASE("Returning to the pool clears the dates, stability and difficulty", "[schedule]")
+{
+    RulesGuard Guard;
+
+    FTCard Card = MakeLearnedCard(Today);
+    ReturnToPool(Card, Today + 5);
 
     CHECK(IsInPool(Card));
+    CHECK_FALSE(Card.DueDate.has_value());
+    CHECK_FALSE(Card.CompletedDate.has_value());
+    CHECK_FALSE(Card.Stability.has_value());
+    CHECK_FALSE(Card.Difficulty.has_value());
+    CHECK(Card.BoxChangedDate == Today + 5);
 }
 
-TEST_CASE("Neither a pool card nor a completed one ever expires", "[schedule]")
-{
-    RulesGuard Guard;
-    FTCard Pooled = MakeCard();
-    FTCard Done = MakeCardInStage(GetLastStage(), Today - 16, Today);
-    Promote(Done, Today);
-
-    CHECK_FALSE(ApplyExpiry(Pooled, Today + 500));
-    CHECK_FALSE(ApplyExpiry(Done, Today + 500));
-
-    CHECK(IsInPool(Pooled));
-    CHECK(IsCompleted(Done));
-}
-
-TEST_CASE("A card in a box with no due date does not expire", "[schedule]")
-{
-    RulesGuard Guard;
-    FTCard Card = MakeCard();
-    Card.LeitnerStage = 2;
-    Card.BoxChangedDate = Today - 30;
-
-    CHECK_FALSE(ApplyExpiry(Card, Today));
-    CHECK_FALSE(IsDue(Card, Today));
-    CHECK_FALSE(IsExpired(Card, Today));
-    CHECK(Card.LeitnerStage == 2);
-}
-
-TEST_CASE("Custom intervals are used for both promotion and demotion", "[schedule]")
-{
-    RulesGuard Guard;
-    FTCard Card = MakeCard();
-
-    Promote(Card, Today);
-    CHECK(Card.DueDate == Today + 1);
-
-    Promote(Card, Today + 1);
-    CHECK(Card.LeitnerStage == 2);
-
-    SetIntervals({1, 3, 5, 7, 10});
-
-    Promote(Card, Today + 4);
-    CHECK(Card.LeitnerStage == 3);
-    CHECK(Card.DueDate == Today + 4 + 5);
-
-    CHECK(GetLastStage() == 5);
-}
-
-TEST_CASE("An empty ladder is refused rather than dividing the schedule by nothing", "[schedule]")
+TEST_CASE("Marking a card complete by hand keeps its stability", "[schedule]")
 {
     RulesGuard Guard;
 
-    FTSettings::Get().SetIntervalDays({});
+    FTCard Card = MakeLearnedCard(Today);
+    const double Stability = *Card.Stability;
+
+    MarkCompleted(Card, Today + 1);
+
+    CHECK(IsCompleted(Card));
+    CHECK(Card.CompletedDate == Today + 1);
+    CHECK_FALSE(Card.DueDate.has_value());
+    CHECK(Card.Stability == Stability);
+}
+
+TEST_CASE("Placing a card with a known stability schedules it that far out", "[schedule]")
+{
+    RulesGuard Guard;
+
+    FTSettings::Get().SetLearningIntensity(0);
 
     FTCard Card = MakeCard();
+    PlaceWithStability(Card, 14.0, Today);
 
-    Promote(Card, Today);
-
-    CHECK_FALSE(IsInPool(Card));
-    CHECK(GetLastStage() == static_cast<int>(FTScheduleRules{}.IntervalDays.size()));
+    CHECK(Card.DueDate == Today + 14);
+    CHECK(Card.Stability == 14.0);
+    CHECK(Card.Difficulty.has_value());
+    CHECK(Card.LeitnerStage == GetProgressStage(14.0));
 }
 
-TEST_CASE("A user-supplied ladder is sanitised", "[schedule]")
+TEST_CASE("Schedule settings are sanitised", "[schedule]")
 {
     FTScheduleRules Rules;
-    Rules.IntervalDays = {0, -3, 2, 900, 5000};
+    Rules.IntensityIndex = 9;
+    Rules.Custom = {20, 9000, 9000};
 
     Sanitise(Rules);
 
-    CHECK(Rules.IntervalDays == std::vector<int>{1, 1, 2, 900, MaximumIntervalDays});
+    CHECK(Rules.IntensityIndex == CustomIntensityIndex);
+    CHECK(Rules.Custom.TargetRetention == MinimumTargetRetention);
+    CHECK(Rules.Custom.LearnedStability == MaximumLearnedStability);
+    CHECK(Rules.Custom.QuickReviewStability == MaximumQuickReviewStability);
 }
 
-TEST_CASE("An emptied ladder falls back to the default rather than stopping the schedule", "[schedule]")
+TEST_CASE("The preview shows the remembered path and the path with one I forgot", "[schedule]")
 {
-    FTScheduleRules Rules;
-    Rules.IntervalDays.clear();
+    RulesGuard Guard;
 
-    Sanitise(Rules);
+    const FTSchedulePreview Remembered = PreviewSchedule(-1);
+    CHECK(Remembered.ReviewDays == std::vector<int>{2, 8, 23, 58, 137});
+    CHECK(Remembered.QuickReviews == std::vector<bool>{false, false, true, true, true});
+    CHECK(Remembered.CompletedDay == 137);
 
-    CHECK_FALSE(Rules.IntervalDays.empty());
-    CHECK(Rules.IntervalDays == FTScheduleRules{}.IntervalDays);
-}
-
-TEST_CASE("A ladder longer than the cap is trimmed", "[schedule]")
-{
-    FTScheduleRules Rules;
-    Rules.IntervalDays.assign(40, 3);
-
-    Sanitise(Rules);
-
-    CHECK(static_cast<int>(Rules.IntervalDays.size()) == MaximumLadderStages);
-}
-
-TEST_CASE("The days allowed in the first stage is sanitised too", "[schedule]")
-{
-    FTScheduleRules Rules;
-    Rules.MaximumDaysInFirstStage = -5;
-
-    Sanitise(Rules);
-
-    CHECK(Rules.MaximumDaysInFirstStage >= 1);
+    const FTSchedulePreview Forgotten = PreviewSchedule(SchedulePreviewForgottenReview);
+    CHECK(Forgotten.ReviewDays == std::vector<int>{2, 8, 23, 27, 36, 57, 102, 195});
+    CHECK(Forgotten.CompletedDay == 195);
 }
 
 TEST_CASE("The daily goal is the training count times the sessions per day", "[schedule]")
@@ -678,61 +501,6 @@ TEST_CASE("Zero sessions per day leaves no daily goal", "[schedule]")
 
     CHECK(Rules.SessionsPerDay == 0);
     CHECK(Rules.GetDailyGoal() == 0);
-}
-
-TEST_CASE("Shortening the ladder completes a card that was above the new end", "[schedule]")
-{
-    RulesGuard Guard;
-    SetIntervals({1, 2, 4});
-
-    FTCard Card = MakeCardInStage(5, Today - 16, Today);
-
-    Promote(Card, Today);
-
-    CHECK(IsCompleted(Card));
-}
-
-TEST_CASE("Shortening the ladder demotes a stranded card into the new ladder", "[schedule]")
-{
-    RulesGuard Guard;
-    SetIntervals({1, 2, 4});
-
-    FTCard Card = MakeCardInStage(5, Today - 16, Today);
-
-    Demote(Card, Today);
-
-    CHECK(Card.LeitnerStage == 2);
-    CHECK(Card.DueDate == Today + GetIntervalDays(2));
-}
-
-TEST_CASE("A stranded card is still due and still expires", "[schedule]")
-{
-    RulesGuard Guard;
-
-    FTCard Card = MakeCardInStage(5, Today - 20, Today - 1);
-
-    CHECK(IsDue(Card, Today));
-    CHECK(IsExpired(Card, Today));
-
-    SetIntervals({1, 2, 4});
-
-    CHECK(ApplyExpiry(Card, Today));
-
-    CHECK(Card.LeitnerStage == 2);
-}
-
-TEST_CASE("Lengthening the ladder leaves completed cards completed", "[schedule]")
-{
-    RulesGuard Guard;
-    FTCard Card = MakeCardInStage(GetLastStage(), Today - 16, Today);
-    Promote(Card, Today);
-    REQUIRE(IsCompleted(Card));
-
-    SetIntervals({1, 2, 4, 8, 16, 32, 64});
-
-    Promote(Card, Today + 1);
-
-    CHECK(IsCompleted(Card));
 }
 
 TEST_CASE("The examples shown per meaning is clamped to a readable range", "[settings]")

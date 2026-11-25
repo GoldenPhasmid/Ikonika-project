@@ -1,0 +1,11 @@
+schema_version = "1.0.0"
+id = "ikonika_lufi_export"
+version = "1.0.0"
+name = "Ikonika Lufi Export"
+tagline = "Export Lufi animations to the portable Qt demo"
+maintainer = "Ikonika"
+type = "add-on"
+blender_version_min = "5.3.0"
+license = ["SPDX:GPL-3.0-or-later"]
+[permissions]
+files = "Write animation assets, snapshots, and export logs"

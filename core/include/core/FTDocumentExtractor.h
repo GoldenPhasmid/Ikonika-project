@@ -2,8 +2,10 @@
 
 #include "core/FTReaderDocument.h"
 
+#include <cstdint>
 #include <optional>
 #include <string>
+#include <vector>
 
 /**
  * Turns a document file into the text a reader renders: a title and an ordered list of
@@ -53,3 +55,11 @@ struct FTBookMetadata
 };
 
 std::optional<FTBookMetadata> ReadBookMetadata(const std::string& FilePath);
+
+struct FTBookSample
+{
+    std::vector<std::string> Paragraphs;
+    int64_t EstimatedWords = 0;
+};
+
+std::optional<FTBookSample> SampleBookText(const std::string& FilePath);

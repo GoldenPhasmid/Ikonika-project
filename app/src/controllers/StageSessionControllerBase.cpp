@@ -69,6 +69,15 @@ bool StageSessionControllerBase::IsFinished() const
     return bFinished;
 }
 
+bool StageSessionControllerBase::HasFollowUp() const
+{
+    return false;
+}
+
+void StageSessionControllerBase::continueToFollowUp()
+{
+}
+
 int StageSessionControllerBase::GetStage() const
 {
     return HasCards() ? CurrentStageIndex + 1 : 0;

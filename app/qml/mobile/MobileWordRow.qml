@@ -1,6 +1,5 @@
 import QtQuick
 import QtQuick.Layouts
-import "MobileIcons.js" as Icons
 
 Item
 {
@@ -74,15 +73,17 @@ Item
             visible: root.editing
             spacing: AppMetrics.gapSmall
 
-            MobileActionIconButton
+            MobileIconButton
             {
-                iconSvg: Icons.Icons.edit.path
+                iconName: "edit"
+                text: qsTr("Edit")
                 onClicked: root.editRequested()
             }
 
-            MobileActionIconButton
+            MobileIconButton
             {
-                iconSvg: Icons.Icons.trash.path
+                iconName: "trash"
+                text: qsTr("Delete")
                 onClicked: root.deleteRequested()
             }
         }

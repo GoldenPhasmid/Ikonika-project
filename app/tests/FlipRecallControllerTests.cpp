@@ -87,6 +87,22 @@ TEST_CASE("First advance reveals the answer without moving to the next card", "[
     CHECK(Controller.GetCurrentSessionCount() == CountBefore);
 }
 
+TEST_CASE("Reveal shows the answer and a second reveal does not move to the next card", "[fliprecall]")
+{
+    FAppSpeechGuard SpeechGuard;
+
+    FlipRecallController Controller;
+    Controller.Start(MakeParams(MakeCards(5)));
+
+    const int CountBefore = Controller.GetCurrentSessionCount();
+
+    Controller.reveal();
+    Controller.reveal();
+
+    CHECK(Controller.IsAnswered());
+    CHECK(Controller.GetCurrentSessionCount() == CountBefore);
+}
+
 TEST_CASE("A question side override takes precedence over the global setting", "[fliprecall]")
 {
     FQuestionSideGuard SideGuard;

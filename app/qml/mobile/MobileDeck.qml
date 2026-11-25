@@ -13,20 +13,17 @@ Item
     property int wordCount: 0
     property int learningCount: 0
     property int learnedCount: 0
-    property int untriagedCount: 0
     property bool compact: false
     property bool pickable: false
     property bool picked: false
 
-    signal trainRequested()
     signal openRequested()
     signal pickRequested()
+    signal held()
 
-    readonly property bool trainable: root.untriagedCount > 0
-    readonly property bool pressed: coverTap.pressed
+    readonly property bool pressed: deckTap.pressed
     readonly property bool lifted: root.enabled && !root.compact && (root.pressed || root.picked)
     readonly property real wordCountSafe: Math.max(root.wordCount, 1)
-    readonly property string iconPath: Icons.Icons[root.iconName] ? Icons.Icons[root.iconName].path : ""
     readonly property string detail: Decks.detail(root)
 
     function wiggle()
@@ -43,13 +40,6 @@ Item
             return
         }
 
-        if (root.trainable)
-        {
-            root.trainRequested()
-
-            return
-        }
-
         root.openRequested()
     }
 
@@ -61,8 +51,16 @@ Item
     Behavior on scale { NumberAnimation { duration: AppMetrics.motionBase; easing.type: Easing.OutCubic } }
 
     Accessible.role: Accessible.Button
-    Accessible.name: root.trainable ? qsTr("Train %1, %2").arg(root.title).arg(root.detail)
-                                    : qsTr("Open %1, %2").arg(root.title).arg(root.detail)
+    Accessible.name: qsTr("Open %1, %2").arg(root.title).arg(root.detail)
+    Accessible.onPressAction: if (root.enabled) root.activate()
+
+    TapHandler
+    {
+        id: deckTap
+
+        onTapped: root.activate()
+        onLongPressed: root.held()
+    }
 
     component Progress: Rectangle
     {
@@ -90,33 +88,6 @@ Item
         }
     }
 
-    component WordsButton: Item
-    {
-        property color iconColour: AppTheme.colourCoverInk
-
-        visible: !root.pickable
-
-        Accessible.role: Accessible.Button
-        Accessible.name: qsTr("Words of %1").arg(root.title)
-
-        MobileVectorIcon
-        {
-            anchors.centerIn: parent
-            width: AppMetrics.headerActionIconSize
-            height: width
-
-            svgPath: Icons.Icons.contents.path
-            color: parent.iconColour
-        }
-
-        TapHandler
-        {
-            gesturePolicy: TapHandler.ReleaseWithinBounds
-
-            onTapped: root.openRequested()
-        }
-    }
-
     DesktopWiggleAnimation
     {
         id: refusal
@@ -135,24 +106,15 @@ Item
 
         Behavior on color { ColorAnimation { duration: AppMetrics.motionFast } }
 
-        TapHandler
-        {
-            id: coverTap
-
-            onTapped: root.activate()
-        }
-
         CoverStripe {}
 
-        MobileVectorIcon
+        DesktopIcon
         {
             anchors.left: parent.left
             anchors.top: parent.top
             anchors.margins: AppMetrics.gapCompact
-            width: AppMetrics.deckIconSize
-            height: width
 
-            svgPath: root.iconPath
+            name: root.iconName
             color: AppTheme.colourCoverInk
         }
 
@@ -161,7 +123,7 @@ Item
             anchors.top: parent.top
             anchors.right: parent.right
             anchors.margins: AppMetrics.gapCompact
-            width: AppMetrics.deckIconSize
+            width: AppMetrics.iconSize
             height: width
             visible: root.picked
 
@@ -177,15 +139,6 @@ Item
             color: "transparent"
             border.color: AppTheme.colourCoverInk
             border.width: AppMetrics.focusRingWidth
-        }
-
-        WordsButton
-        {
-            anchors.top: parent.top
-            anchors.right: parent.right
-            anchors.margins: AppMetrics.gapTight
-            width: AppMetrics.readerOpenIconSize + AppMetrics.gapSmall
-            height: width
         }
 
         ColumnLayout
@@ -241,7 +194,7 @@ Item
         {
             anchors.fill: parent
             color: AppTheme.colourFaint
-            opacity: rowTap.pressed ? 1.0 : 0.0
+            opacity: root.pressed ? 1.0 : 0.0
 
             Behavior on opacity { NumberAnimation { duration: AppMetrics.motionFast } }
         }
@@ -249,90 +202,62 @@ Item
         RowLayout
         {
             anchors.fill: parent
-            spacing: 0
+            spacing: AppMetrics.gapCompact
 
-            Item
+            Rectangle
             {
-                Layout.fillWidth: true
-                Layout.fillHeight: true
+                Layout.preferredWidth: AppMetrics.readerRowCoverWidth
+                Layout.preferredHeight: Math.round(AppMetrics.readerRowCoverWidth / AppMetrics.readerTileAspect)
+                radius: AppMetrics.radiusSmall
+                color: root.tint
 
-                RowLayout
+                CoverStripe {}
+
+                DesktopIcon
                 {
-                    anchors.fill: parent
-                    spacing: AppMetrics.gapCompact
+                    anchors.centerIn: parent
 
-                    Rectangle
-                    {
-                        Layout.preferredWidth: AppMetrics.readerRowCoverWidth
-                        Layout.preferredHeight: Math.round(AppMetrics.readerRowCoverWidth / AppMetrics.readerTileAspect)
-                        radius: AppMetrics.radiusSmall
-                        color: root.tint
-
-                        CoverStripe {}
-
-                        MobileVectorIcon
-                        {
-                            anchors.centerIn: parent
-                            width: AppMetrics.headerActionIconSize
-                            height: width
-
-                            svgPath: root.iconPath
-                            color: AppTheme.colourCoverInk
-                        }
-
-                        Progress
-                        {
-                            anchors.left: parent.left
-                            anchors.right: parent.right
-                            anchors.bottom: parent.bottom
-                            anchors.margins: AppMetrics.gapTight + AppMetrics.borderWidth
-                            height: AppMetrics.coverProgressHeight - AppMetrics.borderWidth
-                        }
-                    }
-
-                    ColumnLayout
-                    {
-                        Layout.fillWidth: true
-                        spacing: AppMetrics.borderWidth * 3
-
-                        Text
-                        {
-                            Layout.fillWidth: true
-
-                            text: root.title
-                            color: AppTheme.colourText
-                            font.pixelSize: AppMetrics.fontLabel
-                            font.weight: Font.Medium
-                            font.family: AppMetrics.fontFamily
-                            elide: Text.ElideRight
-                        }
-
-                        Text
-                        {
-                            Layout.fillWidth: true
-
-                            text: root.detail
-                            color: AppTheme.colourMuted
-                            font.pixelSize: AppMetrics.fontSmall
-                            font.family: AppMetrics.fontFamily
-                            elide: Text.ElideRight
-                        }
-                    }
+                    name: root.iconName
+                    color: AppTheme.colourCoverInk
                 }
 
-                TapHandler
+                Progress
                 {
-                    id: rowTap
-
-                    onTapped: root.activate()
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.bottom: parent.bottom
+                    anchors.margins: AppMetrics.gapTight + AppMetrics.borderWidth
+                    height: AppMetrics.coverProgressHeight - AppMetrics.borderWidth
                 }
             }
 
-            WordsButton
+            ColumnLayout
             {
-                Layout.preferredWidth: AppMetrics.buttonHeightLarge - AppMetrics.gapCompact
-                Layout.fillHeight: true
-                iconColour: AppTheme.colourMuted
+                Layout.fillWidth: true
+                spacing: AppMetrics.borderWidth * 3
+
+                Text
+                {
+                    Layout.fillWidth: true
+
+                    text: root.title
+                    color: AppTheme.colourText
+                    font.pixelSize: AppMetrics.fontLabel
+                    font.weight: Font.Medium
+                    font.family: AppMetrics.fontFamily
+                    elide: Text.ElideRight
+                }
+
+                Text
+                {
+                    Layout.fillWidth: true
+
+                    text: root.detail
+                    color: AppTheme.colourMuted
+                    font.pixelSize: AppMetrics.fontSmall
+                    font.family: AppMetrics.fontFamily
+                    elide: Text.ElideRight
+                }
             }
         }
 

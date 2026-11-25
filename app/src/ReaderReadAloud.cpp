@@ -76,7 +76,7 @@ ReaderReadAloud::ReaderReadAloud(const FTParagraphModel& InParagraphs, QObject* 
 void ReaderReadAloud::startAt(int Paragraph, int Character)
 {
     const std::optional<FTNarrationSentence> Sentence{
-        FindNarrationSentenceAt(Paragraphs.GetParagraphs(), Paragraph, Character, GetLanguageCode())};
+        FindNarrationSentenceAt(GetParagraphs(), Paragraph, Character, GetLanguageCode())};
 
     if (!Sentence.has_value())
     {
@@ -90,16 +90,6 @@ void ReaderReadAloud::startAt(int Paragraph, int Character)
 
 void ReaderReadAloud::pause()
 {
-    Pause(true);
-}
-
-void ReaderReadAloud::pauseForLookup()
-{
-    Pause(false);
-}
-
-void ReaderReadAloud::Pause(bool bKeepPlace)
-{
     if (!bPlaying)
     {
         return;
@@ -108,7 +98,7 @@ void ReaderReadAloud::Pause(bool bKeepPlace)
     const bool bSpeedPending{SpeedRestart.isActive()};
     SpeedRestart.stop();
 
-    if (!bKeepPlace || bSpeedPending || !AppSpeech::Get().PauseNarration())
+    if (bSpeedPending || !AppSpeech::Get().PauseNarration())
     {
         Silence();
     }
@@ -179,7 +169,7 @@ void ReaderReadAloud::previous()
     }
 
     const std::optional<FTNarrationSentence> Before{
-        FindNarrationSentenceBefore(Paragraphs.GetParagraphs(), *Current, GetLanguageCode())};
+        FindNarrationSentenceBefore(GetParagraphs(), *Current, GetLanguageCode())};
 
     qCInfo(LogSpeech) << "read aloud goes back a sentence";
 
@@ -193,8 +183,10 @@ void ReaderReadAloud::next()
         return;
     }
 
+    WantParagraphsAfter(Current->Paragraph);
+
     const std::optional<FTNarrationSentence> After{
-        FindNarrationSentenceAfter(Paragraphs.GetParagraphs(), *Current, GetLanguageCode())};
+        FindNarrationSentenceAfter(GetParagraphs(), *Current, GetLanguageCode())};
 
     if (!After.has_value())
     {
@@ -228,6 +220,20 @@ void ReaderReadAloud::SetTitle(const QString& Value)
     Title = Value;
 }
 
+void ReaderReadAloud::SetLanguage(const std::string& Value)
+{
+    if (Language == Value)
+    {
+        return;
+    }
+
+    Language = Value;
+
+    qCInfo(LogSpeech) << "read aloud narrates in" << QString::fromStdString(GetLanguageCode());
+
+    emit availableChanged();
+}
+
 void ReaderReadAloud::SetSavedPlace(int Paragraph, int Character)
 {
     if (SavedParagraph == Paragraph && SavedCharacter == Character)
@@ -239,6 +245,24 @@ void ReaderReadAloud::SetSavedPlace(int Paragraph, int Character)
     SavedCharacter = Character;
 
     emit savedChanged();
+}
+
+void ReaderReadAloud::UseParagraphs(const std::vector<std::string>* Override)
+{
+    if (ParagraphOverride == Override)
+    {
+        return;
+    }
+
+    stop();
+    ParagraphOverride = Override;
+
+    qCInfo(LogSpeech) << "read aloud reads" << (Override != nullptr ? "the PDF text layer" : "the book's paragraphs");
+}
+
+void ReaderReadAloud::SetParagraphsWanted(std::function<void(int)> Callback)
+{
+    ParagraphsWanted = std::move(Callback);
 }
 
 bool ReaderReadAloud::IsAvailable() const
@@ -348,8 +372,10 @@ void ReaderReadAloud::QueueAhead()
 
     while (!bReachedEnd && (Queued.size() < MinimumQueuedSentences || Seconds < NarrationLookaheadSeconds))
     {
+        WantParagraphsAfter(LastQueued.has_value() ? LastQueued->Paragraph : Current->Paragraph);
+
         const std::optional<FTNarrationSentence> Next{LastQueued.has_value()
-            ? FindNarrationSentenceAfter(Paragraphs.GetParagraphs(), *LastQueued, LanguageCode)
+            ? FindNarrationSentenceAfter(GetParagraphs(), *LastQueued, LanguageCode)
             : Current};
 
         if (!Next.has_value())
@@ -478,7 +504,20 @@ void ReaderReadAloud::PublishSession()
     AppSpeech::Get().UpdateNarrationSession(Title, bStarted, bPlaying);
 }
 
+const std::vector<std::string>& ReaderReadAloud::GetParagraphs() const
+{
+    return ParagraphOverride != nullptr ? *ParagraphOverride : Paragraphs.GetParagraphs();
+}
+
+void ReaderReadAloud::WantParagraphsAfter(int Paragraph)
+{
+    if (ParagraphOverride != nullptr && ParagraphsWanted)
+    {
+        ParagraphsWanted(Paragraph);
+    }
+}
+
 std::string ReaderReadAloud::GetLanguageCode() const
 {
-    return FTSettings::Get().GetLanguageRules().TargetLanguage;
+    return Language.empty() ? FTSettings::Get().GetLanguageRules().TargetLanguage : Language;
 }

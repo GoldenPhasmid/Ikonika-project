@@ -181,6 +181,44 @@ namespace
         ");"
         "CREATE INDEX IF NOT EXISTS IdxBookCardsBook ON BookCards (BookKey);";
 
+    constexpr const char* UserDeckCategoriesDefinition =
+        "CREATE TABLE IF NOT EXISTS UserDeckCategories"
+        "("
+        "    Id              TEXT PRIMARY KEY NOT NULL,"
+        "    Name            TEXT NOT NULL,"
+        "    Colour          INTEGER NOT NULL DEFAULT 0,"
+        "    TargetLanguage  TEXT NOT NULL DEFAULT '',"
+        "    NativeLanguage  TEXT NOT NULL DEFAULT '',"
+        "    CreatedDate     INTEGER NOT NULL,"
+        "    LastUpdatedDate INTEGER NOT NULL,"
+        "    Deleted         INTEGER NOT NULL DEFAULT 0"
+        ");";
+
+    constexpr const char* UserDecksDefinition =
+        "CREATE TABLE IF NOT EXISTS UserDecks"
+        "("
+        "    Id              TEXT PRIMARY KEY NOT NULL,"
+        "    Name            TEXT NOT NULL,"
+        "    Description     TEXT NOT NULL DEFAULT '',"
+        "    CategoryId      TEXT NOT NULL DEFAULT '',"
+        "    DailyLearning   INTEGER NOT NULL DEFAULT 1,"
+        "    TargetLanguage  TEXT NOT NULL DEFAULT '',"
+        "    NativeLanguage  TEXT NOT NULL DEFAULT '',"
+        "    CreatedDate     INTEGER NOT NULL,"
+        "    LastUpdatedDate INTEGER NOT NULL,"
+        "    Deleted         INTEGER NOT NULL DEFAULT 0"
+        ");";
+
+    constexpr const char* UserDeckCardsDefinition =
+        "CREATE TABLE IF NOT EXISTS UserDeckCards"
+        "("
+        "    CardId          TEXT PRIMARY KEY NOT NULL,"
+        "    DeckId          TEXT NOT NULL,"
+        "    LastUpdatedDate INTEGER NOT NULL,"
+        "    Deleted         INTEGER NOT NULL DEFAULT 0"
+        ");"
+        "CREATE INDEX IF NOT EXISTS IdxUserDeckCardsDeck ON UserDeckCards (DeckId);";
+
     constexpr const char* JournalDefinition =
         "CREATE TABLE IF NOT EXISTS Journal"
         "("
@@ -189,7 +227,9 @@ namespace
         "    CardId     TEXT NOT NULL,"
         "    EventValue INTEGER NOT NULL DEFAULT 0,"
         "    Day        INTEGER NOT NULL,"
-        "    DueDate    INTEGER"
+        "    DueDate    INTEGER,"
+        "    Stability  REAL,"
+        "    Difficulty REAL"
         ");"
         "CREATE INDEX IF NOT EXISTS IdxJournalCard ON Journal (CardId, Day);";
 
@@ -327,6 +367,28 @@ namespace
             || Target.Execute("ALTER TABLE Journal ADD COLUMN DueDate INTEGER");
     }
 
+    bool EnsureProgressColumns(FTDatabase& Target)
+    {
+        for (const char* Table : {"Cards", "Journal"})
+        {
+            if (!TableExists(Target, Table))
+            {
+                continue;
+            }
+
+            for (const char* Column : {"Stability", "Difficulty"})
+            {
+                if (!ColumnExists(Target, Table, Column)
+                    && !Target.Execute(std::string("ALTER TABLE ") + Table + " ADD COLUMN " + Column + " REAL"))
+                {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
     bool MoveCardsOffDecks(FTDatabase& Target)
     {
         for (const char* Column : {"TargetLanguage", "NativeLanguage"})
@@ -389,6 +451,7 @@ int ReadSchemaVersion(FTDatabase& Target)
 
 bool MigrateDeviceSchema(FTDatabase& Target)
 {
+    constexpr int CurrentDeviceSchemaVersion{1};
     const FTQueryTimer Timer("MigrateDeviceSchema");
 
     return Target.IsOpen() && Target.Execute(DeviceReaderDocumentsDefinition)
@@ -409,8 +472,15 @@ bool MigrateDeviceSchema(FTDatabase& Target)
                 && Target.Execute("UPDATE ReaderDocuments SET MetadataRead = 0 WHERE lower(FilePath) LIKE '%.pdf'")))
         && (ColumnExists(Target, "ReaderDocuments", "TitleEdited")
             || Target.Execute("ALTER TABLE ReaderDocuments ADD COLUMN TitleEdited INTEGER NOT NULL DEFAULT 0"))
+        && (ColumnExists(Target, "ReaderDocuments", "CloudTitle")
+            || Target.Execute("ALTER TABLE ReaderDocuments ADD COLUMN CloudTitle TEXT NOT NULL DEFAULT ''"))
         && Target.Execute(ReaderDocumentDetailsDefinition)
-        && Target.Execute(YoutubeVideosDefinition);
+        && Target.Execute(YoutubeVideosDefinition)
+        && (ReadSchemaVersion(Target) >= CurrentDeviceSchemaVersion
+            || (Target.Execute("UPDATE ReaderDocuments SET MetadataRead = 0 "
+                               "WHERE Deleted = 0 AND Format = 'PDF' AND FilePath LIKE 'content://%' "
+                               "AND lower(FilePath) NOT LIKE '%.pdf' AND MetadataRead = 1")
+                && SetSchemaVersion(Target, CurrentDeviceSchemaVersion)));
 }
 
 bool MigrateSchema(FTDatabase& Target)
@@ -866,6 +936,12 @@ bool MigrateSchema(FTDatabase& Target)
             }
         }
 
+        if (!CardIds.empty() && !EnsureProgressColumns(Target))
+        {
+            Target.Rollback();
+            return false;
+        }
+
         for (const std::string& CardId : CardIds)
         {
             FTJournalEvent Event{MakeJournalEvent(CardId, JournalPlaced, 4, Today)};
@@ -933,6 +1009,24 @@ bool MigrateSchema(FTDatabase& Target)
         }
 
         Reached = 39;
+    }
+
+    if (Reached < 40)
+    {
+        if (!Target.Execute(UserDeckCategoriesDefinition)
+            || !Target.Execute(UserDecksDefinition)
+            || !Target.Execute(UserDeckCardsDefinition)
+            || !EnsureProgressColumns(Target)
+            || (TableExists(Target, "Journal") && TableExists(Target, "Cards") && !SeedStartingEvents(Target))
+            || (TableExists(Target, "Journal") && !FillJournalStability(Target))
+            || (TableExists(Target, "Cards") && TableExists(Target, "Journal") && !RebuildCardProgress(Target)))
+        {
+            Target.Rollback();
+
+            return false;
+        }
+
+        Reached = 40;
     }
 
     if (Reached != CurrentSchemaVersion)

@@ -207,6 +207,6 @@ breaking migration:
 
 Qt is LGPLv3, except Qt Network Authorization, which is GPLv3 or commercial. The desktop sign-in
 links it, so the app is released under the GPLv3; see [ios.md](ios.md#licences). Sherpa-onnx is Apache-2.0, the Supertonic model is MIT, SQLite is public domain,
-miniaudio is public domain, Catch2 is BSL-1.0, the Inter typeface is SIL OFL 1.1 and ships with its licence beside the font files. Piper relicensed to GPL-3.0 in late 2025, but its models are plain ONNX files
+miniaudio is public domain, Catch2 is BSL-1.0, the Inter and EB Garamond typefaces are SIL OFL 1.1 and ship with their licences beside the font files. Piper relicensed to GPL-3.0 in late 2025, but its models are plain ONNX files
 sherpa-onnx loads without Piper's code — the GPL doesn't reach them. The OPUS-MT models are
 CC-BY 4.0. ML Kit translation is free but requires Google's attribution beside each result.

@@ -36,6 +36,22 @@ AppReaderIntake& AppReaderIntake::Get()
     return Instance;
 }
 
+bool AppReaderIntake::IsBookOpen() const
+{
+    return bBookOpen;
+}
+
+void AppReaderIntake::SetBookOpen(bool bValue)
+{
+    if (bBookOpen == bValue)
+    {
+        return;
+    }
+
+    bBookOpen = bValue;
+    emit bookOpenChanged();
+}
+
 AppReaderIntake::AppReaderIntake(QObject* Parent)
     : QObject(Parent)
 {

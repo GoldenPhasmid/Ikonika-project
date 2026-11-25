@@ -105,7 +105,7 @@ bool TriageController::startDeck(qint64 InDeckId)
 {
     ResetRun();
 
-    if (!AppDictionary::Get().IsReady() || !AppDatabase::Get().IsReady())
+    if (!AppDictionary::GetActive().IsReady() || !AppDatabase::Get().IsReady())
     {
         qCWarning(LogApp) << "Cannot triage a deck without both a dictionary and a database";
 
@@ -118,7 +118,7 @@ bool TriageController::startDeck(qint64 InDeckId)
     bDeckMode = true;
     DeckId = InDeckId;
 
-    std::vector<FTDeckWord> Words = AppDictionary::Get().GetRepository().LoadDeckWords(InDeckId);
+    std::vector<FTDeckWord> Words = AppDictionary::GetActive().GetRepository().LoadDeckWords(InDeckId);
 
     const std::vector<FTDeckWordProgress> Progress = MatchDeckWords(
         Words, AppCards::LoadCards(), AppDatabase::Get().GetCardRepository().ListKnownWords());
@@ -186,7 +186,7 @@ bool TriageController::BeginRun(int WantedCount)
         return false;
     }
 
-    if (!AppDictionary::Get().IsReady() || !AppDatabase::Get().IsReady())
+    if (!AppDictionary::GetActive().IsReady() || !AppDatabase::Get().IsReady())
     {
         qCWarning(LogApp) << "Cannot triage without both a dictionary and a database";
 
@@ -233,7 +233,7 @@ bool TriageController::BeginGrade(int Index)
         return false;
     }
 
-    FTDictionaryRepository& Dictionary = AppDictionary::Get().GetRepository();
+    FTDictionaryRepository& Dictionary = AppDictionary::GetActive().GetRepository();
 
     // The grade's own composition, read once. This is where the mix comes from: a grade holding
     // 55% nouns and 24% verbs yields a session of the same shape, without anything here choosing
@@ -377,7 +377,7 @@ bool TriageController::FillCursor(Cursor& Target)
         return false;
     }
 
-    FTDictionaryRepository& Dictionary = AppDictionary::Get().GetRepository();
+    FTDictionaryRepository& Dictionary = AppDictionary::GetActive().GetRepository();
     FTCardRepository& CardRepository = AppDatabase::Get().GetCardRepository();
     
     while (Target.Queue.empty())
@@ -444,7 +444,7 @@ void TriageController::LoadTranslationOptions()
         return;
     }
 
-    FTDictionaryRepository& Dictionary = AppDictionary::Get().GetRepository();
+    FTDictionaryRepository& Dictionary = AppDictionary::GetActive().GetRepository();
 
     const std::vector<FTDictionaryTranslation> Offered = Dictionary.LoadTranslationsForReading(
         Current.Headword, Current.PartOfSpeech, Current.Gender, MaximumTranslationOptions);
@@ -495,13 +495,13 @@ void TriageController::LoadMeanings()
 {
     Meanings.clear();
 
-    if (Current.Headword.empty() || !AppDictionary::Get().IsReady())
+    if (Current.Headword.empty() || !AppDictionary::GetActive().IsReady())
     {
         return;
     }
 
     for (FTDictionarySense& Meaning :
-         AppDictionary::Get().GetRepository().LoadMeanings(Current.Headword, Current.PartOfSpeech))
+         AppDictionary::GetActive().GetRepository().LoadMeanings(Current.Headword, Current.PartOfSpeech))
     {
         if (MeaningFitsGender(Meaning, Current.Gender))
         {
@@ -592,9 +592,9 @@ void TriageController::speakWord()
         return;
     }
 
-    qCInfo(LogSpeech) << "TriageController speaks on request:" << QString::fromStdString(Current.Headword);
+    qCInfo(LogSpeech) << "TriageController speaks on request:" << GetDisplayWord();
 
-    AppSpeech::Get().Speak(QString::fromStdString(Current.Headword),
+    AppSpeech::Get().Speak(GetDisplayWord(),
                     QString::fromStdString(FTSettings::Get().GetLanguageRules().TargetLanguage));
 }
 
@@ -711,9 +711,9 @@ void TriageController::AnnounceCurrentWord()
 {
     if (!Current.Headword.empty() && AppSpeech::Get().AllowsAutomaticSpeech())
     {
-        qCInfo(LogSpeech) << "TriageController speaks on new word:" << GetWord();
+        qCInfo(LogSpeech) << "TriageController speaks on new word:" << GetDisplayWord();
 
-        AppSpeech::Get().Speak(GetWord(),
+        AppSpeech::Get().Speak(GetDisplayWord(),
                         QString::fromStdString(FTSettings::Get().GetLanguageRules().TargetLanguage));
     }
 
@@ -990,7 +990,7 @@ void TriageController::SetStartRank(int Rank)
 
     emit startRankChanged();
 
-    if (TargetCount <= 0 || AddedCount >= TargetCount || !AppDictionary::Get().IsReady())
+    if (TargetCount <= 0 || AddedCount >= TargetCount || !AppDictionary::GetActive().IsReady())
     {
         return;
     }
@@ -1016,20 +1016,20 @@ void TriageController::SetStartRank(int Rank)
 
 int TriageController::GetMaximumRank() const
 {
-    return AppDictionary::Get().IsReady()
-        ? AppDictionary::Get().GetRepository().GetTeachingRankCeiling(WordsAboveRankCeiling) : 0;
+    return AppDictionary::GetActive().IsReady()
+        ? AppDictionary::GetActive().GetRepository().GetTeachingRankCeiling(WordsAboveRankCeiling) : 0;
 }
 
 QVariantList TriageController::GetLevelMarks() const
 {
     QVariantList Result;
 
-    if (!AppDictionary::Get().IsReady())
+    if (!AppDictionary::GetActive().IsReady())
     {
         return Result;
     }
 
-    for (const FTLevelRank& Mark : AppDictionary::Get().GetRepository().LoadLevelTeachingRanks())
+    for (const FTLevelRank& Mark : AppDictionary::GetActive().GetRepository().LoadLevelTeachingRanks())
     {
         QVariantMap Entry;
         Entry[QStringLiteral("label")] = CefrLetter(Mark.Level);

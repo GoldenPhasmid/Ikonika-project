@@ -523,7 +523,7 @@ QVariantMap AppCatalog::GetAvailableDictionaryUpdate() const
         return {};
     }
 
-    const FTDictionaryPackage* Active = AppDictionary::Get().GetActivePackage();
+    const FTDictionaryPackage* Active = AppDictionary::GetActive().GetPackage();
     const FTLanguageRules& Rules = FTSettings::Get().GetLanguageRules();
 
     const std::string TargetLanguage = Active != nullptr ? Active->TargetLanguage : Rules.TargetLanguage;

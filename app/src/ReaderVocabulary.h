@@ -22,6 +22,9 @@ public:
 
     Q_INVOKABLE void refresh();
 
+    /** The foreign language of the text being marked. Empty for the language being learned. */
+    void SetLanguage(const std::string& Value);
+
     bool IsEnabled() const;
 
     std::vector<FTVocabularyMark> Find(const QString& Text) const;
@@ -34,8 +37,11 @@ private:
 
     std::string MakeRevision() const;
 
+    std::string GetTargetLanguage() const;
+
     FTVocabularyMarks Marks;
     std::string BuiltRevision;
+    std::string Language;
     bool bEnabled = false;
     bool bHighlightUnknown = false;
 };

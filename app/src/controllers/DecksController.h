@@ -41,7 +41,7 @@ private:
 
     QVariantList Decks;
 
-    std::optional<uint64_t> LoadedGeneration;
+    bool bDeckDataLoaded = false;
     std::vector<FTDeck> DeckList;
     std::map<int64_t, std::vector<FTDeckWord>> Readings;
 };

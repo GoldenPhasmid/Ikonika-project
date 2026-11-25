@@ -58,7 +58,7 @@ ColumnLayout
             objectName: "header_back"
 
             visible: root.showBack || root.leadingIcon.length > 0
-            Layout.preferredWidth: visible ? AppMetrics.headerIconTapWidth : 0
+            Layout.preferredWidth: visible ? AppMetrics.iconTapSize : 0
             Layout.preferredHeight: AppMetrics.topBarHeight
 
             Accessible.role: Accessible.Button
@@ -68,7 +68,7 @@ ColumnLayout
             {
                 anchors.centerIn: parent
                 name: root.showBack ? "arrow_left" : root.leadingIcon
-                width: AppMetrics.headerActionIconSize
+                width: AppMetrics.iconSize
                 height: width
                 color: AppTheme.colourText
             }
@@ -119,14 +119,14 @@ ColumnLayout
             objectName: "header_slow_speech"
 
             visible: root.showSlowSpeech
-            Layout.preferredWidth: visible ? AppMetrics.exerciseActionIconTapWidth : 0
+            Layout.preferredWidth: visible ? AppMetrics.iconTapSize : 0
             Layout.preferredHeight: AppMetrics.topBarHeight
 
             MobileVectorIcon
             {
                 anchors.centerIn: parent
-                width: AppMetrics.exerciseMuteIconSize
-                height: AppMetrics.exerciseMuteIconSize
+                width: AppMetrics.iconSize
+                height: AppMetrics.iconSize
                 svgPath: Icons.Icons.turtle.path
                 color: AppTheme.colourText
             }
@@ -137,14 +137,14 @@ ColumnLayout
         Item
         {
             visible: root.showMute
-            Layout.preferredWidth: visible ? AppMetrics.exerciseActionIconTapWidth : 0
+            Layout.preferredWidth: visible ? AppMetrics.iconTapSize : 0
             Layout.preferredHeight: AppMetrics.topBarHeight
 
             MobileVectorIcon
             {
                 anchors.centerIn: parent
-                width: AppMetrics.exerciseMuteIconSize
-                height: AppMetrics.exerciseMuteIconSize
+                width: AppMetrics.iconSize
+                height: AppMetrics.iconSize
                 svgPath: root.muted ? Icons.Icons.speaker_off.path : Icons.Icons.speaker_on.path
                 color: AppTheme.colourText
             }
@@ -155,14 +155,14 @@ ColumnLayout
         Item
         {
             visible: root.showSearch
-            Layout.preferredWidth: visible ? AppMetrics.exerciseActionIconTapWidth : 0
+            Layout.preferredWidth: visible ? AppMetrics.iconTapSize : 0
             Layout.preferredHeight: AppMetrics.topBarHeight
 
             MobileVectorIcon
             {
                 anchors.centerIn: parent
-                width: AppMetrics.headerActionIconSize
-                height: AppMetrics.headerActionIconSize
+                width: AppMetrics.iconSize
+                height: AppMetrics.iconSize
                 svgPath: Icons.Icons.search.path
                 color: AppTheme.colourText
             }
@@ -175,14 +175,14 @@ ColumnLayout
             objectName: "header_settings"
 
             visible: root.showSettings
-            Layout.preferredWidth: visible ? AppMetrics.exerciseActionIconTapWidth : 0
+            Layout.preferredWidth: visible ? AppMetrics.iconTapSize : 0
             Layout.preferredHeight: AppMetrics.topBarHeight
 
             DesktopIcon
             {
                 anchors.centerIn: parent
                 name: "nav_settings"
-                width: AppMetrics.headerActionIconSize
+                width: AppMetrics.iconSize
                 height: width
                 color: AppTheme.colourText
 
@@ -205,14 +205,14 @@ ColumnLayout
         Item
         {
             visible: root.trailingIcon.length > 0
-            Layout.preferredWidth: visible ? AppMetrics.headerIconTapWidth : 0
+            Layout.preferredWidth: visible ? AppMetrics.iconTapSize : 0
             Layout.preferredHeight: AppMetrics.topBarHeight
 
             MobileVectorIcon
             {
                 anchors.centerIn: parent
-                width: AppMetrics.headerActionIconSize
-                height: AppMetrics.headerActionIconSize
+                width: AppMetrics.iconSize
+                height: AppMetrics.iconSize
                 svgPath: Icons.Icons[root.trailingIcon] ? Icons.Icons[root.trailingIcon].path
                                                           : Icons.Icons.kebab.path
                 color: AppTheme.colourText
@@ -224,14 +224,14 @@ ColumnLayout
         Item
         {
             visible: root.showOptions
-            Layout.preferredWidth: visible ? AppMetrics.exerciseActionIconTapWidth : 0
+            Layout.preferredWidth: visible ? AppMetrics.iconTapSize : 0
             Layout.preferredHeight: AppMetrics.topBarHeight
 
             MobileVectorIcon
             {
                 anchors.centerIn: parent
-                width: AppMetrics.headerActionIconSize
-                height: AppMetrics.headerActionIconSize
+                width: AppMetrics.iconSize
+                height: AppMetrics.iconSize
                 svgPath: Icons.Icons.kebab.path
                 color: AppTheme.colourText
             }

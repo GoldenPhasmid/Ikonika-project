@@ -18,6 +18,26 @@ ReaderPdfPage
 
     readonly property real selectionStretch: root.renderScale / root.selectionScale
 
+    readonly property var readRange:
+    {
+        if (!root.inUse)
+        {
+            return null
+        }
+
+        for (const range of root.view.readRanges)
+        {
+            if (range.page === root.page)
+            {
+                return range
+            }
+        }
+
+        return null
+    }
+
+    readonly property var readRectangles: root.readRange !== null ? root.textRectangles(root.readRange.start, root.readRange.length) : []
+
     function clearSelection()
     {
         root.selectionRectangles = []
@@ -26,10 +46,25 @@ ReaderPdfPage
 
     function showSelection(found)
     {
+        root.view.pickedPlace = found.text.length > 0 ? { page: found.page, index: found.index } : null
         root.selectionScale = root.renderScale
         root.selectionRectangles = found.rectangles
         root.selectionText = found.text
         root.selectionSentence = found.sentence || ""
+    }
+
+    function followLinkAt(position)
+    {
+        const link = root.internalLinkAt(position)
+
+        if (link.page === undefined)
+        {
+            return false
+        }
+
+        root.view.goToPage(link.page, link.location)
+
+        return true
     }
 
     document: root.view.document
@@ -110,14 +145,28 @@ ReaderPdfPage
 
     TapHandler
     {
+        id: mouseTap
+
         acceptedDevices: PointerDevice.Mouse | PointerDevice.Stylus
 
         onTapped: function(eventPoint)
         {
+            if (root.followLinkAt(eventPoint.position))
+            {
+                return
+            }
+
             const found = root.selectWordAt(eventPoint.position)
 
             root.view.clearSelection()
             root.showSelection(found)
+
+            if (mouseTap.tapCount === 2 && found.text.length > 0 && root.view.narrated && root.view.readAloud.available)
+            {
+                root.view.readAloudJumpRequested()
+
+                return
+            }
 
             if (found.text.length > 0)
             {
@@ -140,6 +189,11 @@ ReaderPdfPage
 
         onSingleTapped: function(eventPoint)
         {
+            if (root.followLinkAt(eventPoint.position))
+            {
+                return
+            }
+
             const found = root.selectWordAt(eventPoint.position)
 
             if (found.text.length === 0)
@@ -214,7 +268,27 @@ ReaderPdfPage
 
     HoverHandler
     {
-        cursorShape: Qt.IBeamCursor
+        id: pageHover
+
+        cursorShape: pageHover.hovered && root.inUse && root.page === root.slotPage
+            && root.internalLinkAt(pageHover.point.position).page !== undefined ? Qt.PointingHandCursor : Qt.IBeamCursor
+    }
+
+    Repeater
+    {
+        model: root.readRectangles
+
+        delegate: Rectangle
+        {
+            required property var modelData
+
+            x: modelData.x * root.renderScale
+            y: modelData.y * root.renderScale
+            width: modelData.width * root.renderScale
+            height: modelData.height * root.renderScale
+
+            color: AppTheme.faded(root.inkColour, AppTheme.alphaSoft)
+        }
     }
 
     Repeater

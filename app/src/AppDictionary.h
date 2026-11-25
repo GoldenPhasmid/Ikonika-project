@@ -10,7 +10,9 @@
 #include <QString>
 #include <QStringList>
 
+#include <map>
 #include <memory>
+#include <mutex>
 #include <optional>
 #include <vector>
 
@@ -26,17 +28,81 @@ public:
 
 signals:
     void languagesChanged();
+    void dictionaryClosed(const QString& TargetLanguage);
 };
 
 /**
- * Handles installed dictionaries and active connection
+ * One foreign language's dictionary. Opens on first use and stays at the same address for the life
+ * of the app, so a reference to it survives other languages opening and closing.
+ */
+class AppLanguageDictionary
+{
+public:
+    explicit AppLanguageDictionary(std::string InTargetLanguage);
+
+    /** Opens the dictionary when it is not open yet. */
+    bool IsReady();
+
+    bool IsOpen() const;
+
+    const std::string& GetTargetLanguage() const;
+
+    /** The language its translations are in. The user's native language when the file has it. */
+    const std::string& GetTranslationLanguage() const;
+
+    /** Nothing when the dictionary is not open. */
+    const FTDictionaryPackage* GetPackage() const;
+
+    /** Changes every time the dictionary closes. */
+    uint64_t GetGeneration() const;
+
+    /** Only valid once the dictionary is open. */
+    FTDictionaryRepository& GetRepository();
+
+    const FTSentenceTree* GetSentenceTree();
+
+    /** The tree when it is already loaded, so a background task can read it without loading a second copy. */
+    std::shared_ptr<const FTSentenceTree> GetLoadedSentenceTree() const;
+
+    /** Keeps a tree a background task loaded, unless the dictionary closed meanwhile or the tree is already loaded. */
+    void AdoptSentenceTree(std::shared_ptr<const FTSentenceTree> Tree, uint64_t ForGeneration);
+
+private:
+    friend class AppDictionary;
+
+    bool OpenPackage(const FTDictionaryPackage& InPackage, const std::string& InRequestedNative,
+                     const std::string& InTranslationLanguage);
+
+    void Release();
+
+    std::string TargetLanguage;
+    std::string RequestedNative;
+    std::string TranslationLanguage;
+    std::optional<FTDictionaryPackage> Package;
+
+    std::unique_ptr<FTDatabase> Connection;
+    std::unique_ptr<FTDictionaryRepository> Repository;
+
+    std::shared_ptr<const FTSentenceTree> SentenceTree;
+    bool bSentenceTreeLoaded = false;
+
+    uint64_t Generation = 0;
+};
+
+/**
+ * Handles installed dictionaries and one open dictionary per foreign language
  */
 class AppDictionary
 {
 public:
     static AppDictionary& Get();
 
-    /** Emits languagesChanged whenever Open swaps in a different dictionary. */
+    /** The dictionary for this foreign language, opened on first use. */
+    static AppLanguageDictionary& Get(const std::string& TargetLanguage);
+
+    /** The dictionary for the language being learned. */
+    static AppLanguageDictionary& GetActive();
+
     static AppDictionaryNotifier& Notifier();
 
     /**
@@ -46,12 +112,15 @@ public:
      */
     bool Initialise();
 
-    /** Rescans without changing which dictionary is open. For after a package is added or removed. */
+    /** Rescans without changing which dictionaries are open. For after a package is added or removed. */
     void Discover();
 
-    /** Releases the open dictionary file. Needed before a package replaces the file on disk, since
-        the connection would otherwise be reading a file being rewritten underneath it. */
+    /** Releases every open dictionary file. */
     void Close();
+
+    /** Releases one language's dictionary file. Needed before a package replaces the file on disk, since
+        the connection would otherwise be reading a file being rewritten underneath it. */
+    void Close(const std::string& TargetLanguage);
 
     const std::vector<FTDictionaryPackage>& GetPackages() const;
 
@@ -63,31 +132,17 @@ public:
 
     bool IsReplacedBy(const FTCatalogPackage& Published) const;
 
-    /** Nothing when no dictionary is open. */
-    const FTDictionaryPackage* GetActivePackage() const;
+    /** The language whose open dictionary this package would replace. Empty when none would be. */
+    std::string FindOpenLanguageReplacedBy(const FTCatalogPackage& Published);
 
-    /** Closes whatever is open and opens the dictionary for this pair. False when nothing installed
-        teaches that language, or cannot translate it into that one. */
+    /** Makes this pair the one being learned: opens its dictionary, closes the previous language's
+        and announces the change. False when nothing installed teaches that language, or cannot
+        translate it into that one. */
     bool Open(const std::string& TargetLanguage, const std::string& NativeLanguage);
 
-    bool IsOpenFor(const std::string& TargetLanguage, const std::string& NativeLanguage) const;
+    bool IsOpenFor(const std::string& TargetLanguage, const std::string& NativeLanguage);
 
     bool OpenSettingsPair();
-
-    bool IsReady();
-
-    uint64_t GetGeneration() const;
-
-    /** Only valid once a dictionary is open. */
-    FTDictionaryRepository& GetRepository();
-
-    const FTSentenceTree* GetSentenceTree();
-
-    /** The tree when it is already loaded, so a background task can read it without loading a second copy. */
-    std::shared_ptr<const FTSentenceTree> GetLoadedSentenceTree() const;
-
-    /** Keeps a tree a background task loaded, unless the dictionary changed meanwhile or the tree is already loaded. */
-    void AdoptSentenceTree(std::shared_ptr<const FTSentenceTree> Tree, uint64_t ForGeneration);
 
     static QStringList GetSearchPaths();
 
@@ -95,13 +150,19 @@ public:
     static QString GetInstalledPackagesPath();
 
 private:
+    friend class AppLanguageDictionary;
+
     AppDictionary() = default;
 
-    std::unique_ptr<FTDatabase> Connection;
-    std::unique_ptr<FTDictionaryRepository> Repository;
+    AppLanguageDictionary& Find(const std::string& TargetLanguage);
 
-    std::shared_ptr<const FTSentenceTree> SentenceTree;
-    bool bSentenceTreeLoaded = false;
+    bool OpenOnDemand(AppLanguageDictionary& Dictionary);
+
+    void Release(AppLanguageDictionary& Dictionary);
+
+    std::map<std::string, std::unique_ptr<AppLanguageDictionary>> Dictionaries;
+
+    std::string ActiveLanguage;
 
     std::vector<FTDictionaryPackage> Packages;
 
@@ -109,11 +170,5 @@ private:
 
     bool bDiscovered = false;
 
-    /** Index into Packages, or -1 when nothing is open. An index rather than a pointer, since a
-        rescan rebuilds the vector. */
-    int ActiveIndex = -1;
-
-    std::string OpenNativeLanguage;
-
-    uint64_t Generation = 0;
+    std::recursive_mutex Lock;
 };

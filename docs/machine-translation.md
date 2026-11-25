@@ -156,13 +156,15 @@ translation for the language being learned. The model loads on the first transla
 
 On desktop the model is a catalog package of kind `translation`, unpacked into the downloaded
 models directory. Setup, and adding a language in Settings, queue it after the dictionary and the
-voice. Setup does not wait for it. Four pairs are published:
+voice. Setup does not wait for it. Six pairs are published:
 
 | Package | Source model | Download | Unpacked |
 | --- | --- | --- | --- |
 | `opus-mt-fr-en` | onnx-community/opus-mt-fr-en | 185 MB | 232 MB |
 | `opus-mt-es-en` | onnx-community/opus-mt-es-en | 202 MB | 250 MB |
 | `opus-mt-pt-en` | Xenova/opus-mt-ROMANCE-en | 71 MB | 116 MB |
+| `opus-mt-it-en` | Xenova/opus-mt-it-en | 72 MB | 133 MB |
+| `opus-mt-de-en` | Xenova/opus-mt-de-en | 71 MB | 109 MB |
 | `opus-mt-en-uk` | Xenova/opus-mt-en-uk | 72 MB | 114 MB |
 
 Portuguese has no model of its own, so it uses the one that reads any Romance language. The Xenova

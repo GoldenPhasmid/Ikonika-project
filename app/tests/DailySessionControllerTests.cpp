@@ -58,7 +58,7 @@ TEST_CASE("The weekly timeline and daily progress share the two AM learning-day 
         const bool bBeforeReset = Time < QTime{2, 0};
         CHECK(Controller.property("weekday").toInt() == (bBeforeReset ? Qt::Sunday : Qt::Monday));
         const QVariantList Progress = Controller.GetRecentProgress();
-        REQUIRE(Progress.size() == 7);
+        REQUIRE(Progress.size() == 8);
         CHECK(Progress.back().toMap().value("learnedCount").toInt() == (bBeforeReset ? 15 : 0));
         CHECK(Progress.back().toMap().value("recorded").toBool() == bBeforeReset);
     }

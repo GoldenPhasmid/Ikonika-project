@@ -52,6 +52,7 @@ Rectangle
                 objectName: "tab_" + modelData.key
                 label: modelData.label
                 active: modelData.key === root.activeTab
+                marked: modelData.key === "reader" && AppReaderIntake.bookOpen
 
                 iconName: modelData.icon
 

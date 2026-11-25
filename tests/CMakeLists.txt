@@ -47,12 +47,16 @@ add_executable(CoreTests
     ResultMarksTests.cpp
     ReaderRepositoryTests.cpp
     BookShelfRepositoryTests.cpp
+    UserDeckRepositoryTests.cpp
     CloudBookRepositoryTests.cpp
     ScheduleManagerTests.cpp
     ErasureTests.cpp
     JournalTests.cpp
+    LanguageDetectionTests.cpp
     NarrationTests.cpp
+    PdfNarrationTests.cpp
     ScheduleTests.cpp
+    ScheduleOptimizerTests.cpp
     SchemaTests.cpp
     SettingsDefaultsTests.cpp
     SettingsSyncTests.cpp
@@ -111,6 +115,7 @@ target_compile_definitions(CoreTests PRIVATE
     OPUS_MT_ENGLISH_MODEL_DIRECTORY="${CMAKE_SOURCE_DIR}/third_party/models/opus-mt-en-uk"
     OPUS_MT_PORTUGUESE_MODEL_DIRECTORY="${CMAKE_SOURCE_DIR}/third_party/models/opus-mt-pt-en"
     OPUS_MT_ITALIAN_MODEL_DIRECTORY="${CMAKE_SOURCE_DIR}/third_party/models/opus-mt-it-en"
+    OPUS_MT_GERMAN_MODEL_DIRECTORY="${CMAKE_SOURCE_DIR}/third_party/models/opus-mt-de-en"
 )
 
 # The DLLs do have to sit next to the executable, or loading fails before main runs.

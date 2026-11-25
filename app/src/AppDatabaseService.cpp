@@ -53,6 +53,12 @@ FTCardRepository& AppDatabaseService::GetCardRepository()
     return GetWorkspace().GetCardRepository();
 }
 
+FTCardRepository& AppDatabaseService::GetCardRepository(const std::string& TargetLanguage,
+                                                         const std::string& NativeLanguage)
+{
+    return GetWorkspace().GetCardRepository(TargetLanguage, NativeLanguage);
+}
+
 FTReaderRepository& AppDatabaseService::GetReaderLibrary()
 {
     return GetWorkspace().GetReaderLibrary();
@@ -66,6 +72,11 @@ FTCloudBookRepository& AppDatabaseService::GetCloudBooks()
 FTBookShelfRepository& AppDatabaseService::GetBookShelf()
 {
     return GetWorkspace().GetBookShelf();
+}
+
+FTUserDeckRepository& AppDatabaseService::GetUserDecks()
+{
+    return GetWorkspace().GetUserDecks();
 }
 
 FTYoutubeRepository& AppDatabaseService::GetYoutubeLibrary()

@@ -4,6 +4,7 @@
 #include <QImage>
 #include <QObject>
 #include <QPdfDocument>
+#include <QPdfLinkModel>
 #include <QRect>
 #include <QSize>
 #include <QSizeF>
@@ -47,9 +48,12 @@ public:
     quint64 Render(quint64 Owner, bool bSupersedes, int Page, QSize PageImagePixels, QRect ClipPixels,
                    qreal Scale, uint Paper, uint Ink);
 
+    void SetWantedPage(quint64 Owner, int Page);
+
     Q_INVOKABLE void requestOutline();
 
     QPdfDocument* TextDocument();
+    QPdfLink LinkAt(int Page, const QPointF& Position);
 
 signals:
     void sourceChanged();
@@ -86,4 +90,5 @@ private:
     quint64 NextRequestId = 1;
 
     std::unique_ptr<QPdfDocument> Text;
+    QPdfLinkModel Links;
 };

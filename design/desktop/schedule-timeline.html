@@ -1,0 +1,254 @@
+<title>Ikonika Desktop Schedule Preview</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+:root {
+  --page: #e4e1d7; --page-ink: #2e2a25; --page-muted: #75716a; --page-line: #d6d2c5; --page-panel: #efede5;
+  --font: "Inter", "Segoe UI", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --page: #1d1d1b; --page-ink: #f2f0e9; --page-muted: #9c9a8f; --page-line: #3a3937; --page-panel: #262624; color-scheme: dark } }
+
+.frame {
+  --text: #f2f0e9; --muted: #9c9a8f; --accent: #5b9cf8; --panel: #262624; --faint: #30302e; --sunken: #2b2b29;
+  --subtle: #c2c0b6; --outline: #8a887e; --border: #3a3937; --correct: #4caf7d; --wrong: #d9695f;
+}
+.frame[data-t="light"] {
+  --text: #2e2a25; --muted: #75716a; --accent: #3d63b0; --panel: #efede5; --faint: #e4e1d7; --sunken: #e9e6dd;
+  --subtle: #57534b; --outline: #857f72; --border: #d6d2c5; --correct: #3b7a53; --wrong: #a23a37;
+}
+
+* { box-sizing: border-box }
+body {
+  background: var(--page); color: var(--page-ink); font-family: var(--font); margin: 0;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 28px 48px;
+}
+.wrap { max-width: 860px; margin: 0 auto; display: grid; gap: 18px }
+.controls { display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: center }
+.seg { display: inline-flex; border: 1px solid var(--page-line); border-radius: 8px; overflow: hidden; background: var(--page-panel) }
+.seg button { font: 500 13px var(--font); color: var(--page-muted); background: none; border: 0; padding: 8px 13px; cursor: pointer }
+.seg button + button { border-left: 1px solid var(--page-line) }
+.seg button[aria-pressed="true"] { color: var(--page-ink); background: var(--page-line) }
+.seg button:focus-visible { outline: 2px solid #5b9cf8; outline-offset: -2px }
+.ctl-label { font: 600 11px var(--font); letter-spacing: .08em; text-transform: uppercase; color: var(--page-muted); margin-right: 8px }
+
+.frame {
+  background: var(--sunken); color: var(--text); border-radius: 10px; padding: 32px 0 40px;
+  box-shadow: 0 0 0 1px var(--border), 0 24px 60px -20px rgba(0,0,0,.45);
+  font: 400 14px var(--font); font-variant-numeric: tabular-nums;
+  --ease: cubic-bezier(.33, 1, .68, 1);
+}
+.column { width: 720px; max-width: calc(100% - 32px); margin: 0 auto; display: grid; gap: 8px }
+.section-label { font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--muted) }
+.panel { background: var(--panel); border: 1px solid var(--border); border-radius: 12px }
+
+.row { padding: 16px 24px; display: grid; gap: 8px; position: relative }
+.row::after { content: ""; position: absolute; left: 24px; right: 24px; bottom: 0; height: 1px; background: var(--border) }
+.slider-head { display: flex; gap: 16px; align-items: baseline }
+.slider-head span:first-child { flex: 1; font-weight: 500 }
+.slider-value { font-weight: 600; color: var(--subtle) }
+.slider { position: relative; height: 20px }
+.slider .track { position: absolute; left: 0; right: 0; top: 8px; height: 4px; border-radius: 2px; background: var(--faint) }
+.slider .fill { position: absolute; left: 0; top: 8px; height: 4px; border-radius: 2px; background: var(--text) }
+.slider .handle { position: absolute; top: 0; width: 20px; height: 20px; margin-left: -10px; border-radius: 50%; background: var(--panel); border: 2px solid var(--text) }
+
+.preview { padding: 20px 24px 24px; display: grid; gap: 20px }
+.preview-title { font-weight: 500 }
+.cases { display: grid; gap: 20px }
+.chart { position: relative }
+.chart svg { display: block; width: 100%; overflow: visible }
+.chart text { font: 500 11px var(--font); font-variant-numeric: tabular-nums }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12px; color: var(--muted) }
+.legend span { display: inline-flex; align-items: center; gap: 6px }
+.legend i { width: 10px; height: 10px; border-radius: 2px; display: inline-block }
+.bar { transform-box: fill-box; transform-origin: bottom; animation: grow 360ms var(--ease) both; animation-delay: var(--delay) }
+@keyframes grow { from { transform: scaleY(0) } }
+
+
+
+.old { padding: 16px 24px 24px; display: grid; gap: 16px }
+.old svg { display: block; width: 100%; overflow: visible }
+.old text { font: 500 12px var(--font); font-variant-numeric: tabular-nums }
+
+@media (prefers-reduced-motion: reduce) { .bar { animation: none } }
+</style>
+
+
+<div class="wrap">
+  <div class="controls">
+    <div><span class="ctl-label">Preview</span><span class="seg" id="seg-style">
+      <button data-v="current">Current</button><button data-v="bars">Bars</button>
+    </span></div>
+    <div><span class="ctl-label">Reviews</span><span class="seg" id="seg-count">
+      <button data-v="eight">8</button><button data-v="four">4</button>
+    </span></div>
+    <div><span class="ctl-label">Theme</span><span class="seg" id="seg-theme">
+      <button data-v="dark">Dark</button><button data-v="light">Light</button>
+    </span></div>
+  </div>
+
+  <div class="frame" id="frame" data-t="dark">
+    <div class="column">
+      <div class="section-label">Schedule</div>
+      <div class="panel">
+        <div class="row">
+          <div class="slider-head"><span>Recall target</span><span class="slider-value">90%</span></div>
+          <div class="slider"><i class="track"></i><i class="fill" style="width:74%"></i><i class="handle" style="left:74%"></i></div>
+        </div>
+        <div class="row">
+          <div class="slider-head"><span>Quick review after</span><span class="slider-value">14 days</span></div>
+          <div class="slider"><i class="track"></i><i class="fill" style="width:22%"></i><i class="handle" style="left:22%"></i></div>
+        </div>
+        <div class="row">
+          <div class="slider-head"><span>Learned after</span><span class="slider-value">300 days</span></div>
+          <div class="slider"><i class="track"></i><i class="fill" style="width:80%"></i><i class="handle" style="left:80%"></i></div>
+        </div>
+        <div id="preview"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const SAMPLES = {
+  eight: [
+    { reviews: [1, 4, 10, 22, 46, 91, 173, 317], quickFrom: 3, forgotten: -1 },
+    { reviews: [1, 4, 10, 11, 13, 17, 24, 36, 57, 92, 149, 240, 383], quickFrom: 6, forgotten: 2 }
+  ],
+  four: [
+    { reviews: [2, 9, 40, 140], quickFrom: 2, forgotten: -1 },
+    { reviews: [2, 9, 40, 41, 46, 70, 140, 260], quickFrom: 5, forgotten: 2 }
+  ]
+};
+
+let PATHS = SAMPLES.eight;
+let longestWait = 1;
+
+let view = { style: 'bars', count: 'eight', theme: (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') };
+try { Object.assign(view, JSON.parse(localStorage.getItem('schedule-preview-mock') || '{}')) } catch (e) {}
+for (const part of location.hash.slice(1).split('-').filter(Boolean)) {
+  if (['current', 'bars'].includes(part)) view.style = part;
+  else if (['dark', 'light'].includes(part)) view.theme = part;
+  else if (part in SAMPLES) view.count = part;
+}
+
+const $ = id => document.getElementById(id);
+const waits = path => path.reviews.map((day, index) => day - (index > 0 ? path.reviews[index - 1] : 0));
+
+function caseChart(path, pathIndex, width) {
+  const PLOT = 64;
+  const TOP = 20;
+  const slot = width / path.reviews.length;
+  const barWidth = slot - 4;
+  const height = wait => Math.max(4, Math.sqrt(wait / longestWait) * PLOT);
+  const pathWaits = waits(path);
+  const baseline = TOP + PLOT;
+
+  let bars = '';
+  let labels = '';
+
+  path.reviews.forEach((day, index) => {
+    const x = index * slot + (slot - barWidth) / 2;
+    const h = height(pathWaits[index]);
+    const forgotten = index === path.forgotten;
+    const last = index === path.reviews.length - 1;
+    const quick = index >= path.quickFrom && !forgotten && !last;
+    const delay = `--delay:${pathIndex * 120 + index * 40}ms`;
+    const d = `M${x} ${baseline} V${baseline - h + 3} q0 -3 3 -3 h${barWidth - 6} q3 0 3 3 V${baseline} Z`;
+
+    if (forgotten)
+      bars += `<path class="bar" style="${delay}" d="${d}" fill="url(#hatch-${pathIndex})"/>`;
+    else if (last)
+      bars += `<path class="bar" style="${delay}" d="M${x + .75} ${baseline} V${baseline - h + 3.75} q0 -3 3 -3 h${barWidth - 7.5} q3 0 3 3 V${baseline}"
+        fill="color-mix(in srgb, var(--correct) 30%, transparent)" stroke="var(--correct)" stroke-width="1.5"/>`;
+    else if (quick)
+      bars += `<path class="bar" style="${delay}" d="M${x + .75} ${baseline} V${baseline - h + 3.75} q0 -3 3 -3 h${barWidth - 7.5} q3 0 3 3 V${baseline}"
+        fill="color-mix(in srgb, var(--accent) 16%, transparent)" stroke="var(--accent)" stroke-width="1.5"/>`;
+    else
+      bars += `<path class="bar" style="${delay}" d="${d}" fill="var(--accent)"/>`;
+
+    if (forgotten) {
+      const cx = x + barWidth / 2;
+      const cy = baseline - h - 12;
+      bars += `<g><circle cx="${cx}" cy="${cy}" r="7" fill="var(--wrong)"/>
+        <path d="M${cx - 2.5} ${cy - 2.5} l5 5 M${cx + 2.5} ${cy - 2.5} l-5 5" stroke="var(--panel)" stroke-width="1.6" stroke-linecap="round"/></g>`;
+    }
+
+    labels += `<text x="${x + barWidth / 2}" y="${baseline + 17}" text-anchor="middle"
+      fill="${forgotten || last ? 'var(--text)' : 'var(--muted)'}" style="font-weight:${forgotten || last ? 600 : 500}">${day}</text>`;
+
+  });
+
+  return `<svg viewBox="0 0 ${width} ${baseline + 22}" height="${baseline + 22}">
+    <defs><pattern id="hatch-${pathIndex}" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <rect width="4" height="4" fill="var(--wrong)" opacity=".35"/><rect width="2" height="4" fill="var(--wrong)"/></pattern></defs>
+    <line x1="0" x2="${width}" y1="${baseline + .5}" y2="${baseline + .5}" stroke="var(--border)"/>
+    ${bars}${labels}</svg>`;
+}
+
+function renderBars(container) {
+  container.innerHTML = `<div class="preview">
+    <span class="preview-title">Learning path, in days</span>
+    <div class="cases">${PATHS.map((path, index) => `<div class="chart" data-path="${index}"></div>`).join('')}</div>
+    <div class="legend">
+      <span><i style="background:var(--accent)"></i>Review</span>
+      <span><i style="border:1.5px solid var(--accent);background:color-mix(in srgb, var(--accent) 16%, transparent)"></i>Quick review</span>
+      <span><i style="background:repeating-linear-gradient(45deg, var(--wrong) 0 2px, color-mix(in srgb, var(--wrong) 35%, transparent) 2px 4px)"></i>Forgot it</span>
+      <span><i style="border:1.5px solid var(--correct);background:color-mix(in srgb, var(--correct) 30%, transparent)"></i>Learned</span>
+    </div>
+  </div>`;
+
+  for (const chart of container.querySelectorAll('.chart'))
+    chart.innerHTML = caseChart(PATHS[Number(chart.dataset.path)], Number(chart.dataset.path), chart.clientWidth);
+}
+
+function renderCurrent(container) {
+  const DOT = 10;
+  const width = container.clientWidth - 48;
+  const lastDay = Math.max(...PATHS.map(path => path.reviews[path.reviews.length - 1]));
+  const position = day => Math.sqrt(day / lastDay) * (width - DOT) + DOT / 2;
+  const rows = PATHS.map(path => {
+    const shown = path.reviews.map((day, index) => index).filter(index => index === path.reviews.length - 1 || index === path.forgotten);
+    for (let index = path.reviews.length - 1; index >= 0; --index)
+      if (!shown.includes(index) && shown.every(other => Math.abs(position(path.reviews[other]) - position(path.reviews[index])) >= 36))
+        shown.push(index);
+    let svg = `<svg viewBox="0 0 ${width} 44" height="44"><line x1="${DOT / 2}" x2="${width - DOT / 2}" y1="8" y2="8" stroke="var(--border)"/>
+      <circle cx="${DOT / 4}" cy="8" r="${DOT / 4}" fill="var(--muted)"/>`;
+    path.reviews.forEach((day, index) => {
+      const last = index === path.reviews.length - 1;
+      const tone = index === path.forgotten ? 'var(--wrong)' : last ? 'var(--correct)' : 'var(--accent)';
+      const hollow = index >= path.quickFrom && index !== path.forgotten && !last;
+      svg += `<circle cx="${position(day)}" cy="8" r="${DOT / 2 - 1}" fill="${hollow ? 'var(--panel)' : tone}" stroke="${tone}" stroke-width="2"/>`;
+      if (shown.includes(index))
+        svg += `<text x="${position(day)}" y="34" text-anchor="middle" fill="${index === path.forgotten ? 'var(--wrong)' : 'var(--muted)'}">${day}</text>`;
+    });
+    return svg + '</svg>';
+  }).join('');
+  container.innerHTML = `<div class="old">${rows}</div>`;
+}
+
+function render() {
+  PATHS = SAMPLES[view.count];
+  longestWait = Math.max(...PATHS.flatMap(waits));
+  $('frame').dataset.t = view.theme;
+  if (view.style === 'bars') renderBars($('preview'));
+  else renderCurrent($('preview'));
+
+  for (const [segId, key] of [['seg-style', 'style'], ['seg-count', 'count'], ['seg-theme', 'theme']])
+    for (const button of $(segId).querySelectorAll('button')) button.setAttribute('aria-pressed', button.dataset.v === view[key]);
+
+  try { localStorage.setItem('schedule-preview-mock', JSON.stringify(view)) } catch (e) {}
+}
+
+for (const [segId, key] of [['seg-style', 'style'], ['seg-count', 'count'], ['seg-theme', 'theme']])
+  $(segId).addEventListener('click', event => {
+    const button = event.target.closest('button');
+    if (!button) return;
+    view[key] = button.dataset.v;
+    render();
+  });
+addEventListener('resize', render);
+document.fonts && document.fonts.ready.then(render);
+render();
+</script>

@@ -7,6 +7,7 @@
 
 #include <QAtomicInteger>
 #include <QCoreApplication>
+#include <QHash>
 #include <QMetaObject>
 
 #if defined(Q_OS_ANDROID)
@@ -20,49 +21,28 @@ namespace
 {
     struct FPairState
     {
-        QString Pair;
-        bool bChecked = false;
         bool bOffered = false;
         bool bDownloaded = false;
         bool bDownloading = false;
     };
 
-    FPairState State;
+    QHash<QString, FPairState> States;
 
     FAppTranslationRequests Requests;
 
     QAtomicInteger<int> BusyCount = 0;
-
-    QString SourceLanguage()
-    {
-        return QString::fromStdString(FTSettings::Get().GetLanguageRules().TargetLanguage);
-    }
-
-    QString TargetLanguage()
-    {
-        return QString::fromStdString(FTSettings::Get().GetLanguageRules().NativeLanguage);
-    }
 
     QString PairKey(const QString& Source, const QString& Target)
     {
         return Source + QLatin1Char('-') + Target;
     }
 
-    QString CurrentPair()
-    {
-        return PairKey(SourceLanguage(), TargetLanguage());
-    }
-
     void HandleModelState(const QString& Pair, bool bOffered, bool bDownloaded)
     {
         QMetaObject::invokeMethod(&AppTranslator::Notifier(), [Pair, bOffered, bDownloaded]()
         {
-            if (Pair != State.Pair)
-            {
-                return;
-            }
+            FPairState& State = States[Pair];
 
-            State.bChecked = true;
             State.bOffered = bOffered;
             State.bDownloaded = bDownloaded;
 
@@ -77,10 +57,7 @@ namespace
     {
         QMetaObject::invokeMethod(&AppTranslator::Notifier(), [Pair, bSuccess, Message]()
         {
-            if (Pair != State.Pair)
-            {
-                return;
-            }
+            FPairState& State = States[Pair];
 
             State.bDownloading = false;
             State.bDownloaded = bSuccess;
@@ -168,30 +145,30 @@ namespace
         }
     }
 
-    void PlatformCheckModel()
+    void PlatformCheckModel(const QString& Source, const QString& Target)
     {
         QJniObject::callStaticMethod<void>(PlatformTranslationClass, "checkModel",
             "(Ljava/lang/String;Ljava/lang/String;)V",
-            QJniObject::fromString(SourceLanguage()).object<jstring>(),
-            QJniObject::fromString(TargetLanguage()).object<jstring>());
+            QJniObject::fromString(Source).object<jstring>(),
+            QJniObject::fromString(Target).object<jstring>());
     }
 
-    void PlatformDownload()
+    void PlatformDownload(const QString& Source, const QString& Target)
     {
         QJniObject::callStaticMethod<void>(PlatformTranslationClass, "download",
             "(Ljava/lang/String;Ljava/lang/String;)V",
-            QJniObject::fromString(SourceLanguage()).object<jstring>(),
-            QJniObject::fromString(TargetLanguage()).object<jstring>());
+            QJniObject::fromString(Source).object<jstring>(),
+            QJniObject::fromString(Target).object<jstring>());
     }
 
-    void PlatformTranslate(quint64 Generation, const QString& Text)
+    void PlatformTranslate(quint64 Generation, const QString& Text, const QString& Source, const QString& Target)
     {
         QJniObject::callStaticMethod<void>(PlatformTranslationClass, "translate",
             "(JLjava/lang/String;Ljava/lang/String;Ljava/lang/String;)V",
             static_cast<jlong>(Generation),
             QJniObject::fromString(Text).object<jstring>(),
-            QJniObject::fromString(SourceLanguage()).object<jstring>(),
-            QJniObject::fromString(TargetLanguage()).object<jstring>());
+            QJniObject::fromString(Source).object<jstring>(),
+            QJniObject::fromString(Target).object<jstring>());
     }
 #elif defined(Q_OS_IOS)
     constexpr int32_t AppleStatusSupported = 1;
@@ -229,36 +206,53 @@ namespace
         IkonikaTranslationInstall(&OnAppleStatus, &OnAppleDownload, &OnAppleTranslated);
     }
 
-    void PlatformCheckModel()
+    void PlatformCheckModel(const QString& Source, const QString& Target)
     {
-        IkonikaTranslationCheck(SourceLanguage().toUtf8().constData(), TargetLanguage().toUtf8().constData());
+        IkonikaTranslationCheck(Source.toUtf8().constData(), Target.toUtf8().constData());
     }
 
-    void PlatformDownload()
+    void PlatformDownload(const QString& Source, const QString& Target)
     {
-        IkonikaTranslationDownload(SourceLanguage().toUtf8().constData(), TargetLanguage().toUtf8().constData());
+        IkonikaTranslationDownload(Source.toUtf8().constData(), Target.toUtf8().constData());
     }
 
-    void PlatformTranslate(quint64 Generation, const QString& Text)
+    void PlatformTranslate(quint64 Generation, const QString& Text, const QString& Source, const QString& Target)
     {
-        IkonikaTranslationTranslate(Generation, Text.toUtf8().constData(), SourceLanguage().toUtf8().constData(),
-                                    TargetLanguage().toUtf8().constData());
+        IkonikaTranslationTranslate(Generation, Text.toUtf8().constData(), Source.toUtf8().constData(),
+                                    Target.toUtf8().constData());
     }
 #endif
 
-    void RequestModelState()
+    void RequestModelState(const QString& Source, const QString& Target)
     {
-        const QString Pair = CurrentPair();
+        const QString Pair = PairKey(Source, Target);
 
-        if (State.Pair == Pair)
+        if (States.contains(Pair))
         {
             return;
         }
 
-        State = FPairState{Pair};
+        States.insert(Pair, FPairState{});
 
         EnsureBridge();
-        PlatformCheckModel();
+        PlatformCheckModel(Source, Target);
+    }
+
+    FPairState& StateFor(const QString& Source, const QString& Target)
+    {
+        RequestModelState(Source, Target);
+
+        return States[PairKey(Source, Target)];
+    }
+
+    QString ActiveLearned()
+    {
+        return QString::fromStdString(FTSettings::Get().GetLanguageRules().TargetLanguage);
+    }
+
+    QString ActiveNative()
+    {
+        return QString::fromStdString(FTSettings::Get().GetLanguageRules().NativeLanguage);
     }
 }
 
@@ -273,9 +267,12 @@ namespace AppTranslator
 
     bool IsSupportedPair()
     {
-        RequestModelState();
+        return StateFor(ActiveLearned(), ActiveNative()).bDownloaded;
+    }
 
-        return State.bDownloaded;
+    bool IsSupportedPair(const std::string& LearnedLanguage, const std::string& NativeLanguage)
+    {
+        return StateFor(QString::fromStdString(LearnedLanguage), QString::fromStdString(NativeLanguage)).bDownloaded;
     }
 
     bool IsAvailable()
@@ -290,9 +287,16 @@ namespace AppTranslator
 
     void Translate(const QString& Text, quintptr Owner)
     {
+        Translate(Text, Owner, FTSettings::Get().GetLanguageRules().TargetLanguage,
+                  FTSettings::Get().GetLanguageRules().NativeLanguage);
+    }
+
+    void Translate(const QString& Text, quintptr Owner, const std::string& LearnedLanguage,
+                   const std::string& NativeLanguage)
+    {
         const QString Trimmed = Text.trimmed();
 
-        if (Trimmed.isEmpty() || !IsSupportedPair())
+        if (Trimmed.isEmpty() || !IsSupportedPair(LearnedLanguage, NativeLanguage))
         {
             return;
         }
@@ -301,12 +305,13 @@ namespace AppTranslator
 
         BusyCount.fetchAndAddOrdered(1);
 
-        PlatformTranslate(Generation, Trimmed);
+        PlatformTranslate(Generation, Trimmed, QString::fromStdString(LearnedLanguage),
+                          QString::fromStdString(NativeLanguage));
     }
 
     void Reset()
     {
-        State = FPairState{};
+        States.clear();
 
         qCInfo(LogTranslate) << "Translation model state forgotten, the next request checks it again";
 
@@ -315,30 +320,50 @@ namespace AppTranslator
 
     bool IsPairOffered()
     {
+        return IsPairOffered(FTSettings::Get().GetLanguageRules().TargetLanguage,
+                             FTSettings::Get().GetLanguageRules().NativeLanguage);
+    }
+
+    bool IsPairOffered(const std::string& LearnedLanguage, const std::string& NativeLanguage)
+    {
+        const QString Source = QString::fromStdString(LearnedLanguage);
+        const QString Target = QString::fromStdString(NativeLanguage);
+
 #if defined(Q_OS_ANDROID)
         EnsureBridge();
 
         return QJniObject::callStaticMethod<jboolean>(PlatformTranslationClass, "isSupported",
             "(Ljava/lang/String;Ljava/lang/String;)Z",
-            QJniObject::fromString(SourceLanguage()).object<jstring>(),
-            QJniObject::fromString(TargetLanguage()).object<jstring>()) == JNI_TRUE;
+            QJniObject::fromString(Source).object<jstring>(),
+            QJniObject::fromString(Target).object<jstring>()) == JNI_TRUE;
 #else
-        RequestModelState();
-
-        return State.bOffered;
+        return StateFor(Source, Target).bOffered;
 #endif
     }
 
     bool IsDownloading()
     {
-        RequestModelState();
+        return IsDownloading(FTSettings::Get().GetLanguageRules().TargetLanguage,
+                             FTSettings::Get().GetLanguageRules().NativeLanguage);
+    }
 
-        return State.bDownloading;
+    bool IsDownloading(const std::string& LearnedLanguage, const std::string& NativeLanguage)
+    {
+        return StateFor(QString::fromStdString(LearnedLanguage), QString::fromStdString(NativeLanguage)).bDownloading;
     }
 
     void Download()
     {
-        RequestModelState();
+        Download(FTSettings::Get().GetLanguageRules().TargetLanguage,
+                 FTSettings::Get().GetLanguageRules().NativeLanguage);
+    }
+
+    void Download(const std::string& LearnedLanguage, const std::string& NativeLanguage)
+    {
+        const QString Source = QString::fromStdString(LearnedLanguage);
+        const QString Target = QString::fromStdString(NativeLanguage);
+
+        FPairState& State = StateFor(Source, Target);
 
         if (State.bDownloading || State.bDownloaded)
         {
@@ -349,9 +374,9 @@ namespace AppTranslator
 
         emit Notifier().downloadingChanged();
 
-        qCInfo(LogTranslate) << "Downloading the translation model for" << State.Pair;
+        qCInfo(LogTranslate) << "Downloading the translation model for" << PairKey(Source, Target);
 
-        PlatformDownload();
+        PlatformDownload(Source, Target);
     }
 
     qint64 GetDownloadBytes()
@@ -359,7 +384,17 @@ namespace AppTranslator
         return 0;
     }
 
+    qint64 GetDownloadBytes(const std::string&, const std::string&)
+    {
+        return 0;
+    }
+
     double GetDownloadProgress()
+    {
+        return 0.0;
+    }
+
+    double GetDownloadProgress(const std::string&, const std::string&)
     {
         return 0.0;
     }

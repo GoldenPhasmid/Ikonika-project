@@ -16,6 +16,47 @@ ColumnLayout
 
     readonly property int exerciseTypesOn: root.exerciseTypes.filter(Type => Type.on).length
 
+    readonly property var lockedStage: root.session.review
+        ? { key: "review", label: qsTr("Review card"), icon: "session_review" }
+        : { key: "flashcards", label: qsTr("Flashcards"), icon: "exercise_flashcards" }
+
+    readonly property var stages: [
+        ...(root.session.review ? [] : [{ key: "flip", label: qsTr("Flip cards"), icon: "exercise_flip" }]),
+        { key: "choice", label: qsTr("Multiple choice"), icon: "exercise_choice" },
+        { key: "typing", label: qsTr("Typing"), icon: "exercise_written" },
+        { key: "sentences", label: qsTr("Sentences"), icon: "session_sentences" },
+        { key: "match", label: qsTr("Speed match"), icon: "exercise_speedmatch" }
+    ]
+
+    property string selectedStage: root.session.review ? "choice" : "flip"
+
+    readonly property Item selectedChip:
+    {
+        const Index = root.stages.findIndex(Stage => Stage.key === root.selectedStage)
+
+        return Index >= 0 && stageRepeater.count > Index ? stageRepeater.itemAt(Index) : null
+    }
+
+    function isStageOn(key)
+    {
+        if (key === "choice")
+        {
+            return root.session.choiceStage
+        }
+
+        if (key === "sentences")
+        {
+            return root.session.sentenceStage
+        }
+
+        if (key === "match")
+        {
+            return root.session.matchStage
+        }
+
+        return true
+    }
+
     function toggleExerciseType(type)
     {
         if (type.on && root.exerciseTypesOn <= 1)
@@ -82,256 +123,427 @@ ColumnLayout
             from: 10
             to: 25
             step: 5
+            lastRow: true
 
             onEdited: function(newValue) { root.store.reviewWordCount = newValue }
         }
-
-        DesktopSettingsRow
-        {
-            text: qsTr("Missed review costs a box")
-            description: qsTr("Off keeps the word in its box until it is reviewed")
-
-            DesktopToggle
-            {
-                accessibleName: qsTr("Missed review costs a box")
-                on: root.store.missedReviewDemotes
-
-                onClicked: root.store.missedReviewDemotes = !root.store.missedReviewDemotes
-            }
-        }
-
-        DesktopSettingsSlider
-        {
-            title: qsTr("Drop learning status after")
-            description: qsTr("A word left in the first box this long without a review goes back to the pool")
-            value: root.store.daysInFirstStage
-            from: 1
-            to: 10
-            suffix: qsTr("days")
-            lastRow: true
-
-            onEdited: function(newValue) { root.store.daysInFirstStage = newValue }
-        }
     }
 
-    DesktopSettingsGroup
+    ColumnLayout
     {
-        visible: !root.session.review
-        title: qsTr("Flip cards")
+        id: stageColumn
 
-        DesktopSettingsSlider
+        Layout.fillWidth: true
+        spacing: AppMetrics.gapSmall
+
+        DesktopSectionLabel
         {
-            title: qsTr("Times known per word")
-            value: root.session.flipCount
-            from: 1
-            to: root.session.maximumFlipCount
-            valueText: qsTr("%1×").arg(root.session.flipCount)
-            lastRow: true
-
-            onEdited: function(newValue) { root.session.flipCount = newValue }
+            text: qsTr("Stages")
         }
-    }
 
-    DesktopSettingsGroup
-    {
-        title: qsTr("Multiple choice")
-
-        DesktopSettingsRow
+        RowLayout
         {
-            text: qsTr("Multiple choice stage")
+            id: stageRow
 
-            DesktopToggle
+            Layout.fillWidth: true
+            spacing: AppMetrics.gapSmall
+
+            DesktopToggleChip
             {
-                accessibleName: qsTr("Multiple choice stage")
-                on: root.session.choiceStage
-
-                onClicked: root.session.choiceStage = !root.session.choiceStage
-            }
-        }
-
-        DesktopSettingsSlider
-        {
-            title: qsTr("Rounds per word")
-            value: root.session.choiceCount
-            from: 1
-            to: root.session.maximumStageRepeatCount
-            valueText: qsTr("%1×").arg(root.session.choiceCount)
-            interactive: root.session.choiceStage
-
-            onEdited: function(newValue) { root.session.choiceCount = newValue }
-        }
-
-        DesktopSettingsRow
-        {
-            text: qsTr("Ask with")
-
-            DesktopSelect
-            {
+                objectName: "stage_" + root.lockedStage.key
                 Layout.fillWidth: false
-                Layout.preferredWidth: AppMetrics.settingsControlWidth
-                heading: qsTr("Ask with")
-                options: root.store.questionSideNames
-                currentIndex: root.session.choiceSide
-                enabled: root.session.choiceStage && !root.session.choiceVoice
-
-                onChosen: function(index) { root.session.choiceSide = index }
+                text: root.lockedStage.label
+                iconName: root.lockedStage.icon
+                on: true
+                locked: true
             }
-        }
 
-        DesktopSettingsRow
-        {
-            text: qsTr("Ask by voice")
-            description: qsTr("The word is played, not shown")
-            lastRow: true
-
-            DesktopToggle
+            Rectangle
             {
-                accessibleName: qsTr("Ask by voice")
-                on: root.session.choiceVoice
-                enabled: root.session.choiceStage && root.store.audioAvailable
-
-                onClicked: root.session.choiceVoice = !root.session.choiceVoice
+                Layout.fillHeight: true
+                Layout.preferredWidth: AppMetrics.borderWidth
+                Layout.topMargin: AppMetrics.gapSmall
+                Layout.bottomMargin: AppMetrics.gapSmall
+                Layout.leftMargin: AppMetrics.gapTight
+                Layout.rightMargin: AppMetrics.gapTight
+                color: AppTheme.colourBorder
             }
-        }
-    }
 
-    DesktopSettingsGroup
-    {
-        title: qsTr("Typing")
-
-        DesktopSettingsRow
-        {
-            text: qsTr("Exercises")
-            description: root.exerciseTypesOn <= 1 ? qsTr("At least one stays on") : ""
-            stacked: true
-
-            RowLayout
+            Repeater
             {
-                Layout.fillWidth: true
-                spacing: AppMetrics.gapSmall
+                id: stageRepeater
 
-                Repeater
+                model: root.stages
+
+                delegate: DesktopToggleChip
                 {
-                    model: root.exerciseTypes
+                    required property var modelData
 
-                    delegate: DesktopToggleChip
-                    {
-                        required property var modelData
+                    objectName: "stage_" + modelData.key
+                    Layout.preferredWidth: 1
+                    text: modelData.label
+                    iconName: modelData.icon
+                    on: root.isStageOn(modelData.key)
+                    selected: root.selectedStage === modelData.key
 
-                        Layout.preferredWidth: 1
-                        text: modelData.label
-                        iconName: modelData.icon
-                        on: modelData.on
-
-                        onClicked: root.toggleExerciseType(modelData)
-                    }
+                    onClicked: root.selectedStage = modelData.key
                 }
             }
         }
 
-        DesktopSettingsSlider
+        Item
         {
-            title: qsTr("Correct answers to master a word")
-            value: root.session.repeatsToMaster
-            from: 1
-            to: 10
+            id: dropdown
 
-            onEdited: function(newValue) { root.session.repeatsToMaster = newValue }
-        }
+            Layout.fillWidth: true
+            implicitHeight: stagePanel.implicitHeight
 
-        DesktopSettingsRow
-        {
-            text: qsTr("Require exact accents")
-            lastRow: true
-
-            DesktopToggle
+            Item
             {
-                accessibleName: qsTr("Require exact accents")
-                on: root.session.requireExactAccents
+                id: tabJoint
 
-                onClicked: root.session.requireExactAccents = !root.session.requireExactAccents
+                readonly property real stroke: AppMetrics.dashStrokeWidth
+
+                z: 1
+                visible: root.selectedChip !== null
+                x: root.selectedChip ? stageRow.x + root.selectedChip.x : 0
+                y: -stageColumn.spacing - tabJoint.stroke - AppMetrics.gapTight
+                width: root.selectedChip ? root.selectedChip.width : 0
+                height: stageColumn.spacing + tabJoint.stroke * 2 + AppMetrics.gapTight + AppMetrics.borderWidth
+
+                Rectangle
+                {
+                    anchors.fill: parent
+                    anchors.leftMargin: tabJoint.stroke
+                    anchors.rightMargin: tabJoint.stroke
+                    color: AppTheme.colourPanel
+                }
+
+                Rectangle
+                {
+                    anchors.left: parent.left
+                    anchors.top: parent.top
+                    anchors.bottom: parent.bottom
+                    anchors.topMargin: AppMetrics.gapTight
+                    anchors.bottomMargin: AppMetrics.borderWidth
+                    width: tabJoint.stroke
+                    color: AppTheme.colourAccent
+                }
+
+                Rectangle
+                {
+                    anchors.right: parent.right
+                    anchors.top: parent.top
+                    anchors.bottom: parent.bottom
+                    anchors.topMargin: AppMetrics.gapTight
+                    anchors.bottomMargin: AppMetrics.borderWidth
+                    width: tabJoint.stroke
+                    color: AppTheme.colourAccent
+                }
+            }
+
+            DesktopSettingsGroup
+            {
+                id: stagePanel
+
+                width: dropdown.width
+                outlineColour: AppTheme.colourAccent
+                outlineWidth: AppMetrics.dashStrokeWidth
+                squareTopRight: root.selectedChip !== null
+                    && stageRow.x + root.selectedChip.x + root.selectedChip.width >= dropdown.width - AppMetrics.borderWidth
+
+                DesktopSettingsSlider
+                {
+                    visible: root.selectedStage === "flip"
+                    title: qsTr("Times known per word")
+                    value: root.session.flipCount
+                    from: 1
+                    to: root.session.maximumFlipCount
+                    valueText: qsTr("%1×").arg(root.session.flipCount)
+                    lastRow: true
+
+                    onEdited: function(newValue) { root.session.flipCount = newValue }
+                }
+
+                ColumnLayout
+                {
+                    visible: root.selectedStage === "choice"
+                    Layout.fillWidth: true
+                    spacing: 0
+
+                    DesktopSettingsRow
+                    {
+                        text: qsTr("Enabled")
+
+                        DesktopToggle
+                        {
+                            accessibleName: qsTr("Multiple choice stage")
+                            on: root.session.choiceStage
+
+                            onClicked: root.session.choiceStage = !root.session.choiceStage
+                        }
+                    }
+
+                    DesktopSettingsSlider
+                    {
+                        title: qsTr("Rounds per word")
+                        value: root.session.choiceCount
+                        from: 1
+                        to: root.session.maximumStageRepeatCount
+                        valueText: qsTr("%1×").arg(root.session.choiceCount)
+                        interactive: root.session.choiceStage
+
+                        onEdited: function(newValue) { root.session.choiceCount = newValue }
+                    }
+
+                    DesktopSettingsRow
+                    {
+                        text: qsTr("Ask with")
+
+                        DesktopSelect
+                        {
+                            Layout.fillWidth: false
+                            Layout.preferredWidth: AppMetrics.settingsControlWidth
+                            heading: qsTr("Ask with")
+                            options: root.store.questionSideNames
+                            currentIndex: root.session.choiceSide
+                            enabled: root.session.choiceStage && !root.session.choiceVoice
+
+                            onChosen: function(index) { root.session.choiceSide = index }
+                        }
+                    }
+
+                    DesktopSettingsRow
+                    {
+                        text: qsTr("Ask by voice")
+                        description: qsTr("The word is played, not shown")
+                        lastRow: true
+
+                        DesktopToggle
+                        {
+                            accessibleName: qsTr("Ask by voice")
+                            on: root.session.choiceVoice
+                            enabled: root.session.choiceStage && root.store.audioAvailable
+
+                            onClicked: root.session.choiceVoice = !root.session.choiceVoice
+                        }
+                    }
+                }
+
+                ColumnLayout
+                {
+                    visible: root.selectedStage === "typing"
+                    Layout.fillWidth: true
+                    spacing: 0
+
+                    DesktopSettingsRow
+                    {
+                        text: qsTr("Exercises")
+                        description: root.exerciseTypesOn <= 1 ? qsTr("At least one stays on") : ""
+                        stacked: true
+
+                        RowLayout
+                        {
+                            Layout.fillWidth: true
+                            spacing: AppMetrics.gapSmall
+
+                            Repeater
+                            {
+                                model: root.exerciseTypes
+
+                                delegate: DesktopToggleChip
+                                {
+                                    required property var modelData
+
+                                    Layout.preferredWidth: 1
+                                    text: modelData.label
+                                    iconName: modelData.icon
+                                    on: modelData.on
+
+                                    onClicked: root.toggleExerciseType(modelData)
+                                }
+                            }
+                        }
+                    }
+
+                    DesktopSettingsSlider
+                    {
+                        title: qsTr("Correct answers to master a word")
+                        value: root.session.repeatsToMaster
+                        from: 1
+                        to: 10
+
+                        onEdited: function(newValue) { root.session.repeatsToMaster = newValue }
+                    }
+
+                    DesktopSettingsRow
+                    {
+                        text: qsTr("Require exact accents")
+                        lastRow: true
+
+                        DesktopToggle
+                        {
+                            accessibleName: qsTr("Require exact accents")
+                            on: root.session.requireExactAccents
+
+                            onClicked: root.session.requireExactAccents = !root.session.requireExactAccents
+                        }
+                    }
+                }
+
+                ColumnLayout
+                {
+                    visible: root.selectedStage === "sentences"
+                    Layout.fillWidth: true
+                    spacing: 0
+
+                    DesktopSettingsRow
+                    {
+                        text: qsTr("Enabled")
+                        description: qsTr("Build sentences that use the session's words")
+
+                        DesktopToggle
+                        {
+                            accessibleName: qsTr("Sentence stage")
+                            on: root.session.sentenceStage
+
+                            onClicked: root.session.sentenceStage = !root.session.sentenceStage
+                        }
+                    }
+
+                    DesktopSettingsRow
+                    {
+                        text: qsTr("Hard mode")
+                        description: qsTr("No word tiles, the sentence is typed in full")
+                        lastRow: true
+
+                        DesktopToggle
+                        {
+                            accessibleName: qsTr("Hard mode")
+                            on: root.session.sentenceTyping
+                            enabled: root.session.sentenceStage
+
+                            onClicked: root.session.sentenceTyping = !root.session.sentenceTyping
+                        }
+                    }
+                }
+
+                ColumnLayout
+                {
+                    visible: root.selectedStage === "match"
+                    Layout.fillWidth: true
+                    spacing: 0
+
+                    DesktopSettingsRow
+                    {
+                        text: qsTr("Enabled")
+
+                        DesktopToggle
+                        {
+                            accessibleName: qsTr("Speed match stage")
+                            on: root.session.matchStage
+
+                            onClicked: root.session.matchStage = !root.session.matchStage
+                        }
+                    }
+
+                    DesktopSettingsSlider
+                    {
+                        title: qsTr("Rounds per word")
+                        value: root.session.matchCount
+                        from: 1
+                        to: root.session.maximumStageRepeatCount
+                        valueText: qsTr("%1×").arg(root.session.matchCount)
+                        interactive: root.session.matchStage
+
+                        onEdited: function(newValue) { root.session.matchCount = newValue }
+                    }
+
+                    DesktopSettingsRow
+                    {
+                        text: qsTr("Match by voice")
+                        description: qsTr("Words are played, not shown")
+                        lastRow: true
+
+                        DesktopToggle
+                        {
+                            accessibleName: qsTr("Match by voice")
+                            on: root.session.matchVoice
+                            enabled: root.session.matchStage && root.store.audioAvailable
+
+                            onClicked: root.session.matchVoice = !root.session.matchVoice
+                        }
+                    }
+                }
             }
         }
     }
 
     DesktopSettingsGroup
     {
-        title: qsTr("Sentences")
+        visible: root.session.review
+        title: qsTr("Spaced Repetition Scheduling")
 
         DesktopSettingsRow
         {
-            text: qsTr("Sentence stage")
-            description: qsTr("Build sentences that use the session's words")
+            text: qsTr("Learning Intensity")
+            description: qsTr("Higher intensity: more reviews and shorter breaks in between.")
 
-            DesktopToggle
+            DesktopSegmentedPill
             {
-                accessibleName: qsTr("Sentence stage")
-                on: root.session.sentenceStage
+                objectName: "learning_intensity"
 
-                onClicked: root.session.sentenceStage = !root.session.sentenceStage
-            }
-        }
+                accessibleName: qsTr("Learning Intensity")
+                options: [qsTr("Light"), qsTr("Normal"), qsTr("Hard"), qsTr("Custom")]
+                currentIndex: root.store.learningIntensity
 
-        DesktopSettingsRow
-        {
-            text: qsTr("Hard mode")
-            description: qsTr("No word tiles, the sentence is typed in full")
-            lastRow: true
-
-            DesktopToggle
-            {
-                accessibleName: qsTr("Hard mode")
-                on: root.session.sentenceTyping
-                enabled: root.session.sentenceStage
-
-                onClicked: root.session.sentenceTyping = !root.session.sentenceTyping
-            }
-        }
-    }
-
-    DesktopSettingsGroup
-    {
-        title: qsTr("Speed match")
-
-        DesktopSettingsRow
-        {
-            text: qsTr("Speed match stage")
-
-            DesktopToggle
-            {
-                accessibleName: qsTr("Speed match stage")
-                on: root.session.matchStage
-
-                onClicked: root.session.matchStage = !root.session.matchStage
+                onChosen: function(index) { root.store.learningIntensity = index }
             }
         }
 
         DesktopSettingsSlider
         {
-            title: qsTr("Rounds per word")
-            value: root.session.matchCount
-            from: 1
-            to: root.session.maximumStageRepeatCount
-            valueText: qsTr("%1×").arg(root.session.matchCount)
-            interactive: root.session.matchStage
+            visible: root.store.learningIntensity === 3
+            title: qsTr("Recall target")
+            value: root.store.customTargetRetention
+            from: root.store.minimumTargetRetention
+            to: root.store.maximumTargetRetention
+            valueText: qsTr("%1%").arg(value)
 
-            onEdited: function(newValue) { root.session.matchCount = newValue }
+            onEdited: function(newValue) { root.store.customTargetRetention = newValue }
         }
 
-        DesktopSettingsRow
+        DesktopSettingsSlider
         {
-            text: qsTr("Match by voice")
-            description: qsTr("Words are played, not shown")
-            lastRow: true
+            visible: root.store.learningIntensity === 3
+            title: qsTr("Learned at stability")
+            value: root.store.customLearnedStability
+            from: root.store.minimumLearnedStability
+            to: root.store.maximumLearnedStability
+            step: 10
 
-            DesktopToggle
-            {
-                accessibleName: qsTr("Match by voice")
-                on: root.session.matchVoice
-                enabled: root.session.matchStage && root.store.audioAvailable
+            onEdited: function(newValue) { root.store.customLearnedStability = newValue }
+        }
 
-                onClicked: root.session.matchVoice = !root.session.matchVoice
-            }
+        DesktopSettingsSlider
+        {
+            visible: root.store.learningIntensity === 3
+            title: qsTr("Quick review at stability")
+            value: root.store.customQuickReviewStability
+            from: 1
+            to: root.store.maximumQuickReviewStability
+
+            onEdited: function(newValue) { root.store.customQuickReviewStability = newValue }
+        }
+
+        ScheduleTimeline
+        {
+            Layout.fillWidth: true
+            Layout.leftMargin: AppMetrics.gapLarge
+            Layout.rightMargin: AppMetrics.gapLarge
+            Layout.topMargin: AppMetrics.gapWide
+            Layout.bottomMargin: AppMetrics.gapLarge
+            paths: root.store.schedulePreview
         }
     }
 }

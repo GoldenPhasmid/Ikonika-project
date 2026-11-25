@@ -17,11 +17,16 @@ public:
 
     FTCardRepository& GetCardRepository() override;
 
+    FTCardRepository& GetCardRepository(const std::string& TargetLanguage,
+                                        const std::string& NativeLanguage) override;
+
     FTReaderRepository& GetReaderLibrary() override;
 
     FTCloudBookRepository& GetCloudBooks() override;
 
     FTBookShelfRepository& GetBookShelf() override;
+
+    FTUserDeckRepository& GetUserDecks() override;
 
     FTYoutubeRepository& GetYoutubeLibrary() override;
 

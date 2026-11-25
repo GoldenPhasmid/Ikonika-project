@@ -104,6 +104,12 @@ SentenceTrainingController::SentenceTrainingController(QObject* Parent)
     connect(this, &SentenceTrainingController::stateChanged,
             this, &SentenceTrainingController::SaveCheckpoint);
 
+    connect(&AppDictionary::Notifier(), &AppDictionaryNotifier::dictionaryClosed, this, [this]()
+    {
+        RefreshedRevision.clear();
+        PendingRevision.clear();
+    });
+
     QTimer::singleShot(0, this, &SentenceTrainingController::LoadStoredCheckpoints);
 }
 
@@ -220,12 +226,12 @@ int SentenceTrainingController::GetSentenceCountStep() const
 std::vector<FTTreeSentence> SentenceTrainingController::FindCandidates(int InDifficultyMask,
                                                                         int InSentenceCount) const
 {
-    if (!AppDatabase::Get().IsReady() || !AppDictionary::Get().IsReady())
+    if (!AppDatabase::Get().IsReady() || !AppDictionary::GetActive().IsReady())
     {
         return {};
     }
 
-    const FTSentenceTree* Tree = AppDictionary::Get().GetSentenceTree();
+    const FTSentenceTree* Tree = AppDictionary::GetActive().GetSentenceTree();
 
     if (Tree == nullptr)
     {
@@ -329,11 +335,10 @@ void SentenceTrainingController::ApplyAvailability(const FAvailability& Result, 
 
 void SentenceTrainingController::refresh()
 {
-    const bool bReady = AppDictionary::Get().IsReady();
+    const bool bReady = AppDictionary::GetActive().IsReady();
 
     const std::string Revision = bReady
         ? AppDatabase::Get().GetDataRevision() + "|"
-          + std::to_string(AppDictionary::Get().GetGeneration()) + "|"
           + std::to_string(DifficultyMask) + "|" + std::to_string(SentenceCount)
         : std::string();
 
@@ -355,7 +360,7 @@ void SentenceTrainingController::refresh()
 
     if (!Request.has_value())
     {
-        const FTSentenceTree* Tree = AppDictionary::Get().GetSentenceTree();
+        const FTSentenceTree* Tree = AppDictionary::GetActive().GetSentenceTree();
 
         ApplyAvailability(Tree != nullptr ? ComputeAvailability(*Tree, MakeSentenceSources(), DifficultyMask, SentenceCount)
                                           : FAvailability{},
@@ -372,15 +377,17 @@ void SentenceTrainingController::refresh()
     emit availabilityChanged();
 
     const quint64 Serial = RefreshSerial;
-    const uint64_t Generation = AppDictionary::Get().GetGeneration();
-    const std::shared_ptr<const FTSentenceTree> LoadedTree = AppDictionary::Get().GetLoadedSentenceTree();
+    AppLanguageDictionary& Dictionary{AppDictionary::Get(Request->TargetLanguage)};
+    const uint64_t Generation = Dictionary.GetGeneration();
+    const std::shared_ptr<const FTSentenceTree> LoadedTree = Dictionary.GetLoadedSentenceTree();
+    const std::string TreeLanguage{Request->TargetLanguage};
     const std::vector<std::string> EssentialVerbs = FTSettings::Get().GetEssentialVerbs(Request->TargetLanguage);
     const int Mask = DifficultyMask;
     const int Count = SentenceCount;
     const QPointer<SentenceTrainingController> Self{this};
 
     QThreadPool::globalInstance()->start([Request = *Request, LoadedTree, EssentialVerbs, Mask, Count, Serial, Generation,
-                                          Self]()
+                                          TreeLanguage, Self]()
     {
         FAvailability Result;
         std::shared_ptr<const FTSentenceTree> Tree = LoadedTree;
@@ -411,18 +418,19 @@ void SentenceTrainingController::refresh()
         const bool bOpened = Sources != nullptr;
 
         QMetaObject::invokeMethod(QCoreApplication::instance(),
-                                  [Self, Result, Tree, Serial, Generation, bOpened]()
+                                  [Self, Result, Tree, Serial, Generation, TreeLanguage, bOpened]()
                                   {
                                       if (Self != nullptr)
                                       {
-                                          Self->FinishRefresh(Serial, Generation, bOpened, Result, Tree);
+                                          Self->FinishRefresh(Serial, TreeLanguage, Generation, bOpened, Result, Tree);
                                       }
                                   },
                                   Qt::QueuedConnection);
     });
 }
 
-void SentenceTrainingController::FinishRefresh(quint64 Serial, uint64_t Generation, bool bOpened,
+void SentenceTrainingController::FinishRefresh(quint64 Serial, const std::string& TreeLanguage, uint64_t Generation,
+                                               bool bOpened,
                                                const FAvailability& Result,
                                                const std::shared_ptr<const FTSentenceTree>& Tree)
 {
@@ -443,7 +451,7 @@ void SentenceTrainingController::FinishRefresh(quint64 Serial, uint64_t Generati
         return;
     }
 
-    AppDictionary::Get().AdoptSentenceTree(Tree, Generation);
+    AppDictionary::Get(TreeLanguage).AdoptSentenceTree(Tree, Generation);
 
     ApplyAvailability(Result, PendingRevision);
 }
@@ -848,7 +856,7 @@ bool SentenceTrainingController::LoadCheckpoint(const std::string& Json)
 {
     const QJsonDocument Document = QJsonDocument::fromJson(QByteArray::fromStdString(Json));
 
-    if (!Document.isObject() || !AppDictionary::Get().IsReady())
+    if (!Document.isObject() || !AppDictionary::GetActive().IsReady())
     {
         qCWarning(LogSession) << "Sentence training: saved session rejected,"
                               << (Document.isObject() ? "the dictionary is not ready" : "it is not valid JSON");
@@ -878,7 +886,7 @@ bool SentenceTrainingController::LoadCheckpoint(const std::string& Json)
 
     std::unordered_map<uint32_t, FTTreeSentence> Loaded;
 
-    for (FTTreeSentence& Sentence : AppDictionary::Get().GetRepository().LoadTreeSentences(SentenceIds))
+    for (FTTreeSentence& Sentence : AppDictionary::GetActive().GetRepository().LoadTreeSentences(SentenceIds))
     {
         const uint32_t SentenceId = Sentence.Id;
 

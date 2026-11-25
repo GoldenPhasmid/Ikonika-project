@@ -20,7 +20,7 @@ public:
     explicit ExerciseLauncherController(QObject* Parent = nullptr);
 
     Q_INVOKABLE bool startExercise(const QString& Exercise, bool bReverse = false, int CardCount = -1,
-        int RepetitionCount = -1, const QStringList& FilterKeys = {});
+        int RepetitionCount = -1, const QStringList& FilterKeys = {}, const QString& UserDeckId = {});
 
     ExerciseControllerBase* GetActiveController() const;
     QString GetExercise() const;

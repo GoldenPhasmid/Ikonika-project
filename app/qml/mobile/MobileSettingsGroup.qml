@@ -8,6 +8,9 @@ ColumnLayout
     required property string title
 
     property string flagCode: ""
+    property color outlineColour: AppTheme.colourBorder
+    property real outlineWidth: AppMetrics.borderWidth
+    property bool squareTopRight: false
 
     default property alias rows: card.data
 
@@ -39,9 +42,10 @@ ColumnLayout
         implicitHeight: card.implicitHeight
 
         radius: AppMetrics.radiusMedium
+        topRightRadius: root.squareTopRight ? 0 : AppMetrics.radiusMedium
         color: AppTheme.colourPanel
-        border.color: AppTheme.colourBorder
-        border.width: AppMetrics.borderWidth
+        border.color: root.outlineColour
+        border.width: root.outlineWidth
         clip: true
 
         ColumnLayout

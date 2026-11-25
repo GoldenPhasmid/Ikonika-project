@@ -76,6 +76,8 @@ public:
     /** The size of any page in points, from the list read when the file was opened. */
     Q_INVOKABLE QSizeF pageSizeAt(int Page) const;
 
+    Q_INVOKABLE QVariantMap internalLinkAt(QPointF ItemPoint);
+
     /** The word under a point given in this item's coordinates, or empty. */
     Q_INVOKABLE QString wordAt(QPointF ItemPoint);
 
@@ -84,6 +86,8 @@ public:
 
     /** The text between two points, with the rectangles covering it, in this item's coordinates. */
     Q_INVOKABLE QVariantMap selectionBetween(QPointF FromItem, QPointF ToItem);
+
+    Q_INVOKABLE QVariantList textRectangles(int Start, int Length);
 
     Q_INVOKABLE void requestOutline();
 
@@ -172,6 +176,8 @@ private:
 
     /** A selection as QML wants it: its text, and one rectangle per line in item coordinates. */
     QVariantMap ToSelectionMap(const QPdfSelection& Selection) const;
+
+    static QList<QRectF> MergeIntoLines(const QPdfSelection& Selection);
 
     qreal DevicePixels() const;
 

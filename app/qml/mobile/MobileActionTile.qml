@@ -49,8 +49,8 @@ Rectangle
 
             anchors.verticalCenter: parent.verticalCenter
             name: root.iconName
-            width: AppMetrics.headerActionIconSize
-            height: AppMetrics.headerActionIconSize
+            width: AppMetrics.iconSize
+            height: AppMetrics.iconSize
             color: root.contentColour
         }
 

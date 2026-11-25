@@ -8,21 +8,48 @@
 #include <QString>
 #include <QVariant>
 
+#include <array>
 #include <functional>
 #include <map>
 #include <string>
 #include <utility>
 #include <vector>
 
+struct FTLearningIntensity
+{
+    int TargetRetention = 0;
+    int LearnedStability = 0;
+    int QuickReviewStability = 0;
+};
+
+inline constexpr std::array<FTLearningIntensity, 3> LearningIntensities{{{90, 90, 14}, {93, 180, 14}, {95, 250, 14}}};
+inline constexpr size_t CustomIntensityIndex = LearningIntensities.size();
+inline constexpr int MinimumTargetRetention = 80;
+inline constexpr int MaximumTargetRetention = 97;
+inline constexpr int MinimumLearnedStability = 30;
+inline constexpr int MaximumLearnedStability = 730;
+inline constexpr int MaximumQuickReviewStability = 60;
+
+inline constexpr size_t ScheduleWeightCount = 19;
+
+using FTScheduleWeights = std::array<double, ScheduleWeightCount>;
+
+inline constexpr FTScheduleWeights DefaultScheduleWeights{0.40255, 1.18385, 3.173,  15.69105, 7.1949,
+                                                          0.5345,  0.7,     0.0046, 1.54575,  0.1192,
+                                                          1.01925, 3.5,     0.11,   0.29605,  2.2698,
+                                                          0.2315,  2.9898,  0.51655, 0.6621};
+
+void Sanitise(FTScheduleWeights& Weights);
+
 struct FTScheduleRules
 {
-    std::vector<int> IntervalDays{1, 2, 4, 14, 40, 120};
+    size_t IntensityIndex = 1;
+    FTLearningIntensity Custom = LearningIntensities[1];
+    bool bCustomChosen = false;
+    FTScheduleWeights Weights = DefaultScheduleWeights;
+    int FittedReviewCount = 0;
 
-    int MaximumDaysInFirstStage = 3;
-
-    bool bFirstStageFailureReturnsToPool = false;
-
-    bool bMissedReviewDemotes = true;
+    const FTLearningIntensity& GetIntensity() const;
 };
 
 void Sanitise(FTScheduleRules& Rules);
@@ -176,12 +203,9 @@ public:
 
     const FTScheduleRules& GetScheduleRules() const;
 
-    void SetIntervalDays(const QList<int>& Days);
-    void SetMaximumDaysInFirstStage(int Days);
-    void SetFirstStageFailureReturnsToPool(bool bValue);
-    void SetMissedReviewDemotes(bool bValue);
-
-    QList<int> GetIntervalDays() const;
+    void SetLearningIntensity(size_t Index);
+    void SetCustomIntensity(const FTLearningIntensity& Intensity);
+    void SetScheduleWeights(const FTScheduleWeights& Weights, int FittedReviewCount);
 
     const FTIntensiveLearningRules& GetIntensiveLearningRules() const;
 

@@ -25,9 +25,11 @@ FocusScope
     signal editCardRequested(var controller)
     signal resultEditRequested(var controller, var card)
     signal addWordRequested(string word, string translation, string partOfSpeech, string hint)
+    signal dictionaryRequested(string word, string partOfSpeech)
 
     readonly property var active: root.session ? root.session.activeController : null
     readonly property bool finished: !!root.session && root.session.finished
+    readonly property bool followUpPending: root.finished && root.session.followUpPending === true
     readonly property bool speechOn: !!root.store && root.store.audioEnabled
     readonly property bool muted: !root.speechOn || !root.store.autoSpeak
     readonly property bool sentenceMode: root.session instanceof SentenceTrainingController
@@ -54,9 +56,9 @@ FocusScope
             return root.formsMode ? "forms" : "flashcards"
         }
 
-        if (controller instanceof FlipRecallController)
+        if (controller instanceof FlipRecallController || controller instanceof CorrectIncorrectController)
         {
-            return "flip"
+            return "review"
         }
 
         if (controller instanceof MultipleChoiceController)
@@ -72,11 +74,6 @@ FocusScope
         if (controller instanceof SpeedMatchController)
         {
             return "match"
-        }
-
-        if (controller instanceof CorrectIncorrectController)
-        {
-            return "review"
         }
 
         if (controller instanceof SentenceTilesController)
@@ -111,7 +108,6 @@ FocusScope
     readonly property var components: ({
         "flashcards": flashcardComponent,
         "forms": formsComponent,
-        "flip": flipComponent,
         "choice": choiceComponent,
         "typed": typedComponent,
         "match": matchComponent,
@@ -160,6 +156,18 @@ FocusScope
     {
         root.explainOpen = false
         Qt.callLater(root.focusExercise)
+    }
+
+    function completeClicked()
+    {
+        if (root.followUpPending)
+        {
+            root.session.continueToFollowUp()
+
+            return
+        }
+
+        root.finishedClicked()
     }
 
     function askToLeave()
@@ -401,8 +409,9 @@ FocusScope
             countLabel: root.countLabel
             wordCount: root.wordCount
             elapsedSeconds: root.elapsedSeconds
+            doneText: root.followUpPending ? qsTr("Continue") : qsTr("Done")
 
-            onDoneClicked: root.finishedClicked()
+            onDoneClicked: root.completeClicked()
         }
     }
 
@@ -462,7 +471,7 @@ FocusScope
         enabled: root.visible && root.finished && !root.overlayOpen
         context: Qt.WindowShortcut
 
-        onActivated: root.finishedClicked()
+        onActivated: root.completeClicked()
     }
 
     Shortcut
@@ -522,8 +531,7 @@ FocusScope
         onDictionaryRequested: function(word)
         {
             translationPopup.dismiss()
-            lookupPane.show(word, false, translationPopup.sentence)
-            root.explainOpen = true
+            root.dictionaryRequested(word, "")
         }
     }
 
@@ -562,7 +570,6 @@ FocusScope
     }
 
     Component { id: formsComponent; DesktopFormsStudyExercise { store: root.store } }
-    Component { id: flipComponent; DesktopFlipExercise { store: root.store; onWordClicked: function(word, sentence, wordRect) { root.explainWord(word, sentence, wordRect) } } }
     Component { id: choiceComponent; DesktopChoiceExercise { store: root.store } }
 
     Component

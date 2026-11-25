@@ -499,15 +499,15 @@ TEST_CASE("Recently studied cards come back most-recently-promoted first", "[rep
     REQUIRE(Cards.size() == 3);
 
     FTCard First = *Cards[0];
-    Promote(First, 1000);
+    LearnCard(First, 1000);
     REQUIRE(Test.Repository->UpdateCardSchedule(First));
 
     FTCard Second = *Cards[1];
-    Promote(Second, 3000);
+    LearnCard(Second, 3000);
     REQUIRE(Test.Repository->UpdateCardSchedule(Second));
 
     FTCard Third = *Cards[2];
-    Promote(Third, 2000);
+    LearnCard(Third, 2000);
     REQUIRE(Test.Repository->UpdateCardSchedule(Third));
 
     const std::vector<FTCard> Recent = Test.Repository->LoadRecentlyStudiedCards(10);
@@ -533,7 +533,7 @@ TEST_CASE("Recently studied cards include a word promoted without being complete
     REQUIRE(Test.Repository->UpdateCardSchedule(StillInPool));
 
     FTCard Promoted = *Cards[1];
-    Promote(Promoted, 1000);
+    LearnCard(Promoted, 1000);
     REQUIRE(Test.Repository->UpdateCardSchedule(Promoted));
 
     const std::vector<FTCard> Recent = Test.Repository->LoadRecentlyStudiedCards(10);
@@ -566,7 +566,7 @@ TEST_CASE("Recently studied cards leaves out a word sent back to the pool", "[re
     REQUIRE(AddCards(*Test.Repository, {MakeCard("chien", "dog")}));
 
     FTCard Returned = *Test.Repository->LoadCards().front();
-    Promote(Returned, 1000);
+    LearnCard(Returned, 1000);
     ReturnToPool(Returned, 2000);
     REQUIRE(Test.Repository->UpdateCardSchedule(Returned));
 
@@ -591,7 +591,7 @@ TEST_CASE("Recently studied cards respect the limit", "[repository]")
     for (size_t Index = 0; Index < Cards.size(); ++Index)
     {
         FTCard Card = *Cards[Index];
-        Promote(Card, static_cast<FTDayNumber>(1000 + Index));
+        LearnCard(Card, static_cast<FTDayNumber>(1000 + Index));
         REQUIRE(Test.Repository->UpdateCardSchedule(Card));
     }
 
@@ -641,7 +641,7 @@ TEST_CASE("Counting due and pool cards agrees with loading them", "[repository]"
     REQUIRE(Loaded.size() == 3);
 
     FTCard Promoted = *Loaded[0];
-    Promote(Promoted, Today - 1);
+    LearnCard(Promoted, Today - 1);
     Promoted.DueDate = Today;
     REQUIRE(Test.Repository->UpdateCardSchedule(Promoted));
 
@@ -806,12 +806,11 @@ TEST_CASE("Every card field round trips", "[repository]")
     FTCard Full;
     Full.TargetWord = "l'école";
     Full.Translation = "school";
-    Full.Definition = "établissement où l'on enseigne";
     Full.Gender = GenderFeminine;
     Full.LeitnerStage = 3;
     Full.DueDate = 20500;
     Full.BoxChangedDate = 20495;
-    SetUserEdited(Full, EFTCardField::Definition, true);
+    SetUserEdited(Full, EFTCardField::Gender, true);
 
     REQUIRE(AddCards(*Test.Repository, {Full}));
 
@@ -821,13 +820,12 @@ TEST_CASE("Every card field round trips", "[repository]")
     const FTCard& Round = *Loaded[0];
     CHECK(Round.TargetWord == "l'école");
     CHECK(Round.Translation == "school");
-    CHECK(Round.Definition == "établissement où l'on enseigne");
     CHECK(Round.Gender == std::optional<int>(GenderFeminine));
     CHECK(Round.LeitnerStage == 3);
     CHECK(Round.DueDate == 20500);
     CHECK(Round.BoxChangedDate == 20495);
     CHECK_FALSE(Round.CompletedDate.has_value());
-    CHECK(IsUserEdited(Round, EFTCardField::Definition));
+    CHECK(IsUserEdited(Round, EFTCardField::Gender));
     CHECK_FALSE(IsUserEdited(Round, EFTCardField::Translation));
     CHECK(Round.CreatedDate == 7000);
     CHECK(Round.LastUpdatedDate == 7000);
@@ -1125,21 +1123,13 @@ TEST_CASE("A schedule written by the repository round trips through the ladder",
     FTCard Card = *Loaded[0];
     REQUIRE(IsInPool(Card));
 
-    // Learned today, so due tomorrow and not before.
-    Promote(Card, Today);
+    LearnCard(Card, Today);
     REQUIRE(Test.Repository->UpdateCardSchedule(Card));
 
-    CHECK(Test.Repository->LoadDueCards(Today).empty());
-    CHECK(Test.Repository->LoadDueCards(Today + 1).size() == 1);
+    CHECK(Test.Repository->LoadDueCards(Today + 1).empty());
+    CHECK(Test.Repository->LoadDueCards(Today + 2).size() == 1);
+    CHECK(Test.Repository->LoadDueCards(Today + 40).size() == 1);
     CHECK(Test.Repository->LoadUnlearnedCards().empty());
-
-    // Missed for four days, which sends a stage-1 card back to the pool.
-    Card = *Test.Repository->LoadDueCards(Today + 4).at(0);
-    REQUIRE(ApplyExpiry(Card, Today + 4));
-    REQUIRE(Test.Repository->UpdateCardSchedule(Card));
-
-    CHECK(Test.Repository->LoadDueCards(Today + 4).empty());
-    CHECK(Test.Repository->LoadUnlearnedCards().size() == 1);
 }
 
 TEST_CASE("The system clock is used when none is given", "[repository]")
@@ -1377,6 +1367,22 @@ TEST_CASE("A word whose card was deleted after triage is not known", "[repositor
     REQUIRE(Test.Repository->MarkWordTriaged("chien", "noun", 0));
 
     REQUIRE(Test.Repository->ListKnownWords().size() == 1);
+}
+
+TEST_CASE("Unmarking a reading removes every known mark of it", "[repository][triage]")
+{
+    Fixture Test;
+
+    REQUIRE(Test.Repository->MarkWordTriaged("moule", "noun", 0));
+    REQUIRE(Test.Repository->MarkWordTriaged("moule", "noun", 1, "fruit"));
+    REQUIRE(Test.Repository->MarkWordTriaged("moule", "verb", std::nullopt));
+
+    REQUIRE(Test.Repository->UnmarkReadingKnown("moule", "noun"));
+
+    const std::vector<FTKnownWord> Known = Test.Repository->ListKnownWords();
+
+    REQUIRE(Known.size() == 1);
+    CHECK(Known.front().PartOfSpeech == "verb");
 }
 
 TEST_CASE("A known mark can name one meaning of a reading", "[repository][triage][decks]")

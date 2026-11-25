@@ -8,11 +8,15 @@
 #include "core/FTCloudBookRepository.h"
 #include "core/FTReaderRepository.h"
 #include "core/FTSchema.h"
+#include "core/FTUserDeckRepository.h"
+#include "core/FTSettings.h"
 #include "core/FTYoutubeRepository.h"
 
+#include <map>
 #include <memory>
 #include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace
@@ -35,6 +39,7 @@ namespace
             ReaderLibrary = std::make_unique<FTReaderRepository>(*DeviceConnection);
             CloudBooks = std::make_unique<FTCloudBookRepository>(*Connection);
             BookShelf = std::make_unique<FTBookShelfRepository>(*Connection);
+            UserDecks = std::make_unique<FTUserDeckRepository>(*Connection);
             YoutubeLibrary = std::make_unique<FTYoutubeRepository>(*DeviceConnection);
         }
 
@@ -54,6 +59,28 @@ namespace
             return *CardRepository;
         }
 
+        FTCardRepository& GetCardRepository(const std::string& TargetLanguage,
+                                            const std::string& NativeLanguage) override
+        {
+            const FTLanguageRules& Languages{FTSettings::Get().GetLanguageRules()};
+
+            if (TargetLanguage.empty() || TargetLanguage == Languages.TargetLanguage)
+            {
+                return *CardRepository;
+            }
+
+            const std::string Native{NativeLanguage.empty() ? Languages.NativeLanguage : NativeLanguage};
+            std::unique_ptr<FTCardRepository>& Found{LanguageCardRepositories[{TargetLanguage, Native}]};
+
+            if (Found == nullptr)
+            {
+                Found = std::make_unique<FTCardRepository>(*Connection);
+                Found->SetActiveLanguages(TargetLanguage, Native);
+            }
+
+            return *Found;
+        }
+
         FTReaderRepository& GetReaderLibrary() override
         {
             return *ReaderLibrary;
@@ -67,6 +94,11 @@ namespace
         FTBookShelfRepository& GetBookShelf() override
         {
             return *BookShelf;
+        }
+
+        FTUserDeckRepository& GetUserDecks() override
+        {
+            return *UserDecks;
         }
 
         FTYoutubeRepository& GetYoutubeLibrary() override
@@ -97,9 +129,11 @@ namespace
         std::unique_ptr<FTDatabase> Connection;
         std::unique_ptr<FTDatabase> DeviceConnection;
         std::unique_ptr<FTCardRepository> CardRepository;
+        std::map<std::pair<std::string, std::string>, std::unique_ptr<FTCardRepository>> LanguageCardRepositories;
         std::unique_ptr<FTReaderRepository> ReaderLibrary;
         std::unique_ptr<FTCloudBookRepository> CloudBooks;
         std::unique_ptr<FTBookShelfRepository> BookShelf;
+        std::unique_ptr<FTUserDeckRepository> UserDecks;
         std::unique_ptr<FTYoutubeRepository> YoutubeLibrary;
     };
 

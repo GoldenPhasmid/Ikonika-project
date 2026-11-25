@@ -13,6 +13,18 @@ Item
     readonly property real topCover: root.controlsVisible ? topPanel.height : 0
     readonly property real bottomCover: root.controlsVisible ? bottomPanel.height : 0
 
+    property real topReserve: 0
+    property real bottomReserve: 0
+
+    onTopCoverChanged: if (root.topCover > 0) root.topReserve = root.topCover
+    onBottomCoverChanged: if (root.bottomCover > 0) root.bottomReserve = root.bottomCover
+
+    Component.onCompleted:
+    {
+        root.topReserve = root.topCover
+        root.bottomReserve = root.bottomCover
+    }
+
     Item
     {
         id: pageArea

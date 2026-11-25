@@ -7,26 +7,31 @@
 #include "core/FTUuid.h"
 
 #include <algorithm>
+#include <array>
 #include <unordered_map>
 
 namespace
 {
+    constexpr std::array<int, 6> LegacyIntervalDays{1, 2, 4, 14, 40, 120};
+
+    constexpr const char* JournalColumns = "Id, EventId, CardId, EventValue, Day, DueDate, Stability, Difficulty";
+
+    int GetLegacyIntervalDays(int Stage)
+    {
+        const int Clamped = std::clamp(Stage, FirstLadderStage, static_cast<int>(LegacyIntervalDays.size()));
+
+        return LegacyIntervalDays[static_cast<size_t>(Clamped - 1)];
+    }
+
     void ApplyEvent(FTCard& Subject, const FTJournalEvent& Event)
     {
         if (Event.EventId == JournalLearned)
         {
-            Promote(Subject, Event.Day);
+            LearnCard(Subject, Event.Day);
         }
         else if (Event.EventId == JournalReviewed)
         {
-            if (Event.EventValue != 0)
-            {
-                Promote(Subject, Event.Day);
-            }
-            else
-            {
-                Demote(Subject, Event.Day);
-            }
+            AnswerReview(Subject, Event.EventValue != 0, Event.Day);
         }
         else if (Event.EventId == JournalPooled)
         {
@@ -38,8 +43,47 @@ namespace
         }
         else if (Event.EventId == JournalPlaced && Event.EventValue >= FirstLadderStage)
         {
-            PlaceInStage(Subject, Event.EventValue, Event.Day);
+            PlaceWithStability(Subject, GetLegacyIntervalDays(Event.EventValue), Event.Day);
         }
+    }
+
+    bool IsAnswerEvent(const FTJournalEvent& Event)
+    {
+        return Event.EventId == JournalLearned || Event.EventId == JournalReviewed || Event.EventId == JournalPlaced;
+    }
+
+    void AdoptRecordedSchedule(FTCard& Subject, const FTJournalEvent& Event)
+    {
+        Subject.Stability = Event.Stability;
+        Subject.Difficulty = Event.Difficulty;
+
+        if (!IsAnswerEvent(Event))
+        {
+            return;
+        }
+
+        if (!Event.DueDate.has_value())
+        {
+            Subject.LeitnerStage = ProgressStageCount;
+            Subject.CompletedDate = Event.Day;
+            Subject.DueDate.reset();
+
+            return;
+        }
+
+        Subject.LeitnerStage = GetProgressStage(*Subject.Stability);
+        Subject.CompletedDate.reset();
+        Subject.DueDate = Event.DueDate;
+    }
+
+    std::optional<double> ReadOptionalReal(const FTStatement& Query, int Column)
+    {
+        if (Query.IsNull(Column))
+        {
+            return std::nullopt;
+        }
+
+        return Query.GetDouble(Column);
     }
 
     FTJournalEvent ReadEvent(const FTStatement& Query)
@@ -56,6 +100,9 @@ namespace
             Event.DueDate = Query.GetInt(5);
         }
 
+        Event.Stability = ReadOptionalReal(Query, 6);
+        Event.Difficulty = ReadOptionalReal(Query, 7);
+
         return Event;
     }
 
@@ -71,11 +118,23 @@ namespace
         Statement.BindNull(Index);
     }
 
+    void BindOptionalReal(FTStatement& Statement, int Index, const std::optional<double>& Value)
+    {
+        if (Value.has_value())
+        {
+            Statement.BindDouble(Index, *Value);
+
+            return;
+        }
+
+        Statement.BindNull(Index);
+    }
+
     FTStatement PrepareProgressWrite(FTDatabase& Target)
     {
         return Target.Prepare(
-            "UPDATE Cards SET LeitnerStage = ?2, DueDate = ?3, BoxChangedDate = ?4, CompletedDate = ?5 "
-            "WHERE Id = ?1");
+            "UPDATE Cards SET LeitnerStage = ?2, DueDate = ?3, BoxChangedDate = ?4, CompletedDate = ?5, "
+            "Stability = ?6, Difficulty = ?7 WHERE Id = ?1");
     }
 
     bool WriteProgress(FTStatement& Update, const std::string& CardId, const FTCard& Progress)
@@ -91,9 +150,44 @@ namespace
         BindOptionalDay(Update, 3, Progress.DueDate);
         BindOptionalDay(Update, 4, Progress.BoxChangedDate);
         BindOptionalDay(Update, 5, Progress.CompletedDate);
+        BindOptionalReal(Update, 6, Progress.Stability);
+        BindOptionalReal(Update, 7, Progress.Difficulty);
 
         return Update.Run();
     }
+}
+
+void SortJournalEvents(std::vector<FTJournalEvent>& Events)
+{
+    std::sort(Events.begin(), Events.end(),
+              [](const FTJournalEvent& Left, const FTJournalEvent& Right)
+              {
+                  if (Left.Day != Right.Day)
+                  {
+                      return Left.Day < Right.Day;
+                  }
+
+                  return Left.Id < Right.Id;
+              });
+}
+
+bool LoadJournalByCard(FTDatabase& Target,
+                       std::unordered_map<std::string, std::vector<FTJournalEvent>>& EventsByCard)
+{
+    FTStatement Query = Target.Prepare(std::string("SELECT ") + JournalColumns + " FROM Journal");
+
+    if (!Query.IsValid())
+    {
+        return false;
+    }
+
+    while (Query.Step())
+    {
+        FTJournalEvent Event = ReadEvent(Query);
+        EventsByCard[Event.CardId].push_back(std::move(Event));
+    }
+
+    return !Query.HasFailed();
 }
 
 FTJournalEvent MakeJournalEvent(const std::string& CardId, const char* EventId, int EventValue, FTDayNumber Day)
@@ -110,8 +204,19 @@ FTJournalEvent MakeJournalEvent(const std::string& CardId, const char* EventId, 
 
 void ApplyJournalEvent(FTCard& Subject, const FTJournalEvent& Event)
 {
-    ApplyExpiryThrough(Subject, Event.Day);
     ApplyEvent(Subject, Event);
+
+    if (IsInPool(Subject))
+    {
+        return;
+    }
+
+    if (Event.Stability.has_value() && Event.Difficulty.has_value())
+    {
+        AdoptRecordedSchedule(Subject, Event);
+
+        return;
+    }
 
     if (Event.DueDate.has_value() && Subject.DueDate.has_value())
     {
@@ -119,36 +224,27 @@ void ApplyJournalEvent(FTCard& Subject, const FTJournalEvent& Event)
     }
 }
 
-void ReplayJournal(FTCard& Subject, std::vector<FTJournalEvent> Events, FTDayNumber Today)
+void ReplayJournal(FTCard& Subject, std::vector<FTJournalEvent> Events)
 {
-    std::sort(Events.begin(), Events.end(),
-              [](const FTJournalEvent& Left, const FTJournalEvent& Right)
-              {
-                  if (Left.Day != Right.Day)
-                  {
-                      return Left.Day < Right.Day;
-                  }
-
-                  return Left.Id < Right.Id;
-              });
+    SortJournalEvents(Events);
 
     Subject.LeitnerStage = PoolStage;
     Subject.DueDate.reset();
     Subject.BoxChangedDate.reset();
     Subject.CompletedDate.reset();
+    Subject.Stability.reset();
+    Subject.Difficulty.reset();
 
     for (const FTJournalEvent& Event : Events)
     {
         ApplyJournalEvent(Subject, Event);
     }
-
-    ApplyExpiryThrough(Subject, Today);
 }
 
 bool AppendJournalEvent(FTDatabase& Target, const FTJournalEvent& Event)
 {
-    FTStatement Insert = Target.Prepare(
-        "INSERT INTO Journal (Id, EventId, CardId, EventValue, Day, DueDate) VALUES (?1, ?2, ?3, ?4, ?5, ?6)");
+    FTStatement Insert = Target.Prepare(std::string("INSERT INTO Journal (") + JournalColumns
+                                        + ") VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)");
 
     if (!Insert.IsValid())
     {
@@ -161,6 +257,8 @@ bool AppendJournalEvent(FTDatabase& Target, const FTJournalEvent& Event)
     Insert.BindInt(4, Event.EventValue);
     Insert.BindInt(5, Event.Day);
     BindOptionalDay(Insert, 6, Event.DueDate);
+    BindOptionalReal(Insert, 7, Event.Stability);
+    BindOptionalReal(Insert, 8, Event.Difficulty);
 
     if (!Insert.Run())
     {
@@ -175,8 +273,8 @@ bool AppendJournalEvent(FTDatabase& Target, const FTJournalEvent& Event)
 
 std::vector<FTJournalEvent> LoadJournal(FTDatabase& Target, const std::string& CardId)
 {
-    FTStatement Query = Target.Prepare(
-        "SELECT Id, EventId, CardId, EventValue, Day, DueDate FROM Journal WHERE CardId = ?1 ORDER BY Day, Id");
+    FTStatement Query = Target.Prepare(std::string("SELECT ") + JournalColumns
+                                       + " FROM Journal WHERE CardId = ?1 ORDER BY Day, Id");
 
     if (!Query.IsValid())
     {
@@ -195,30 +293,15 @@ std::vector<FTJournalEvent> LoadJournal(FTDatabase& Target, const std::string& C
     return Events;
 }
 
-bool RebuildCardProgress(FTDatabase& Target, FTDayNumber Today)
+bool RebuildCardProgress(FTDatabase& Target)
 {
     const FTQueryTimer Timer("RebuildCardProgress");
 
     std::unordered_map<std::string, std::vector<FTJournalEvent>> EventsByCard;
 
+    if (!LoadJournalByCard(Target, EventsByCard))
     {
-        FTStatement Query = Target.Prepare("SELECT Id, EventId, CardId, EventValue, Day, DueDate FROM Journal");
-
-        if (!Query.IsValid())
-        {
-            return false;
-        }
-
-        while (Query.Step())
-        {
-            FTJournalEvent Event = ReadEvent(Query);
-            EventsByCard[Event.CardId].push_back(std::move(Event));
-        }
-
-        if (Query.HasFailed())
-        {
-            return false;
-        }
+        return false;
     }
 
     std::vector<std::string> CardIds;
@@ -249,8 +332,7 @@ bool RebuildCardProgress(FTDatabase& Target, FTDayNumber Today)
         FTCard Progress;
         const auto Found = EventsByCard.find(CardId);
 
-        ReplayJournal(Progress, Found != EventsByCard.end() ? Found->second : std::vector<FTJournalEvent>{},
-                      Today);
+        ReplayJournal(Progress, Found != EventsByCard.end() ? Found->second : std::vector<FTJournalEvent>{});
 
         if (!WriteProgress(Update, CardId, Progress))
         {
@@ -260,6 +342,61 @@ bool RebuildCardProgress(FTDatabase& Target, FTDayNumber Today)
 
     qCInfo(LogSchedule) << "Rebuilt the progress of" << static_cast<int>(CardIds.size()) << "cards from"
                         << static_cast<int>(EventsByCard.size()) << "journals";
+
+    return true;
+}
+
+bool FillJournalStability(FTDatabase& Target)
+{
+    const FTQueryTimer Timer("FillJournalStability");
+
+    std::unordered_map<std::string, std::vector<FTJournalEvent>> EventsByCard;
+
+    if (!LoadJournalByCard(Target, EventsByCard))
+    {
+        return false;
+    }
+
+    FTStatement Update = Target.Prepare(
+        "UPDATE Journal SET Stability = ?2, Difficulty = ?3, DueDate = COALESCE(DueDate, ?4) WHERE Id = ?1");
+    int Filled = 0;
+
+    for (auto& [CardId, Events] : EventsByCard)
+    {
+        SortJournalEvents(Events);
+
+        FTCard Progress;
+
+        for (const FTJournalEvent& Event : Events)
+        {
+            ApplyJournalEvent(Progress, Event);
+
+            if (Event.Stability.has_value() || !Progress.Stability.has_value() || !Progress.Difficulty.has_value())
+            {
+                continue;
+            }
+
+            if (!Update.IsValid())
+            {
+                return false;
+            }
+
+            Update.Reset();
+            Update.BindText(1, Event.Id);
+            Update.BindDouble(2, *Progress.Stability);
+            Update.BindDouble(3, *Progress.Difficulty);
+            BindOptionalDay(Update, 4, Progress.DueDate);
+
+            if (!Update.Run())
+            {
+                return false;
+            }
+
+            ++Filled;
+        }
+    }
+
+    qCInfo(LogSchedule) << "Gave" << Filled << "journal events the stability they left their card with";
 
     return true;
 }
@@ -302,7 +439,7 @@ bool SeedStartingEvents(FTDatabase& Target)
                 }
                 else if (!Query.IsNull(2))
                 {
-                    Event.Day = Query.GetInt(2) - GetIntervalDays(Stage);
+                    Event.Day = Query.GetInt(2) - GetLegacyIntervalDays(Stage);
                 }
                 else
                 {

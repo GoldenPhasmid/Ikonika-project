@@ -7,13 +7,15 @@ List of terminology/definitions
 | Term | Meaning |
 | --- | --- |
 | **Card** | One thing being learned: word, translation, definition. |
-| **My Vocabulary** | Every card of the language pair. There are no user decks. |
+| **My Vocabulary** | Every card of the language pair, whether or not it sits in a custom deck. |
 | **Deck** | A read-only list of words shipped in the dictionary. Learning a deck runs a Discover round over its words. |
-| **Box** | Leitner box, 1 upward. Lives on the card and decides when it is next due. |
+| **Custom deck** | The learner's own deck. A card sits in at most one, and stays in My Vocabulary when the deck is deleted. |
+| **Stability** | How many days a card can go unreviewed before its recall falls to 90%. Lives on the card and decides when it is next due. |
+| **Stage** | Stability shown as one of four steps of progress. Display only. |
 | **Session** | A sequence of exercises over a fixed set of cards. All or nothing. |
-| **Intensive learning** | The session type that takes cards from the pool and puts them on the ladder. |
-| **Repetition** | The session type that works through cards already on the ladder. |
-| **Completed** | Past the last box. Out of rotation until demoted by hand. |
+| **Intensive learning** | The session type that takes cards from the pool and puts them on the schedule. |
+| **Repetition** | The session type that works through cards already on the schedule. |
+| **Completed** | Learned: its stability reached what the learning intensity asks for. Out of rotation until sent back to the pool by hand. |
 
 Note what is **not** here. There is no lesson-level schedule, no per-exercise progress, and no word
 state machine. See the superseded section at the end.
@@ -43,23 +45,30 @@ on every card would be too much talking.
 
 ## The card's life
 
-A new card starts in the Learning Pool, the part of My Vocabulary not yet on the ladder.
-Finishing an intensive learning session moves the words that session taught into box 1. From
-there it climbs one box at a time as sessions go well, box 1, then box 2, and so on up to the last
-box, after which it is marked Completed and leaves rotation.
+A new card starts in the Learning Pool, the part of My Vocabulary not yet on the schedule.
+Finishing an intensive learning session counts as the first "I know it" for the words that session
+taught. They come back two days later.
 
-Two things can send a card backwards. Answering "no" at a review, or letting its due date pass
-without doing the session, drops it back one box rather than all the way to the pool. That is the
-softer of the two classic Leitner variants.
+The schedule is FSRS. Each card carries two numbers. Stability is how many days the card can go
+unreviewed before its recall falls to 90%. Difficulty is how hard the
+card has proved, and it decides how fast stability grows.
 
-(VERIFY)
-There is one exception. A card that sits in box 1 for more than three days without a review goes
-all the way back to the pool, not just down one box. A word learned intensively but never
-revisited within three days did not really stick, so it gets re-learned from scratch rather than
-nudged. Three days is a setting, not a fixed rule.
+Every review answer is "I know it" or "I forgot". "I know it" grows stability, and more so when
+the word was hard to recall: a late answer grows it more than one on time. "I forgot" cuts stability
+down, so the word comes back within days, and it raises difficulty. The next date is the day recall
+would fall to the recall target, 93% by default.
 
-(NOT IMPLEMENTED)
-The user can also send any card, completed or still in a box, straight back to the pool by hand.
+A card is learned, Completed, once its stability reaches what the learning intensity asks for, 180 on
+Normal. With every answer "I know it" a word comes back on days 2, 8, 23, 58 and 137 and is learned
+then. One "I forgot" at the third review makes that eight reviews instead of five and moves the day to
+195. Both hold until the weights are fitted to the user.
+
+A missed day costs nothing. The card stays due until it is reviewed, and the answer accounts for
+how late it is.
+
+The user can send any card, completed or not, straight back to the pool by hand from My
+Vocabulary. That clears its stability and difficulty, and the next training teaches it from
+scratch.
 
 ## Sessions
 
@@ -73,6 +82,10 @@ filled from the Learning Pool, then from the dictionary. The pool is taken in tu
 adjectives, adverbs and every other part of speech, oldest first within each, and a word whose
 spelling is already in the session is left for a later one. Only that last step asks the
 user anything - triage runs when the pool cannot fill a session, and never when it can.
+
+A custom deck with Daily learning off keeps its new cards out of this session. Its scheduled reviews stay. Learn on
+a custom deck runs the same session over that deck's new cards alone, whether Daily learning is on or off, and it
+keeps its own place next to the daily session.
 
 Words are picked when a session starts and promoted when it finishes.
 
@@ -163,33 +176,33 @@ until it is restored from its checkpoint, for example after the app restarts. On
 stage that is now off continues at the stage after it. The sentences can be turned off the same
 way, and then the mastery stage has its first phase only.
 
-**Finishing.** The words this session taught move to box 1. Not the whole pool, and not the
+**Finishing.** The words this session taught go on the schedule. Not the whole pool, and not the
 whole pool: a session teaches a slice of both.
 
 ### Repetition
 
 Every card due today goes into one pool, then gets split at random into sessions of N, default 20.
-Splitting by box instead would produce a session of three cards whenever box 3 happens to hold
-three cards, so it's random.
+Splitting by stage instead would produce a session of three cards whenever one stage happens to
+hold three cards, so it's random.
 
-**Quick pass.** When cards from box 4 and up are due, Review asks about them first, with the review
-card alone. These cards are weeks or months old, and a learner who still knows one does not need
-the whole session for it. A "yes" promotes the card at once. A "no" puts the card into the review
-that follows, where it skips the review card, goes through the practice, and is demoted when that
-review ends. The follow-up review takes the forgotten cards first and fills up with the earlier due
-cards. If the app closes between the two, the forgotten cards are still due and the quick pass
-asks about them again.
+**Quick pass.** When cards with at least the learning intensity's quick review stability are due, Review asks about them first, with the review card alone. A learner who still knows one
+does not need the whole session for it. A "yes" counts as "I know it" at once. A "no" puts the card
+into the review that follows, where it skips the review card, goes through the practice, and counts
+as "I forgot" when that review ends. The follow-up review takes the forgotten cards first and fills
+up with the earlier due cards. If the app closes between the two, the forgotten cards are still due
+and the quick pass asks about them again.
+
+The quick pass ends on the Complete screen with its own count and time, like every other session.
+When a review follows, the screen's button reads Continue and starts that review. Leaving through
+the back arrow skips it, and the forgotten cards stay due.
 
 A repetition session starts with a review: the French word shown, its meaning revealed, and a yes
-or no answer. A "no" demotes the card one box, but the card still goes through the rest of the
-session's exercises. The withheld part is the promotion, not the practice.
-
-Every due session has to be done. Cards left undone are expired the next day and demoted, which is
-the daily commitment the whole design rests on.
+or no answer. A "no" counts as "I forgot", but the card still goes through the rest of the
+session's exercises.
 
 After the review come the mastery stage, which asks for three correct answers per card, and speed
 match. Multiple choice and sentences are off by default for Review and can be turned on in its
-settings. Only the review's yes or no moves a card between boxes.
+settings. Only the review's yes or no changes a card's schedule.
 
 ### Decks
 
@@ -219,8 +232,8 @@ first exposure to the whole set.
 ### Exercise 2 — Flip
 
 One side shown, the other revealed on demand, then "I knew it" or "I forgot". In Training the
-answer feeds the stage's count, so a forgotten card comes back sooner. The answer never moves a card
-between boxes.
+answer feeds the stage's count, so a forgotten card comes back sooner. The answer never changes a card's
+schedule.
 
 ### Exercise 3 — Multiple choice, six options
 
@@ -319,18 +332,79 @@ takes. A screen that moves on by itself after a right answer also moves on after
 
 Both rules are flags, so either can be reversed without touching the comparison code.
 
-## Boxes and intervals
+## Schedule settings
 
-Leitner, with **configurable intervals**. Six boxes by default, with gaps of 1, 2, 4, 14, 40 and
-120 days. A word comes back on days 1, 3, 7, 21, 61 and 181 after it was learned. The sixth box is
-a check-up half a year later, and a "yes" there marks the card Completed.
+Review settings hold one choice, the learning intensity, synced between devices. Each level sets three
+numbers:
 
-The update from three boxes to six reopens cards completed in box 3 through a one-time database
-migration. They enter box 4 and return fourteen days after the migration. Changing the review
-ladder in settings leaves completed cards completed.
+| Level | Recall target | Learned at stability | Quick review at stability |
+| --- | --- | --- | --- |
+| Light | 90% | 90 | 14 |
+| Normal, the default | 93% | 180 | 14 |
+| Hard | 95% | 250 | 14 |
 
-Each interval is a gap from the day the word was last answered, not a fixed date. Answering late
-shifts the rest of the schedule later too, rather than leaving dates in the past.
+Higher brings reviews sooner and adds more of them. The quick review number is the same on every
+level, because stability means the same thing on each: a word that strong is remembered equally well.
+A word answered "I know it" every time gets two full reviews and one quick on Light, two full and three
+quick on Normal, and three full and four quick on Hard.
+
+**Custom** shows the three numbers as sliders: recall target 80 to 97%, learned at stability 30 to
+730, quick review at stability 1 to 60. The first time Custom is picked, it starts from the level
+picked before. After that it keeps its own numbers when the user switches away and back.
+
+An older install stored only a recall target and a quick review number in days. It moves to the
+nearest level, unless the user had changed the quick review number from 14, which makes it Custom
+with their numbers.
+
+A word used to be learned once its next gap reached a number of days the user chose. A higher recall
+target shortens every gap, so the same number asked for more than twice the stability on Hard. A gap
+just under the limit also added one long review, so a mistake could make a word learned sooner. With the
+levels above, one mistake never does that for a new user, and adds three reviews when it falls on the
+third. The cost is that fitted weights can still do it, because they make a word learned in two to four
+reviews. A test holds the default levels to it.
+
+Under them a timeline previews two words learned on day 0: one answered "I know it" every time, and
+one that forgets at the third review, or at the last one when there are fewer. Hollow dots are quick
+reviews, the red dot is the forget, and the green dot is the day the word is learned.
+
+Changing a setting changes future answers only. Every journal event records the stability,
+difficulty and due date it produced, and a rebuild after a sync keeps them, so both devices end up
+with the same schedule.
+
+The move from the Leitner ladder replayed every card's journal once, kept every due date, and gave
+each old journal event the stability it produced. A card from before the journal started with its
+old box gap as stability: 1, 2, 4, 14, 40 or 120 days.
+
+### Fitted weights
+
+The recall target was 90% at first. A learner who remembers 97% of words then gets fitted weights that
+learn a word after two reviews, the last one after a wait of 26 days, and a learned word never
+returns. At 93% the same learner gets days 2, 14 and 90, and on Hard days 1, 6, 30 and 144. Targets
+above 95% are left out, because a new user would then get ten reviews or more.
+
+The schedule starts on the published FSRS-5 weights except for two, which soften a forgotten answer.
+Stability after forgetting (weight 11) is 3.5 instead of 1.9395, and the rise in difficulty (weight 6)
+is 0.7 instead of 1.4604. Mistakes are expected of a new learner, and the published weights answered
+one at the third review with five extra reviews at 95%, three of them full. The softer ones add three,
+two of them full. The cost is longer waits after a mistake for a learner who forgets often. The fit moves these
+two only a little, because a journal holds few forgotten answers.
+
+Once the journal holds 1,000 training reviews, the app fits the weights to the user's own answers, and it fits them again after every 500
+new ones. A training review is a "reviewed" answer on a later day than the answer before it, inside
+a run that began with "learned". A "placed", "pooled" or "completed" event ends the run, so cards
+from before the journal never count.
+
+The check runs at launch, when a workspace opens, and when the app comes back to the foreground, at
+most once a day. The fit reads the journal on a background thread and writes the weights to the
+synced settings, so every device schedules with the same ones. Like the other schedule settings, new
+weights change future answers only.
+
+The fit follows fsrs-rs on a smaller scale. It first finds the first-review stability from the
+first answer after learning. Then it runs five passes of Adam over batches of about 512 reviews,
+with gradients taken by finite differences. A penalty pulls each weight towards its default, so a
+small journal moves the weights only a little. The weights for Hard, Easy and a first "I forgot"
+stay at their defaults, because the app never gives those answers. When the fitted weights predict
+the journal worse than the defaults do, the defaults stay.
 
 Today shows a short timeline: how many cards are due today and on each of the next several days.
 No monthly calendar - a full grid was tried and dropped in favour of this.

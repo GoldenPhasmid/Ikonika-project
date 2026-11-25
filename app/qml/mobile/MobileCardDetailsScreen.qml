@@ -1,6 +1,4 @@
 import QtQuick
-import QtQuick.Layouts
-import "MobileIcons.js" as Icons
 
 Item
 {
@@ -11,592 +9,127 @@ Item
     property var store: null
     property var controller: null
 
-    property string meaningGist: ""
-
-    readonly property var meanings: (root.dictionary.entry.headword || "").toLowerCase() === wordField.enteredText.trim().toLowerCase()
-        && (root.dictionary.entry.partOfSpeech || "") === root.shownPartOfSpeech
-        ? (root.dictionary.entry.meanings || []) : []
-    readonly property var meaning: root.meanings.find(function(item) { return item.gist === root.meaningGist }) || ({})
-    readonly property bool hasMeaning: !!root.meaning.gist
-    readonly property string committedGist: root.hasMeaning || (root.editingCardId.length > 0 && root.meanings.length === 0)
-        ? root.meaningGist : ""
-    readonly property var meaningOptions: [""].concat(root.meanings.map(function(item) { return item.gist }))
-
-    property string editingCardId: ""
-    property int editingStage: -1
-    property string adoptedCardId: ""
-    property string returnCardId: ""
-    property int returnStage: -1
-    property int returnGender: -1
-    property string returnPartOfSpeech: ""
-    property string returnHint: ""
-    readonly property var editingCard: root.editingCardId.length > 0
-        ? (root.dictionary.cards.find(function(card) { return card.cardId === root.editingCardId }) || null) : null
-
-    property bool startOnTranslation: false
-    property int editingGender: -1
-    property string editingPartOfSpeech: ""
-
-    property bool readingChosen: false
-
-    readonly property bool followsDictionary: root.editingCardId.length === 0 && !root.readingChosen
-
-    readonly property string shownPartOfSpeech: root.followsDictionary
-        ? root.dictionaryPartOfSpeech
-        : root.editingPartOfSpeech
-
-    readonly property int shownGender: root.followsDictionary
-        ? root.dictionaryGender
-        : root.editingGender
-
-    readonly property bool showGenderPicker: root.shownPartOfSpeech === "noun"
-
-    readonly property var genderByCode: ({ "m": 0, "f": 1, "m/f": 2, "n": 3 })
-
-    readonly property var genderOptions: (root.dictionary.targetLanguageCode === "DE"
-        ? [{ label: qsTr("Neuter"), value: 3 }] : []).concat([
-        { label: qsTr("Masculine"), value: 0 },
-        { label: qsTr("Feminine"), value: 1 },
-        { label: qsTr("Either (m/f)"), value: 2 },
-        { label: qsTr("None (no article)"), value: -1 }
-    ])
-
-    function partOfSpeechLabel(value)
-    {
-        const found = root.dictionary.partsOfSpeech.find(function(option) { return option.value === value })
-
-        if (found)
-        {
-            return found.label
-        }
-
-        return value.length > 0 ? value : qsTr("None")
-    }
-
-    function chooseReading(partOfSpeech, gender)
-    {
-        const changed = partOfSpeech !== root.shownPartOfSpeech
-
-        root.editingPartOfSpeech = partOfSpeech
-        root.editingGender = partOfSpeech === "noun" ? gender : -1
-        root.readingChosen = true
-
-        if (!changed || wordField.enteredText.trim().length === 0)
-        {
-            return
-        }
-
-        root.dictionary.openEntry(wordField.enteredText.trim(), partOfSpeech)
-
-        if (!root.hasMeaning)
-        {
-            root.meaningGist = ""
-        }
-
-        root.rebuildSuggestions()
-    }
-
-    function genderLabel(value)
-    {
-        const found = root.genderOptions.find(function(option) { return option.value === value })
-
-        return found ? found.label : qsTr("None (no article)")
-    }
+    property var card: null
+    property bool actionsOpen: false
 
     signal done()
     signal added()
-    signal wordTapped(string word, string sentence)
+    signal removed(string cardId)
+    signal dictionaryRequested(string word, string partOfSpeech)
 
-    readonly property var pickedTranslations:
-        translationField.enteredText.split(",")
-            .map(function(part) { return part.trim().toLowerCase() })
-            .filter(function(part) { return part.length > 0 })
-
-    property var suggestions: []
-
-    function open()
+    function openForEdit(cardId, word, translation, gender, partOfSpeech, box, language)
     {
-        root.openWith("", "", "")
-    }
-
-    function openForEdit(cardId, word, translation, gender, partOfSpeech, box)
-    {
-        root.openWith(word, translation, partOfSpeech)
-
-        root.editingCardId = cardId
-        root.editingStage = box
-        root.editingGender = gender
-        root.editingPartOfSpeech = partOfSpeech
-        root.adoptedCardId = ""
-        translationField.text = translation
-        root.meaningGist = root.dictionary.cardMeaningGist(cardId)
-        hintField.text = root.dictionary.cardHint(cardId)
-        root.rebuildSuggestions()
-    }
-
-    function findMeaningFor(translation)
-    {
-        const wanted = (translation || "").trim().toLowerCase()
-
-        if (wanted.length === 0)
-        {
-            return root.meanings.length > 0 ? root.meanings[0].gist : ""
+        root.actionsOpen = false
+        root.card = {
+            inVocabulary: true,
+            id: cardId,
+            word: word,
+            targetWord: word,
+            translation: translation,
+            gender: gender,
+            partOfSpeech: partOfSpeech,
+            box: box,
+            completed: false,
+            language: language || ""
         }
+        cardPane.show(root.card, true)
 
-        const found = root.meanings.find(function(item)
+        const stored = root.dictionary.cards.find(Card => Card.cardId === cardId)
+
+        if (stored && stored.completed)
         {
-            return item.translations.some(function(text) { return text.trim().toLowerCase() === wanted })
-        })
-
-        return found ? found.gist : ""
-    }
-
-    function meaningLabel(gist)
-    {
-        return gist.length > 0 ? gist : qsTr("Any meaning")
-    }
-
-    function followMeaningCard()
-    {
-        const chosen = root.meaning
-        const cardId = chosen.cardId || ""
-
-        if (cardId.length > 0)
-        {
-            if (cardId === root.editingCardId)
-            {
-                return
-            }
-
-            if (root.adoptedCardId.length === 0)
-            {
-                root.returnCardId = root.editingCardId
-                root.returnStage = root.editingStage
-                root.returnGender = root.editingGender
-                root.returnPartOfSpeech = root.editingPartOfSpeech
-                root.returnHint = hintField.text
-            }
-
-            console.info("Card screen edits the card of meaning", chosen.gist, cardId)
-
-            root.adoptedCardId = cardId
-            root.editingPartOfSpeech = root.dictionary.entry.partOfSpeech || ""
-            root.editingStage = chosen.learnedStage
-            root.editingGender = chosen.cardGender
-            root.editingCardId = cardId
-            hintField.text = root.returnHint || root.dictionary.cardHint(cardId)
-            translationField.replaceText(chosen.cardTranslation)
-
-            return
-        }
-
-        if (root.adoptedCardId.length === 0)
-        {
-            return
-        }
-
-        root.adoptedCardId = ""
-        root.editingPartOfSpeech = root.returnPartOfSpeech
-        root.editingStage = root.returnStage
-        root.editingGender = root.returnGender
-        root.editingCardId = root.returnCardId
-        hintField.text = root.returnHint
-    }
-
-    function chooseMeaning(gist)
-    {
-        root.meaningGist = gist
-        root.followMeaningCard()
-
-        if (!root.hasMeaning || root.meaning.cardId)
-        {
-            root.rebuildSuggestions()
-
-            return
-        }
-
-        if (root.meaning.gender >= 0 && root.shownPartOfSpeech === "noun")
-        {
-            root.chooseReading("noun", root.meaning.gender)
-        }
-
-        const allowed = root.meaning.translations.map(function(text) { return text.trim().toLowerCase() })
-        const kept = translationField.enteredText.split(",")
-            .map(function(part) { return part.trim() })
-            .filter(function(part) { return allowed.indexOf(part.toLowerCase()) >= 0 })
-
-        translationField.replaceText(kept.length > 0 ? kept.join(", ") : (root.meaning.translations[0] || ""))
-        root.rebuildSuggestions()
-    }
-
-    function pickMeaning()
-    {
-        choiceSheet.open(qsTr("Meaning"),
-                       root.meaningOptions.map(root.meaningLabel),
-                       root.meaningOptions.indexOf(root.meaningGist),
-                       function(index) { root.chooseMeaning(root.meaningOptions[index]) },
-                       root.meaningOptions.map(function(gist)
-                       {
-                           const found = root.meanings.find(function(item) { return item.gist === gist })
-
-                           return found ? found.translations.join(", ") : qsTr("The card covers multiple meanings")
-                       }),
-                       root.meaningOptions.map(function(gist)
-                       {
-                           const found = root.meanings.find(function(item) { return item.gist === gist })
-
-                           return found && found.cardId ? qsTr("In My Vocabulary") : ""
-                       }))
-    }
-
-    function openWith(word, translation, partOfSpeech, gist, hint)
-    {
-        root.editingCardId = ""
-        root.editingStage = -1
-        root.editingGender = -1
-        root.editingPartOfSpeech = ""
-        root.adoptedCardId = ""
-        root.readingChosen = false
-        root.meaningGist = ""
-
-        wordField.text = word
-        translationField.text = translation
-        hintField.text = hint || ""
-        root.startOnTranslation = word.length > 0
-        root.suggestions = []
-        root.dictionary.openEntry("", "")
-
-        if (word.length > 0)
-        {
-            root.dictionary.openEntry(word, partOfSpeech || "")
-            root.meaningGist = gist || root.findMeaningFor(translation)
-
-            if (root.hasMeaning && root.meaning.gender >= 0 && root.dictionaryPartOfSpeech === "noun")
-            {
-                root.chooseReading("noun", root.meaning.gender)
-            }
-
-            root.followMeaningCard()
-
-            if (translationField.text.length === 0 && root.hasMeaning)
-            {
-                translationField.text = root.meaning.translations[0] || ""
-            }
-
-            root.rebuildSuggestions()
+            root.card = Object.assign({}, root.card, { completed: true })
         }
     }
 
-    function hasTranslation(text)
+    function openWith(word, translation, partOfSpeech, gist, hint, language)
     {
-        return root.pickedTranslations.indexOf(text.trim().toLowerCase()) >= 0
-    }
-
-    function toggleTranslation(text)
-    {
-        const wanted = text.trim().toLowerCase()
-
-        const entered = translationField.enteredText
-
-        if (!root.hasTranslation(text))
-        {
-            translationField.replaceText(entered.trim().length > 0
-                ? entered.trim() + ", " + text
-                : text)
-
-            return
+        root.actionsOpen = false
+        root.card = {
+            inVocabulary: false,
+            word: word,
+            targetWord: word,
+            translation: translation,
+            gender: -1,
+            partOfSpeech: partOfSpeech || "",
+            gist: gist || "",
+            hint: hint || "",
+            language: language || ""
         }
-
-        translationField.replaceText(entered.split(",")
-            .filter(function(part) { return part.trim().toLowerCase() !== wanted })
-            .map(function(part) { return part.trim() })
-            .join(", "))
-    }
-
-    function canCommit()
-    {
-        return wordField.enteredText.trim().length > 0 && translationField.enteredText.trim().length > 0
-    }
-
-    function commit()
-    {
-        if (!root.canCommit())
-        {
-            return
-        }
-
-        const written = root.editingCardId.length > 0
-            ? root.controller.updateCard(root.editingCardId, wordField.enteredText,
-                                         translationField.enteredText, root.editingGender,
-                                         root.editingPartOfSpeech, root.committedGist, hintField.text.trim())
-            : root.controller.addCard(wordField.enteredText, translationField.enteredText,
-                                      root.shownPartOfSpeech, root.shownGender, root.readingChosen,
-                                      root.committedGist, hintField.text.trim())
-
-        if (written)
-        {
-            root.added()
-            root.done()
-        }
-    }
-
-    function rebuildSuggestions()
-    {
-        const result = []
-
-        const meaningTranslations = root.hasMeaning
-            ? root.meaning.translations.map(function(text) { return text.trim().toLowerCase() }) : []
-
-        for (const translation of root.dictionary.allTranslations)
-        {
-            if (root.hasMeaning && meaningTranslations.indexOf(translation.text.trim().toLowerCase()) < 0)
-            {
-                continue
-            }
-
-            result.push({
-                text: translation.text,
-                relative: translation.relative,
-                hasProbability: translation.hasProbability,
-                learnedStage: root.controller
-                    ? root.controller.findWordTranslationStage(wordField.text, translation.text)
-                    : translation.learnedStage,
-            })
-        }
-
-        root.suggestions = result
-    }
-
-    readonly property string dictionaryPartOfSpeech:
-        (root.dictionary.entry.headword || "").toLowerCase() === wordField.enteredText.trim().toLowerCase()
-            ? (root.dictionary.entry.partOfSpeech || "")
-            : ""
-
-    readonly property int dictionaryGender:
-    {
-        if (root.dictionaryPartOfSpeech !== "noun")
-        {
-            return -1
-        }
-
-        const gendered = (root.dictionary.entry.senses || []).find(
-            function(sense) { return sense.gender in root.genderByCode })
-
-        return gendered ? root.genderByCode[gendered.gender] : -1
+        cardPane.show(root.card, true)
     }
 
     MobileShell
     {
+        id: shell
+
         anchors.fill: parent
 
         activeTab: "dictionary"
-        headerTitle: root.editingCardId.length > 0 ? qsTr("Edit card") : qsTr("Create card")
-        headerStatus: MobileProgressRing
-        {
-            visible: root.editingCardId.length > 0
-            stage: root.editingCard ? root.editingCard.stage : root.editingStage
-            stageCount: root.store ? root.store.stageCount : 1
-            completed: root.editingCard ? root.editingCard.completed : false
-        }
+        headerTitle: ""
         showBack: true
+        showOptions: root.card !== null && root.card.word.length > 0
         showTabBar: false
 
         onBackRequested: root.done()
+        onOptionsRequested: root.actionsOpen = true
 
-        Flickable
+        DesktopCardPane
         {
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.top: parent.top
-            anchors.bottom: wideButton.top
-            anchors.bottomMargin: AppMetrics.gapSmall
+            id: cardPane
 
-            contentWidth: width
-            contentHeight: content.implicitHeight + AppMetrics.gapLarge * 2
-            boundsBehavior: Flickable.StopAtBounds
-            clip: true
+            anchors.fill: parent
 
-            ColumnLayout
+            dictionary: root.dictionary
+            controller: root.controller
+            card: root.card
+            stageCount: root.store ? root.store.stageCount : 1
+            compact: true
+            actionsButtonShown: false
+
+            onSaved:
             {
-                id: content
-
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.top: parent.top
-                anchors.margins: AppMetrics.gapLarge
-
-                spacing: AppMetrics.gapLarge
-
-                MobileFormField
-                {
-                    id: wordField
-
-                    fieldFocus: root.visible && !root.startOnTranslation
-
-                    label: qsTr("WORD")
-                    placeholder: qsTr("word")
-
-                    onAccepted:
-                    {
-                        root.dictionary.openEntry(wordField.text, root.editingCardId.length > 0 ? root.editingPartOfSpeech : "")
-                        root.rebuildSuggestions()
-                    }
-                }
-
-                MobileFormField
-                {
-                    id: translationField
-
-                    fieldFocus: root.visible && root.startOnTranslation
-
-                    label: qsTr("TRANSLATION")
-                    placeholder: qsTr("translation")
-
-                    onAccepted: root.commit()
-                }
-
-                MobileFormField
-                {
-                    id: hintField
-
-                    objectName: "word_dialog_hint"
-                    label: qsTr("HINT")
-                }
-
-                ColumnLayout
-                {
-                    Layout.fillWidth: true
-                    spacing: AppMetrics.gapSmall
-                    visible: root.meanings.length > 0
-
-                    MobileFieldPicker
-                    {
-                        Layout.fillWidth: true
-
-                        label: qsTr("MEANING")
-                        value: root.meaningLabel(root.meaningGist)
-
-                        onPicked: root.pickMeaning()
-                    }
-
-                    Rectangle
-                    {
-                        Layout.fillWidth: true
-                        visible: root.hasMeaning
-                        implicitHeight: meaningDetails.implicitHeight + AppMetrics.gapMedium * 2
-                        radius: AppMetrics.radiusMedium
-                        color: AppTheme.colourSunken
-
-                        MobileMeaningDetails
-                        {
-                            id: meaningDetails
-
-                            anchors.left: parent.left
-                            anchors.right: parent.right
-                            anchors.top: parent.top
-                            anchors.margins: AppMetrics.gapMedium
-                            meaning: root.meaning
-
-                            onWordTapped: function(word, sentence) { root.wordTapped(word, sentence) }
-                        }
-                    }
-                }
-
-                ColumnLayout
-                {
-                    Layout.fillWidth: true
-                    spacing: AppMetrics.gapSmall
-                    visible: root.suggestions.length > 0
-
-                    MobileSectionLabel
-                    {
-                        text: root.hasMeaning ? qsTr("TRANSLATIONS FOR THIS MEANING") : qsTr("DICTIONARY TRANSLATIONS")
-                    }
-
-                    Repeater
-                    {
-                        model: root.suggestions
-
-                        delegate: MobileTranslationChip
-                        {
-                            required property var modelData
-
-                            text: modelData.text
-                            relative: modelData.relative
-                            hasProbability: modelData.hasProbability
-                            learnedStage: modelData.learnedStage
-                            inUse: root.hasTranslation(modelData.text)
-
-                            onPicked: root.toggleTranslation(modelData.text)
-                        }
-                    }
-                }
-
-                MobileFieldPicker
-                {
-                    Layout.fillWidth: true
-
-                    label: qsTr("PART OF SPEECH")
-                    value: root.partOfSpeechLabel(root.shownPartOfSpeech)
-
-                    onPicked: choiceSheet.open(qsTr("Part of speech"),
-                                              root.dictionary.partsOfSpeech.map(
-                                                  function(option) { return option.label }),
-                                              root.dictionary.partsOfSpeech.findIndex(
-                                                  function(option) { return option.value === root.shownPartOfSpeech }),
-                                              function(index)
-                                              {
-                                                  root.chooseReading(root.dictionary.partsOfSpeech[index].value,
-                                                                     root.shownGender)
-                                              })
-                }
-
-                MobileFieldPicker
-                {
-                    Layout.fillWidth: true
-                    visible: root.showGenderPicker
-
-                    label: qsTr("GENDER")
-                    value: root.genderLabel(root.shownGender)
-                    description: qsTr("Controls the article shown and tested in exercises. Choose None to drop it.")
-
-                    onPicked: choiceSheet.open(qsTr("Gender"),
-                                              root.genderOptions.map(
-                                                  function(option) { return option.label }),
-                                              root.genderOptions.findIndex(
-                                                  function(option) { return option.value === root.shownGender }),
-                                              function(index)
-                                              {
-                                                  root.chooseReading(root.shownPartOfSpeech,
-                                                                     root.genderOptions[index].value)
-                                              })
-                }
+                root.added()
+                root.done()
             }
-        }
 
-        MobileWideButton
-        {
-            id: wideButton
+            onProgressEdited: function(card)
+            {
+                root.card = card
+                root.added()
+            }
 
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.bottom: parent.bottom
-            anchors.margins: AppMetrics.gapLarge
+            onRemoveRequested: function(cardId, word)
+            {
+                if (!root.controller.removeCard(cardId))
+                {
+                    console.warn("Card screen could not remove", word)
 
-            height: AppMetrics.buttonHeightLarge
+                    return
+                }
 
-            label: root.editingCardId.length > 0 ? qsTr("Save") : qsTr("Add")
-            interactive: root.canCommit()
+                console.info("Card screen removed", word)
 
-            onClicked: root.commit()
+                root.removed(cardId)
+                root.added()
+                root.done()
+            }
+
+            onDictionaryRequested: function(word, partOfSpeech) { root.dictionaryRequested(word, partOfSpeech) }
         }
     }
 
-    MobileSettingsPicker
+    MobileSheetLoader
     {
-        id: choiceSheet
-
         anchors.fill: parent
-        z: 60
+        z: 10
+        open: root.actionsOpen
+
+        sourceComponent: MobileCardActionsSheet
+        {
+            pane: cardPane
+
+            onDismissed: root.actionsOpen = false
+        }
     }
 }

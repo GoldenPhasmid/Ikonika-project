@@ -23,6 +23,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 
+#include <set>
 #include <string>
 
 namespace
@@ -243,6 +244,77 @@ TEST_CASE("startCards builds a session and enters stage 1 with a flashcard contr
     CHECK(Controller.GetSessionWordCount() == 3);
     CHECK(Controller.GetStage() == 1);
     CHECK(qobject_cast<FlashcardController*>(Controller.GetActiveController()) != nullptr);
+}
+
+TEST_CASE("The flashcard stage shows every card exactly once", "[intensivelearning]")
+{
+    FAppDatabaseGuard DatabaseGuard;
+    FAppSpeechGuard SpeechGuard;
+
+    constexpr int CardCount = 14;
+
+    for (int Attempt = 0; Attempt < 20; ++Attempt)
+    {
+        const FSeededSession Seeded = SeedSession(CardCount);
+
+        IntensiveLearningController Controller;
+        REQUIRE(Controller.startCards(QString::fromStdString(Seeded.SessionKey), Seeded.CardIds));
+
+        auto* Flashcard = qobject_cast<FlashcardController*>(Controller.GetActiveController());
+        REQUIRE(Flashcard != nullptr);
+
+        std::set<std::string> Shown;
+
+        for (int Step = 0; Step < CardCount; ++Step)
+        {
+            REQUIRE(Flashcard->GetCurrentCard() != nullptr);
+
+            Shown.insert(Flashcard->GetCurrentCard()->Id);
+
+            Flashcard->next();
+        }
+
+        CHECK(static_cast<int>(Shown.size()) == CardCount);
+    }
+}
+
+TEST_CASE("Restarting the flashcard stage midway still shows every card exactly once", "[intensivelearning]")
+{
+    FAppDatabaseGuard DatabaseGuard;
+    FAppSpeechGuard SpeechGuard;
+
+    constexpr int CardCount = 14;
+
+    for (int Attempt = 0; Attempt < 20; ++Attempt)
+    {
+        const FSeededSession Seeded = SeedSession(CardCount);
+
+        IntensiveLearningController Controller;
+        REQUIRE(Controller.startCards(QString::fromStdString(Seeded.SessionKey), Seeded.CardIds));
+
+        auto* Flashcard = qobject_cast<FlashcardController*>(Controller.GetActiveController());
+        REQUIRE(Flashcard != nullptr);
+
+        for (int Step = 0; Step < 5; ++Step)
+        {
+            Flashcard->next();
+        }
+
+        Controller.restartStage();
+
+        std::set<std::string> Shown;
+
+        for (int Step = 0; Step < CardCount; ++Step)
+        {
+            REQUIRE(Flashcard->GetCurrentCard() != nullptr);
+
+            Shown.insert(Flashcard->GetCurrentCard()->Id);
+
+            Flashcard->next();
+        }
+
+        CHECK(static_cast<int>(Shown.size()) == CardCount);
+    }
 }
 
 TEST_CASE("resume picks a session back up after another session ran in between", "[intensivelearning]")

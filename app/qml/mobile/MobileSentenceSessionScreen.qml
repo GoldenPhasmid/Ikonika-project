@@ -16,7 +16,7 @@ Item
     readonly property var exercise: root.controller.activeController
 
     signal done()
-    signal lookupRequested(string word, string sentence)
+    signal lookupRequested(string word, string sentence, var place)
 
     function endActiveSession()
     {

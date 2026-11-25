@@ -9,7 +9,7 @@ Item
 
     signal completed()
     signal done()
-    signal wordTapped(string word, string sentence)
+    signal wordTapped(string word, string sentence, var place)
 
     required property TriageController controller
     readonly property var meanings: root.controller.meaningOptions
@@ -261,7 +261,7 @@ Item
                         expanded: index === root.openIndex
 
                         onExpandRequested: root.expandMeaning(index)
-                        onWordTapped: function(word, sentence) { root.wordTapped(word, sentence) }
+                        onWordTapped: function(word, sentence, place) { root.wordTapped(word, sentence, place) }
                         onTranslationPicked: function(text) { root.pickTranslation(modelData.gist, text) }
                     }
                 }

@@ -38,6 +38,7 @@ add_library(core STATIC
     src/FTDictionaryPackage.cpp
     src/FTDictionaryRepository.cpp
     src/FTDocumentExtractor.cpp
+    src/FTLanguageDetection.cpp
     src/FTLanguagePairScope.cpp
     src/FTLog.cpp
     src/FTPlacementTest.cpp
@@ -48,14 +49,17 @@ add_library(core STATIC
     src/FTReaderDocument.cpp
     src/FTReaderRepository.cpp
     src/FTBookShelfRepository.cpp
+    src/FTUserDeckRepository.cpp
     src/FTCloudBookRepository.cpp
     src/FTRepetitionBatch.cpp
     src/FTErasure.cpp
     src/FTEnglishForms.cpp
     src/FTJournal.cpp
     src/FTNarration.cpp
+    src/FTPdfNarration.cpp
     src/FTSchedule.cpp
     src/FTScheduleManager.cpp
+    src/FTScheduleOptimizer.cpp
     src/FTScoring.cpp
     src/FTSchema.cpp
     src/FTSentencePieceTokenizer.cpp
@@ -91,10 +95,12 @@ add_library(core STATIC
     include/core/FTDocumentExtractor.h
     include/core/sessions/FTExerciseSession.h
     include/core/FTInContextTranslator.h
+    include/core/FTLanguageDetection.h
     include/core/FTLog.h
     include/core/FTReaderDocument.h
     include/core/FTReaderRepository.h
     include/core/FTBookShelfRepository.h
+    include/core/FTUserDeckRepository.h
     include/core/FTCloudBookRepository.h
     include/core/FTPlacementTest.h
     include/core/FTCoreCards.h
@@ -106,8 +112,10 @@ add_library(core STATIC
     include/core/FTEnglishForms.h
     include/core/FTJournal.h
     include/core/FTNarration.h
+    include/core/FTPdfNarration.h
     include/core/FTSchedule.h
     include/core/FTScheduleManager.h
+    include/core/FTScheduleOptimizer.h
     include/core/FTScoring.h
     include/core/FTSchema.h
     include/core/FTSentencePieceTokenizer.h
@@ -141,6 +149,7 @@ target_link_libraries(core
         Qt6::Core
         Qt6::Sql
     PRIVATE
+        cld2
         miniaudio
         miniz
         signalsmith-stretch

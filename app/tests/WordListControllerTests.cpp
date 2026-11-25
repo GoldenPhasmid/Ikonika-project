@@ -47,7 +47,7 @@ TEST_CASE("Counting a list gives the number of rows loading it would list", "[wo
     REQUIRE(AddTestCards({Card}));
 
     FTCard Promoted = *AppDatabase::Get().GetCardRepository().LoadCards().front();
-    Promote(Promoted, 1000);
+    LearnCard(Promoted, 1000);
     REQUIRE(AppDatabase::Get().GetCardRepository().UpdateCardSchedule(Promoted));
 
     WordListController Controller;
@@ -101,7 +101,7 @@ TEST_CASE("Loading studied lists a word promoted without being completed", "[wor
     REQUIRE(AddTestCards({Card}));
 
     FTCard Promoted = *AppDatabase::Get().GetCardRepository().LoadCards().front();
-    Promote(Promoted, 1000);
+    LearnCard(Promoted, 1000);
     REQUIRE(AppDatabase::Get().GetCardRepository().UpdateCardSchedule(Promoted));
 
     WordListController Controller;

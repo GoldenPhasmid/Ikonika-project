@@ -99,7 +99,7 @@ ColumnLayout
         leftPadding: root.inset
         rightPadding: root.inset
         text: qsTr("Fit to text width")
-        lastRow: !root.showText
+        lastRow: !root.showText && root.readAloud === null
 
         DesktopToggle
         {
@@ -123,6 +123,47 @@ ColumnLayout
         {
             Layout.fillWidth: false
         }
+    }
+
+    DesktopSettingsRow
+    {
+        visible: root.showText
+        leftPadding: root.inset
+        rightPadding: root.inset
+        text: root.compact ? "" : qsTr("Word highlighting")
+
+        DesktopSegmentedPill
+        {
+            objectName: "reader_highlight_mode"
+
+            Layout.fillWidth: root.compact
+            accessibleName: qsTr("Highlight")
+            options: [qsTr("Off"), qsTr("Vocabulary"), qsTr("New words")]
+            currentIndex: !AppReaderSettings.highlightVocabulary ? 0 : (AppReaderSettings.highlightUnknownWords ? 2 : 1)
+
+            onChosen: function(index)
+            {
+                AppReaderSettings.highlightVocabulary = index > 0
+                AppReaderSettings.highlightUnknownWords = index === 2
+            }
+        }
+    }
+
+    DesktopSettingsSlider
+    {
+        objectName: "reader_sentence_speed"
+
+        visible: root.readAloud !== null
+        inset: root.inset
+        title: qsTr("Sentence speech rate")
+        value: root.readAloud !== null ? Math.round(root.readAloud.speed * 100) : 100
+        from: root.readAloud !== null ? Math.round(root.readAloud.minimumSpeed * 100) : 50
+        to: root.readAloud !== null ? Math.round(root.readAloud.maximumSpeed * 100) : 150
+        step: 5
+        suffix: "%"
+        lastRow: !root.showText
+
+        onEdited: function(newValue) { root.readAloud.speed = newValue / 100 }
     }
 
     DesktopSettingsSlider
@@ -176,48 +217,8 @@ ColumnLayout
         to: AppReaderSettings.maximumTextMargin
         step: 4
         valueText: qsTr("%1 px").arg(AppReaderSettings.textMargin)
-
-        onEdited: function(newValue) { AppReaderSettings.textMargin = newValue }
-    }
-
-    DesktopSettingsSlider
-    {
-        objectName: "reader_sentence_speed"
-
-        visible: root.showText && root.readAloud !== null
-        inset: root.inset
-        title: qsTr("Sentence speech rate")
-        value: root.readAloud !== null ? Math.round(root.readAloud.speed * 100) : 100
-        from: root.readAloud !== null ? Math.round(root.readAloud.minimumSpeed * 100) : 50
-        to: root.readAloud !== null ? Math.round(root.readAloud.maximumSpeed * 100) : 150
-        step: 5
-        suffix: "%"
-
-        onEdited: function(newValue) { root.readAloud.speed = newValue / 100 }
-    }
-
-    DesktopSettingsRow
-    {
-        visible: root.showText
-        leftPadding: root.inset
-        rightPadding: root.inset
-        text: root.compact ? "" : qsTr("Word highlighting")
         lastRow: true
 
-        DesktopSegmentedPill
-        {
-            objectName: "reader_highlight_mode"
-
-            Layout.fillWidth: root.compact
-            accessibleName: qsTr("Highlight")
-            options: [qsTr("Off"), qsTr("Vocabulary"), qsTr("New words")]
-            currentIndex: !AppReaderSettings.highlightVocabulary ? 0 : (AppReaderSettings.highlightUnknownWords ? 2 : 1)
-
-            onChosen: function(index)
-            {
-                AppReaderSettings.highlightVocabulary = index > 0
-                AppReaderSettings.highlightUnknownWords = index === 2
-            }
-        }
+        onEdited: function(newValue) { AppReaderSettings.textMargin = newValue }
     }
 }

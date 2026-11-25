@@ -1,6 +1,5 @@
 import QtQuick
 import QtQuick.Layouts
-import "MobileIcons.js" as Icons
 
 Item
 {
@@ -170,17 +169,18 @@ Item
         MouseArea
         {
             anchors.fill: parent
+            enabled: root.reveal > 0
             onClicked: root.dismiss()
         }
     }
 
     Rectangle
     {
-        anchors.left: parent.left
-        anchors.right: parent.right
+        anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottom: parent.bottom
         anchors.bottomMargin: -height * (1 - root.reveal)
 
+        width: Math.min(parent.width, AppMetrics.shellMaximumWidth)
         enabled: !root.leaving
 
         height: Math.min(parent.height * root.maxHeightFraction,
@@ -226,11 +226,12 @@ Item
                     elide: Text.ElideRight
                 }
 
-                MobileActionIconButton
+                MobileIconButton
                 {
                     visible: root.showClose
 
-                    iconSvg: Icons.Icons.close.path
+                    iconName: "close"
+                    text: qsTr("Close")
 
                     onClicked: root.dismiss()
                 }

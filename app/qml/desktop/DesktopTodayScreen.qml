@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Layouts
+import Ikonika
 import "../ReaderShelf.js" as Shelf
 
 Item
@@ -14,6 +15,7 @@ Item
     property var review: null
     property var sentences: null
     property var discovery: null
+    property bool lufiActive: root.visible
 
     signal learnRequested()
     signal reviewRequested()
@@ -388,17 +390,35 @@ Item
                 anchors.topMargin: AppMetrics.todayInsetY
                 anchors.bottomMargin: AppMetrics.todayInsetY
 
-                Image
+                Item
                 {
                     objectName: "today_cat"
 
                     width: Math.min(board.sideWidth, board.catRoom * AppMetrics.todayCatAspect)
                     height: width / AppMetrics.todayCatAspect
                     y: board.height - height
-                    source: "qrc:/images/LufiExcited.svg"
-                    sourceSize: Qt.size(width, height)
-                    fillMode: Image.PreserveAspectFit
-                    smooth: true
+
+                    Image
+                    {
+                        anchors.fill: parent
+                        visible: !animation.ready
+                        source: "qrc:/images/LufiExcited.svg"
+                        sourceSize: Qt.size(width, height)
+                        fillMode: Image.PreserveAspectFit
+                        smooth: true
+                    }
+
+                    Lufi
+                    {
+                        id: animation
+
+                        anchors.fill: parent
+                        todayActive: root.lufiActive
+                        goalComplete: root.ringGoal > 0 && root.ringDone >= root.ringGoal
+                        daily: root.daily
+                        training: root.training
+                        review: root.review
+                    }
                 }
 
                 DesktopDailyRing

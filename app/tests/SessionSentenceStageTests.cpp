@@ -93,7 +93,7 @@ namespace
     FTCard MakeMangerWithMeaning()
     {
         FTCard Manger = MakeCard("manger", "manger", "verb", "to eat");
-        Manger.MeaningGist = MatchMeaningGist(Manger, AppDictionary::Get().GetRepository().LoadMeanings("manger", "verb"));
+        Manger.MeaningGist = MatchMeaningGist(Manger, AppDictionary::GetActive().GetRepository().LoadMeanings("manger", "verb"));
 
         return Manger;
     }
@@ -101,7 +101,7 @@ namespace
     std::string FindMeaningExample(const FTCard& Card)
     {
         const std::vector<FTDictionarySense> Meanings
-            = AppDictionary::Get().GetRepository().LoadMeanings(Card.TargetWord, Card.PartOfSpeech);
+            = AppDictionary::GetActive().GetRepository().LoadMeanings(Card.TargetWord, Card.PartOfSpeech);
         const FTDictionarySense* Meaning = FindCardMeaning(Card, Meanings);
 
         return Meaning != nullptr ? Meaning->Example : std::string{};
@@ -259,7 +259,7 @@ TEST_CASE("A card with a meaning example puts that example into the sentence pha
 {
     FSentenceStageTestBed TestBed;
 
-    if (!AppDictionary::Get().GetRepository().HasMeaningExamples())
+    if (!AppDictionary::GetActive().GetRepository().HasMeaningExamples())
     {
         SKIP("The built dictionary has no meaning examples");
     }
@@ -306,7 +306,7 @@ TEST_CASE("A card with a meaning example gets no Tatoeba sentence on top", "[ses
 {
     FSentenceStageTestBed TestBed;
 
-    if (!AppDictionary::Get().GetRepository().HasMeaningExamples())
+    if (!AppDictionary::GetActive().GetRepository().HasMeaningExamples())
     {
         SKIP("The built dictionary has no meaning examples");
     }
@@ -328,13 +328,13 @@ TEST_CASE("A card with no meaning picked takes its first meaning's example", "[s
 {
     FSentenceStageTestBed TestBed;
 
-    if (!AppDictionary::Get().GetRepository().HasMeaningExamples())
+    if (!AppDictionary::GetActive().GetRepository().HasMeaningExamples())
     {
         SKIP("The built dictionary has no meaning examples");
     }
 
     const FTCard Manger = MakeCard("manger", "manger", "verb", "to eat");
-    const std::vector<FTDictionarySense> Meanings = AppDictionary::Get().GetRepository().LoadMeanings("manger", "verb");
+    const std::vector<FTDictionarySense> Meanings = AppDictionary::GetActive().GetRepository().LoadMeanings("manger", "verb");
     const auto First = std::find_if(Meanings.begin(), Meanings.end(),
                                     [](const FTDictionarySense& Meaning) { return !Meaning.Example.empty(); });
 
@@ -546,7 +546,7 @@ TEST_CASE("Each sentence must be answered correctly once and a wrong answer brin
 {
     FSentenceStageTestBed TestBed;
 
-    if (!AppDictionary::Get().GetRepository().HasMeaningExamples())
+    if (!AppDictionary::GetActive().GetRepository().HasMeaningExamples())
     {
         SKIP("The built dictionary has no meaning examples");
     }
@@ -583,7 +583,7 @@ TEST_CASE("The second sentence phase builds each sentence's translation from nat
 {
     FSentenceStageTestBed TestBed;
 
-    if (!AppDictionary::Get().GetRepository().HasMeaningExamples())
+    if (!AppDictionary::GetActive().GetRepository().HasMeaningExamples())
     {
         SKIP("The built dictionary has no meaning examples");
     }
@@ -613,7 +613,7 @@ TEST_CASE("The mastery counter of a word with a sentence runs through the repeat
 {
     FSentenceStageTestBed TestBed;
 
-    if (!AppDictionary::Get().GetRepository().HasMeaningExamples())
+    if (!AppDictionary::GetActive().GetRepository().HasMeaningExamples())
     {
         SKIP("The built dictionary has no meaning examples");
     }
@@ -660,7 +660,7 @@ TEST_CASE("A word without a sentence keeps the repeats as its mastery target", "
 {
     FSentenceStageTestBed TestBed;
 
-    if (!AppDictionary::Get().GetRepository().HasMeaningExamples())
+    if (!AppDictionary::GetActive().GetRepository().HasMeaningExamples())
     {
         SKIP("The built dictionary has no meaning examples");
     }
@@ -684,7 +684,7 @@ TEST_CASE("Skipping phases walks through the sentence phases and the last skip l
 {
     FSentenceStageTestBed TestBed;
 
-    if (!AppDictionary::Get().GetRepository().HasMeaningExamples())
+    if (!AppDictionary::GetActive().GetRepository().HasMeaningExamples())
     {
         SKIP("The built dictionary has no meaning examples");
     }
@@ -796,7 +796,7 @@ TEST_CASE("A Train session left inside the sentence stage resumes on the same se
 {
     FSentenceStageTestBed TestBed;
 
-    if (!AppDictionary::Get().GetRepository().HasMeaningExamples())
+    if (!AppDictionary::GetActive().GetRepository().HasMeaningExamples())
     {
         SKIP("The built dictionary has no meaning examples");
     }
@@ -825,7 +825,7 @@ TEST_CASE("A Review session left inside the sentence stage resumes on the same s
 {
     FSentenceStageTestBed TestBed;
 
-    if (!AppDictionary::Get().GetRepository().HasMeaningExamples())
+    if (!AppDictionary::GetActive().GetRepository().HasMeaningExamples())
     {
         SKIP("The built dictionary has no meaning examples");
     }

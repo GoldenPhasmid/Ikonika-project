@@ -8,8 +8,10 @@
 #include <QtQml/qqmlregistration.h>
 
 #include <deque>
+#include <functional>
 #include <optional>
 #include <string>
+#include <vector>
 
 class FTParagraphModel;
 
@@ -38,7 +40,6 @@ public:
 
     Q_INVOKABLE void startAt(int Paragraph, int Character);
     Q_INVOKABLE void pause();
-    Q_INVOKABLE void pauseForLookup();
     Q_INVOKABLE void resume();
     Q_INVOKABLE void stop();
     Q_INVOKABLE void previous();
@@ -47,7 +48,10 @@ public:
     Q_INVOKABLE void enableSpeech();
 
     void SetTitle(const QString& Value);
+    void SetLanguage(const std::string& Value);
     void SetSavedPlace(int Paragraph, int Character);
+    void UseParagraphs(const std::vector<std::string>* Override);
+    void SetParagraphsWanted(std::function<void(int)> Callback);
 
     bool IsAvailable() const;
     bool IsVoiceInstalled() const;
@@ -78,7 +82,6 @@ private:
         double Seconds = 0.0;
     };
 
-    void Pause(bool bKeepPlace);
     void PlayFrom(const FTNarrationSentence& Sentence);
     void QueueAhead();
     void Silence();
@@ -91,9 +94,14 @@ private:
     void PublishSession();
 
     std::string GetLanguageCode() const;
+    const std::vector<std::string>& GetParagraphs() const;
+    void WantParagraphsAfter(int Paragraph);
 
     const FTParagraphModel& Paragraphs;
+    const std::vector<std::string>* ParagraphOverride = nullptr;
+    std::function<void(int)> ParagraphsWanted;
     QString Title;
+    std::string Language;
     std::deque<FQueuedSentence> Queued;
     std::optional<FTNarrationSentence> Current;
     std::optional<FTNarrationSentence> LastQueued;

@@ -2,6 +2,7 @@
 
 #include "core/FTDatabase.h"
 #include "core/FTJournal.h"
+#include "core/FTSchedule.h"
 #include "core/FTSchema.h"
 #include "core/FTUuid.h"
 
@@ -11,6 +12,7 @@
 
 #include <set>
 #include <string>
+#include <vector>
 
 namespace
 {
@@ -122,14 +124,14 @@ TEST_CASE("The six-box migration reopens completed third-box cards once", "[sche
     {
         FTStatement Migrated{Target.Prepare("SELECT LeitnerStage, CompletedDate, DueDate FROM Cards WHERE Id = 'old'")};
         REQUIRE(Migrated.Step());
-        CHECK(Migrated.GetInt(0) == 4);
+        CHECK(Migrated.GetInt(0) == GetProgressStage(14.0));
         CHECK(Migrated.IsNull(1));
         CHECK(Migrated.GetInt(2) == Today + 14);
     }
-    REQUIRE(RebuildCardProgress(Target, Today));
+    REQUIRE(RebuildCardProgress(Target));
     FTStatement Query{Target.Prepare("SELECT LeitnerStage, CompletedDate, DueDate, LastUpdatedDate FROM Cards WHERE Id = 'old'")};
     REQUIRE(Query.Step());
-    CHECK(Query.GetInt(0) == 4);
+    CHECK(Query.GetInt(0) == GetProgressStage(14.0));
     CHECK(Query.IsNull(1));
     CHECK(Query.GetInt(2) == Today + 14);
     CHECK(Query.GetInt(3) == 1);
@@ -281,6 +283,24 @@ TEST_CASE("Migrating from the version before book marks adds favourites, collect
     CHECK(ColumnExists(Target, "CloudBooks", "Author"));
 }
 
+TEST_CASE("Migrating from the version before custom decks adds their three tables", "[schema][userdeck]")
+{
+    FTDatabase Target = MakeDatabase();
+    REQUIRE(MigrateSchema(Target));
+
+    REQUIRE(Target.Execute("DROP TABLE UserDeckCards"));
+    REQUIRE(Target.Execute("DROP TABLE UserDecks"));
+    REQUIRE(Target.Execute("DROP TABLE UserDeckCategories"));
+    REQUIRE(Target.Execute("PRAGMA user_version = 39"));
+
+    REQUIRE(MigrateSchema(Target));
+
+    CHECK(ReadSchemaVersion(Target) == CurrentSchemaVersion);
+    CHECK(TableExists(Target, "UserDeckCategories"));
+    CHECK(TableExists(Target, "UserDecks"));
+    CHECK(TableExists(Target, "UserDeckCards"));
+}
+
 TEST_CASE("The journal refuses a second event with the same id", "[schema][journal]")
 {
     FTDatabase Target = MakeDatabase();
@@ -355,8 +375,8 @@ TEST_CASE("Migrating from the version with decks moves every card off them", "[s
     CHECK_FALSE(TableExists(Target, "DeckCards"));
 
     CHECK(ReadCardState(Target, "in-pool") == "fr-en deleted 0 time 1 stage 0");
-    CHECK(ReadCardState(Target, "in-kitchen") == "fr-en deleted 0 time 1 stage 3");
-    CHECK(ReadCardState(Target, "in-both") == "fr-en deleted 0 time 1 stage 2");
+    CHECK(ReadCardState(Target, "in-kitchen") == "fr-en deleted 0 time 1 stage 2");
+    CHECK(ReadCardState(Target, "in-both") == "fr-en deleted 0 time 1 stage 1");
     CHECK(ReadCardState(Target, "in-category") == "es-en deleted 0 time 1 stage 1");
     CHECK(ReadCardState(Target, "in-drill") == "fr-en deleted 1 time 0 stage 1");
     CHECK(ReadCardState(Target, "in-gone-deck") == "fr-en deleted 1 time 0 stage 1");
@@ -436,6 +456,34 @@ TEST_CASE("An older reader library gains the read aloud place", "[schema][reader
     REQUIRE(Metadata.Step());
     CHECK(Metadata.GetText(0).empty());
     CHECK(Metadata.GetInt(1) == 0);
+}
+
+TEST_CASE("Device migration retries metadata for PDFs with opaque Android URIs once", "[schema][reader]")
+{
+    FTDatabase Target = MakeDatabase();
+    REQUIRE(MigrateDeviceSchema(Target));
+    REQUIRE(Target.Execute("PRAGMA user_version = 0"));
+    REQUIRE(Target.Execute(
+        "INSERT INTO ReaderDocuments (Id, FilePath, Format, AddedDate, LastOpenedDate, MetadataRead) VALUES "
+        "('affected', 'content://provider/document/msf%3A21', 'PDF', 1, 1, 1), "
+        "('epub', 'content://provider/document/123', 'EPUB', 1, 1, 1), "
+        "('named', 'content://provider/document/book.PDF', 'PDF', 1, 1, 1), "
+        "('local', 'C:/books/book.pdf', 'PDF', 1, 1, 1)"));
+
+    REQUIRE(MigrateDeviceSchema(Target));
+    {
+        FTStatement Pending = Target.Prepare("SELECT Id FROM ReaderDocuments WHERE MetadataRead = 0");
+        REQUIRE(Pending.Step());
+        CHECK(Pending.GetText(0) == "affected");
+        CHECK_FALSE(Pending.Step());
+    }
+
+    REQUIRE(Target.Execute("UPDATE ReaderDocuments SET MetadataRead = 1 WHERE Id = 'affected'"));
+    REQUIRE(MigrateDeviceSchema(Target));
+
+    FTStatement Pending = Target.Prepare("SELECT COUNT(*) FROM ReaderDocuments WHERE MetadataRead = 0");
+    REQUIRE(Pending.Step());
+    CHECK(Pending.GetInt(0) == 0);
 }
 
 TEST_CASE("A fresh database has no Skipped column", "[schema]")

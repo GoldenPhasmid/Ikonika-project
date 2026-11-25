@@ -10,8 +10,8 @@ Button
 
     signal dismissed()
 
-    implicitWidth: AppMetrics.headerIconTapWidth
-    implicitHeight: AppMetrics.headerIconTapWidth
+    implicitWidth: AppMetrics.iconTapSize
+    implicitHeight: AppMetrics.iconTapSize
 
     padding: 0
     hoverEnabled: true
@@ -73,7 +73,7 @@ Button
         {
             showPdf: root.pdf
             showText: !root.pdf
-            readAloud: root.pdf ? null : root.readAloud
+            readAloud: root.readAloud
             compact: true
             inset: AppMetrics.gapCompact
         }

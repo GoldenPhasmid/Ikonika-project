@@ -28,8 +28,34 @@ AppFileTransfer::~AppFileTransfer()
 
 bool AppFileTransfer::IsBusy() const
 {
+#if defined(Q_OS_ANDROID)
+    if (bServiceActive)
+    {
+        return true;
+    }
+#endif
+
     return Reply != nullptr;
 }
+
+#if !defined(Q_OS_ANDROID)
+void AppFileTransfer::StartInBackground(const FTransferJob& Job, const QList<FTransferJob>& Upcoming)
+{
+    Q_UNUSED(Upcoming);
+
+    Start(Job.Url, Job.DestinationPath, Job.Sha256, Job.Bytes);
+}
+
+void AppFileTransfer::QueueInBackground(const FTransferJob& Job)
+{
+    Q_UNUSED(Job);
+}
+
+void AppFileTransfer::CancelBackground(const QString& DestinationPath)
+{
+    Q_UNUSED(DestinationPath);
+}
+#endif
 
 void AppFileTransfer::Start(const QUrl& Url, const QString& InDestinationPath,
                             const QString& InExpectedSha256, qint64 InExpectedBytes)
@@ -116,6 +142,15 @@ void AppFileTransfer::Cancel()
         return;
     }
 
+#if defined(Q_OS_ANDROID)
+    if (bServiceActive)
+    {
+        CancelInService();
+
+        return;
+    }
+#endif
+
     qCInfo(LogUpdate) << "Download cancelled:" << DestinationPath;
 
     Reply->abort();
@@ -199,7 +234,7 @@ void AppFileTransfer::OnFinished()
         return;
     }
 
-    if (!MatchesExpectedDigest())
+    if (!MatchesExpectedDigest(PartPath))
     {
         DiscardPartFile();
         Fail(tr("The download does not match its published checksum."));
@@ -222,14 +257,14 @@ void AppFileTransfer::OnFinished()
     emit finished(DestinationPath);
 }
 
-bool AppFileTransfer::MatchesExpectedDigest() const
+bool AppFileTransfer::MatchesExpectedDigest(const QString& FilePath) const
 {
     if (ExpectedSha256.isEmpty())
     {
         return true;
     }
 
-    QFile File(PartPath);
+    QFile File(FilePath);
 
     if (!File.open(QIODevice::ReadOnly))
     {

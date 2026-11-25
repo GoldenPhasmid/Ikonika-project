@@ -33,6 +33,8 @@ ColumnLayout
     }
 
     readonly property bool verb: root.forms.kind === "verb"
+    readonly property var principalParts: root.verb ? root.forms.principalParts || [] : []
+    readonly property bool principal: root.principalParts.length > 0
     readonly property var cues: root.forms.cues || []
 
     readonly property int tenseColumns: root.width >=
@@ -84,6 +86,11 @@ ColumnLayout
 
     readonly property var rows:
     {
+        if (root.principal)
+        {
+            return [{ cells: root.principalParts.map(part => root.cell(-1, part.text, part.matched)) }]
+        }
+
         if (root.verb)
         {
             if (!root.shownTense)
@@ -169,13 +176,27 @@ ColumnLayout
     spacing: AppMetrics.gapCompact
     visible: root.rows.length > 0
 
-    RowLayout
+    GridLayout
     {
+        readonly property bool stacked: width < AppMetrics.twoColumnMinimumWidth
+
         Layout.fillWidth: true
-        DesktopSectionLabel { Layout.fillWidth: true; text: root.verb ? qsTr("Conjugation") : qsTr("Forms") }
+        columns: stacked ? 2 : 3
+        columnSpacing: AppMetrics.gapSmall
+        rowSpacing: AppMetrics.gapSmall
+
+        DesktopSectionLabel
+        {
+            Layout.fillWidth: true
+            Layout.columnSpan: parent.stacked ? 2 : 1
+            text: root.verb ? qsTr("Conjugation") : qsTr("Forms")
+        }
+
         DesktopButton
         {
             objectName: "dictionary_synonyms"
+            Layout.fillWidth: parent.stacked
+            Layout.preferredWidth: parent.stacked ? 1 : -1
             visible: root.verb && root.synonymsUrl.length > 0
             text: qsTr("Synonyms")
             iconName: "external_link"
@@ -186,6 +207,8 @@ ColumnLayout
         DesktopButton
         {
             objectName: "dictionary_reverso"
+            Layout.fillWidth: parent.stacked
+            Layout.preferredWidth: parent.stacked ? 1 : -1
             visible: root.verb && root.conjugationUrl.length > 0
             text: qsTr("Conjugations")
             iconName: "external_link"
@@ -198,7 +221,7 @@ ColumnLayout
     {
         Layout.fillWidth: true
         Layout.bottomMargin: AppMetrics.gapTight
-        visible: root.tenses.length > 1
+        visible: !root.principal && root.tenses.length > 1
         columns: root.tenseColumns
         rowSpacing: AppMetrics.gapSmall
         columnSpacing: AppMetrics.gapSmall
@@ -235,7 +258,8 @@ ColumnLayout
     {
         Layout.fillWidth: true
         forms: root.rows
-        speakable: root.verb
+        titles: root.principal ? root.principalParts.map(part => part.label) : [qsTr("Singular"), qsTr("Plural")]
+        speakable: true
 
         onFormClicked: function(form) { root.formSpeakRequested(form.replace(/<[^>]+>/g, "").trim()) }
     }
@@ -244,7 +268,7 @@ ColumnLayout
     {
         Layout.fillWidth: true
         Layout.topMargin: AppMetrics.gapTight
-        visible: root.participles.length > 0
+        visible: !root.principal && root.participles.length > 0
         spacing: AppMetrics.gapLarge
 
         Repeater

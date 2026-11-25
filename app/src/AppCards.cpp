@@ -4,10 +4,12 @@
 #include "AppDictionary.h"
 
 #include "core/FTArticleRules.h"
+#include "core/FTBookShelfRepository.h"
 #include "core/FTCardMeaning.h"
 #include "core/FTWordForms.h"
 #include "core/FTLog.h"
 #include "core/FTSettings.h"
+#include "core/FTUserDeckRepository.h"
 
 #include <QVariantMap>
 #include <algorithm>
@@ -27,22 +29,37 @@ namespace
     {
         std::unordered_map<std::string, std::optional<FTDictionaryEntry>> Entries;
         std::unordered_map<std::string, std::optional<FTCard>> Prototypes;
-        uint64_t Generation = 0;
         int LookupCount = 0;
     };
 
     FFormsCache MainFormsCache;
 
+    void ForgetDictionaryAnswers()
+    {
+        MainFormsCache.Entries.clear();
+        MainFormsCache.Prototypes.clear();
+        VerbSpellings.clear();
+        StressedSpellings.clear();
+        ElidingSpellings.clear();
+    }
+
+    void WatchDictionaryClosing()
+    {
+        static const QMetaObject::Connection Connection{
+            QObject::connect(&AppDictionary::Notifier(), &AppDictionaryNotifier::dictionaryClosed,
+                             [](const QString&) { ForgetDictionaryAnswers(); })};
+    }
+
+    std::string MakeSpellingKey(const std::string& Headword)
+    {
+        WatchDictionaryClosing();
+
+        return AppDictionary::GetActive().GetTargetLanguage() + "|" + Headword;
+    }
+
     FFormsCache& GetMainFormsCache()
     {
-        const uint64_t Generation = AppDictionary::Get().GetGeneration();
-
-        if (Generation != MainFormsCache.Generation)
-        {
-            MainFormsCache.Entries.clear();
-            MainFormsCache.Prototypes.clear();
-            MainFormsCache.Generation = Generation;
-        }
+        WatchDictionaryClosing();
 
         return MainFormsCache;
     }
@@ -65,7 +82,7 @@ namespace
 
     const std::optional<FTDictionaryEntry>& FindFormsEntry(const std::string& Headword, const std::string& PartOfSpeech)
     {
-        return FindFormsEntry(AppDictionary::Get().GetRepository(), GetMainFormsCache(), Headword, PartOfSpeech);
+        return FindFormsEntry(AppDictionary::GetActive().GetRepository(), GetMainFormsCache(), Headword, PartOfSpeech);
     }
 
     const std::optional<FTCard>& FindFormsCardPrototype(const FTDictionaryRepository& Dictionary, FFormsCache& Cache,
@@ -188,7 +205,7 @@ namespace
 
     bool SpellingElidesArticle(const std::string& Headword)
     {
-        if (Headword.empty() || !AppDictionary::Get().IsReady())
+        if (Headword.empty() || !AppDictionary::GetActive().IsReady())
         {
             return false;
         }
@@ -200,7 +217,7 @@ namespace
             return false;
         }
 
-        const auto Known = ElidingSpellings.find(Headword);
+        const auto Known = ElidingSpellings.find(MakeSpellingKey(Headword));
 
         if (Known != ElidingSpellings.end())
         {
@@ -209,7 +226,7 @@ namespace
 
         bool bKeepsFullArticle = false;
 
-        for (const FTDictionaryEntry& Entry : AppDictionary::Get().GetRepository().LookUp(Headword))
+        for (const FTDictionaryEntry& Entry : AppDictionary::GetActive().GetRepository().LookUp(Headword))
         {
             bKeepsFullArticle = bKeepsFullArticle
                 || std::find(Entry.Tags.begin(), Entry.Tags.end(), "aspirated-h")
@@ -220,19 +237,19 @@ namespace
         
         const bool bElides = !bKeepsFullArticle;
 
-        ElidingSpellings.emplace(Headword, bElides);
+        ElidingSpellings.emplace(MakeSpellingKey(Headword), bElides);
 
         return bElides;
     }
 
     bool SpellingIsStressedFirst(const std::string& Headword)
     {
-        if (Headword.empty() || !AppDictionary::Get().IsReady())
+        if (Headword.empty() || !AppDictionary::GetActive().IsReady())
         {
             return false;
         }
 
-        const auto Known = StressedSpellings.find(Headword);
+        const auto Known = StressedSpellings.find(MakeSpellingKey(Headword));
 
         if (Known != StressedSpellings.end())
         {
@@ -241,7 +258,7 @@ namespace
 
         bool bStressedFirst = false;
 
-        for (const FTDictionaryEntry& Entry : AppDictionary::Get().GetRepository().LookUp(Headword))
+        for (const FTDictionaryEntry& Entry : AppDictionary::GetActive().GetRepository().LookUp(Headword))
         {
             if (IsFirstSyllableStressed(Entry.Phonetic))
             {
@@ -251,19 +268,19 @@ namespace
             }
         }
 
-        StressedSpellings.emplace(Headword, bStressedFirst);
+        StressedSpellings.emplace(MakeSpellingKey(Headword), bStressedFirst);
 
         return bStressedFirst;
     }
 
     bool SpellingIsAlsoAVerb(const std::string& Headword)
     {
-        if (Headword.empty() || !AppDictionary::Get().IsReady())
+        if (Headword.empty() || !AppDictionary::GetActive().IsReady())
         {
             return false;
         }
 
-        const auto Known = VerbSpellings.find(Headword);
+        const auto Known = VerbSpellings.find(MakeSpellingKey(Headword));
 
         if (Known != VerbSpellings.end())
         {
@@ -271,9 +288,9 @@ namespace
         }
 
         const bool bIsAlsoAVerb =
-            AppDictionary::Get().GetRepository().HasReading(Headword, "verb");
+            AppDictionary::GetActive().GetRepository().HasReading(Headword, "verb");
 
-        VerbSpellings.emplace(Headword, bIsAlsoAVerb);
+        VerbSpellings.emplace(MakeSpellingKey(Headword), bIsAlsoAVerb);
 
         return bIsAlsoAVerb;
     }
@@ -326,7 +343,7 @@ namespace
             return Facts;
         }
 
-        FTDictionaryRepository& Dictionary = AppDictionary::Get().GetRepository();
+        FTDictionaryRepository& Dictionary = AppDictionary::GetActive().GetRepository();
 
         Facts.VerbHeadwords = Dictionary.FindHeadwordsWithReading(NounHeadwords, "verb");
 
@@ -400,7 +417,7 @@ namespace AppCards
     {
         const FTCardStore Store;
 
-        if (!AppDictionary::Get().IsReady())
+        if (!AppDictionary::GetActive().IsReady())
         {
             for (const FTCardHandle& Card : Cards)
             {
@@ -428,7 +445,7 @@ namespace AppCards
 
     void Annotate(std::vector<FTCard>& Cards)
     {
-        if (!AppDictionary::Get().IsReady())
+        if (!AppDictionary::GetActive().IsReady())
         {
             for (FTCard& Card : Cards)
             {
@@ -459,7 +476,7 @@ namespace AppCards
         CardRepository.SetCardAnnotator([](std::vector<FTCard>& Cards) { Annotate(Cards); });
     }
 
-    void FillReadingFromDictionary(FTCard& Card)
+    void FillReadingFromDictionary(AppLanguageDictionary& Dictionary, FTCard& Card)
     {
         const bool bWantsPartOfSpeech = Card.PartOfSpeech.empty();
         const bool bWantsGender = !Card.Gender.has_value()
@@ -470,13 +487,12 @@ namespace AppCards
             return;
         }
 
-        if (!AppDictionary::Get().IsReady())
+        if (!Dictionary.IsReady())
         {
             return;
         }
 
-        const std::vector<FTDictionaryEntry> Found =
-            AppDictionary::Get().GetRepository().LookUp(Card.TargetWord);
+        const std::vector<FTDictionaryEntry> Found = Dictionary.GetRepository().LookUp(Card.TargetWord);
 
         if (Found.empty())
         {
@@ -507,7 +523,7 @@ namespace AppCards
         }
     }
 
-    FTCard MakeAddedWord(const std::string& Word, const std::string& Translation,
+    FTCard MakeAddedWord(AppLanguageDictionary& Dictionary, const std::string& Word, const std::string& Translation,
                          const std::string& PartOfSpeech, int Gender, bool bReadingChosen,
                          const std::string& MeaningGist)
     {
@@ -527,27 +543,27 @@ namespace AppCards
             SetUserEdited(Card, EFTCardField::PartOfSpeech, true);
         }
 
-        FillReadingFromDictionary(Card);
-        FillMeaningFromDictionary(Card);
+        FillReadingFromDictionary(Dictionary, Card);
+        FillMeaningFromDictionary(Dictionary, Card);
 
         return Card;
     }
 
-    void FillMeaningFromDictionary(FTCard& Card)
+    void FillMeaningFromDictionary(AppLanguageDictionary& Dictionary, FTCard& Card)
     {
-        if (!Card.MeaningGist.empty() || Card.PartOfSpeech.empty() || !AppDictionary::Get().IsReady())
+        if (!Card.MeaningGist.empty() || Card.PartOfSpeech.empty() || !Dictionary.IsReady())
         {
             return;
         }
 
-        const FTDictionaryRepository& Dictionary = AppDictionary::Get().GetRepository();
+        const FTDictionaryRepository& Repository = Dictionary.GetRepository();
 
-        if (!Dictionary.HasMeaningExamples())
+        if (!Repository.HasMeaningExamples())
         {
             return;
         }
 
-        const std::vector<FTDictionarySense> Meanings = Dictionary.LoadMeanings(Card.TargetWord, Card.PartOfSpeech);
+        const std::vector<FTDictionarySense> Meanings = Repository.LoadMeanings(Card.TargetWord, Card.PartOfSpeech);
 
         if (Meanings.empty())
         {
@@ -586,10 +602,10 @@ namespace AppCards
 
             std::vector<FTCard> Forms;
 
-            if (AppDictionary::Get().IsReady())
+            if (AppDictionary::GetActive().IsReady())
             {
                 const std::string Kind = GetFormsKind(Card->Id);
-                const std::vector<FTDictionaryEntry> Entries = AppDictionary::Get().GetRepository().LookUp(Card->TargetWord);
+                const std::vector<FTDictionaryEntry> Entries = AppDictionary::GetActive().GetRepository().LookUp(Card->TargetWord);
 
                 for (const bool bOwnKind : {true, false})
                 {
@@ -712,14 +728,14 @@ namespace AppCards
         return Entry;
     }
 
-    QString FindCardMeaningGist(const std::string& CardId)
+    QString FindCardMeaningGist(FTCardRepository& Cards, const std::string& CardId)
     {
-        if (CardId.empty() || !AppDatabase::Get().IsReady())
+        if (CardId.empty())
         {
             return {};
         }
 
-        const std::optional<FTCardHandle> Card = AppDatabase::Get().GetCardRepository().LoadCard(CardId);
+        const std::optional<FTCardHandle> Card = Cards.LoadCard(CardId);
 
         return Card.has_value() ? QString::fromStdString((*Card)->MeaningGist) : QString();
     }
@@ -868,7 +884,7 @@ namespace AppCards
             return {};
         }
 
-        const FFormsCountSources Sources{AppDictionary::Get().IsReady() ? &AppDictionary::Get().GetRepository() : nullptr,
+        const FFormsCountSources Sources{AppDictionary::GetActive().IsReady() ? &AppDictionary::GetActive().GetRepository() : nullptr,
                                          &AppDatabase::Get().GetCardRepository(),
                                          FTSettings::Get().GetLanguageRules().TargetLanguage};
 
@@ -889,12 +905,12 @@ namespace AppCards
 
     std::vector<FTCard> ListFormsCandidates(const std::string& Training)
     {
-        if (!AppDatabase::Get().IsReady() || !AppDictionary::Get().IsReady())
+        if (!AppDatabase::Get().IsReady() || !AppDictionary::GetActive().IsReady())
         {
             return {};
         }
 
-        const FFormsCountSources Sources{&AppDictionary::Get().GetRepository(), &AppDatabase::Get().GetCardRepository(),
+        const FFormsCountSources Sources{&AppDictionary::GetActive().GetRepository(), &AppDatabase::Get().GetCardRepository(),
                                          FTSettings::Get().GetLanguageRules().TargetLanguage};
 
         return ListFormsCandidatesWith(Sources, GetMainFormsCache(), Training);
@@ -931,7 +947,7 @@ namespace AppCards
 
     QString GetVerbGroup(const std::string& Headword, const std::string& PartOfSpeech)
     {
-        if (PartOfSpeech != "verb" || !AppDictionary::Get().IsReady())
+        if (PartOfSpeech != "verb" || !AppDictionary::GetActive().IsReady())
         {
             return {};
         }
@@ -947,7 +963,7 @@ namespace AppCards
 
     void PrioritizeIrregularVerbs(std::vector<FTCard>& Cards)
     {
-        if (!AppDatabase::Get().IsReady() || !AppDictionary::Get().IsReady())
+        if (!AppDatabase::Get().IsReady() || !AppDictionary::GetActive().IsReady())
         {
             return;
         }
@@ -1089,11 +1105,25 @@ namespace AppCards
         return AppDatabase::Get().GetCardRepository().LoadCards();
     }
 
-    void ForgetAnnotations()
+    std::vector<FTCardHandle> LoadDailyPool()
     {
-        VerbSpellings.clear();
-        StressedSpellings.clear();
-        ElidingSpellings.clear();
+        const std::unordered_set<std::string> Outside = AppDatabase::Get().GetUserDecks().ListCardIdsOutsideDailyLearning();
+
+        std::vector<FTCardHandle> Pool = AppDatabase::Get().GetCardRepository().LoadUnlearnedCards();
+
+        std::erase_if(Pool, [&Outside](const FTCardHandle& Card)
+        {
+            return Outside.contains(Card->Id);
+        });
+
+        return Pool;
+    }
+
+    FTCardRepository& GetCardRepository(AppLanguageDictionary& Dictionary)
+    {
+        const std::string NativeLanguage{Dictionary.IsReady() ? Dictionary.GetTranslationLanguage() : std::string{}};
+
+        return AppDatabase::Get().GetCardRepository(Dictionary.GetTargetLanguage(), NativeLanguage);
     }
 
     bool UpdateCardContent(const QString& CardId, const QString& Word, const QString& Translation,
@@ -1143,5 +1173,35 @@ namespace AppCards
         Entry[QStringLiteral("box")] = Card.LeitnerStage;
 
         return Entry;
+    }
+
+    QVariantList ListBookWords(const std::string& BookKey)
+    {
+        QVariantList Result;
+
+        FTCardRepository& Cards{AppDatabase::Get().GetCardRepository()};
+
+        for (const std::string& CardId : AppDatabase::Get().GetBookShelf().ListBookCards(BookKey))
+        {
+            const std::optional<FTCardHandle> Handle{Cards.LoadCard(CardId)};
+            const std::string Language{Cards.FindCardLanguage(CardId).value_or(Cards.GetTargetLanguage())};
+
+            if (!Handle.has_value() || *Handle == nullptr)
+            {
+                continue;
+            }
+
+            const FTCard& Card{**Handle};
+
+            Result.append(QVariantMap{{QStringLiteral("id"), QString::fromStdString(Card.Id)},
+                                      {QStringLiteral("word"), QString::fromStdString(GetDisplayWord(Card, Language))},
+                                      {QStringLiteral("translation"), QString::fromStdString(Card.Translation)},
+                                      {QStringLiteral("partOfSpeech"), QString::fromStdString(Card.PartOfSpeech)},
+                                      {QStringLiteral("gender"), Card.Gender.value_or(-1)},
+                                      {QStringLiteral("stage"), Card.LeitnerStage},
+                                      {QStringLiteral("completed"), IsCompleted(Card)}});
+        }
+
+        return Result;
     }
 }

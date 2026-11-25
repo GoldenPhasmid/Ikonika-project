@@ -51,7 +51,7 @@ bool AppCoreCards::Seed(const QString& TargetLanguage)
 {
     const FTLanguageRules& Rules = FTSettings::Get().GetLanguageRules();
 
-    if (Rules.TargetLanguage != TargetLanguage.toStdString() || !AppDictionary::Get().IsReady()
+    if (Rules.TargetLanguage != TargetLanguage.toStdString() || !AppDictionary::GetActive().IsReady()
         || !AppDatabase::Get().IsReady())
     {
         qCWarning(LogApp) << "Core cards: the dictionary of" << TargetLanguage << "is not the active one, nothing added";
@@ -69,7 +69,7 @@ bool AppCoreCards::Seed(const QString& TargetLanguage)
         return true;
     }
 
-    const FTDictionaryRepository& Dictionary = AppDictionary::Get().GetRepository();
+    const FTDictionaryRepository& Dictionary = AppDictionary::GetActive().GetRepository();
     FTCardRepository& Cards = AppDatabase::Get().GetCardRepository();
 
     int Added = 0;
@@ -92,7 +92,7 @@ bool AppCoreCards::Seed(const QString& TargetLanguage)
             Gist.clear();
         }
 
-        const FTCard Card = AppCards::MakeAddedWord(Core.Word, Core.Translation, Core.PartOfSpeech, -1, false, Gist);
+        const FTCard Card = AppCards::MakeAddedWord(AppDictionary::GetActive(), Core.Word, Core.Translation, Core.PartOfSpeech, -1, false, Gist);
 
         if (!Cards.AddCard(Card).has_value())
         {

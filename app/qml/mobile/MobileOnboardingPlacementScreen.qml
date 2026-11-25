@@ -319,7 +319,7 @@ Rectangle
         }
     }
 
-    MobileCorrectIncorrectScreen
+    MobileFlipScreen
     {
         anchors.fill: parent
         visible: root.phase === "test"

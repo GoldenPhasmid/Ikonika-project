@@ -37,13 +37,6 @@ DesktopSidePane
         onClicked: root.sectionChosen(key)
     }
 
-    DesktopSectionLabel
-    {
-        Layout.leftMargin: AppMetrics.gapCompact
-        Layout.bottomMargin: AppMetrics.gapTight
-        text: qsTr("Library")
-    }
-
     SectionItem
     {
         key: "all"

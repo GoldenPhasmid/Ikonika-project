@@ -16,9 +16,11 @@
 #include "core/FCardSelectorBase.h"
 #include "core/FTLog.h"
 #include "core/FTSettings.h"
+#include "core/FTUserDeckRepository.h"
 
 #include <algorithm>
 #include <random>
+#include <unordered_set>
 
 ExerciseLauncherController::ExerciseLauncherController(QObject* Parent)
     : QObject(Parent)
@@ -71,14 +73,25 @@ ExerciseControllerBase* ExerciseLauncherController::CreateController(const QStri
 }
 
 bool ExerciseLauncherController::startExercise(const QString& Exercise, bool bReverse, int CardCount,
-    int RepetitionCount, const QStringList& FilterKeys)
+    int RepetitionCount, const QStringList& FilterKeys, const QString& UserDeckId)
 {
     std::vector<FTCardHandle> Cards = AppCards::LoadCards();
 
-    Cards.erase(std::remove_if(Cards.begin(), Cards.end(), [&FilterKeys](const FTCardHandle& Card)
+    std::erase_if(Cards, [&FilterKeys](const FTCardHandle& Card)
     {
         return !Card || !VocabularyController::MatchesAnyFilter(*Card, FilterKeys);
-    }), Cards.end());
+    });
+
+    if (!UserDeckId.isEmpty() && AppDatabase::Get().IsReady())
+    {
+        const std::vector<std::string> DeckCards = AppDatabase::Get().GetUserDecks().ListCardIds(UserDeckId.toStdString());
+        const std::unordered_set<std::string> InDeck{DeckCards.begin(), DeckCards.end()};
+
+        std::erase_if(Cards, [&InDeck](const FTCardHandle& Card)
+        {
+            return !InDeck.contains(Card->Id);
+        });
+    }
 
     if (Cards.empty())
     {

@@ -162,6 +162,82 @@ TEST_CASE("An epub file yields its title and spine content in order", "[reader][
     CHECK(Result->Paragraphs[2] == "Deuxième page.");
 }
 
+TEST_CASE("Sampling a txt file returns its text and a word estimate from its size", "[reader][extractor]")
+{
+    const std::string Path = WriteFile("ReaderSample.txt",
+        "Le chien court dans le jardin.\n\nIl mange vite.\n");
+
+    REQUIRE_FALSE(Path.empty());
+
+    const std::optional<FTBookSample> Sample = SampleBookText(Path);
+
+    REQUIRE(Sample.has_value());
+    REQUIRE(Sample->Paragraphs.size() == 2);
+    CHECK(Sample->Paragraphs[0] == "Le chien court dans le jardin.");
+    CHECK(Sample->EstimatedWords > 0);
+}
+
+TEST_CASE("Sampling an fb2 file returns body text without markup", "[reader][extractor]")
+{
+    const std::string Path = WriteFile("ReaderSample.fb2",
+        "<?xml version=\"1.0\"?>\n"
+        "<FictionBook xmlns=\"http://www.gribuser.ru/xml/fictionbook/2.0\">\n"
+        "<description><title-info><book-title>Le Petit Chien</book-title></title-info></description>\n"
+        "<body><section><p>Le chien court.</p><p>Il <strong>mange</strong> vite.</p></section></body>\n"
+        "<binary id=\"cover\" content-type=\"image/jpeg\">AAAA</binary>\n"
+        "</FictionBook>\n");
+
+    REQUIRE_FALSE(Path.empty());
+
+    const std::optional<FTBookSample> Sample = SampleBookText(Path);
+
+    REQUIRE(Sample.has_value());
+    REQUIRE_FALSE(Sample->Paragraphs.empty());
+    CHECK(Sample->Paragraphs[0].find("Le chien court.") != std::string::npos);
+    CHECK(Sample->Paragraphs[0].find('<') == std::string::npos);
+    CHECK(Sample->Paragraphs[0].find("AAAA") == std::string::npos);
+}
+
+TEST_CASE("Sampling an epub reads text from spine documents and skips image wrapper pages", "[reader][extractor]")
+{
+    const std::string Path = WriteFile("ReaderSample.epub", "");
+    const std::string Text(3000, 'x');
+    const std::string Chapter = "<?xml version=\"1.0\"?><html><body><p>Le chien court dans le jardin. " + Text
+                                + "</p></body></html>";
+    const std::string Wrapper = "<?xml version=\"1.0\"?><html><body><img src=\"a.jpg\"/></body></html>";
+
+    REQUIRE(WriteZip(Path.c_str(), {
+        { "META-INF/container.xml",
+          "<?xml version=\"1.0\"?><container version=\"1.0\" "
+          "xmlns=\"urn:oasis:names:tc:opendocument:xmlns:container\">"
+          "<rootfiles><rootfile full-path=\"OEBPS/content.opf\" "
+          "media-type=\"application/oebps-package+xml\"/></rootfiles></container>" },
+        { "OEBPS/content.opf",
+          "<?xml version=\"1.0\"?><package version=\"2.0\" xmlns=\"http://www.idpf.org/2007/opf\">"
+          "<metadata/><manifest>"
+          "<item id=\"w1\" href=\"w1.xhtml\" media-type=\"application/xhtml+xml\"/>"
+          "<item id=\"c1\" href=\"c1.xhtml\" media-type=\"application/xhtml+xml\"/>"
+          "<item id=\"w2\" href=\"w2.xhtml\" media-type=\"application/xhtml+xml\"/>"
+          "</manifest><spine><itemref idref=\"w1\"/><itemref idref=\"c1\"/><itemref idref=\"w2\"/></spine></package>" },
+        { "OEBPS/w1.xhtml", Wrapper.c_str() },
+        { "OEBPS/c1.xhtml", Chapter.c_str() },
+        { "OEBPS/w2.xhtml", Wrapper.c_str() }
+    }));
+
+    const std::optional<FTBookSample> Sample = SampleBookText(Path);
+
+    REQUIRE(Sample.has_value());
+    REQUIRE(Sample->Paragraphs.size() == 1);
+    CHECK(Sample->Paragraphs[0].find("Le chien court") == 0);
+    CHECK(Sample->EstimatedWords > 0);
+}
+
+TEST_CASE("Sampling a missing file or a pdf returns nothing", "[reader][extractor]")
+{
+    CHECK_FALSE(SampleBookText("C:/nowhere/does-not-exist.epub").has_value());
+    CHECK_FALSE(SampleBookText("C:/nowhere/book.pdf").has_value());
+}
+
 TEST_CASE("A zip that is not an epub extracts to nothing", "[reader][extractor]")
 {
     const std::string Path = WriteFile("ReaderFixture.bad", "");

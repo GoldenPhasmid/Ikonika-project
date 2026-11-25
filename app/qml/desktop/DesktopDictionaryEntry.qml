@@ -179,7 +179,7 @@ Item
     {
         if (root.headword.length > 0)
         {
-            root.controller.speak(root.headword)
+            root.controller.speak(root.entry ? root.entry.displayHeadword : root.headword)
         }
     }
 
@@ -255,6 +255,7 @@ Item
                         id: actionRow
 
                         Layout.fillWidth: false
+                        visible: actionRow.children.length > 0
                         spacing: AppMetrics.gapSmall
                     },
                     DesktopButton
@@ -262,6 +263,8 @@ Item
                         id: editButton
 
                         objectName: "entry_edit"
+                        Layout.fillWidth: entryHeader.stacked
+                        Layout.preferredWidth: entryHeader.stacked ? 1 : -1
                         visible: root.showAdd && root.controller.cards.length > 0
                         iconName: "edit"
                         text: qsTr("Edit")
@@ -296,6 +299,8 @@ Item
                     },
                     DesktopButton
                     {
+                        Layout.fillWidth: entryHeader.stacked
+                        Layout.preferredWidth: entryHeader.stacked ? 1 : -1
                         visible: root.showAdd
                         tone: root.addedTranslation ? "secondary" : "primary"
                         iconName: "plus"
@@ -551,12 +556,17 @@ Item
 
             DesktopSectionLabel { text: root.hasMeanings ? qsTr("Other translations") : qsTr("Translations") }
 
-            GridLayout
+            Flow
             {
+                id: otherTranslationFlow
+
+                readonly property int columns: page.columnWidth >= AppMetrics.twoColumnMinimumWidth ? 2 : 1
+                readonly property real cellWidth: Math.floor((otherTranslationFlow.width
+                                                              - (otherTranslationFlow.columns - 1) * otherTranslationFlow.spacing)
+                                                             / otherTranslationFlow.columns)
+
                 Layout.fillWidth: true
-                columns: page.columnWidth >= AppMetrics.twoColumnMinimumWidth ? 2 : 1
-                columnSpacing: AppMetrics.gapSmall
-                rowSpacing: AppMetrics.gapSmall
+                spacing: AppMetrics.gapSmall
 
                 Repeater
                 {
@@ -566,7 +576,7 @@ Item
                     {
                         required property var modelData
 
-                        Layout.preferredWidth: 1
+                        width: implicitWidth > otherTranslationFlow.cellWidth ? otherTranslationFlow.width : otherTranslationFlow.cellWidth
                         text: modelData.text
                         relative: modelData.relative
                         hasProbability: modelData.hasProbability

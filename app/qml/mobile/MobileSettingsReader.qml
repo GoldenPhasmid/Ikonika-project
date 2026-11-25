@@ -73,6 +73,24 @@ ColumnLayout
             function(index) { AppReaderSettings.textFont = index > 0 ? AppReaderSettings.textFonts[index - 1] : "" })
     }
 
+    component SentenceSpeedSlider: MobileSettingsSlider
+    {
+        id: sentenceSpeedSlider
+
+        required property ReaderReadAloud readAloud
+
+        objectName: "reader_sentence_speed"
+
+        title: qsTr("Sentence speech rate")
+        value: sentenceSpeedSlider.readAloud !== null ? Math.round(sentenceSpeedSlider.readAloud.speed * 100) : 100
+        from: sentenceSpeedSlider.readAloud !== null ? Math.round(sentenceSpeedSlider.readAloud.minimumSpeed * 100) : 50
+        to: sentenceSpeedSlider.readAloud !== null ? Math.round(sentenceSpeedSlider.readAloud.maximumSpeed * 100) : 150
+        step: 5
+        suffix: "%"
+
+        onEdited: function(newValue) { sentenceSpeedSlider.readAloud.speed = newValue / 100 }
+    }
+
     component HighlightPill: MobileSegmentedPill
     {
         objectName: "reader_highlight_mode"
@@ -124,7 +142,7 @@ ColumnLayout
         MobileSettingsRow
         {
             title: qsTr("Page margins")
-            lastRow: root.volumeKeysPlace !== "pdf"
+            lastRow: root.volumeKeysPlace !== "pdf" && (root.readAloud === null || root.showText)
 
             MobileSettingsToggle
             {
@@ -132,6 +150,13 @@ ColumnLayout
 
                 onToggled: AppReaderSettings.cropMargins = !AppReaderSettings.cropMargins
             }
+        }
+
+        SentenceSpeedSlider
+        {
+            readAloud: root.readAloud
+            visible: root.readAloud !== null && !root.showText
+            lastRow: root.volumeKeysPlace !== "pdf"
         }
 
         MobileSettingsVolumeKeysRow
@@ -195,6 +220,24 @@ ColumnLayout
             }
         }
 
+        MobileSettingsRow
+        {
+            visible: root.titled
+            title: qsTr("Word highlighting")
+            lastRow: true
+        }
+
+        MobileSettingsWideRow
+        {
+            HighlightPill {}
+        }
+
+        SentenceSpeedSlider
+        {
+            readAloud: root.readAloud
+            visible: root.readAloud !== null && root.showText
+        }
+
         MobileSettingsSlider
         {
             title: qsTr("Text size")
@@ -226,37 +269,9 @@ ColumnLayout
             to: AppReaderSettings.maximumTextMargin
             step: 4
             valueText: AppReaderSettings.textMargin + " px"
-
-            onEdited: function(newValue) { AppReaderSettings.textMargin = newValue }
-        }
-
-        MobileSettingsSlider
-        {
-            objectName: "reader_sentence_speed"
-
-            visible: root.readAloud !== null
-            title: qsTr("Sentence speech rate")
-            value: root.readAloud !== null ? Math.round(root.readAloud.speed * 100) : 100
-            from: root.readAloud !== null ? Math.round(root.readAloud.minimumSpeed * 100) : 50
-            to: root.readAloud !== null ? Math.round(root.readAloud.maximumSpeed * 100) : 150
-            step: 5
-            suffix: "%"
-
-            onEdited: function(newValue) { root.readAloud.speed = newValue / 100 }
-        }
-
-        MobileSettingsRow
-        {
-            visible: root.titled
-            title: qsTr("Word highlighting")
-            lastRow: true
-        }
-
-        MobileSettingsWideRow
-        {
             lastRow: root.volumeKeysPlace !== "text"
 
-            HighlightPill {}
+            onEdited: function(newValue) { AppReaderSettings.textMargin = newValue }
         }
 
         MobileSettingsVolumeKeysRow

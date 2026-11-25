@@ -9,11 +9,18 @@ Item
     property real initialZoom: 0
     property point initialScroll: Qt.point(0, 0)
     property bool cropMargins: false
+    property real startPadding: 0
+    property real endPadding: 0
     property color paperColour: "white"
     property color inkColour: "black"
+    property ReaderReadAloud readAloud: null
+    property ReaderPdfNarration narration: null
+    property real topChrome: 0
+    property real readAloudInset: 0
 
     signal wordPicked(string word, string sentence)
     signal doubleTapped()
+    signal readAloudRequested(var place)
     signal blankTapped()
     signal currentPageChanged(int page)
     signal currentZoomChanged(real zoom)
@@ -22,12 +29,19 @@ Item
     property int current: 0
     property real renderScale: 1
     property bool presented: false
+    property var pickedPlace: null
+    property bool followingReadAloud: false
+    property bool readingAway: false
 
     readonly property int pageIndex: root.current
     readonly property ReaderPdfDocument document: book
     readonly property int pageCount: book.pageCount
     readonly property bool ready: book.ready
     readonly property bool failed: book.failed
+    readonly property bool narrated: root.readAloud !== null && root.narration !== null && root.narration.available
+    readonly property var readRanges: root.narrated && root.readAloud.started
+        ? root.narration.pageRanges(root.readAloud.paragraph, root.readAloud.sentenceStart, root.readAloud.sentenceEnd)
+        : []
 
     readonly property var sheets: [first, second, third]
     readonly property Item currentSheet: root.sheetAt(root.current)
@@ -42,7 +56,9 @@ Item
     readonly property real previousExtent: root.previousSheet && root.previousSheet.inUse ? root.previousSheet.height + root.gap : 0
     readonly property real nextExtent: root.nextSheet && root.nextSheet.inUse ? root.nextSheet.height + root.gap : 0
     readonly property real stackHeight: root.previousExtent + root.currentSheet.height + root.nextExtent
-    readonly property real stackTop: Math.max(root.gap, (viewport.height - root.stackHeight) / 2)
+    readonly property real topInset: root.previousSheet === null ? root.startPadding : 0
+    readonly property real bottomInset: root.nextSheet === null ? root.endPadding : 0
+    readonly property real stackTop: Math.max(root.gap + root.topInset, (viewport.height - root.stackHeight) / 2)
     readonly property real currentTop: root.stackTop + root.previousExtent
 
     readonly property real visibleLeft: root.cropMargins ? Math.max(0, root.currentSheet.cropLeft - root.cropPadding) : 0
@@ -141,10 +157,164 @@ Item
 
     function clearSelection()
     {
+        root.pickedPlace = null
+
         for (const sheet of root.sheets)
         {
             sheet.clearSelection()
         }
+    }
+
+    function readingSpan()
+    {
+        let span = null
+
+        for (const range of root.readRanges)
+        {
+            const sheet = root.sheetAt(range.page)
+
+            if (!sheet.inUse || sheet.page !== range.page)
+            {
+                continue
+            }
+
+            for (const rectangle of sheet.textRectangles(range.start, range.length))
+            {
+                const top = sheet.y + rectangle.y * sheet.renderScale
+                const bottom = sheet.y + (rectangle.y + rectangle.height) * sheet.renderScale
+
+                span = span === null ? { top: top, bottom: bottom }
+                                     : { top: Math.min(span.top, top), bottom: Math.max(span.bottom, bottom) }
+            }
+        }
+
+        return span
+    }
+
+    function readingVisibleTop()
+    {
+        return viewport.contentY + root.topChrome
+    }
+
+    function readingVisibleBottom()
+    {
+        return viewport.contentY + viewport.height - root.readAloudInset
+    }
+
+    function isReadingShown()
+    {
+        const span = root.readingSpan()
+
+        return span !== null && span.bottom > root.readingVisibleTop() && span.top < root.readingVisibleBottom()
+    }
+
+    function playReadAloud()
+    {
+        if (!root.narrated)
+        {
+            return
+        }
+
+        root.followingReadAloud = true
+
+        if (root.readAloud.started && root.isReadingShown())
+        {
+            root.readAloud.resume()
+
+            return
+        }
+
+        root.narration.prepare(root.current)
+
+        if (!root.readAloud.started && root.readAloud.savedParagraph >= 0
+            && root.narration.pageOf(root.readAloud.savedParagraph, root.readAloud.savedCharacter) === root.current)
+        {
+            root.readAloud.startAt(root.readAloud.savedParagraph, root.readAloud.savedCharacter)
+
+            return
+        }
+
+        const place = root.narration.unitPlace(root.current, 0)
+
+        if (place.paragraph === undefined)
+        {
+            return
+        }
+
+        root.readAloud.startAt(place.paragraph, place.character)
+    }
+
+    function readFrom(place)
+    {
+        if (!root.narrated || place === null)
+        {
+            return
+        }
+
+        root.narration.prepare(place.page)
+
+        const found = root.narration.unitPlace(place.page, place.index)
+
+        if (found.paragraph === undefined)
+        {
+            return
+        }
+
+        root.clearSelection()
+        root.followingReadAloud = true
+        root.readAloud.startAt(found.paragraph, found.character)
+    }
+
+    function leaveReadAloud()
+    {
+        root.followingReadAloud = false
+    }
+
+    function showReading()
+    {
+        root.followingReadAloud = true
+        root.followReadAloud(true)
+    }
+
+    function updateReadingAway()
+    {
+        root.readingAway = root.narrated && root.readAloud.started && !root.followingReadAloud && !root.isReadingShown()
+    }
+
+    function followReadAloud(force)
+    {
+        if (!root.narrated || !root.readAloud.started || !root.followingReadAloud || (!force && !root.readAloud.playing)
+            || root.readRanges.length === 0)
+        {
+            return
+        }
+
+        let span = root.readingSpan()
+
+        if (span !== null && span.top >= root.readingVisibleTop() && span.bottom <= root.readingVisibleBottom())
+        {
+            return
+        }
+
+        if (span === null)
+        {
+            root.moveTo(root.readRanges[0].page, function() { return root.currentTop - root.gap })
+            span = root.readingSpan()
+
+            if (span === null)
+            {
+                return
+            }
+        }
+
+        viewport.cancelFlick()
+        root.scrollRestorePending = false
+        root.anchoring = true
+        viewport.contentY = root.clamp(span.top - root.topChrome - AppMetrics.gapLarge, viewport.contentHeight - viewport.height)
+        root.anchoring = false
+        root.anchoredTop = root.currentTop
+        root.followScroll()
+        root.reportScroll()
     }
 
     function requestOutline()
@@ -189,15 +359,23 @@ Item
         root.reportScroll()
     }
 
-    function goToPage(target)
+    function goToPage(target, location)
     {
         const wanted = Math.max(0, Math.min(root.pageCount - 1, target))
 
+        root.leaveReadAloud()
         root.scrollRestorePending = false
         root.clearSelection()
         viewport.cancelFlick()
-        root.moveTo(wanted, function() { return root.currentTop - root.gap })
-        viewport.contentX = 0
+        root.moveTo(wanted, function()
+        {
+            const offset = location === undefined ? -root.gap : Math.max(-root.gap,
+                location.y * root.currentSheet.renderScale - root.topChrome)
+            return root.currentTop + offset
+        })
+        viewport.contentX = location === undefined ? 0
+            : root.clamp(root.currentSheet.x + location.x * root.currentSheet.renderScale - root.gap,
+                         viewport.contentWidth - viewport.width)
         root.reportScroll()
     }
 
@@ -317,6 +495,17 @@ Item
                                            (viewport.contentY - root.currentTop + root.gap) / root.renderScale))
     }
 
+    Connections
+    {
+        target: root.readAloud
+
+        function onStateChanged()
+        {
+            Qt.callLater(root.followReadAloud, false)
+            Qt.callLater(root.updateReadingAway)
+        }
+    }
+
     ReaderPdfDocument
     {
         id: book
@@ -340,7 +529,7 @@ Item
         boundsBehavior: Flickable.StopAtBounds
 
         contentWidth: Math.max(width, root.fitPoints * root.renderScale)
-        contentHeight: Math.max(height, root.stackHeight + root.gap * 2)
+        contentHeight: Math.max(height, root.topInset + root.stackHeight + root.bottomInset + root.gap * 2)
 
         onWidthChanged: if (root.fitting) root.fitWidth()
         onContentXChanged: root.reportScroll()
@@ -351,8 +540,13 @@ Item
                 Qt.callLater(root.followScroll)
             }
             root.reportScroll()
+            root.updateReadingAway()
         }
-        onMovementStarted: root.scrollRestorePending = false
+        onMovementStarted:
+        {
+            root.scrollRestorePending = false
+            root.leaveReadAloud()
+        }
         onMovementEnded: root.reportScroll()
 
         MobileReaderPdfSheet

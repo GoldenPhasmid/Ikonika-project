@@ -37,7 +37,7 @@ Rectangle
     readonly property var catalogue: ({
         today: { key: "today", label: qsTr("Today"), icon: "nav_today" },
         words: { key: "words", label: qsTr("Words"), icon: "nav_words" },
-        reader: { key: "reader", label: qsTr("Reader"), icon: "nav_reader" },
+        reader: { key: "reader", label: qsTr("Library"), icon: "nav_reader" },
         decks: { key: "decks", label: qsTr("Decks"), icon: "nav_decks" },
         vocabulary: { key: "vocabulary", label: qsTr("Vocabulary"), icon: "nav_vocabulary" }
     })
@@ -57,7 +57,9 @@ Rectangle
                                           : 0
     readonly property real navLabelWidth: root.destinations.reduce(
         (Widest, Destination) => Math.max(Widest, navFont.advanceWidth(Destination.label) + (Destination.key === "today" ? root.navBadgeWidth : 0)), 0)
-    readonly property real navItemWidth: AppMetrics.touchInput
+    readonly property bool navLabelsShown: AppMetrics.touchInput
+                                         && !(root.crumbs.length > 1 && (root.destination === "reader" || root.destination === "decks"))
+    readonly property real navItemWidth: root.navLabelsShown
                                          ? Math.ceil(root.navLabelWidth) + AppMetrics.iconSize + AppMetrics.gapCompact * 2 + AppMetrics.gapSmall * 2
                                          : AppMetrics.navItemHeight
     readonly property real slotWidth: root.navItemWidth + navRow.spacing
@@ -194,8 +196,8 @@ Rectangle
             {
                 anchors.centerIn: parent
                 visible: !brand.showsShortcut
-                width: AppMetrics.headerIconTapWidth
-                height: AppMetrics.headerIconTapWidth
+                width: AppMetrics.iconTapSize
+                height: AppMetrics.iconTapSize
                 radius: AppMetrics.radiusMedium
                 color: AppTheme.colourText
 
@@ -357,10 +359,11 @@ Rectangle
                 text: modelData.label
                 iconName: modelData.icon
                 shortcutKey: String(navItem.index + 1)
-                collapsed: !AppMetrics.touchInput
+                collapsed: !root.navLabelsShown
                 selected: root.destination === modelData.key
                 count: modelData.key === "today" ? root.dueCount : 0
                 emphasiseCount: modelData.key === "today"
+                marked: modelData.key === "reader" && AppReaderIntake.bookOpen
 
                 transform: Translate
                 {

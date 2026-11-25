@@ -105,13 +105,9 @@ namespace
         return Directory;
     }
 
-    /** The folder for whichever pair is being learned now. */
-    QString CurrentModelFolder()
+    QString ModelFolderFor(const std::string& TargetLanguage, const std::string& NativeLanguage)
     {
-        const FTLanguageRules& Rules = FTSettings::Get().GetLanguageRules();
-
-        return ModelFolderForPair(QString::fromStdString(Rules.TargetLanguage),
-                                  QString::fromStdString(Rules.NativeLanguage));
+        return ModelFolderForPair(QString::fromStdString(TargetLanguage), QString::fromStdString(NativeLanguage));
     }
 
     /** Serialises the model: it is loaded on a worker and used from workers, and one decode at a
@@ -125,11 +121,9 @@ namespace
         return Instance;
     }
 
-    std::optional<FTCatalogPackage> CurrentPackage()
+    std::optional<FTCatalogPackage> PackageFor(const std::string& TargetLanguage, const std::string& NativeLanguage)
     {
-        const FTLanguageRules& Rules = FTSettings::Get().GetLanguageRules();
-
-        return AppCatalog::Get().FindTranslationPackage(Rules.TargetLanguage, Rules.NativeLanguage);
+        return AppCatalog::Get().FindTranslationPackage(TargetLanguage, NativeLanguage);
     }
 
     /** Which pair's model is loaded, or the one whose load failed. Empty before the first attempt.
@@ -143,10 +137,8 @@ namespace
 
     /** Loads on first use, and again when the pair has changed. Called with the lock held, from a
         worker. */
-    void EnsureLoaded()
+    void EnsureLoaded(const QString& Folder)
     {
-        const QString Folder = CurrentModelFolder();
-
         if (LoadedFolder == Folder)
         {
             return;
@@ -192,9 +184,14 @@ namespace AppTranslator
 
     bool IsSupportedPair()
     {
-        // Whether a model for this pair is on disk, and nothing else. A pair is supported by
-        // fetching its model, so there is no list here to forget to add a language to.
-        return !FindModelDirectory(CurrentModelFolder()).isEmpty();
+        const FTLanguageRules& Rules = FTSettings::Get().GetLanguageRules();
+
+        return IsSupportedPair(Rules.TargetLanguage, Rules.NativeLanguage);
+    }
+
+    bool IsSupportedPair(const std::string& TargetLanguage, const std::string& NativeLanguage)
+    {
+        return !FindModelDirectory(ModelFolderFor(TargetLanguage, NativeLanguage)).isEmpty();
     }
 
     bool IsAvailable()
@@ -211,18 +208,27 @@ namespace AppTranslator
 
     void Translate(const QString& Text, quintptr Owner)
     {
+        const FTLanguageRules& Rules = FTSettings::Get().GetLanguageRules();
+
+        Translate(Text, Owner, Rules.TargetLanguage, Rules.NativeLanguage);
+    }
+
+    void Translate(const QString& Text, quintptr Owner, const std::string& TargetLanguage,
+                   const std::string& NativeLanguage)
+    {
         const QString Trimmed = Text.trimmed();
 
-        if (Trimmed.isEmpty() || !IsSupportedPair())
+        if (Trimmed.isEmpty() || !IsSupportedPair(TargetLanguage, NativeLanguage))
         {
             return;
         }
 
+        const QString Folder = ModelFolderFor(TargetLanguage, NativeLanguage);
         const quint64 Generation = Requests.Begin(Owner);
 
         BusyCount.fetchAndAddOrdered(1);
 
-        QThreadPool::globalInstance()->start([Trimmed, Generation]()
+        QThreadPool::globalInstance()->start([Trimmed, Generation, Folder]()
         {
             QString Result;
 
@@ -235,7 +241,7 @@ namespace AppTranslator
                 {
                     const bool bWasLoaded = Translator().has_value();
 
-                    EnsureLoaded();
+                    EnsureLoaded(Folder);
 
                     if (!bWasLoaded)
                     {
@@ -247,7 +253,23 @@ namespace AppTranslator
                     if (Translator().has_value())
                     {
                         Result = QString::fromStdString(Translator()->Translate(
-                            Trimmed.toStdString()));
+                            Trimmed.toStdString(),
+                            [&Trimmed, Generation](const std::string& Partial)
+                            {
+                                if (!Requests.IsLatest(Generation))
+                                {
+                                    return false;
+                                }
+
+                                const QString PartialText = QString::fromStdString(Partial);
+
+                                QMetaObject::invokeMethod(&Notifier(), [Trimmed, PartialText]()
+                                {
+                                    emit Notifier().translationProgress(Trimmed, PartialText);
+                                }, Qt::QueuedConnection);
+
+                                return true;
+                            }));
                     }
                 }
             }
@@ -285,12 +307,26 @@ namespace AppTranslator
 
     bool IsPairOffered()
     {
-        return CurrentPackage().has_value();
+        const FTLanguageRules& Rules = FTSettings::Get().GetLanguageRules();
+
+        return IsPairOffered(Rules.TargetLanguage, Rules.NativeLanguage);
+    }
+
+    bool IsPairOffered(const std::string& TargetLanguage, const std::string& NativeLanguage)
+    {
+        return PackageFor(TargetLanguage, NativeLanguage).has_value();
     }
 
     bool IsDownloading()
     {
-        const std::optional<FTCatalogPackage> Package = CurrentPackage();
+        const FTLanguageRules& Rules = FTSettings::Get().GetLanguageRules();
+
+        return IsDownloading(Rules.TargetLanguage, Rules.NativeLanguage);
+    }
+
+    bool IsDownloading(const std::string& TargetLanguage, const std::string& NativeLanguage)
+    {
+        const std::optional<FTCatalogPackage> Package = PackageFor(TargetLanguage, NativeLanguage);
 
         return Package.has_value()
             && AppPackageDownloader::Get().isPending(QString::fromStdString(Package->Id));
@@ -298,7 +334,14 @@ namespace AppTranslator
 
     void Download()
     {
-        const std::optional<FTCatalogPackage> Package = CurrentPackage();
+        const FTLanguageRules& Rules = FTSettings::Get().GetLanguageRules();
+
+        Download(Rules.TargetLanguage, Rules.NativeLanguage);
+    }
+
+    void Download(const std::string& TargetLanguage, const std::string& NativeLanguage)
+    {
+        const std::optional<FTCatalogPackage> Package = PackageFor(TargetLanguage, NativeLanguage);
 
         if (!Package.has_value())
         {
@@ -312,14 +355,28 @@ namespace AppTranslator
 
     qint64 GetDownloadBytes()
     {
-        const std::optional<FTCatalogPackage> Package = CurrentPackage();
+        const FTLanguageRules& Rules = FTSettings::Get().GetLanguageRules();
+
+        return GetDownloadBytes(Rules.TargetLanguage, Rules.NativeLanguage);
+    }
+
+    qint64 GetDownloadBytes(const std::string& TargetLanguage, const std::string& NativeLanguage)
+    {
+        const std::optional<FTCatalogPackage> Package = PackageFor(TargetLanguage, NativeLanguage);
 
         return Package.has_value() ? Package->Bytes : 0;
     }
 
     double GetDownloadProgress()
     {
-        const std::optional<FTCatalogPackage> Package = CurrentPackage();
+        const FTLanguageRules& Rules = FTSettings::Get().GetLanguageRules();
+
+        return GetDownloadProgress(Rules.TargetLanguage, Rules.NativeLanguage);
+    }
+
+    double GetDownloadProgress(const std::string& TargetLanguage, const std::string& NativeLanguage)
+    {
+        const std::optional<FTCatalogPackage> Package = PackageFor(TargetLanguage, NativeLanguage);
         const AppPackageDownloader& Downloader = AppPackageDownloader::Get();
 
         if (!Package.has_value() || Downloader.GetActiveId() != QString::fromStdString(Package->Id)

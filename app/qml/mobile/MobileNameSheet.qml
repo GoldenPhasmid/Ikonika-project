@@ -6,6 +6,8 @@ MobileBottomSheet
     id: root
 
     property bool coloursShown: false
+    property bool descriptionShown: false
+    property bool focusWhenShown: false
     property int colour: 0
     property var saved: null
 
@@ -13,21 +15,41 @@ MobileBottomSheet
 
     onDismissed: root.close()
 
+    onRevealChanged:
+    {
+        if (root.reveal < 1 || !root.focusWhenShown)
+        {
+            return
+        }
+
+        root.focusWhenShown = false
+        nameField.forceActiveFocus()
+        nameField.selectAll()
+    }
+
     function open(title, text, placeholder, coloursShown, colour, onSaved)
     {
         root.heading = title
         nameField.text = text
         nameField.placeholderText = placeholder
         root.coloursShown = coloursShown
+        root.descriptionShown = false
         root.colour = colour
         root.saved = onSaved
+        root.focusWhenShown = true
         root.present()
-        nameField.forceActiveFocus()
-        nameField.selectAll()
+    }
+
+    function openDeck(title, name, description, onSaved)
+    {
+        root.open(title, name, qsTr("Deck name"), false, 0, onSaved)
+        descriptionField.text = description
+        root.descriptionShown = true
     }
 
     function close()
     {
+        root.forceActiveFocus()
         Qt.inputMethod.hide()
         root.hide()
     }
@@ -48,7 +70,7 @@ MobileBottomSheet
 
         if (handler)
         {
-            handler(name, root.colour)
+            handler(name, root.descriptionShown ? descriptionField.text.trim() : root.colour)
         }
     }
 
@@ -60,6 +82,20 @@ MobileBottomSheet
 
         Layout.fillWidth: true
         Layout.preferredHeight: AppMetrics.buttonHeightLarge
+
+        onAccepted: root.descriptionShown ? descriptionField.forceActiveFocus() : root.save()
+    }
+
+    MobileTextField
+    {
+        id: descriptionField
+
+        objectName: "name_sheet_description"
+
+        Layout.fillWidth: true
+        Layout.preferredHeight: AppMetrics.buttonHeightLarge
+        visible: root.descriptionShown
+        placeholderText: qsTr("Description")
 
         onAccepted: root.save()
     }

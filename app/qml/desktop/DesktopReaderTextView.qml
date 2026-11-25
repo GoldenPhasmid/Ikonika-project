@@ -16,6 +16,9 @@ ListView
     property ReaderVocabulary vocabulary: null
     property ReaderReadAloud readAloud: null
     property real readAloudInset: 0
+    property real bottomChrome: 0
+    property real topReserve: 0
+    property real topChrome: 0
     property bool followingReadAloud: true
     property bool readingAway: false
     property var pickedPlace: null
@@ -47,9 +50,7 @@ ListView
     readonly property bool styled: root.model !== null && root.model !== undefined && root.model.styled === true
 
     property real glideTarget: 0
-    property bool autoscrolling: false
-    property point autoscrollAnchor: Qt.point(0, 0)
-    property real autoscrollPointerY: 0
+    readonly property bool autoscrolling: autoscroll.active
 
     readonly property real scrollStart: root.originY - root.topMargin
     readonly property real scrollLimit: Math.max(root.scrollStart, root.originY + root.contentHeight + root.bottomMargin - root.height)
@@ -87,18 +88,9 @@ ListView
         wheelGlide.start()
     }
 
-    function startAutoscroll(position)
-    {
-        root.leaveReadAloud()
-        wheelGlide.stop()
-        root.autoscrollAnchor = position
-        root.autoscrollPointerY = position.y
-        root.autoscrolling = true
-    }
-
     function stopAutoscroll()
     {
-        root.autoscrolling = false
+        autoscroll.stop()
     }
 
     function turnPage(forward)
@@ -120,7 +112,7 @@ ListView
         }
 
         root.followingReadAloud = true
-        ReadAloudPlace.play(root, root.readAloud, root.topParagraph, root.contentY,
+        ReadAloudPlace.play(root, root.readAloud, root.topParagraph, root.contentY + root.topChrome,
                             root.contentY + root.height - root.readAloudInset)
     }
 
@@ -145,7 +137,7 @@ ListView
     function updateReadingAway()
     {
         root.readingAway = root.readAloud !== null && root.readAloud.started && !root.followingReadAloud
-            && !ReadAloudPlace.isReadingShown(root, root.readAloud, root.contentY,
+            && !ReadAloudPlace.isReadingShown(root, root.readAloud, root.contentY + root.topChrome,
                                               root.contentY + root.height - root.readAloudInset)
     }
 
@@ -172,14 +164,14 @@ ListView
             }
         }
 
-        if (span.top >= root.contentY && span.bottom <= root.contentY + root.height - root.readAloudInset)
+        if (span.top >= root.contentY + root.topChrome && span.bottom <= root.contentY + root.height - root.readAloudInset)
         {
             return
         }
 
         followGlide.stop()
         followGlide.from = root.contentY
-        followGlide.to = Math.max(root.scrollStart, Math.min(root.scrollLimit, span.top - root.textSize * 2))
+        followGlide.to = Math.max(root.scrollStart, Math.min(root.scrollLimit, span.top - root.textSize * 2 - root.topChrome))
         followGlide.start()
     }
 
@@ -321,13 +313,16 @@ ListView
     spacing: root.styled ? 0 : Math.round(root.textSize * 0.6)
     boundsBehavior: Flickable.StopAtBounds
     acceptedButtons: Qt.NoButton
-    topMargin: AppMetrics.contentPadding
-    bottomMargin: Math.round(root.height * AppMetrics.readerEndSpaceShare)
+    topMargin: AppMetrics.readerEndSpace + root.topReserve
+    bottomMargin: AppMetrics.readerEndSpace
 
     Accessible.role: Accessible.Document
 
     ScrollBar.vertical: DesktopScrollBar
     {
+        topPadding: AppMetrics.borderWidth * 2 + root.topChrome
+        bottomPadding: AppMetrics.borderWidth * 2 + root.bottomChrome
+
         onPressedChanged: if (pressed) root.leaveReadAloud()
     }
 
@@ -422,89 +417,20 @@ ListView
         }
     }
 
-    FrameAnimation
+    DesktopReaderAutoscroll
     {
-        running: root.autoscrolling
+        id: autoscroll
 
-        onTriggered:
-        {
-            const distance = root.autoscrollPointerY - root.autoscrollAnchor.y
-            const beyond = Math.max(0, Math.abs(distance) - AppMetrics.readerAutoscrollDeadZone)
-
-            if (beyond > 0)
-            {
-                root.scrollBy(Math.sign(distance) * beyond * AppMetrics.readerAutoscrollSpeed * frameTime)
-            }
-        }
-    }
-
-    MouseArea
-    {
         parent: root
         anchors.fill: parent
-        z: 3
-        acceptedButtons: Qt.MiddleButton
 
-        onPressed: function(mouse)
+        onStarted:
         {
-            if (root.autoscrolling)
-            {
-                root.stopAutoscroll()
-
-                return
-            }
-
-            root.startAutoscroll(Qt.point(mouse.x, mouse.y))
+            root.leaveReadAloud()
+            wheelGlide.stop()
         }
 
-        onPositionChanged: function(mouse) { root.autoscrollPointerY = mouse.y }
-
-        onReleased:
-        {
-            if (Math.abs(root.autoscrollPointerY - root.autoscrollAnchor.y) > AppMetrics.readerAutoscrollDeadZone)
-            {
-                root.stopAutoscroll()
-            }
-        }
-    }
-
-    MouseArea
-    {
-        parent: root
-        anchors.fill: parent
-        z: 2
-        visible: root.autoscrolling
-        hoverEnabled: true
-        acceptedButtons: Qt.AllButtons
-        cursorShape: Qt.SizeVerCursor
-
-        onPositionChanged: function(mouse) { root.autoscrollPointerY = mouse.y }
-        onReleased: root.stopAutoscroll()
-        onWheel: function(wheel) { root.stopAutoscroll() }
-    }
-
-    Rectangle
-    {
-        parent: root
-        z: 4
-        visible: root.autoscrolling
-        x: root.autoscrollAnchor.x - width / 2
-        y: root.autoscrollAnchor.y - height / 2
-        width: AppMetrics.readerAutoscrollAnchorSize
-        height: width
-        radius: width / 2
-        color: AppTheme.colourCard
-        border.width: AppMetrics.borderWidth
-        border.color: AppTheme.colourBorder
-
-        Rectangle
-        {
-            anchors.centerIn: parent
-            width: parent.width / 5
-            height: width
-            radius: width / 2
-            color: AppTheme.colourText
-        }
+        onScrollRequested: function(pixels) { root.scrollBy(pixels) }
     }
 
     delegate: Item
@@ -683,7 +609,7 @@ ListView
 
                     if (wasReading)
                     {
-                        root.readAloud.pauseForLookup()
+                        root.readAloud.pause()
                     }
 
                     return wasReading

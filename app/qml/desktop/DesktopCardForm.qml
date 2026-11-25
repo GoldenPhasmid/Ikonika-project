@@ -11,6 +11,7 @@ ColumnLayout
     property var controller: null
     property bool expanded: false
 
+    property string language: ""
     property string editingCardId: ""
     property int editingStage: -1
     property int editingGender: -1
@@ -49,6 +50,7 @@ ColumnLayout
     readonly property string enteredWord: (wordField.text + wordField.preeditText).trim()
     readonly property string enteredTranslation: (translationField.text + translationField.preeditText).trim()
     readonly property bool canCommit: root.enteredWord.length > 0 && root.enteredTranslation.length > 0
+    readonly property bool stacked: root.width < AppMetrics.twoColumnMinimumWidth
     readonly property bool typing: wordField.activeFocus || translationField.activeFocus || hintField.activeFocus
 
     readonly property bool changed: root.enteredWord !== root.savedWord
@@ -73,8 +75,10 @@ ColumnLayout
     Layout.fillWidth: true
     spacing: AppMetrics.gapMedium
 
-    function openWith(word, translation, partOfSpeech, gist, hint)
+    function openWith(word, translation, partOfSpeech, gist, hint, language)
     {
+        root.language = language || ""
+        root.dictionary.language = root.language
         root.editingCardId = ""
         root.editingStage = -1
         root.editingGender = -1
@@ -107,9 +111,9 @@ ColumnLayout
         root.markSaved()
     }
 
-    function openForEdit(cardId, word, translation, gender, partOfSpeech, box)
+    function openForEdit(cardId, word, translation, gender, partOfSpeech, box, language)
     {
-        root.openWith(word, translation, partOfSpeech)
+        root.openWith(word, translation, partOfSpeech, "", "", language)
 
         root.editingCardId = cardId
         root.editingStage = box
@@ -323,13 +327,16 @@ ColumnLayout
             ? root.controller.updateCard(root.editingCardId, root.enteredWord, root.enteredTranslation,
                                          root.editingGender, root.editingPartOfSpeech, root.committedGist, hintField.text.trim())
             : root.controller.addCard(root.enteredWord, root.enteredTranslation, root.editingPartOfSpeech,
-                                      root.editingGender, root.readingChosen || meaningGender >= 0, root.committedGist, hintField.text.trim())
+                                      root.editingGender, root.readingChosen || meaningGender >= 0, root.committedGist, hintField.text.trim(),
+                                      root.language)
     }
 
-    RowLayout
+    GridLayout
     {
         Layout.fillWidth: true
-        spacing: AppMetrics.gapMedium
+        columns: root.stacked ? 1 : 2
+        columnSpacing: AppMetrics.gapMedium
+        rowSpacing: AppMetrics.gapMedium
 
         DesktopFormField
         {
@@ -380,12 +387,6 @@ ColumnLayout
                 onAccepted: root.accepted()
             }
         }
-    }
-
-    RowLayout
-    {
-        Layout.fillWidth: true
-        spacing: AppMetrics.gapMedium
 
         DesktopFormField
         {
@@ -574,7 +575,7 @@ ColumnLayout
             Layout.preferredHeight: root.expanded
                 ? suggestionFlick.contentHeight
                 : AppMetrics.buttonHeightLarge * suggestionSection.reservedRows
-                  + suggestionGrid.rowSpacing * (suggestionSection.reservedRows - 1)
+                  + suggestionGrid.spacing * (suggestionSection.reservedRows - 1)
                   + suggestionFlick.ringMargin * 2
             contentWidth: width
             contentHeight: suggestionGrid.implicitHeight + suggestionFlick.ringMargin * 2
@@ -584,16 +585,18 @@ ColumnLayout
 
             ScrollBar.vertical: DesktopScrollBar { visible: !root.expanded }
 
-            GridLayout
+            Flow
             {
                 id: suggestionGrid
+
+                readonly property int columns: root.expanded && !root.stacked ? 3 : 2
+                readonly property real cellWidth: Math.floor((suggestionGrid.width - (suggestionGrid.columns - 1)
+                                                              * suggestionGrid.spacing) / suggestionGrid.columns)
 
                 x: suggestionFlick.ringMargin
                 y: suggestionFlick.ringMargin
                 width: suggestionFlick.width - suggestionFlick.ringMargin * 2 - suggestionFlick.scrollGutter
-                columns: root.expanded ? 3 : 2
-                columnSpacing: AppMetrics.gapSmall
-                rowSpacing: AppMetrics.gapSmall
+                spacing: AppMetrics.gapSmall
 
                 Repeater
                 {
@@ -603,7 +606,7 @@ ColumnLayout
                     {
                         required property var modelData
 
-                        Layout.preferredWidth: 1
+                        width: implicitWidth > suggestionGrid.cellWidth ? suggestionGrid.width : suggestionGrid.cellWidth
                         text: modelData.text
                         relative: modelData.relative
                         hasProbability: modelData.hasProbability

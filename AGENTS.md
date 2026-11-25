@@ -1,6 +1,6 @@
 # Ikonika — agent guide
 
-Desktop and mobile app for learning foreign vocabulary. Intensive Training + Periodic Review is a primary feature based on Leitner boxes.
+Desktop and mobile app for learning foreign vocabulary. Intensive Training + Periodic Review is a primary feature, scheduled with FSRS.
 Language everything app - discover, add and learn words without using third-party. It requires three things:
 * learning scheme, based on daily goals and additional word discovery
 * high-quality dictionary, rich in foreign words and native translations.
@@ -145,7 +145,7 @@ Steps:
 References - reverso, google translate.
 2. Intensive Training - 15-20 minute session to learn 15 words. 
 References - Words app, Quizlet, Duolingo.
-3. Schedule Reviews using Leitner system - up to 3 levels of repetition, enforcing secondary learning and long-term memory. 
+3. Schedule Reviews with FSRS - each word comes back just before it would be forgotten, until it is learned, enforcing secondary learning and long-term memory. 
 References - Anki
 
 **Intensive Training.** 
@@ -155,7 +155,7 @@ Comprehensive dataset for commonly used words - multiple meanings with definitio
 Add article for French/Spanish to learn gender while learning the words.
 
 **Encourage user to create a Daily Habit**
-Design includes Review and Notification to enforce secondary learning. Missed deadline demotes down the review 'ladder', or even drops 'learning' status from the word and it goes back to the pool.
+Design includes Review and Notification to enforce secondary learning. A missed day costs nothing; the word stays due until it is reviewed.
 
 **Card is a primary unit.** 
 Every card lives in My Vocabulary. A word can be in multiple cards due to multiple meanings.
@@ -170,11 +170,11 @@ Source/target language are data. Each pair gets its own dictionary database.
 | ---------------------- | -------------------------------------------------------------- |
 | **Card**               | One thing being learned: word, translation, definition.        |
 | **My Vocabulary**      | Every card of the language pair. The Learning Pool's user-facing name. |
-| **Pool**               | The cards of My Vocabulary not yet on the ladder. Where a session takes its words from. |
-| **Review Interval**    | Leitner stage implementation, words scheduled for the future.  |
+| **Pool**               | The cards of My Vocabulary not yet on the schedule. Where a session takes its words from. |
+| **Stability**          | Days a card can go unreviewed and still be recalled at the recall target. Decides the next due date. |
 | **Session**            | A sequence of exercises over a fixed card set.                 |
-| **Intensive Training** | Moves cards from the pool onto the ladder.                     |
-| **Review**         	 | Works through cards already on the ladder.                     |
+| **Intensive Training** | Moves cards from the pool onto the schedule.                   |
+| **Review**         	 | Works through cards already on the schedule.                   |
 | **Exercise**           | One activity kind.                                             |
 
 ## Code style
@@ -216,13 +216,14 @@ You should read [docs/releases.md](docs/releases.md) and [docs/google-play-relea
 - [docs/architecture.md](docs/architecture.md) — feature-to-class map: which controller owns which
   feature, what core types it sits on, known oddities. Read before touching a feature you haven't
   worked in yet.
-- [docs/learning-model.md](docs/learning-model.md) — the card, the box ladder, session types,
+- [docs/learning-model.md](docs/learning-model.md) — the card, the FSRS schedule, session types,
   exercises, scoring. Read before discussing behaviour.
 - [docs/grammar-forms.md](docs/grammar-forms.md) — verb conjugation, noun gender, adjective forms:
   three exercises pulling from the learner's own pool rather than a hand-picked ladder.
 - [docs/discovery-quiz.md](docs/discovery-quiz.md) — Discover: a short quiz over topic decks that finds
   unknown words and unknown meanings of known words. Prototype in `design/mobile/fragment-discover.html`.
 - [docs/technology-stack.md](docs/technology-stack.md) — technology choices, rejected alternatives, licensing.
+- [docs/lufi-animation.md](docs/lufi-animation.md) — Lufi Grease Pencil authoring, shared character and clip export, Qt playback, and demo review through Ghost. Read before changing Lufi animations, the export pipeline, or the animation demo.
 - [docs/mobile.md](docs/mobile.md) — what stands between the desktop app and a phone release, in order.
 - [docs/ios.md](docs/ios.md) — the iOS port: licence blockers, platform services, the CI pipeline
   that builds and signs without a Mac, App Review risks.

@@ -8,16 +8,24 @@ Button
     property string iconName: ""
     property url imageSource: ""
     property url hoveredImageSource: ""
-    property color iconColour: AppTheme.colourText
+    property bool onCover: false
+    property bool destructive: false
+    property color iconColour: root.destructive ? (root.onCover ? AppTheme.colourCoverWrong : AppTheme.colourWrong)
+                                                : (root.onCover ? AppTheme.colourCoverInk : AppTheme.colourText)
+    property bool iconFilled: false
     property int iconSize: AppMetrics.iconSize
     property bool active: false
     property string shortcutKey: ""
 
     readonly property bool showsShortcut: root.shortcutKey.length > 0 && AppModifierKeys.controlHeld
     readonly property bool showsImage: root.imageSource.toString().length > 0
+    readonly property bool backed: root.onCover && root.destructive
+    readonly property color restColour: root.backed ? AppTheme.colourCoverPaper : AppTheme.faded(root.hoverColour, 0)
+    readonly property color hoverColour: root.onCover ? AppTheme.faded(AppTheme.colourCoverInk, AppTheme.alphaSoft) : AppTheme.colourHover
+    readonly property color pressedColour: root.onCover ? AppTheme.faded(AppTheme.colourCoverInk, AppTheme.alphaStrong) : AppTheme.colourPressed
 
-    implicitWidth: AppMetrics.headerIconTapWidth
-    implicitHeight: AppMetrics.headerIconTapWidth
+    implicitWidth: AppMetrics.iconTapSize
+    implicitHeight: AppMetrics.iconTapSize
 
     padding: 0
     hoverEnabled: true
@@ -55,6 +63,7 @@ Button
             anchors.centerIn: parent
             visible: !root.showsShortcut && !root.showsImage
             name: root.iconName
+            filled: root.iconFilled
             width: root.iconSize
             height: root.iconSize
             color: root.active ? AppTheme.colourAccent : root.iconColour
@@ -64,15 +73,17 @@ Button
     background: Rectangle
     {
         radius: AppMetrics.radiusMedium
-        color: root.showsImage ? AppTheme.faded(AppTheme.colourHover, 0)
-             : root.down ? AppTheme.colourPressed
-             : (root.hovered || root.checked ? AppTheme.colourHover : AppTheme.faded(AppTheme.colourHover, 0))
+        color: root.showsImage ? AppTheme.faded(root.hoverColour, 0)
+             : root.backed ? Qt.tint(root.restColour, root.down ? root.pressedColour : (root.hovered ? root.hoverColour : AppTheme.faded(root.hoverColour, 0)))
+             : root.down ? root.pressedColour
+             : (root.hovered || root.checked ? root.hoverColour : root.restColour)
 
         Behavior on color { ColorAnimation { duration: AppMetrics.motionFast } }
 
         DesktopFocusRing
         {
             visible: root.visualFocus
+            colour: root.onCover ? AppTheme.colourCoverInk : AppTheme.colourAccent
         }
     }
 

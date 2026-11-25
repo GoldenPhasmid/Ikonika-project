@@ -1,6 +1,5 @@
 import QtQuick
 import QtQuick.Layouts
-import "MobileIcons.js" as Icons
 
 Rectangle
 {
@@ -62,11 +61,12 @@ Rectangle
             }
         }
 
-        MobileActionIconButton
+        MobileIconButton
         {
             objectName: "reader_voice_close"
 
-            iconSvg: Icons.Icons.close.path
+            iconName: "close"
+            text: qsTr("Close")
 
             onClicked: root.closed()
         }

@@ -128,19 +128,6 @@ Item
                 {
                     objectName: "settings_app_update"
                 }
-
-                Repeater
-                {
-                    model: AppCatalog.packageUpdates
-
-                    delegate: DesktopPackageUpdateCard
-                    {
-                        required property var modelData
-
-                        objectName: "settings_" + modelData.id + "_update"
-                        update: modelData
-                    }
-                }
             }
         }
     }

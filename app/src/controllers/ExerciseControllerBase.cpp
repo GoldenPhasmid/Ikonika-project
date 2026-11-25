@@ -212,13 +212,6 @@ QString ExerciseControllerBase::GetCardMeta() const
     return QStringLiteral("%1 · %2").arg(Speech, Gender);
 }
 
-QString ExerciseControllerBase::GetDefinition() const
-{
-    const FTCard* Current = GetCurrentCard();
-
-    return Current != nullptr ? QString::fromStdString(Current->Definition) : QString();
-}
-
 void ExerciseControllerBase::CacheCardMeaning() const
 {
     const FTCard* Current = GetCurrentCard();
@@ -239,15 +232,25 @@ void ExerciseControllerBase::CacheCardMeaning() const
         return;
     }
 
+    AppLanguageDictionary& Dictionary{AppDictionary::GetActive()};
+
+    if (!Dictionary.IsReady())
+    {
+        MeaningCardId.clear();
+        ExampleCache = QString::fromStdString(Current->Hint);
+
+        return;
+    }
+
     PhoneticCache = QString::fromStdString(
-        AppDictionary::Get().GetRepository().FindPhonetic(Current->TargetWord, Current->PartOfSpeech));
+        Dictionary.GetRepository().FindPhonetic(Current->TargetWord, Current->PartOfSpeech));
 
     std::vector<FTDictionarySense> Meanings;
     const FTDictionarySense* Meaning{nullptr};
 
     if (!Current->MeaningGist.empty())
     {
-        Meanings = AppDictionary::Get().GetRepository().LoadMeanings(Current->TargetWord, Current->PartOfSpeech);
+        Meanings = Dictionary.GetRepository().LoadMeanings(Current->TargetWord, Current->PartOfSpeech);
         Meaning = FindCardMeaning(*Current, Meanings);
     }
 
@@ -604,7 +607,7 @@ void ExerciseControllerBase::SpeakSlowlyText(const QString& Text) const
     SpeakAtScale(Text, GetSpeechRateScale() * AppSpeech::SlowRateScale);
 }
 
-void ExerciseControllerBase::SpeakAtScale(const QString& Text, float RateScale) const
+void ExerciseControllerBase::SpeakAtScale(const QString& Text, float RateScale, bool bVerbatim) const
 {
     if (!Session.has_value() || IsFinished())
     {
@@ -627,7 +630,7 @@ void ExerciseControllerBase::SpeakAtScale(const QString& Text, float RateScale) 
         return;
     }
 
-    const QString Voiced = GetVoicedText(Text);
+    const QString Voiced = bVerbatim ? Text : GetVoicedText(Text);
 
     qCInfo(LogSpeech) << metaObject()->className() << "speaks:" << Voiced << "at" << RateScale;
 
@@ -676,7 +679,8 @@ QString ExerciseControllerBase::GetVoicedText(const QString& Text) const
 
     const bool bSpeakArticle = FTSettings::Get().GetSpeechRules().bSpeakArticle;
 
-    return QString::fromStdString(bSpeakArticle ? GetDisplayWord(*Card, Params.TargetLanguage) : Card->TargetWord);
+    return QString::fromStdString(bSpeakArticle ? GetDisplayWord(*Card, Params.TargetLanguage)
+        : GetDisplayHeadword(Card->TargetWord, Card->PartOfSpeech, Params.TargetLanguage));
 }
 
 QString ExerciseControllerBase::GetShownText(const QString& Text) const

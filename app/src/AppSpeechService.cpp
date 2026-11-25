@@ -51,12 +51,12 @@ namespace
         return Directories;
     }
 
-    constexpr const char* VoiceNameKey = "audio/voiceName";
-    constexpr const char* SpeakerKey = "audio/speaker";
+    constexpr const char* VoiceNameKey = IKONIKA_AUDIO_GROUP "voiceName";
+    constexpr const char* SpeakerKey = IKONIKA_AUDIO_GROUP "speaker";
 
     QString PreferredVoiceKey(const QString& LanguageCode)
     {
-        return QStringLiteral("audio/preferredVoice/") + LanguageCode;
+        return QStringLiteral(IKONIKA_AUDIO_GROUP "preferredVoice/") + LanguageCode;
     }
 
     constexpr unsigned long PlaybackPollMs = 50;

@@ -19,6 +19,7 @@
 #include "AppPaths.h"
 #include "AppReminder.h"
 #include "AppReaderIntake.h"
+#include "AppScheduleOptimizer.h"
 #include "AppSoundEffects.h"
 #include "AppHeartbeat.h"
 #include "AppSwitchCover.h"
@@ -29,6 +30,7 @@
 #include "AppWorkspaceHost.h"
 #include "controllers/AppSyncController.h"
 
+#include "core/FTAudioPlayer.h"
 #include "core/FTCard.h"
 #include "core/FTLog.h"
 
@@ -74,6 +76,7 @@
 #endif
 
 #if defined(Q_OS_IOS)
+#include "AppIosDevice.h"
 #include "AppIosSpeech.h"
 #include "AppIosStorage.h"
 #endif
@@ -82,12 +85,13 @@ namespace
 {
     void LoadBundledFonts()
     {
-        const QStringList Faces{QStringLiteral("Regular"), QStringLiteral("Italic"), QStringLiteral("Medium"),
-                                QStringLiteral("SemiBold"), QStringLiteral("Bold")};
+        const QStringList Faces{QStringLiteral("Inter-Regular"), QStringLiteral("Inter-Italic"), QStringLiteral("Inter-Medium"),
+                                QStringLiteral("Inter-SemiBold"), QStringLiteral("Inter-Bold"),
+                                QStringLiteral("EBGaramond-SemiBold"), QStringLiteral("EBGaramond-MediumItalic")};
 
         for (const QString& Face : Faces)
         {
-            const QString Path = QStringLiteral(":/fonts/Inter-%1.ttf").arg(Face);
+            const QString Path = QStringLiteral(":/fonts/%1.ttf").arg(Face);
 
             if (QFontDatabase::addApplicationFont(Path) < 0)
             {
@@ -254,7 +258,6 @@ namespace
             Card.TargetWord = CardObject.value(QStringLiteral("word")).toString().toStdString();
             Card.Translation =
                 CardObject.value(QStringLiteral("translation")).toString().toStdString();
-            Card.Definition = CardObject.value(QStringLiteral("definition")).toString().toStdString();
             Card.PartOfSpeech =
                 CardObject.value(QStringLiteral("partOfSpeech")).toString().toStdString();
             Card.Gender = ParseCardGender(CardObject.value(QStringLiteral("gender")).toString());
@@ -489,10 +492,14 @@ int main(int ArgumentCount, char* Arguments[])
         qCCritical(LogApp) << "Could not open the workspace:" << Database.GetLastError();
     }
 
+    AppScheduleOptimizer ScheduleOptimizer(WorkspaceHost);
+
 #if defined(Q_OS_ANDROID)
     AppPlatformSpeech RealSpeechService;
     AppSpeech::SetInstance(&RealSpeechService);
 #elif defined(IKONIKA_DESKTOP)
+    FTAudioPlayer::SetPlaybackSuspended(true);
+
     AppSpeechService RealSpeechService;
     AppSpeech::SetInstance(&RealSpeechService);
 #elif defined(Q_OS_IOS)
@@ -534,7 +541,7 @@ int main(int ArgumentCount, char* Arguments[])
         }
     }
 
-    if (!SingleInstance.TryAcquire(BookPath))
+    if (!AppPaths::IsHeadless() && !SingleInstance.TryAcquire(BookPath))
     {
         return 0;
     }
@@ -577,20 +584,32 @@ int main(int ArgumentCount, char* Arguments[])
 
 #if defined(IKONIKA_DESKTOP)
     const bool bAdaptiveLayout{Application.arguments().contains(QStringLiteral("-adaptive"))};
+    const bool bTabletScreen{bAdaptiveLayout};
     const bool bForcedWindowSize{!FindArgumentValue(Application.arguments(), QStringLiteral("-window=")).isEmpty()};
 #else
     const QSize ScreenSize{QGuiApplication::primaryScreen()->size()};
-    const bool bAdaptiveLayout{std::min(ScreenSize.width(), ScreenSize.height()) >= TabletShortestSide};
+    const bool bTabletScreen{std::min(ScreenSize.width(), ScreenSize.height()) >= TabletShortestSide};
+    const bool bAdaptiveLayout{false};
     const bool bForcedWindowSize{false};
+#if defined(Q_OS_IOS)
+    const bool bRunningOnMac{AppIosDevice::IsRunningOnMac()};
+#else
+    const bool bRunningOnMac{false};
+#endif
 
-    if (bAdaptiveLayout)
+    SetMobileLayoutEnabled(!bRunningOnMac);
+
+    if (bRunningOnMac)
     {
-        SetMobileLayoutEnabled(ScreenSize.height() > ScreenSize.width());
-
-        qCInfo(LogApp) << "Tablet screen" << ScreenSize << ", starting with the"
-                       << (IsMobileLayoutEnabled() ? "mobile" : "desktop") << "layout";
+        qCInfo(LogApp) << "Running on a Mac with screen" << ScreenSize << ", using the desktop layout";
+    }
+    else if (bTabletScreen)
+    {
+        qCInfo(LogApp) << "Tablet screen" << ScreenSize << ", using the mobile layout in both orientations";
     }
 #endif
+
+    SetTabletScreenEnabled(bTabletScreen);
 
     QTimer LayoutSettle;
     LayoutSettle.setSingleShot(true);
@@ -626,6 +645,10 @@ int main(int ArgumentCount, char* Arguments[])
 
         if (bFreshWindow)
         {
+#if defined(Q_OS_ANDROID)
+            Loaded->setFlag(Qt::ExpandedClientAreaHint, true);
+#endif
+
 #if defined(IKONIKA_DESKTOP)
             Loaded->resize(bMobile ? QSize{412, 887} : QSize{Metrics.GetWindowWidth(), Metrics.GetWindowHeight()});
             ApplyForcedWindowSize(*Loaded, QCoreApplication::arguments());
@@ -645,6 +668,17 @@ int main(int ArgumentCount, char* Arguments[])
             });
 
 #if defined(IKONIKA_DESKTOP)
+            QObject::connect(Loaded, &QWindow::visibilityChanged, Loaded, [](QWindow::Visibility Visibility)
+            {
+                const bool bSuspended{Visibility == QWindow::Hidden || Visibility == QWindow::Minimized};
+                FTAudioPlayer::SetPlaybackSuspended(bSuspended);
+
+                if (bSuspended)
+                {
+                    AppSoundEffects::Get().Stop();
+                }
+            });
+
             QObject::connect(&SingleInstance, &AppSingleInstance::activationRequested, Loaded, [Loaded]()
             {
                 Loaded->show();
@@ -813,8 +847,7 @@ int main(int ArgumentCount, char* Arguments[])
         Reloaded->requestActivate();
     });
 
-    QObject::connect(&LayoutSettle, &QTimer::timeout, &LayoutSettle,
-                     [&CurrentWindow, &CurrentRoot, &SwitchCover, &CloseInterface, &LoadInterface, &AppliedScreenFactor, &LayoutSettle, bAdaptiveLayout]()
+    const auto ApplyWindowLayout = [&CurrentWindow, &CurrentRoot, &SwitchCover, &HostWindow, &CloseInterface, &LoadInterface, &AppliedScreenFactor, &LayoutSettle, bAdaptiveLayout]()
     {
         if (CurrentWindow == nullptr)
         {
@@ -842,45 +875,46 @@ int main(int ArgumentCount, char* Arguments[])
 
         SetMobileLayoutEnabled(bWantsMobile);
 
-        SwitchCover.Show(*CurrentWindow, [&SwitchCover, &CloseInterface, &LoadInterface, &CurrentRoot]()
+        QVariant LayoutState;
+
+        if (CurrentRoot != nullptr)
         {
-            QVariant LayoutState;
+            QMetaObject::invokeMethod(CurrentRoot, "captureLayoutState", Q_RETURN_ARG(QVariant, LayoutState));
+        }
 
-            if (CurrentRoot != nullptr)
-            {
-                QMetaObject::invokeMethod(CurrentRoot, "captureLayoutState", Q_RETURN_ARG(QVariant, LayoutState));
-            }
+        if (LayoutState.metaType() == QMetaType::fromType<QJSValue>())
+        {
+            LayoutState = LayoutState.value<QJSValue>().toVariant();
+        }
 
-            if (LayoutState.metaType() == QMetaType::fromType<QJSValue>())
-            {
-                LayoutState = LayoutState.value<QJSValue>().toVariant();
-            }
+        CloseInterface();
 
-            CloseInterface();
+        QQuickWindow* Reloaded = LoadInterface(true, LayoutState.toMap());
 
-            QQuickWindow* Reloaded = LoadInterface(true, LayoutState.toMap());
+        if (Reloaded == nullptr)
+        {
+            qCCritical(LogApp) << "QML failed to load after the layout switch, exiting";
 
-            if (Reloaded == nullptr)
-            {
-                qCCritical(LogApp) << "QML failed to load after the layout switch, exiting";
+            QApplication::exit(-1);
 
-                QApplication::exit(-1);
+            return;
+        }
 
-                return;
-            }
+        AppLocalization::Get().ApplySavedLanguage();
 
-            AppLocalization::Get().ApplySavedLanguage();
+        HostWindow.DropQueuedInput();
 
-            SwitchCover.HandOver(*Reloaded);
+        Reloaded->requestActivate();
 
-            Reloaded->requestActivate();
+        qCInfo(LogApp) << "Screens rebuilt for the" << (IsMobileLayoutEnabled() ? "mobile" : "desktop") << "layout";
+    };
 
-            qCInfo(LogApp) << "Screens rebuilt for the" << (IsMobileLayoutEnabled() ? "mobile" : "desktop") << "layout";
-        });
-    });
+    QObject::connect(&LayoutSettle, &QTimer::timeout, &LayoutSettle, ApplyWindowLayout);
 
     QObject::connect(&Application, &QGuiApplication::applicationStateChanged, &SyncController,
                      &AppSyncController::OnApplicationStateChanged);
+    QObject::connect(&Application, &QGuiApplication::applicationStateChanged, &ScheduleOptimizer,
+                     &AppScheduleOptimizer::OnApplicationStateChanged);
 
     if (QNetworkInformation::loadDefaultBackend())
     {

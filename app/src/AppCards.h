@@ -14,6 +14,7 @@
 #include <string>
 #include <vector>
 
+class AppLanguageDictionary;
 class FTCardRepository;
 
 class AppCardNotifier : public QObject
@@ -53,6 +54,10 @@ namespace AppCards
 
     std::vector<FTCardHandle> LoadCards();
 
+    std::vector<FTCardHandle> LoadDailyPool();
+
+    FTCardRepository& GetCardRepository(AppLanguageDictionary& Dictionary);
+
     std::optional<FTCardHandle> LoadCard(FTCardRepository& CardRepository, const std::string& CardId);
 
     std::vector<FTCardHandle> ExpandForms(const std::vector<FTCardHandle>& Cards);
@@ -69,7 +74,7 @@ namespace AppCards
 
     QVariantMap MakeMeaningEntry(const FTDictionarySense& Meaning);
 
-    QString FindCardMeaningGist(const std::string& CardId);
+    QString FindCardMeaningGist(FTCardRepository& Cards, const std::string& CardId);
 
     QString LabelFormLead(const FTCard& Form, const FTWordForm& Read);
 
@@ -123,17 +128,13 @@ namespace AppCards
      * Only ever fills what is empty. A gender the user chose is not overwritten, and neither is one
      * a caller already knew.
      */
-    void FillReadingFromDictionary(FTCard& Card);
+    void FillReadingFromDictionary(AppLanguageDictionary& Dictionary, FTCard& Card);
 
-    void FillMeaningFromDictionary(FTCard& Card);
+    void FillMeaningFromDictionary(AppLanguageDictionary& Dictionary, FTCard& Card);
 
-    FTCard MakeAddedWord(const std::string& Word, const std::string& Translation,
+    FTCard MakeAddedWord(AppLanguageDictionary& Dictionary, const std::string& Word, const std::string& Translation,
                          const std::string& PartOfSpeech, int Gender, bool bReadingChosen,
                          const std::string& MeaningGist);
-
-    /** Forgets what the dictionary said. Called when the language pair changes, since the answers
-        were about the dictionary that was open at the time. */
-    void ForgetAnnotations();
 
     bool UpdateCardContent(const QString& CardId, const QString& Word, const QString& Translation,
                            int Gender, const QString& PartOfSpeech, const QString& MeaningGist, const QString& Hint = QString());
@@ -141,4 +142,6 @@ namespace AppCards
     int FindWordTranslationStage(const QString& Word, const QString& Translation);
 
     QVariantMap DescribeCard(const FTCard& Card);
+
+    QVariantList ListBookWords(const std::string& BookKey);
 }

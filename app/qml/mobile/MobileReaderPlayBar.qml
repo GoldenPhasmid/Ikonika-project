@@ -1,6 +1,5 @@
 import QtQuick
 import QtQuick.Layouts
-import "MobileIcons.js" as Icons
 
 Rectangle
 {
@@ -10,9 +9,9 @@ Rectangle
 
     signal playRequested()
 
-    implicitWidth: row.implicitWidth + AppMetrics.gapSmall * 2
-    implicitHeight: row.implicitHeight + AppMetrics.gapSmall * 2
-    radius: AppMetrics.radiusMedium
+    implicitWidth: row.implicitWidth
+    implicitHeight: row.implicitHeight
+    radius: AppMetrics.radiusSmall
     color: AppTheme.colourCard
     border.width: AppMetrics.borderWidth
     border.color: AppTheme.colourBorder
@@ -29,21 +28,23 @@ Rectangle
         anchors.centerIn: parent
         spacing: AppMetrics.gapSmall
 
-        MobileActionIconButton
+        MobileIconButton
         {
             objectName: "reader_read_aloud_previous"
 
-            iconSvg: Icons.Icons.skip_back.path
+            iconName: "skip_back"
+            text: qsTr("Previous")
 
             onClicked: root.readAloud.previous()
         }
 
-        MobileActionIconButton
+        MobileIconButton
         {
             objectName: "reader_read_aloud_play"
 
-            active: true
-            iconSvg: root.readAloud.playing ? Icons.Icons.pause.path : Icons.Icons.play.path
+            iconName: root.readAloud.playing ? "pause" : "play"
+            iconColour: AppTheme.colourAccent
+            text: root.readAloud.playing ? qsTr("Pause") : qsTr("Play")
 
             onClicked:
             {
@@ -58,11 +59,12 @@ Rectangle
             }
         }
 
-        MobileActionIconButton
+        MobileIconButton
         {
             objectName: "reader_read_aloud_next"
 
-            iconSvg: Icons.Icons.skip_forward.path
+            iconName: "skip_forward"
+            text: qsTr("Next")
 
             onClicked: root.readAloud.next()
         }
@@ -99,11 +101,12 @@ Rectangle
             }
         }
 
-        MobileActionIconButton
+        MobileIconButton
         {
             objectName: "reader_read_aloud_close"
 
-            iconSvg: Icons.Icons.close.path
+            iconName: "close"
+            text: qsTr("Stop reading aloud")
 
             onClicked: root.readAloud.stop()
         }

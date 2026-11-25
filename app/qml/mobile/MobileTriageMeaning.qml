@@ -15,7 +15,7 @@ Rectangle
 
     signal translationPicked(string text)
     signal expandRequested()
-    signal wordTapped(string word, string sentence)
+    signal wordTapped(string word, string sentence, var place)
 
     readonly property bool learned: root.meaning.learnedStage >= 0
     readonly property bool chosen: root.picked.length > 0
@@ -130,7 +130,7 @@ Rectangle
             showDefinition: false
             showNativeDefinition: false
 
-            onWordTapped: function(word, sentence) { root.wordTapped(word, sentence) }
+            onWordTapped: function(word, sentence, place) { root.wordTapped(word, sentence, place) }
         }
 
         Flickable

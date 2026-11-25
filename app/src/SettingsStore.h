@@ -13,6 +13,8 @@
 #include <string>
 #include <vector>
 
+struct FTLearningIntensity;
+
 class SettingsStore : public QObject
 {
     Q_OBJECT
@@ -42,13 +44,22 @@ class SettingsStore : public QObject
     Q_PROPERTY(qreal minimumSpeechSpeed READ GetMinimumSpeechSpeed CONSTANT)
     Q_PROPERTY(qreal maximumSpeechSpeed READ GetMaximumSpeechSpeed CONSTANT)
 
-    Q_PROPERTY(QVariantList intervalDays READ GetIntervalDays NOTIFY scheduleSettingsChanged)
     Q_PROPERTY(int stageCount READ GetStageCount NOTIFY scheduleSettingsChanged)
-    Q_PROPERTY(int maximumStageCount READ GetMaximumStageCount CONSTANT)
-    Q_PROPERTY(int maximumIntervalDays READ GetMaximumIntervalDays CONSTANT)
 
-    Q_PROPERTY(int daysInFirstStage READ GetDaysInFirstStage WRITE SetDaysInFirstStage
+    Q_PROPERTY(int learningIntensity READ GetLearningIntensity WRITE SetLearningIntensity
                NOTIFY scheduleSettingsChanged)
+    Q_PROPERTY(int customTargetRetention READ GetCustomTargetRetention WRITE SetCustomTargetRetention
+               NOTIFY scheduleSettingsChanged)
+    Q_PROPERTY(int customLearnedStability READ GetCustomLearnedStability WRITE SetCustomLearnedStability
+               NOTIFY scheduleSettingsChanged)
+    Q_PROPERTY(int customQuickReviewStability READ GetCustomQuickReviewStability WRITE SetCustomQuickReviewStability
+               NOTIFY scheduleSettingsChanged)
+    Q_PROPERTY(int minimumTargetRetention READ GetMinimumTargetRetention CONSTANT)
+    Q_PROPERTY(int maximumTargetRetention READ GetMaximumTargetRetention CONSTANT)
+    Q_PROPERTY(int minimumLearnedStability READ GetMinimumLearnedStability CONSTANT)
+    Q_PROPERTY(int maximumLearnedStability READ GetMaximumLearnedStability CONSTANT)
+    Q_PROPERTY(int maximumQuickReviewStability READ GetMaximumQuickReviewStability CONSTANT)
+    Q_PROPERTY(QVariantList schedulePreview READ GetSchedulePreview NOTIFY scheduleSettingsChanged)
 
     Q_PROPERTY(int dailyGoal READ GetDailyGoal NOTIFY learningSettingsChanged)
     Q_PROPERTY(int sessionsPerDay READ GetSessionsPerDay WRITE SetSessionsPerDay
@@ -87,8 +98,6 @@ class SettingsStore : public QObject
     Q_PROPERTY(QString optionalPronoun READ GetOptionalPronoun NOTIFY languagesChanged)
     Q_PROPERTY(bool learnOptionalPronoun READ IsOptionalPronounLearned WRITE SetLearnOptionalPronoun
                NOTIFY learningSettingsChanged)
-    Q_PROPERTY(bool missedReviewDemotes READ DoesMissedReviewDemote WRITE SetMissedReviewDemotes
-               NOTIFY scheduleSettingsChanged)
     Q_PROPERTY(int maximumSessionsPerDay READ GetMaximumSessionsPerDay CONSTANT)
 
     Q_PROPERTY(QStringList targetLanguageNames READ GetTargetLanguageNames
@@ -130,16 +139,6 @@ public:
 
     Q_INVOKABLE void playVoiceSampleNow();
 
-    /** Sets one stage's interval. Out of range does nothing. */
-    Q_INVOKABLE void setIntervalDays(int Stage, int Days);
-
-    /** Adds a stage at the end, taking twice the last interval. Capped. */
-    Q_INVOKABLE void addStage();
-
-    Q_INVOKABLE void removeStage();
-
-    Q_INVOKABLE void resetScheduleToDefaults();
-
     bool IsReady() const;
     QString GetLastError() const;
     QString GetDatabasePath() const;
@@ -168,13 +167,22 @@ public:
     int GetMinimumCachedLineCount() const;
     int GetMaximumCachedLineCount() const;
 
-    QVariantList GetIntervalDays() const;
     int GetStageCount() const;
-    int GetMaximumStageCount() const;
-    int GetMaximumIntervalDays() const;
 
-    int GetDaysInFirstStage() const;
-    void SetDaysInFirstStage(int Value);
+    int GetLearningIntensity() const;
+    void SetLearningIntensity(int Value);
+    int GetCustomTargetRetention() const;
+    void SetCustomTargetRetention(int Value);
+    int GetCustomLearnedStability() const;
+    void SetCustomLearnedStability(int Value);
+    int GetCustomQuickReviewStability() const;
+    void SetCustomQuickReviewStability(int Value);
+    int GetMinimumTargetRetention() const;
+    int GetMaximumTargetRetention() const;
+    int GetMinimumLearnedStability() const;
+    int GetMaximumLearnedStability() const;
+    int GetMaximumQuickReviewStability() const;
+    QVariantList GetSchedulePreview() const;
 
     int GetDailyGoal() const;
 
@@ -219,9 +227,6 @@ public:
     QString GetOptionalPronoun() const;
     bool IsOptionalPronounLearned() const;
     void SetLearnOptionalPronoun(bool bValue);
-
-    bool DoesMissedReviewDemote() const;
-    void SetMissedReviewDemotes(bool bValue);
 
     int GetMaximumSessionsPerDay() const;
 
@@ -289,6 +294,7 @@ private:
     };
 
     std::vector<FSpeechModel> ListSpeechModels() const;
+    void SetCustomIntensity(const FTLearningIntensity& Custom, const char* Name, int Value);
 
     void SetLastError(const QString& Message);
 

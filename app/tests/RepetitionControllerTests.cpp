@@ -21,6 +21,7 @@
 
 #include <QCoreApplication>
 
+#include <array>
 #include <string>
 
 namespace
@@ -41,6 +42,18 @@ namespace
         }
     };
 
+    double GetSeededStability(int Stage)
+    {
+        constexpr std::array<double, 6> Stabilities{1.0, 2.0, 4.0, 14.0, 40.0, 120.0};
+
+        return Stabilities[static_cast<size_t>(Stage - 1)];
+    }
+
+    double ReadStability(const std::optional<FTCardHandle>& Card)
+    {
+        return (*Card)->Stability.value_or(0.0);
+    }
+
     std::string SeedCardDueToday(int Stage)
     {
         const FTDayNumber Today = GetTodayDayNumber();
@@ -56,8 +69,7 @@ namespace
         REQUIRE(CardId.has_value());
 
         FTCard Stored = **AppDatabase::Get().GetCardRepository().LoadCard(*CardId);
-        Stored.LeitnerStage = Stage;
-        Stored.BoxChangedDate = Today - 4;
+        PlaceWithStability(Stored, GetSeededStability(Stage), Today - 4);
         Stored.DueDate = Today;
 
         REQUIRE(AppDatabase::Get().GetCardRepository().UpdateCardSchedule(Stored));
@@ -336,7 +348,7 @@ TEST_CASE("A session parked mid mastery loop resumes at the same stage and still
 
     const std::optional<FTCardHandle> Reloaded = AppDatabase::Get().GetCardRepository().LoadCard(CardId);
     REQUIRE(Reloaded.has_value());
-    CHECK((*Reloaded)->LeitnerStage == 4);
+    CHECK(ReadStability(Reloaded) > GetSeededStability(3));
 }
 
 TEST_CASE("endSession clears the checkpoint so a later startDueToday call does not resume it",
@@ -475,7 +487,7 @@ TEST_CASE("A card answered yes in stage 1 and never demoted ends up promoted", "
 
     const std::optional<FTCardHandle> Reloaded = AppDatabase::Get().GetCardRepository().LoadCard(CardId);
     REQUIRE(Reloaded.has_value());
-    CHECK((*Reloaded)->LeitnerStage == 4);
+    CHECK(ReadStability(Reloaded) > GetSeededStability(3));
 }
 
 TEST_CASE("A card answered no in stage 1 is not promoted", "[repetitioncontroller]")
@@ -498,7 +510,7 @@ TEST_CASE("A card answered no in stage 1 is not promoted", "[repetitioncontrolle
 
     const std::optional<FTCardHandle> Reloaded = AppDatabase::Get().GetCardRepository().LoadCard(CardId);
     REQUIRE(Reloaded.has_value());
-    CHECK((*Reloaded)->LeitnerStage < 3);
+    CHECK(ReadStability(Reloaded) < GetSeededStability(3));
 }
 
 TEST_CASE("Removing a card before it is reviewed keeps it out of the outcomes", "[repetitioncontroller]")
@@ -524,7 +536,7 @@ TEST_CASE("Removing a card before it is reviewed keeps it out of the outcomes", 
 
     const std::optional<FTCardHandle> Reloaded = AppDatabase::Get().GetCardRepository().LoadCard(RemovedCardId);
     REQUIRE(Reloaded.has_value());
-    CHECK((*Reloaded)->LeitnerStage == 3);
+    CHECK(ReadStability(Reloaded) == GetSeededStability(3));
 }
 
 TEST_CASE("A card removed mid-session stays excluded after the app restarts and resumes",
@@ -555,7 +567,7 @@ TEST_CASE("A card removed mid-session stays excluded after the app restarts and 
 
     const std::optional<FTCardHandle> Reloaded = AppDatabase::Get().GetCardRepository().LoadCard(RemovedCardId);
     REQUIRE(Reloaded.has_value());
-    CHECK((*Reloaded)->LeitnerStage == 3);
+    CHECK(ReadStability(Reloaded) == GetSeededStability(3));
 }
 
 TEST_CASE("completeStage is a no-op when there is no active session", "[repetitioncontroller]")
@@ -655,9 +667,9 @@ TEST_CASE("Completing every stage early promotes the cards the first stage never
     REQUIRE(Skipped.has_value());
     REQUIRE(Removed.has_value());
 
-    CHECK((*AnsweredNo)->LeitnerStage < 3);
-    CHECK((*Skipped)->LeitnerStage == 4);
-    CHECK((*Removed)->LeitnerStage == 3);
+    CHECK(ReadStability(AnsweredNo) < GetSeededStability(3));
+    CHECK(ReadStability(Skipped) > GetSeededStability(3));
+    CHECK(ReadStability(Removed) == GetSeededStability(3));
 }
 
 TEST_CASE("restartStage is a no-op when there is no active session", "[repetitioncontroller]")
@@ -923,13 +935,21 @@ TEST_CASE("Review opens with a quick pass over cards from box 4 and up", "[repet
 
     QCoreApplication::processEvents();
 
+    CHECK(Controller.IsFinished());
+    CHECK(Controller.IsQuickPass());
+    CHECK(Controller.HasFollowUp());
+    CHECK(Controller.GetCardCount() == 2);
+
+    Controller.continueToFollowUp();
+
     REQUIRE(Controller.HasActiveSession());
+    CHECK_FALSE(Controller.HasFollowUp());
     CHECK_FALSE(Controller.IsQuickPass());
     CHECK(Controller.GetCardCount() == 3);
 
     const std::optional<FTCardHandle> Promoted = AppDatabase::Get().GetCardRepository().LoadCard(Known);
     REQUIRE(Promoted.has_value());
-    CHECK((*Promoted)->LeitnerStage == 5);
+    CHECK(ReadStability(Promoted) > GetSeededStability(4));
 
     int Reviewed = 0;
 
@@ -953,7 +973,7 @@ TEST_CASE("Review opens with a quick pass over cards from box 4 and up", "[repet
 
     const std::optional<FTCardHandle> Demoted = AppDatabase::Get().GetCardRepository().LoadCard(Forgotten);
     REQUIRE(Demoted.has_value());
-    CHECK((*Demoted)->LeitnerStage < 5);
+    CHECK(ReadStability(Demoted) < GetSeededStability(5));
 }
 
 TEST_CASE("Forgetting every quick pass card with nothing earlier due goes straight to the mastery loop",
@@ -975,6 +995,11 @@ TEST_CASE("Forgetting every quick pass card with nothing earlier due goes straig
 
     QCoreApplication::processEvents();
 
+    REQUIRE(Controller.IsFinished());
+    REQUIRE(Controller.HasFollowUp());
+
+    Controller.continueToFollowUp();
+
     REQUIRE(Controller.HasActiveSession());
     CHECK(Controller.GetStage() == 2);
     CHECK(IsMasteryLoopController(Controller.GetActiveController()));
@@ -985,7 +1010,7 @@ TEST_CASE("Forgetting every quick pass card with nothing earlier due goes straig
 
     const std::optional<FTCardHandle> Demoted = AppDatabase::Get().GetCardRepository().LoadCard(Forgotten);
     REQUIRE(Demoted.has_value());
-    CHECK((*Demoted)->LeitnerStage < 4);
+    CHECK(ReadStability(Demoted) < GetSeededStability(4));
 }
 
 TEST_CASE("Knowing every quick pass card with nothing earlier due ends the review", "[repetitioncontroller][quickpass]")
@@ -1013,6 +1038,8 @@ TEST_CASE("Knowing every quick pass card with nothing earlier due ends the revie
 
     CHECK(Controller.IsFinished());
     CHECK_FALSE(Controller.HasActiveSession());
+    CHECK_FALSE(Controller.HasFollowUp());
+    CHECK(Controller.GetCardCount() == 2);
     CHECK(bSessionEnded);
 }
 
@@ -1035,6 +1062,10 @@ TEST_CASE("A forgotten quick pass card stays forgotten when the review after it 
 
         QCoreApplication::processEvents();
 
+        REQUIRE(Controller.HasFollowUp());
+
+        Controller.continueToFollowUp();
+
         REQUIRE(Controller.HasActiveSession());
         REQUIRE(Controller.GetStage() == 1);
     }
@@ -1052,5 +1083,5 @@ TEST_CASE("A forgotten quick pass card stays forgotten when the review after it 
 
     const std::optional<FTCardHandle> Demoted = AppDatabase::Get().GetCardRepository().LoadCard(Forgotten);
     REQUIRE(Demoted.has_value());
-    CHECK((*Demoted)->LeitnerStage < 4);
+    CHECK(ReadStability(Demoted) < GetSeededStability(4));
 }

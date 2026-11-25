@@ -21,8 +21,8 @@ MobileCard
         MobileVectorIcon
         {
             Layout.alignment: Qt.AlignTop
-            width: AppMetrics.headerActionIconSize
-            height: AppMetrics.headerActionIconSize
+            width: AppMetrics.iconSize
+            height: AppMetrics.iconSize
             svgPath: Icons.Icons.cloud_off.path
             color: AppTheme.colourWrong
         }

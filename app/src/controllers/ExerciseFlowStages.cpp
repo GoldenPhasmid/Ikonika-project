@@ -37,6 +37,11 @@ void FProxyStage::Start()
 {
     bForceFinished = false;
 
+    if (auto* EachOnce = dynamic_cast<FEachOnceSelector*>(Params.Selector.get()))
+    {
+        EachOnce->Rewind();
+    }
+
     Controller->Start(Params);
 }
 

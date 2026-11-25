@@ -4,6 +4,7 @@
 
 #include <QCoreApplication>
 #include <QDir>
+#include <QSettings>
 #include <QString>
 
 #define CATCH_CONFIG_RUNNER
@@ -19,6 +20,7 @@ int main(int argc, char* argv[])
     // share a registry key.
     QCoreApplication::setOrganizationName(QStringLiteral("IkonikaTests"));
     QCoreApplication::setApplicationName(QStringLiteral("IkonikaTests"));
+    QSettings{}.clear();
 
     // One home under local/ for the real files a test has to write (a persistence test cannot use
     // an in-memory database). Created here rather than at configure time, so a run started from a

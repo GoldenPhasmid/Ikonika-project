@@ -19,20 +19,6 @@ Item
 
     signal edited(int newValue)
 
-    readonly property real fraction: root.to > root.from
-        ? Math.max(0, Math.min(1, (root.value - root.from) / (root.to - root.from)))
-        : 0
-
-    function valueFromRatio(ratio)
-    {
-        const range = root.to - root.from
-        const steps = Math.round(range / root.step)
-        const clampedRatio = Math.max(0, Math.min(1, ratio))
-        const snapped = Math.round(clampedRatio * steps) * root.step
-
-        return root.from + Math.max(0, Math.min(range, snapped))
-    }
-
     Layout.fillWidth: true
     implicitHeight: content.implicitHeight + (AppMetrics.gapMedium * 2)
 
@@ -93,60 +79,19 @@ Item
             wrapMode: Text.WordWrap
         }
 
-        Item
+        DesktopSlider
         {
-            id: track
-
             Layout.fillWidth: true
-            Layout.preferredHeight: thumb.height
+            implicitHeight: AppMetrics.buttonHeightLarge
 
-            MobileDotProgress
-            {
-                anchors.verticalCenter: parent.verticalCenter
+            from: root.from
+            to: root.to
+            step: root.step
+            current: root.value
+            enabled: root.interactive
+            accessibleTitle: root.title
 
-                width: parent.width
-                height: AppMetrics.progressBarHeight
-
-                progress: root.fraction
-            }
-
-            Rectangle
-            {
-                id: thumb
-
-                x: (track.width - width) * root.fraction
-                anchors.verticalCenter: parent.verticalCenter
-
-                width: 20
-                height: 20
-                radius: height / 2
-
-                color: AppTheme.colourPanel
-                border.color: AppTheme.colourText
-                border.width: AppMetrics.borderWidth
-
-                Behavior on x { enabled: !dragArea.pressed; NumberAnimation { duration: AppMetrics.motionFast } }
-            }
-
-            MouseArea
-            {
-                id: dragArea
-
-                anchors.fill: parent
-                anchors.topMargin: -(AppMetrics.buttonHeightLarge - track.height) / 2
-                anchors.bottomMargin: anchors.topMargin
-                enabled: root.interactive
-                preventStealing: true
-
-                onPressed: function(mouse) { root.edited(root.valueFromRatio(mouse.x / track.width)) }
-                onPositionChanged: function(mouse)
-                {
-                    if (dragArea.pressed)
-                    {
-                        root.edited(root.valueFromRatio(mouse.x / track.width))
-                    }
-                }
-            }
+            onEdited: function(newValue) { root.edited(newValue) }
         }
     }
 

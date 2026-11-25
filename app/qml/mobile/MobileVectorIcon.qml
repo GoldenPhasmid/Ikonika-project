@@ -11,7 +11,7 @@ Shape
     property real sourceWidth: 24
     property real sourceHeight: 24
     property color color: AppTheme.colourText
-    property real strokeWidth: 1.5
+    property real strokeWidth: AppMetrics.iconStrokeWidth
     property bool filled: false
 
     readonly property real fitScale: root.width / Math.max(root.sourceWidth, root.sourceHeight)

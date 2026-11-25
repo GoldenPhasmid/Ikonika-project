@@ -232,6 +232,55 @@
   padding: 0;
 }
 
+/* ---------- exercise icons ---------- */
+
+.ex-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  font-size: 16px;
+  line-height: 1;
+}
+
+/* ---------- exercise options ---------- */
+
+.mc-option {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 20px 16px;
+  min-height: 96px;
+  cursor: pointer;
+}
+
+/* ---------- speed matching ---------- */
+
+.match-card {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 20px 16px;
+  min-height: 100px;
+  font-size: 16px;
+  line-height: 1.35;
+  cursor: pointer;
+}
+
+.match-card.source {
+  background: var(--wf-learning);
+  color: var(--wf-paper);
+  border: 1px solid var(--wf-learning);
+}
+
+.match-card.target {
+  background: var(--wf-faint);
+  border: 1px solid var(--wf-line);
+}
+
 /* ---------- today ---------- */
 
 /* A horizontally scrolling row, no scrollbar drawn: a phone's own scroll indicator is a

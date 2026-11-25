@@ -18,12 +18,28 @@
 
     <div class="phone-content" style="gap:20px">
 
+      <!-- Daily progress -->
+      <div style="padding:0">
+        <div style="display:flex;align-items:baseline;gap:6px">
+          <span style="font-size:56px;font-weight:700;line-height:1">38</span>
+          <span style="font-size:16px;color:var(--wf-mid)">of 92 words today</span>
+        </div>
+        <div style="height:6px;background:var(--wf-faint);border-radius:3px;margin:12px 0 10px;overflow:hidden">
+          <div style="width:41%;height:100%;background:var(--wf-ink);border-radius:3px"></div>
+        </div>
+        <div style="display:flex;gap:16px;font-size:11px;letter-spacing:0.06em;color:var(--wf-mid)">
+          <span>42 REVIEW DUE</span>
+          <span>50 NEW WANTED</span>
+          <span>54 TO GO</span>
+        </div>
+      </div>
+
       <!-- Due next 5 days shelf -->
       <div>
         <div style="display:flex;align-items:center;justify-content:space-between;padding:0 0 8px">
           <span style="font-size:13px;color:var(--wf-mid)">61 words due next 5 days</span>
         </div>
-        <div class="m-scroll" style="margin:0 -16px;padding:0 16px">
+        <div style="display:flex;justify-content:center;gap:8px">
           <div class="m-due-card">
             <span class="day">Thu</span>
             <div class="bar"><i style="height:72%"></i></div>

@@ -19,6 +19,7 @@ Window
     property real baseWidth: AppMetrics.quickAddWidth
     property real baseHeight: AppMetrics.quickAddHeight
     property bool wasActive: false
+    property bool pinned: false
     property string pickedWord: ""
     property int pickedPosition: -1
     property bool revealWord: false
@@ -74,6 +75,7 @@ Window
 
         root.service.saveSize(Math.round(root.baseWidth), Math.round(root.baseHeight))
         root.wasActive = false
+        root.pinned = false
         focusGrace.stop()
         searchDelay.stop()
         languageSwitch.close()
@@ -272,7 +274,7 @@ Window
             return
         }
 
-        if (root.wasActive && !languageSwitch.visible && !nativeSwitch.visible)
+        if (root.wasActive && !root.pinned && !languageSwitch.visible && !nativeSwitch.visible)
         {
             root.closeLookup(false)
         }
@@ -533,9 +535,24 @@ Window
 
                     DesktopIconButton
                     {
-                        objectName: "quick_add_close"
+                        objectName: "quick_add_pin"
 
                         Layout.leftMargin: AppMetrics.gapSmall
+                        focusPolicy: Qt.NoFocus
+                        iconName: "pin"
+                        iconColour: AppTheme.colourMuted
+                        active: root.pinned
+                        text: root.pinned ? qsTr("Unpin") : qsTr("Pin")
+
+                        Accessible.description: qsTr("Keep Quick Add open when you click outside it")
+
+                        onClicked: root.pinned = !root.pinned
+                    }
+
+                    DesktopIconButton
+                    {
+                        objectName: "quick_add_close"
+
                         focusPolicy: Qt.NoFocus
                         iconName: "close"
                         text: qsTr("Close")

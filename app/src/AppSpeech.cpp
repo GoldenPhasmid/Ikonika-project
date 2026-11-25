@@ -54,6 +54,13 @@ void AppSpeech::SetSentenceSpeed(float Value)
 
 void AppSpeech::SpeakAtRate(const QString& Text, const QString& LanguageCode, float RateScale)
 {
+#if defined(IKONIKA_DESKTOP)
+    if (FTAudioPlayer::IsPlaybackSuspended())
+    {
+        return;
+    }
+#endif
+
     if (Text.isEmpty() || LanguageCode.isEmpty())
     {
         return;
@@ -71,6 +78,15 @@ void AppSpeech::SpeakAtRate(const QString& Text, const QString& LanguageCode, fl
 
 void AppSpeech::SpeakPending()
 {
+#if defined(IKONIKA_DESKTOP)
+    if (FTAudioPlayer::IsPlaybackSuspended())
+    {
+        PendingRequest.reset();
+
+        return;
+    }
+#endif
+
     if (!PendingRequest.has_value())
     {
         return;

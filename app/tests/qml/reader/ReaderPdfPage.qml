@@ -20,6 +20,18 @@ Item
     signal outlineReady(var entries)
     signal rendered(bool detail)
 
+    function internalLinkAt(position)
+    {
+        const x = position.x / renderScale
+        const y = position.y / renderScale
+        if (page === 0 && x >= 120 && x <= 180 && y >= 160 && y <= 200)
+        {
+            return { page: 4, location: Qt.point(72, 225) }
+        }
+
+        return {}
+    }
+
     function selectWordAt(position)
     {
         return { text: "word", rectangles: [Qt.rect(position.x, position.y, 20, 10)] }

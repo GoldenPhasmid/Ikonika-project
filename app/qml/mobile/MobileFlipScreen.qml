@@ -12,6 +12,12 @@ Item
     property bool showComplete: true
     property bool inSession: false
     property bool cardEditable: false
+    property bool showMute: true
+    property bool showOptions: true
+
+    property string exerciseName: qsTr("Flip")
+    property string incorrectLabel: qsTr("I forgot")
+    property string correctLabel: qsTr("I knew it")
 
     readonly property bool finished: root.controller.finished
     readonly property bool wordShown: root.controller.showsTargetLanguage
@@ -23,15 +29,7 @@ Item
     signal editCardRequested()
     signal restartRequested()
     signal completeRequested()
-    signal wordTapped(string word, string sentence)
-
-    function reveal()
-    {
-        if (!root.controller.answered)
-        {
-            root.controller.advance()
-        }
-    }
+    signal wordTapped(string word, string sentence, var place)
 
     MobileExerciseShell
     {
@@ -40,7 +38,9 @@ Item
         anchors.fill: parent
         visible: !(root.finished && root.showComplete)
 
-        exerciseName: qsTr("Flip")
+        exerciseName: root.exerciseName
+        showMute: root.showMute
+        showOptions: root.showOptions
         store: root.store
         controller: root.controller
 
@@ -136,7 +136,7 @@ Item
                     sentence: root.hiddenSideOpen ? root.controller.example : ""
                     translation: root.controller.exampleTranslation
 
-                    onWordTapped: function(word, sentence) { root.wordTapped(word, sentence) }
+                    onWordTapped: function(word, sentence, place) { root.wordTapped(word, sentence, place) }
                 }
             ]
 
@@ -146,7 +146,7 @@ Item
             {
                 anchors.fill: parent
                 enabled: !root.controller.answered
-                onClicked: root.reveal()
+                onClicked: root.controller.reveal()
             }
         }
 
@@ -156,14 +156,14 @@ Item
                 label: qsTr("Reveal")
                 visible: !root.controller.answered
 
-                onClicked: root.reveal()
+                onClicked: root.controller.reveal()
             },
             MobileButtonPair
             {
                 visible: root.controller.answered
 
-                leftLabel: qsTr("I forgot")
-                rightLabel: qsTr("I knew it")
+                leftLabel: root.incorrectLabel
+                rightLabel: root.correctLabel
                 leftMarkColour: AppTheme.colourWrong
                 rightMarkColour: AppTheme.colourCorrect
 
@@ -178,7 +178,7 @@ Item
         anchors.fill: parent
         visible: root.finished && root.showComplete
 
-        exerciseName: qsTr("Flip")
+        exerciseName: root.exerciseName
 
         wordCount: root.controller.currentSessionCount
         elapsedSeconds: root.controller.elapsedSeconds

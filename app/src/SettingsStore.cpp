@@ -4,6 +4,7 @@
 #include "AppDatabase.h"
 #include "AppDictionary.h"
 #include "AppPackageDownloader.h"
+#include "AppScheduleOptimizer.h"
 #include "AppSpeech.h"
 #include "AppWebSearch.h"
 #include "controllers/AppSyncController.h"
@@ -97,6 +98,11 @@ SettingsStore::SettingsStore(QObject* Parent)
         connect(Sync, &AppSyncController::dataMerged, this, &SettingsStore::OnSettingsApplied);
     }
 
+    if (AppScheduleOptimizer* Optimizer{AppScheduleOptimizer::GetInstance()})
+    {
+        connect(Optimizer, &AppScheduleOptimizer::weightsChanged, this, &SettingsStore::scheduleSettingsChanged);
+    }
+
     if (!AppDatabase::Get().Initialise())
     {
         SetLastError(AppDatabase::Get().GetLastError());
@@ -108,7 +114,7 @@ SettingsStore::SettingsStore(QObject* Parent)
 
 bool SettingsStore::IsReady() const
 {
-    return AppDatabase::Get().IsReady() && AppDictionary::Get().IsReady();
+    return AppDatabase::Get().IsReady() && AppDictionary::GetActive().IsReady();
 }
 
 QString SettingsStore::GetLastError() const
@@ -174,6 +180,9 @@ void SettingsStore::OnSettingsApplied()
         emit audioSettingsChanged();
     }
 
+    AppSpeech::Get().ReloadFromSettings();
+
+    emit audioSettingsChanged();
     emit scheduleSettingsChanged();
     emit learningSettingsChanged();
     emit questionSideChanged();
@@ -466,50 +475,136 @@ bool SettingsStore::nukeDatabase()
     return true;
 }
 
-QVariantList SettingsStore::GetIntervalDays() const
-{
-    QVariantList Result;
-
-    for (const int Days : FTSettings::Get().GetIntervalDays())
-    {
-        Result.append(Days);
-    }
-
-    return Result;
-}
-
 int SettingsStore::GetStageCount() const
 {
     return GetLastStage();
 }
 
-int SettingsStore::GetMaximumStageCount() const
+int SettingsStore::GetLearningIntensity() const
 {
-    return MaximumLadderStages;
+    return static_cast<int>(FTSettings::Get().GetScheduleRules().IntensityIndex);
 }
 
-int SettingsStore::GetMaximumIntervalDays() const
+void SettingsStore::SetLearningIntensity(int Value)
 {
-    return MaximumIntervalDays;
-}
-
-int SettingsStore::GetDaysInFirstStage() const
-{
-    return FTSettings::Get().GetScheduleRules().MaximumDaysInFirstStage;
-}
-
-void SettingsStore::SetDaysInFirstStage(int Value)
-{
-    if (GetDaysInFirstStage() == Value)
+    if (GetLearningIntensity() == Value || Value < 0 || Value > static_cast<int>(CustomIntensityIndex))
     {
         return;
     }
 
-    FTSettings::Get().SetMaximumDaysInFirstStage(Value);
+    FTSettings::Get().SetLearningIntensity(static_cast<size_t>(Value));
 
-    qCInfo(LogApp) << "Setting changed: days in first stage ->" << Value;
+    const FTLearningIntensity& Intensity = FTSettings::Get().GetScheduleRules().GetIntensity();
+    qCInfo(LogApp) << "Setting changed: learning intensity ->" << GetLearningIntensity() << "with recall target"
+                   << Intensity.TargetRetention << "learned stability" << Intensity.LearnedStability
+                   << "quick review stability" << Intensity.QuickReviewStability;
 
     emit scheduleSettingsChanged();
+}
+
+int SettingsStore::GetCustomTargetRetention() const
+{
+    return FTSettings::Get().GetScheduleRules().Custom.TargetRetention;
+}
+
+void SettingsStore::SetCustomTargetRetention(int Value)
+{
+    FTLearningIntensity Custom = FTSettings::Get().GetScheduleRules().Custom;
+    Custom.TargetRetention = Value;
+    SetCustomIntensity(Custom, "recall target", Value);
+}
+
+int SettingsStore::GetCustomLearnedStability() const
+{
+    return FTSettings::Get().GetScheduleRules().Custom.LearnedStability;
+}
+
+void SettingsStore::SetCustomLearnedStability(int Value)
+{
+    FTLearningIntensity Custom = FTSettings::Get().GetScheduleRules().Custom;
+    Custom.LearnedStability = Value;
+    SetCustomIntensity(Custom, "learned stability", Value);
+}
+
+int SettingsStore::GetCustomQuickReviewStability() const
+{
+    return FTSettings::Get().GetScheduleRules().Custom.QuickReviewStability;
+}
+
+void SettingsStore::SetCustomQuickReviewStability(int Value)
+{
+    FTLearningIntensity Custom = FTSettings::Get().GetScheduleRules().Custom;
+    Custom.QuickReviewStability = Value;
+    SetCustomIntensity(Custom, "quick review stability", Value);
+}
+
+void SettingsStore::SetCustomIntensity(const FTLearningIntensity& Custom, const char* Name, int Value)
+{
+    const FTLearningIntensity& Current = FTSettings::Get().GetScheduleRules().Custom;
+
+    if (Current.TargetRetention == Custom.TargetRetention && Current.LearnedStability == Custom.LearnedStability
+        && Current.QuickReviewStability == Custom.QuickReviewStability)
+    {
+        return;
+    }
+
+    FTSettings::Get().SetCustomIntensity(Custom);
+
+    qCInfo(LogApp) << "Setting changed: custom" << Name << "->" << Value;
+
+    emit scheduleSettingsChanged();
+}
+
+int SettingsStore::GetMinimumTargetRetention() const
+{
+    return MinimumTargetRetention;
+}
+
+int SettingsStore::GetMaximumTargetRetention() const
+{
+    return MaximumTargetRetention;
+}
+
+int SettingsStore::GetMinimumLearnedStability() const
+{
+    return MinimumLearnedStability;
+}
+
+int SettingsStore::GetMaximumLearnedStability() const
+{
+    return MaximumLearnedStability;
+}
+
+int SettingsStore::GetMaximumQuickReviewStability() const
+{
+    return MaximumQuickReviewStability;
+}
+
+QVariantList SettingsStore::GetSchedulePreview() const
+{
+    QVariantList Result;
+
+    const int RememberedCount = static_cast<int>(PreviewSchedule(-1).ReviewDays.size());
+    const int ForgottenAt = std::min(SchedulePreviewForgottenReview, std::max(RememberedCount - 1, 0));
+
+    for (const int ForgottenReview : {-1, ForgottenAt})
+    {
+        const FTSchedulePreview Preview = PreviewSchedule(ForgottenReview);
+
+        QVariantList Reviews;
+
+        for (size_t Index = 0; Index < Preview.ReviewDays.size(); ++Index)
+        {
+            Reviews.append(QVariantMap{{QStringLiteral("day"), Preview.ReviewDays[Index]},
+                                       {QStringLiteral("forgotten"), static_cast<int>(Index) == ForgottenReview},
+                                       {QStringLiteral("quick"), static_cast<bool>(Preview.QuickReviews[Index])}});
+        }
+
+        Result.append(QVariantMap{{QStringLiteral("reviews"), Reviews},
+                                  {QStringLiteral("completedDay"), Preview.CompletedDay}});
+    }
+
+    return Result;
 }
 
 int SettingsStore::GetDailyGoal() const
@@ -641,25 +736,6 @@ void SettingsStore::SetLearnOptionalPronoun(bool bValue)
     qCInfo(LogApp) << "Setting changed: learn the optional pronoun ->" << bValue;
 
     emit learningSettingsChanged();
-}
-
-bool SettingsStore::DoesMissedReviewDemote() const
-{
-    return FTSettings::Get().GetScheduleRules().bMissedReviewDemotes;
-}
-
-void SettingsStore::SetMissedReviewDemotes(bool bValue)
-{
-    if (DoesMissedReviewDemote() == bValue)
-    {
-        return;
-    }
-
-    FTSettings::Get().SetMissedReviewDemotes(bValue);
-
-    qCInfo(LogApp) << "Setting changed: missed review demotes ->" << bValue;
-
-    emit scheduleSettingsChanged();
 }
 
 int SettingsStore::GetMaximumSessionsPerDay() const
@@ -966,7 +1042,7 @@ void SettingsStore::ApplyLanguagePair(const std::string& TargetLanguage,
 
 int SettingsStore::GetDictionaryWordCount() const
 {
-    const FTDictionaryPackage* Active = AppDictionary::Get().GetActivePackage();
+    const FTDictionaryPackage* Active = AppDictionary::GetActive().GetPackage();
 
     return Active != nullptr ? Active->WordCount : 0;
 }
@@ -1147,80 +1223,3 @@ QString SettingsStore::GetDebugTodayText() const
 
     return Epoch.addDays(GetTodayDayNumber()).toString(Qt::ISODate);
 }
-
-void SettingsStore::setIntervalDays(int Stage, int Days)
-{
-    QList<int> Ladder = FTSettings::Get().GetIntervalDays();
-
-    if (Stage < FirstLadderStage || Stage > Ladder.size())
-    {
-        return;
-    }
-
-    if (Ladder[Stage - 1] == Days)
-    {
-        return;
-    }
-
-    Ladder[Stage - 1] = Days;
-    FTSettings::Get().SetIntervalDays(Ladder);
-
-    qCInfo(LogApp) << "Setting changed: interval for stage" << Stage << "->" << Days << "days";
-
-    emit scheduleSettingsChanged();
-}
-
-void SettingsStore::addStage()
-{
-    QList<int> Ladder = FTSettings::Get().GetIntervalDays();
-
-    if (Ladder.size() >= MaximumLadderStages)
-    {
-        return;
-    }
-
-    // Twice the last interval, which is what the default ladder does and what Leitner assumes.
-    const int Last = Ladder.isEmpty() ? 1 : Ladder.last();
-    Ladder.append(std::min(Last * 2, MaximumIntervalDays));
-
-    FTSettings::Get().SetIntervalDays(Ladder);
-
-    qCInfo(LogApp) << "Setting changed: added ladder stage" << Ladder.size() << "at"
-                   << Ladder.last() << "days";
-
-    emit scheduleSettingsChanged();
-}
-
-void SettingsStore::removeStage()
-{
-    QList<int> Ladder = FTSettings::Get().GetIntervalDays();
-
-    if (Ladder.size() <= 1)
-    {
-        return;
-    }
-
-    const int RemovedStage = Ladder.size();
-
-    Ladder.removeLast();
-    FTSettings::Get().SetIntervalDays(Ladder);
-
-    qCInfo(LogApp) << "Setting changed: removed ladder stage" << RemovedStage;
-
-    // Cards above the new end are left alone. They complete on their next promotion and drop into
-    // the new ladder on a demotion, rather than being rewritten the moment a setting changes.
-    emit scheduleSettingsChanged();
-}
-
-void SettingsStore::resetScheduleToDefaults()
-{
-    const FTScheduleRules Defaults;
-
-    FTSettings::Get().SetIntervalDays(QList<int>(Defaults.IntervalDays.begin(), Defaults.IntervalDays.end()));
-    FTSettings::Get().SetMaximumDaysInFirstStage(Defaults.MaximumDaysInFirstStage);
-
-    qCInfo(LogApp) << "Setting changed: schedule reset to defaults";
-
-    emit scheduleSettingsChanged();
-}
-

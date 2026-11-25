@@ -53,6 +53,19 @@ ColumnLayout
 
     Connections
     {
+        target: root.store
+
+        function onLanguagesChanged()
+        {
+            if (root.triage)
+            {
+                root.triage.refreshStartRank()
+            }
+        }
+    }
+
+    Connections
+    {
         target: AppCatalog
 
         function onCatalogChanged()

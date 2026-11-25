@@ -18,6 +18,7 @@ TestCase
         {
             width: 800
             height: 600
+            contextLookup: DictionaryController {}
 
             Item
             {
@@ -63,5 +64,75 @@ TestCase
         compare(geometry.endX, endpoint.x)
         compare(geometry.endY, endpoint.y)
         verify(geometry.endX < geometry.right - 100)
+    }
+
+    Component
+    {
+        id: plainFixture
+
+        DesktopReaderTextView
+        {
+            width: 800
+            height: 600
+            contextLookup: DictionaryController {}
+        }
+    }
+
+    SignalSpy
+    {
+        id: scrollSpy
+
+        signalName: "scrollRequested"
+    }
+
+    function autoscrollOf(view)
+    {
+        for (const child of view.children)
+        {
+            if (child.scrollRequested !== undefined)
+            {
+                return child
+            }
+        }
+
+        fail("Text view has no autoscroll")
+    }
+
+    function test_middleClickTogglesAutoscroll()
+    {
+        const view = createTemporaryObject(plainFixture, test)
+        verify(view !== null)
+
+        mouseClick(view, 400, 200, Qt.MiddleButton)
+        compare(view.autoscrolling, true)
+        mouseClick(view, 400, 200, Qt.MiddleButton)
+        compare(view.autoscrolling, false)
+    }
+
+    function test_pointerBelowTheAnchorRequestsScrollingDown()
+    {
+        const view = createTemporaryObject(plainFixture, test)
+        const autoscroll = autoscrollOf(view)
+        scrollSpy.target = autoscroll
+        scrollSpy.clear()
+
+        mouseClick(view, 400, 100, Qt.MiddleButton)
+        mouseMove(view, 400, 400)
+        tryVerify(function() { return scrollSpy.count > 0 })
+        verify(scrollSpy.signalArguments[0][0] > 0)
+        mouseMove(view, 400, 20)
+        scrollSpy.clear()
+        tryVerify(function() { return scrollSpy.count > 0 })
+        verify(scrollSpy.signalArguments[0][0] < 0)
+        view.stopAutoscroll()
+        compare(view.autoscrolling, false)
+    }
+
+    function test_leftClickDoesNotStartAutoscroll()
+    {
+        const view = createTemporaryObject(plainFixture, test)
+
+        mouseClick(view, 400, 200, Qt.LeftButton)
+        compare(view.autoscrolling, false)
     }
 }

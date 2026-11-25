@@ -59,6 +59,7 @@ void ReaderPdfDocument::SetSource(const QString& NewSource)
     PageContent.clear();
     DocumentLeft = 0;
     DocumentRight = 1;
+    Links.setDocument(nullptr);
     Text.reset();
 
     emit sourceChanged();
@@ -143,6 +144,11 @@ quint64 ReaderPdfDocument::Render(quint64 Owner, bool bSupersedes, int Page, QSi
                               Q_ARG(uint, Ink));
 
     return RequestId;
+}
+
+void ReaderPdfDocument::SetWantedPage(quint64 Owner, int Page)
+{
+    Worker->SetWantedPage(Owner, Page);
 }
 
 void ReaderPdfDocument::requestOutline()
@@ -244,6 +250,21 @@ QPdfDocument* ReaderPdfDocument::TextDocument()
     }
 
     return Text.get();
+}
+
+QPdfLink ReaderPdfDocument::LinkAt(int Page, const QPointF& Position)
+{
+    QPdfDocument* const TextLayer = TextDocument();
+
+    if (!TextLayer || Page < 0 || Page >= TextLayer->pageCount())
+    {
+        return {};
+    }
+
+    Links.setDocument(TextLayer);
+    Links.setPage(Page);
+
+    return Links.linkAt(Position);
 }
 
 void ReaderPdfDocument::LoadTextDocumentInBackground()

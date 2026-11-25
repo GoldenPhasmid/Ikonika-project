@@ -5,6 +5,9 @@
 -- DROP rather than CREATE IF NOT EXISTS: Cards keeps its name across a schema change, so the old
 -- columns would quietly stay. The date columns are days, the two sync columns are milliseconds.
 
+DROP TABLE IF EXISTS UserDeckCards;
+DROP TABLE IF EXISTS UserDecks;
+DROP TABLE IF EXISTS UserDeckCategories;
 DROP TABLE IF EXISTS CloudBooks;
 DROP TABLE IF EXISTS FavoriteBooks;
 DROP TABLE IF EXISTS BookCollections;
@@ -57,6 +60,8 @@ CREATE TABLE Cards
     DueDate          INTEGER,
     BoxChangedDate   INTEGER,
     CompletedDate    INTEGER,
+    Stability        REAL,
+    Difficulty       REAL,
 
     CreatedDate      INTEGER NOT NULL,
     LastUpdatedDate  INTEGER NOT NULL,
@@ -205,7 +210,9 @@ CREATE TABLE Journal
     CardId     TEXT NOT NULL,
     EventValue INTEGER NOT NULL DEFAULT 0,
     Day        INTEGER NOT NULL,
-    DueDate    INTEGER
+    DueDate    INTEGER,
+    Stability  REAL,
+    Difficulty REAL
 );
 
 CREATE INDEX IdxJournalCard ON Journal (CardId, Day);
@@ -270,3 +277,41 @@ CREATE TABLE BookCards
 );
 
 CREATE INDEX IdxBookCardsBook ON BookCards (BookKey);
+
+CREATE TABLE UserDeckCategories
+(
+    Id              TEXT PRIMARY KEY NOT NULL,
+    Name            TEXT NOT NULL,
+    Colour          INTEGER NOT NULL DEFAULT 0,
+    TargetLanguage  TEXT NOT NULL DEFAULT '',
+    NativeLanguage  TEXT NOT NULL DEFAULT '',
+    CreatedDate     INTEGER NOT NULL,
+    LastUpdatedDate INTEGER NOT NULL,
+    Deleted         INTEGER NOT NULL DEFAULT 0
+);
+
+-- CategoryId is blank for a deck in My Decks, the category every learner always has.
+CREATE TABLE UserDecks
+(
+    Id              TEXT PRIMARY KEY NOT NULL,
+    Name            TEXT NOT NULL,
+    Description     TEXT NOT NULL DEFAULT '',
+    CategoryId      TEXT NOT NULL DEFAULT '',
+    DailyLearning   INTEGER NOT NULL DEFAULT 1,
+    TargetLanguage  TEXT NOT NULL DEFAULT '',
+    NativeLanguage  TEXT NOT NULL DEFAULT '',
+    CreatedDate     INTEGER NOT NULL,
+    LastUpdatedDate INTEGER NOT NULL,
+    Deleted         INTEGER NOT NULL DEFAULT 0
+);
+
+-- A card belongs to at most one deck. The link is a tag: every live card stays in My Vocabulary.
+CREATE TABLE UserDeckCards
+(
+    CardId          TEXT PRIMARY KEY NOT NULL,
+    DeckId          TEXT NOT NULL,
+    LastUpdatedDate INTEGER NOT NULL,
+    Deleted         INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE INDEX IdxUserDeckCardsDeck ON UserDeckCards (DeckId);

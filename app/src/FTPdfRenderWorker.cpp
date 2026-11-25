@@ -175,6 +175,22 @@ bool FTPdfRenderWorker::IsSuperseded(quint64 Owner, quint64 RequestId)
     return RequestId < LatestRequests.value(Owner, 0);
 }
 
+void FTPdfRenderWorker::SetWantedPage(quint64 Owner, int Page)
+{
+    const QMutexLocker Locker(&LatestMutex);
+
+    WantedPages.insert(Owner, Page);
+}
+
+bool FTPdfRenderWorker::IsUnwantedPage(quint64 Owner, int Page)
+{
+    const QMutexLocker Locker(&LatestMutex);
+
+    const auto Wanted = WantedPages.constFind(Owner);
+
+    return Wanted != WantedPages.constEnd() && qAbs(Wanted.value() - Page) > 1;
+}
+
 void FTPdfRenderWorker::Render(quint64 Owner, quint64 RequestId, int Page, QSize PageImagePixels, QRect ClipPixels,
                                qreal Scale, uint Paper, uint Ink)
 {
@@ -182,6 +198,11 @@ void FTPdfRenderWorker::Render(quint64 Owner, quint64 RequestId, int Page, QSize
     // Identifier zero is the whole-page picture, which is never superseded: it is cheap, and it is
     // the only thing a freshly turned page has to show.
     if (RequestId != 0 && IsSuperseded(Owner, RequestId))
+    {
+        return;
+    }
+
+    if (RequestId == 0 && IsUnwantedPage(Owner, Page))
     {
         return;
     }

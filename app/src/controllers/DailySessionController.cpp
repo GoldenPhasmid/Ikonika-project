@@ -28,9 +28,9 @@
 
 namespace
 {
-    constexpr int ReviewTimelineDays = 6;
+    constexpr int ReviewTimelineDays = 8;
 
-    constexpr int RecentProgressDays = 7;
+    constexpr int RecentProgressDays = 8;
 }
 
 namespace
@@ -88,6 +88,11 @@ namespace
 DailySessionController::DailySessionController(QObject* Parent)
     : QObject(Parent)
 {
+    connect(&AppDictionary::Notifier(), &AppDictionaryNotifier::dictionaryClosed, this, [this]()
+    {
+        FormsCacheRevision.clear();
+    });
+
     refresh();
 
     QTimer* DayTimer = new QTimer(this);
@@ -220,8 +225,7 @@ QStringList DailySessionController::collectSessionCards() const
         return Result;
     }
 
-    const std::vector<FTCardHandle> Picked = PickTrainingCards(AppDatabase::Get().GetCardRepository().LoadUnlearnedCards(),
-                                                               static_cast<size_t>(std::max(GetTrainingWordCount(), 0)));
+    const std::vector<FTCardHandle> Picked = PickTrainingCards(AppCards::LoadDailyPool(), static_cast<size_t>(std::max(GetTrainingWordCount(), 0)));
 
     for (const FTCardHandle& Word : Picked)
     {
@@ -258,8 +262,7 @@ int DailySessionController::formsTrainingSize(const QString& TrainingId) const
 
 void DailySessionController::DropStaleFormsCache() const
 {
-    const std::string Revision = AppDatabase::Get().GetDataRevision() + "/"
-        + std::to_string(AppDictionary::Get().GetGeneration());
+    const std::string Revision = AppDatabase::Get().GetDataRevision();
 
     if (Revision == FormsCacheRevision)
     {

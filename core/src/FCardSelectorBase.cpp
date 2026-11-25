@@ -38,6 +38,12 @@ void FEachOnceSelector::Reset(int32 InCount, bool bInInfinite)
     Init();
 }
 
+void FEachOnceSelector::Rewind()
+{
+    Entries.clear();
+    Init();
+}
+
 FEachOnceSelector::~FEachOnceSelector()
 {
     

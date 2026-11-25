@@ -17,18 +17,18 @@ DesktopDialog
     title: form.editing ? qsTr("Edit card") : qsTr("Create card")
     width: Math.min(AppMetrics.contentWidthNarrow, parent ? parent.width - AppMetrics.contentPadding * 2 : AppMetrics.contentWidthNarrow)
 
-    function openWith(word, translation, partOfSpeech, gist, hint)
+    function openWith(word, translation, partOfSpeech, gist, hint, language)
     {
-        form.openWith(word, translation, partOfSpeech, gist, hint)
+        form.openWith(word, translation, partOfSpeech, gist, hint, language)
         root.open()
 
         Qt.callLater(form.focusField)
     }
 
-    function openForEdit(cardId, word, translation, gender, partOfSpeech, box)
+    function openForEdit(cardId, word, translation, gender, partOfSpeech, box, language)
     {
-        root.openWith(word, translation, partOfSpeech)
-        form.openForEdit(cardId, word, translation, gender, partOfSpeech, box)
+        root.openWith(word, translation, partOfSpeech, "", "", language)
+        form.openForEdit(cardId, word, translation, gender, partOfSpeech, box, language)
     }
 
     function commit()

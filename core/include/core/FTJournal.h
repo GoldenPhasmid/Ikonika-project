@@ -5,6 +5,7 @@
 
 #include <optional>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 class FTDatabase;
@@ -23,18 +24,26 @@ struct FTJournalEvent
     int EventValue = 0;
     FTDayNumber Day = 0;
     std::optional<FTDayNumber> DueDate;
+    std::optional<double> Stability;
+    std::optional<double> Difficulty;
 };
+
+void SortJournalEvents(std::vector<FTJournalEvent>& Events);
+
+bool LoadJournalByCard(FTDatabase& Target, std::unordered_map<std::string, std::vector<FTJournalEvent>>& EventsByCard);
 
 FTJournalEvent MakeJournalEvent(const std::string& CardId, const char* EventId, int EventValue, FTDayNumber Day);
 
 void ApplyJournalEvent(FTCard& Subject, const FTJournalEvent& Event);
 
-void ReplayJournal(FTCard& Subject, std::vector<FTJournalEvent> Events, FTDayNumber Today);
+void ReplayJournal(FTCard& Subject, std::vector<FTJournalEvent> Events);
 
 bool AppendJournalEvent(FTDatabase& Target, const FTJournalEvent& Event);
 
 std::vector<FTJournalEvent> LoadJournal(FTDatabase& Target, const std::string& CardId);
 
-bool RebuildCardProgress(FTDatabase& Target, FTDayNumber Today);
+bool RebuildCardProgress(FTDatabase& Target);
+
+bool FillJournalStability(FTDatabase& Target);
 
 bool SeedStartingEvents(FTDatabase& Target);

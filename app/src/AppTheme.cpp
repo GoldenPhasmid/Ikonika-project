@@ -41,10 +41,18 @@ namespace
         QColor Well;
         QVariantList CoverColours;
         QColor CoverInk;
+        QColor CoverPaper;
+        QColor CoverWrong;
         QColor CoverMuted;
         QColor CoverStripe;
         QColor TileWedge;
         QColor TileShadow;
+        QColor ReviewBand;
+        QColor ReviewInk;
+        QColor ReviewDeep;
+        QColor LearnBand;
+        QColor LearnInk;
+        QColor LearnDeep;
         qreal RingTrackAlpha;
     };
 
@@ -71,10 +79,18 @@ namespace
         .CoverColours = {QColor("#8f4a48"), QColor("#8a6838"), QColor("#5d7a46"), QColor("#3a6d72"),
                          QColor("#4a5f8c"), QColor("#6b4c7c"), QColor("#7c5a6f"), QColor("#5a5652")},
         .CoverInk = QColor("#f2f0e9"),
+        .CoverPaper = QColor("#262624"),
+        .CoverWrong = QColor("#e5786d"),
         .CoverMuted = QColor("#6e6a64"),
         .CoverStripe = QColor(0, 0, 0, 26),
         .TileWedge = QColor(107, 74, 38, 52),
         .TileShadow = QColor(74, 56, 34, 46),
+        .ReviewBand = QColor("#86aef2"),
+        .ReviewInk = QColor("#10244c"),
+        .ReviewDeep = QColor("#749ee6"),
+        .LearnBand = QColor("#7fc79d"),
+        .LearnInk = QColor("#0c3320"),
+        .LearnDeep = QColor("#6fb98e"),
         .RingTrackAlpha = 0.24
     };
 
@@ -101,10 +117,18 @@ namespace
         .CoverColours = {QColor("#7a3b3b"), QColor("#7a5a2f"), QColor("#4f6b3a"), QColor("#2f5d62"),
                          QColor("#3b4f7a"), QColor("#5b3e6b"), QColor("#6b4a5e"), QColor("#4a4744")},
         .CoverInk = QColor("#f2f0e9"),
+        .CoverPaper = QColor("#262624"),
+        .CoverWrong = QColor("#e5786d"),
         .CoverMuted = QColor("#45403d"),
         .CoverStripe = QColor(0, 0, 0, 38),
         .TileWedge = QColor(0, 0, 0, 38),
         .TileShadow = QColor(0, 0, 0, 0),
+        .ReviewBand = QColor("#5b9cf8"),
+        .ReviewInk = QColor("#0b1a33"),
+        .ReviewDeep = QColor("#4a89e2"),
+        .LearnBand = QColor("#4caf7d"),
+        .LearnInk = QColor("#06251a"),
+        .LearnDeep = QColor("#429d6f"),
         .RingTrackAlpha = 0.12
     };
 
@@ -360,8 +384,17 @@ QVariantList AppTheme::GetBookCovers() const
 {
     const auto Cover = [](const char* Paper, const char* Foil, const char* Ink)
     {
+        constexpr int PaperLight{132};
+        constexpr int PaperDeep{111};
+        constexpr int FoilLight{112};
+        constexpr int FoilDeep{114};
+
         return QVariantMap{{QStringLiteral("paper"), QColor(Paper)},
+                           {QStringLiteral("paperLight"), QColor(Paper).lighter(PaperLight)},
+                           {QStringLiteral("paperDeep"), QColor(Paper).darker(PaperDeep)},
                            {QStringLiteral("foil"), QColor(Foil)},
+                           {QStringLiteral("foilLight"), QColor(Foil).lighter(FoilLight)},
+                           {QStringLiteral("foilDeep"), QColor(Foil).darker(FoilDeep)},
                            {QStringLiteral("ink"), QColor(Ink)}};
     };
 
@@ -376,6 +409,16 @@ QColor AppTheme::GetColourCoverInk() const
     return GetPalette(Theme).CoverInk;
 }
 
+QColor AppTheme::GetColourCoverPaper() const
+{
+    return GetPalette(Theme).CoverPaper;
+}
+
+QColor AppTheme::GetColourCoverWrong() const
+{
+    return GetPalette(Theme).CoverWrong;
+}
+
 QColor AppTheme::GetColourCoverMuted() const
 {
     return GetPalette(Theme).CoverMuted;
@@ -386,6 +429,16 @@ QColor AppTheme::GetColourCoverStripe() const
     return GetPalette(Theme).CoverStripe;
 }
 
+QColor AppTheme::GetColourDeckHeaderTag() const
+{
+    return QColor{255, 255, 255, 28};
+}
+
+QColor AppTheme::GetColourDeckHeaderCheck() const
+{
+    return QColor{59, 59, 59};
+}
+
 QColor AppTheme::GetColourTileWedge() const
 {
     return GetPalette(Theme).TileWedge;
@@ -394,6 +447,36 @@ QColor AppTheme::GetColourTileWedge() const
 QColor AppTheme::GetColourTileShadow() const
 {
     return GetPalette(Theme).TileShadow;
+}
+
+QColor AppTheme::GetColourReviewBand() const
+{
+    return GetPalette(Theme).ReviewBand;
+}
+
+QColor AppTheme::GetColourReviewInk() const
+{
+    return GetPalette(Theme).ReviewInk;
+}
+
+QColor AppTheme::GetColourReviewDeep() const
+{
+    return GetPalette(Theme).ReviewDeep;
+}
+
+QColor AppTheme::GetColourLearnBand() const
+{
+    return GetPalette(Theme).LearnBand;
+}
+
+QColor AppTheme::GetColourLearnInk() const
+{
+    return GetPalette(Theme).LearnInk;
+}
+
+QColor AppTheme::GetColourLearnDeep() const
+{
+    return GetPalette(Theme).LearnDeep;
 }
 
 qreal AppTheme::GetAlphaRingTrack() const

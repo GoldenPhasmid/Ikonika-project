@@ -582,13 +582,13 @@ TEST_CASE("The mastery stage gap exercise speaks the sentence without its word, 
     CHECK(Gap->GetPromptHeading() == "He gets off the train.");
     CHECK(Gap->IsSentencePrompt());
     CHECK(SpeechGuard.Mock.SpeakCount == 1);
-    CHECK(SpeechGuard.Mock.LastText == "Il descend du ….");
+    CHECK(SpeechGuard.Mock.LastText == "Il descend du .. ,.");
     CHECK(SpeechGuard.Mock.LastRateScale == 0.8f);
 
     Gap->speakSlowly();
 
     CHECK(SpeechGuard.Mock.SpeakCount == 2);
-    CHECK(SpeechGuard.Mock.LastText == "Il descend du ….");
+    CHECK(SpeechGuard.Mock.LastText == "Il descend du .. ,.");
     CHECK(SpeechGuard.Mock.LastRateScale == 0.8f * AppSpeech::SlowRateScale);
 
     Gap->submitAnswer("train");
@@ -659,7 +659,7 @@ TEST_CASE("Auto-speak off silences the gap in both states but replay still speak
     Controller.replay();
 
     CHECK(SpeechGuard.Mock.SpeakCount == 1);
-    CHECK(SpeechGuard.Mock.LastText == "Il descend du ….");
+    CHECK(SpeechGuard.Mock.LastText == "Il descend du .. ,.");
 
     Controller.submitAnswer("train");
 

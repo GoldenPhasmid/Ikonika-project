@@ -46,6 +46,8 @@ Popup
     signal readRequested(var book)
     signal chapterRequested(var book, int position)
     signal newCollectionRequested(string key)
+    signal removeRequested(var book)
+    signal cloudDeleteRequested(var book)
 
     function show(documentId)
     {
@@ -123,6 +125,7 @@ Popup
     width: Math.min(AppMetrics.bookOverviewWidth, parent ? parent.width - AppMetrics.contentPadding * 2 : AppMetrics.bookOverviewWidth)
     height: Math.min(AppMetrics.bookOverviewHeight, parent ? parent.height - AppMetrics.contentPadding * 2 : AppMetrics.bookOverviewHeight)
     padding: AppMetrics.contentPadding
+    topPadding: AppMetrics.gapLarge
 
     modal: true
     focus: true
@@ -160,27 +163,9 @@ Popup
         Accessible.role: Accessible.Dialog
         Accessible.name: root.book ? root.book.title : ""
 
-        DesktopIconButton
-        {
-            id: closeButton
-
-            objectName: "book_overview_close"
-
-            anchors.right: parent.right
-            anchors.top: parent.top
-            anchors.rightMargin: -AppMetrics.gapMedium
-            anchors.topMargin: (AppMetrics.buttonHeight - closeButton.height) / 2
-            z: 1
-            iconName: "close"
-            text: qsTr("Close")
-
-            onClicked: root.close()
-        }
-
         RowLayout
         {
             anchors.fill: parent
-            anchors.rightMargin: closeButton.width
             spacing: AppMetrics.contentPadding
             visible: root.book !== null
 
@@ -202,70 +187,36 @@ Popup
                     missing: !root.exists
                 }
 
-                DesktopButton
-                {
-                    objectName: "book_overview_read"
-
-                    Layout.fillWidth: true
-                    Layout.bottomMargin: AppMetrics.gapSmall
-                    tone: "primary"
-                    large: true
-                    iconName: "nav_reader"
-                    enabled: root.exists
-                    text: root.readProgress > 0 ? qsTr("Continue reading") : qsTr("Start reading")
-
-                    onClicked: root.closeThen(function() { root.readRequested(root.book) })
-                }
-
-                DesktopButton
+                ColumnLayout
                 {
                     Layout.fillWidth: true
-                    visible: root.exists
-                    iconName: "external_link"
-                    text: qsTr("Show in folder")
+                    spacing: AppMetrics.gapSmall
 
-                    onClicked: root.controller.showOnDevice(root.documentId)
-                }
-
-                DesktopButton
-                {
-                    objectName: "book_overview_upload"
-
-                    Layout.fillWidth: true
-                    visible: root.exists && !root.inCloud && !root.free && root.controller.cloudAvailable
-                    iconName: "cloud_upload"
-                    text: qsTr("Upload to the cloud")
-
-                    onClicked: root.controller.uploadDocument(root.documentId)
-                }
-
-                DesktopHoldButton
-                {
-                    objectName: "book_overview_cloud_delete"
-
-                    Layout.fillWidth: true
-                    visible: root.inCloud && root.controller.cloudAvailable
-                    iconName: "cloud_off"
-                    label: qsTr("Delete from the cloud")
-                    holdLabel: qsTr("Hold to delete from the cloud")
-
-                    onConfirmed: root.controller.deleteCloudBook(root.book.cloudId)
-                }
-
-                DesktopHoldButton
-                {
-                    objectName: "book_overview_remove"
-
-                    Layout.fillWidth: true
-                    iconName: "trash"
-                    label: root.inCloud ? qsTr("Remove from this device") : qsTr("Remove from library")
-                    holdLabel: qsTr("Hold to remove")
-
-                    onConfirmed:
+                    DesktopButton
                     {
-                        const documentId = root.documentId
+                        objectName: "book_overview_read"
 
-                        root.closeThen(function() { root.controller.removeDocument(documentId) })
+                        Layout.fillWidth: true
+                        tone: "primary"
+                        large: true
+                        iconName: "nav_reader"
+                        enabled: root.exists
+                        text: root.readProgress > 0 ? qsTr("Continue reading") : qsTr("Start reading")
+
+                        onClicked: root.closeThen(function() { root.readRequested(root.book) })
+                    }
+
+                    DesktopButton
+                    {
+                        objectName: "book_overview_show_in_folder"
+
+                        Layout.fillWidth: true
+                        visible: root.exists
+                        large: true
+                        iconName: "external_link"
+                        text: qsTr("Show in folder")
+
+                        onClicked: root.controller.showOnDevice(root.documentId)
                     }
                 }
 
@@ -331,37 +282,84 @@ Popup
                         }
                     }
 
-                    DesktopButton
-                    {
-                        objectName: "book_overview_rename"
-
-                        Layout.alignment: Qt.AlignTop
-                        visible: !root.renaming
-                        iconOnly: true
-                        iconName: "edit"
-                        text: qsTr("Rename")
-
-                        Accessible.name: text
-
-                        onClicked: root.startRename()
-                    }
-
-                    DesktopButton
+                    DesktopIconButton
                     {
                         objectName: "book_overview_favorite"
 
                         readonly property bool on: root.book !== null && root.book.favorite
 
                         Layout.alignment: Qt.AlignTop
-                        iconOnly: true
                         iconName: "heart"
                         iconFilled: on
                         iconColour: on ? AppTheme.colourWrong : AppTheme.colourText
                         text: on ? qsTr("Remove from favorites") : qsTr("Add to favorites")
 
-                        Accessible.name: text
-
                         onClicked: root.controller.setFavorite(root.book.key, !on)
+                    }
+
+                    DesktopIconButton
+                    {
+                        objectName: "book_overview_rename"
+
+                        Layout.alignment: Qt.AlignTop
+                        visible: !root.renaming
+                        iconName: "edit"
+                        text: qsTr("Rename")
+
+                        onClicked: root.startRename()
+                    }
+
+                    DesktopIconButton
+                    {
+                        objectName: "book_overview_upload"
+
+                        Layout.alignment: Qt.AlignTop
+                        visible: root.exists && !root.inCloud && !root.free && root.controller.cloudAvailable
+                        iconName: "cloud_upload"
+                        text: qsTr("Upload to the cloud")
+
+                        onClicked: root.controller.uploadDocument(root.documentId)
+                    }
+
+                    DesktopIconButton
+                    {
+                        objectName: "book_overview_cloud_delete"
+
+                        Layout.alignment: Qt.AlignTop
+                        visible: root.inCloud && root.controller.cloudAvailable
+                        iconName: "cloud_off"
+                        iconColour: AppTheme.colourWrong
+                        text: qsTr("Delete from the cloud")
+
+                        onClicked: root.cloudDeleteRequested(root.book)
+                    }
+
+                    DesktopIconButton
+                    {
+                        objectName: "book_overview_remove"
+
+                        Layout.alignment: Qt.AlignTop
+                        iconName: "trash"
+                        iconColour: AppTheme.colourWrong
+                        text: root.inCloud ? qsTr("Remove from this device") : qsTr("Remove from library")
+
+                        onClicked:
+                        {
+                            const book = root.book
+
+                            root.closeThen(function() { root.removeRequested(book) })
+                        }
+                    }
+
+                    DesktopIconButton
+                    {
+                        objectName: "book_overview_close"
+
+                        Layout.alignment: Qt.AlignTop
+                        iconName: "close"
+                        text: qsTr("Close")
+
+                        onClicked: root.close()
                     }
                 }
 
@@ -528,7 +526,6 @@ Popup
 
                         model: [
                             { "value": root.count(root.details.pages), "label": qsTr("Pages") },
-                            { "value": root.count(root.details.words), "label": qsTr("Words") },
                             { "value": root.addedWords.toString(), "label": qsTr("Added words") },
                             { "value": "—", "label": qsTr("Known vocabulary") }
                         ]
@@ -538,8 +535,8 @@ Popup
                             required property var modelData
                             required property int index
 
-                            x: index * stats.width / 4
-                            width: stats.width / 4
+                            x: index * stats.width / statRepeater.count
+                            width: stats.width / statRepeater.count
                             height: stats.height
                             implicitHeight: statColumn.implicitHeight
 
@@ -806,14 +803,18 @@ Popup
 
                     Item
                     {
-                        ListView
+                        GridView
                         {
                             id: wordsList
+
+                            readonly property real usableWidth: width - AppMetrics.scrollBarWidth - AppMetrics.gapSmall
 
                             objectName: "book_overview_words"
 
                             anchors.fill: parent
                             model: root.words
+                            cellWidth: Math.floor(wordsList.usableWidth / 2)
+                            cellHeight: AppMetrics.listRowHeight
                             clip: true
                             boundsBehavior: Flickable.StopAtBounds
                             visible: root.words.length > 0
@@ -824,7 +825,7 @@ Popup
                             {
                                 required property var modelData
 
-                                width: wordsList.width - AppMetrics.scrollBarWidth - AppMetrics.gapSmall
+                                width: wordsList.cellWidth
                                 word: modelData.word
                                 translation: modelData.translation
                                 partOfSpeech: modelData.partOfSpeech

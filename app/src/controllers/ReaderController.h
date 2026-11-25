@@ -1,10 +1,13 @@
 #pragma once
 
 #include "FTParagraphModel.h"
+#include "ReaderBookLanguage.h"
+#include "ReaderPdfNarration.h"
 #include "ReaderReadAloud.h"
 #include "ReaderVocabulary.h"
 
 #include "core/FTReaderDocument.h"
+#include "core/FTReaderRepository.h"
 
 #include <QHash>
 #include <QObject>
@@ -16,6 +19,7 @@
 
 #include <cstdint>
 #include <optional>
+#include <vector>
 
 /**
  * The book reader's library and document text for QML.
@@ -46,6 +50,9 @@ class ReaderController : public QObject
     /** True when the open document is a PDF, which the screen renders instead of reflowing. */
     Q_PROPERTY(bool isPdf READ IsPdf NOTIFY currentDocumentChanged)
 
+    /** The language the open book is written in. Empty when it is not known. */
+    Q_PROPERTY(ReaderBookLanguage* bookLanguage READ GetBookLanguage CONSTANT)
+
     /** The open document's paragraphs, in reading order (reflow formats only). */
     Q_PROPERTY(QVariantList chapters READ GetChapters NOTIFY currentDocumentChanged)
 
@@ -54,6 +61,8 @@ class ReaderController : public QObject
     Q_PROPERTY(ReaderVocabulary* vocabulary READ GetVocabulary CONSTANT)
 
     Q_PROPERTY(ReaderReadAloud* readAloud READ GetReadAloud CONSTANT)
+
+    Q_PROPERTY(ReaderPdfNarration* pdfNarration READ GetPdfNarration CONSTANT)
 
     /** True while a reflow document's text is still being read off disk. */
     Q_PROPERTY(bool loading READ IsLoading NOTIFY currentDocumentChanged)
@@ -157,11 +166,13 @@ public:
     QVariantList GetChapters() const;
     QString GetCurrentId() const;
     QString GetCurrentTitle() const;
+    ReaderBookLanguage* GetBookLanguage();
     QString GetCurrentPath() const;
     bool IsPdf() const;
     FTParagraphModel* GetParagraphModel();
     ReaderVocabulary* GetVocabulary();
     ReaderReadAloud* GetReadAloud();
+    ReaderPdfNarration* GetPdfNarration();
     bool IsLoading() const;
     bool IsReading() const;
     bool IsUnreadable() const;
@@ -196,6 +207,7 @@ signals:
     void documentsChanged();
     void detailsChanged();
     void currentDocumentChanged();
+    void importedDocumentOpening();
     void fullScreenChanged();
     void readingSettingsChanged();
     void volumePageTurn(bool bForward);
@@ -209,24 +221,45 @@ private:
 
     void ApplyKeepScreenOn(bool bEnabled);
 
-    void UploadImported(const QString& Id, const QString& FilePath);
+    struct FTImportUpload
+    {
+        QString FilePath;
+        bool bTitleSettled = false;
+    };
+
+    void UploadImported(const QString& Id, const QString& FilePath, bool bTitleSettled);
+    void SettleImportTitle(const QString& FilePath);
+    void ReleaseImportUploads(bool bWithoutAuthor);
 
     void SaveCloudPlace();
 
     void LoadReadAloudPlace();
     void SaveReadAloudPlace();
+    void OnPdfNarrationChanged();
+    bool ReadPdfDetailsOnOpen();
 
     void UpdateVolumeKeys();
 
+    struct FTPendingBookMetadata
+    {
+        QString Id;
+        QString FilePath;
+        EFTDocumentFormat Format;
+        bool bNeedsDetails;
+    };
+
     QString GetCoversDirectory() const;
     QHash<QString, QString> ListCovers() const;
-    void ReadMetadata(const QVariantList& Pending);
+    void ReadMetadata(std::vector<FTPendingBookMetadata> Pending);
+
+    void UpdateBookLanguage();
 
     void StartReflowLoad(quint64 Generation, const QString& FilePath, EFTDocumentFormat Format,
                          bool bRecordTitle);
 
     void OnReflowExtracted(quint64 Generation, const QString& FilePath, EFTDocumentFormat Format,
-                           bool bRecordTitle, std::optional<FTReaderDocument> Extracted);
+                           bool bRecordTitle, std::optional<FTReaderDocument> Extracted,
+                           const std::optional<FTReaderDocumentDetails>& Details);
 
 #if defined(Q_OS_ANDROID)
     void AndroidPickAndOpen();
@@ -239,13 +272,16 @@ private:
     FTParagraphModel ParagraphModel;
     ReaderVocabulary Vocabulary;
     ReaderReadAloud ReadAloud;
+    ReaderPdfNarration PdfNarration;
     QVariantList Chapters;
     QVariantMap Details;
     QString DetailsId;
     QString CurrentId;
     QString CurrentCloudId;
     QString CurrentTitle;
+    ReaderBookLanguage BookLanguage;
     QString CurrentPath;
+    QHash<QString, FTImportUpload> ImportUploads;
     quint64 PendingGeneration = 0;
     int CurrentPosition = 0;
     int CurrentPositionCount = 0;

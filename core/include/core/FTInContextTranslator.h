@@ -1,5 +1,6 @@
 #pragma once
 
+#include <functional>
 #include <memory>
 #include <optional>
 #include <string>
@@ -20,8 +21,12 @@ class FTInContextTranslator
 public:
     static std::optional<FTInContextTranslator> Create(const std::string& ModelDirectory);
 
-    /** Empty when the model is not loaded, the text is empty, or decoding fails. */
-    std::string Translate(std::string_view Text) const;
+    /**
+     * Empty when the model is not loaded, the text is empty, or decoding fails.
+     * OnSentence receives the translation so far after each sentence and returns false to stop.
+     */
+    std::string Translate(std::string_view Text,
+                          const std::function<bool(const std::string&)>& OnSentence = {}) const;
 
     FTInContextTranslator(FTInContextTranslator&& Other) noexcept;
     FTInContextTranslator& operator=(FTInContextTranslator&& Other) noexcept;

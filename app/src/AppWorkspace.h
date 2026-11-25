@@ -4,6 +4,7 @@
 
 #include <QString>
 
+#include <map>
 #include <memory>
 #include <string>
 #include <utility>
@@ -13,6 +14,7 @@ class FTDatabase;
 class FTBookShelfRepository;
 class FTCardRepository;
 class FTCloudBookRepository;
+class FTUserDeckRepository;
 class FTReaderRepository;
 class FTSettings;
 class FTYoutubeRepository;
@@ -45,9 +47,11 @@ public:
     const AppWorkspaceFolder& GetFolder() const;
     FTDatabase& GetConnection();
     FTCardRepository& GetCardRepository();
+    FTCardRepository& GetCardRepository(const std::string& TargetLanguage, const std::string& NativeLanguage);
     FTReaderRepository& GetReaderLibrary();
     FTCloudBookRepository& GetCloudBooks();
     FTBookShelfRepository& GetBookShelf();
+    FTUserDeckRepository& GetUserDecks();
     FTYoutubeRepository& GetYoutubeLibrary();
     FTSettings& GetSettings();
     AppWorkspaceCheckpoints& GetCheckpoints();
@@ -61,9 +65,11 @@ private:
     std::unique_ptr<FTDatabase> Connection;
     std::unique_ptr<FTDatabase> DeviceConnection;
     std::unique_ptr<FTCardRepository> CardRepository;
+    std::map<std::pair<std::string, std::string>, std::unique_ptr<FTCardRepository>> LanguageCardRepositories;
     std::unique_ptr<FTReaderRepository> ReaderLibrary;
     std::unique_ptr<FTCloudBookRepository> CloudBooks;
     std::unique_ptr<FTBookShelfRepository> BookShelf;
+    std::unique_ptr<FTUserDeckRepository> UserDecks;
     std::unique_ptr<FTYoutubeRepository> YoutubeLibrary;
     std::unique_ptr<FTSettings> Settings;
     AppWorkspaceCheckpoints Checkpoints;

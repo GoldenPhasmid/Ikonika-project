@@ -1,6 +1,7 @@
 #include "ReaderController.h"
 
 #include "AppBookCloud.h"
+#include "AppCards.h"
 #include "AppDatabase.h"
 #include "AppFreeBooks.h"
 #include "AppReaderSettings.h"
@@ -12,6 +13,7 @@
 #include "core/FTCardRepository.h"
 #include "core/FTCloudBookRepository.h"
 #include "core/FTDocumentExtractor.h"
+#include "core/FTLanguageDetection.h"
 #include "core/FTLog.h"
 #include "core/FTReaderRepository.h"
 
@@ -55,6 +57,7 @@
 
 namespace
 {
+    constexpr int LanguageSamplePages = 24;
     constexpr int CoverHeight = 600;
     constexpr int CoverQuality = 85;
     constexpr int WordsPerPage = 250;
@@ -104,6 +107,35 @@ namespace
             FTReadingPlace{Book.LastPosition, Book.LastZoom, Book.LastScrollX, Book.LastScrollY, Book.PositionCount});
 
         return Entry;
+    }
+
+    void FollowCloudTitle(FTReaderDocumentRow& Row, const FTCloudBookRow& Book)
+    {
+        if (Book.Title.empty() || Book.Title == Row.CloudTitle)
+        {
+            return;
+        }
+
+        FTReaderRepository& Library{AppDatabase::Get().GetReaderLibrary()};
+
+        if (!Row.CloudTitle.empty() && Book.Title != Row.Title)
+        {
+            if (!Library.RenameDocument(Row.Id, Book.Title))
+            {
+                qCWarning(LogApp) << "Reader: could not follow the cloud title of" << QString::fromStdString(Row.Id);
+
+                return;
+            }
+
+            qCInfo(LogApp) << "Reader: another device renamed" << QString::fromStdString(Row.Title) << "to"
+                           << QString::fromStdString(Book.Title);
+
+            Row.Title = Book.Title;
+            Row.bTitleEdited = true;
+        }
+
+        Library.SetCloudTitle(Row.Id, Book.Title);
+        Row.CloudTitle = Book.Title;
     }
 
     std::optional<std::string> FileNameTitle(const FTReaderDocumentRow& Row)
@@ -208,14 +240,71 @@ namespace
         Details.Description = Document.metaData(QPdfDocument::MetaDataField::Subject).toString().simplified().toStdString();
         Details.PageCount = Document.pageCount();
 
-        for (int Page = 0; Page < Document.pageCount(); ++Page)
+        const int FirstSamplePage{std::max(0, Document.pageCount() / 2 - LanguageSamplePages / 2)};
+        const int EndSamplePage{std::min(Document.pageCount(), FirstSamplePage + LanguageSamplePages)};
+
+        std::vector<std::string> Pages;
+        Pages.reserve(EndSamplePage - FirstSamplePage);
+
+        for (int Page = FirstSamplePage; Page < EndSamplePage; ++Page)
         {
-            Details.WordCount += CountWords(Document.getAllText(Page).text());
+            Pages.push_back(Document.getAllText(Page).text().toStdString());
         }
+
+        Details.Language = DetectTextLanguage(Pages);
 
         QPdfBookmarkModel Bookmarks;
         Bookmarks.setDocument(&Document);
         AddBookmarks(Bookmarks, QModelIndex{}, Details.Chapters);
+
+        return Details;
+    }
+
+    void ApplyBookMetadata(FTReaderDocumentDetails& Details, const QString& FilePath)
+    {
+        const std::optional<FTBookMetadata> Metadata{ReadBookMetadata(FilePath.toStdString())};
+
+        if (!Metadata.has_value())
+        {
+            return;
+        }
+
+        if (Details.Language == UndeterminedLanguage && !Metadata->Language.empty())
+        {
+            Details.Language = Metadata->Language;
+        }
+
+        Details.Description = Metadata->Description;
+    }
+
+    FTReaderDocumentDetails BuildDetails(const FTReaderDocument& Document, const QString& FilePath)
+    {
+        FTReaderDocumentDetails Details;
+        Details.Language = DetectTextLanguage(Document.Paragraphs);
+        Details.Chapters = Document.Chapters;
+
+        qCInfo(LogApp) << "Reader: detected language" << QString::fromStdString(Details.Language) << "for" << FilePath;
+
+        for (const std::string& Paragraph : Document.Paragraphs)
+        {
+            Details.WordCount += CountWords(QString::fromStdString(Paragraph));
+        }
+
+        ApplyBookMetadata(Details, FilePath);
+
+        return Details;
+    }
+
+    FTReaderDocumentDetails BuildSampledDetails(const FTBookSample& Sample, const QString& FilePath)
+    {
+        FTReaderDocumentDetails Details;
+        Details.Language = DetectTextLanguage(Sample.Paragraphs);
+        Details.PageCount = static_cast<int64_t>(std::ceil(double(Sample.EstimatedWords) / WordsPerPage));
+
+        qCInfo(LogApp) << "Reader: detected language" << QString::fromStdString(Details.Language) << "for" << FilePath
+                       << "from a text sample, about" << Details.PageCount << "pages";
+
+        ApplyBookMetadata(Details, FilePath);
 
         return Details;
     }
@@ -227,28 +316,14 @@ namespace
             return ReadPdfDetails(FilePath);
         }
 
-        const std::optional<FTReaderDocument> Extracted{ExtractDocument(FilePath, Format)};
+        const std::optional<FTBookSample> Sample{SampleBookText(FilePath.toStdString())};
 
-        if (!Extracted.has_value())
+        if (!Sample.has_value())
         {
             return std::nullopt;
         }
 
-        FTReaderDocumentDetails Details;
-        Details.Chapters = Extracted->Chapters;
-
-        for (const std::string& Paragraph : Extracted->Paragraphs)
-        {
-            Details.WordCount += CountWords(QString::fromStdString(Paragraph));
-        }
-
-        if (const std::optional<FTBookMetadata> Metadata{ReadBookMetadata(FilePath.toStdString())})
-        {
-            Details.Language = Metadata->Language;
-            Details.Description = Metadata->Description;
-        }
-
-        return Details;
+        return BuildSampledDetails(*Sample, FilePath);
     }
 
     QVariantMap DetailsToVariant(const QString& Id, const FTReaderDocumentDetails& Details, int64_t Position)
@@ -269,7 +344,8 @@ namespace
         }
 
         const QLocale Locale{QString::fromStdString(Details.Language)};
-        const QString Language{Details.Language.empty() || Locale.language() == QLocale::C
+        const QString Language{Details.Language.empty() || Details.Language == UndeterminedLanguage
+                                       || Locale.language() == QLocale::C
                                    ? QString()
                                    : QLocale::languageToString(Locale.language())};
         const int64_t Pages{Details.PageCount > 0
@@ -280,7 +356,6 @@ namespace
                            {QStringLiteral("loading"), false},
                            {QStringLiteral("language"), Language},
                            {QStringLiteral("description"), QString::fromStdString(Details.Description)},
-                           {QStringLiteral("words"), static_cast<qint64>(Details.WordCount)},
                            {QStringLiteral("pages"), static_cast<qint64>(Pages)},
                            {QStringLiteral("chapters"), Chapters},
                            {QStringLiteral("chapter"), Chapters.isEmpty() ? 0 : std::max(1, Current)}};
@@ -314,9 +389,9 @@ namespace
         }
     }
 
-    QString ReadAuthorAndCover(const QString& FilePath, const QString& CoverBasePath)
+    QString ReadAuthorAndCover(const QString& FilePath, EFTDocumentFormat Format, const QString& CoverBasePath)
     {
-        if (DetectDocumentFormat(FilePath.toStdString()) == EFTDocumentFormat::Pdf)
+        if (Format == EFTDocumentFormat::Pdf)
         {
             QPdfDocument Document;
             Document.load(FilePath);
@@ -429,7 +504,25 @@ ReaderController::ReaderController(QObject* Parent)
 
     connect(this, &ReaderController::currentDocumentChanged, this, [this]()
     {
+        UpdateBookLanguage();
         ReadAloud.SetTitle(CurrentTitle);
+
+        if (bIsPdf && bReading)
+        {
+            if (ReadPdfDetailsOnOpen())
+            {
+                PdfNarration.Clear();
+            }
+            else
+            {
+                PdfNarration.Load(CurrentPath);
+            }
+        }
+        else
+        {
+            PdfNarration.Clear();
+        }
+
         LoadReadAloudPlace();
         ApplyKeepScreenOn(bReading && !bUnreadable);
         UpdateVolumeKeys();
@@ -441,6 +534,13 @@ ReaderController::ReaderController(QObject* Parent)
     });
 
     connect(&ReadAloud, &ReaderReadAloud::savedChanged, this, &ReaderController::SaveReadAloudPlace);
+    connect(&PdfNarration, &ReaderPdfNarration::changed, this, &ReaderController::OnPdfNarrationChanged);
+    connect(&PdfNarration, &ReaderPdfNarration::windowChanged, this, [this]()
+    {
+        ReadAloud.stop();
+        LoadReadAloudPlace();
+    });
+    ReadAloud.SetParagraphsWanted([this](int Paragraph) { PdfNarration.ExtendAfter(Paragraph); });
 
     connect(&AppReaderSettings::Get(), &AppReaderSettings::changed, this, [this]()
     {
@@ -694,10 +794,15 @@ void ReaderController::refresh()
 
     std::vector<QVariantMap> Entries;
     std::unordered_set<std::string> Linked;
-    QVariantList PendingMetadata;
+    std::vector<FTPendingBookMetadata> PendingMetadata;
 
     for (FTReaderDocumentRow Row : AppDatabase::Get().GetReaderLibrary().ListDocuments())
     {
+        if (const auto CloudBook{CloudBooks.find(Row.CloudId)}; CloudBook != CloudBooks.end())
+        {
+            FollowCloudTitle(Row, CloudBook->second);
+        }
+
         if (const std::optional<std::string> Renamed{FileNameTitle(Row)})
         {
             AppDatabase::Get().GetReaderLibrary().SetTitle(Row.Id, *Renamed);
@@ -761,7 +866,13 @@ void ReaderController::refresh()
 
         if (Row.bExists && !Row.bMetadataRead)
         {
-            PendingMetadata.append(QVariant{QVariantList{QString::fromStdString(Row.Id), AbsolutePath}});
+            const bool bNeedsDetails{!AppDatabase::Get().GetReaderLibrary().FindDetails(Row.Id).has_value()};
+            const EFTDocumentFormat StoredFormat{ParseDocumentFormat(Row.Format)};
+            const EFTDocumentFormat Format{StoredFormat == EFTDocumentFormat::Unknown
+                                               ? DetectDocumentFormat(Row.FilePath)
+                                               : StoredFormat};
+            PendingMetadata.push_back({QString::fromStdString(Row.Id), QString::fromStdString(Row.FilePath),
+                                       Format, bNeedsDetails});
         }
 
         Entries.push_back(std::move(Entry));
@@ -879,7 +990,7 @@ void ReaderController::refresh()
 
     emit documentsChanged();
 
-    ReadMetadata(PendingMetadata);
+    ReadMetadata(std::move(PendingMetadata));
 }
 
 QString ReaderController::GetCoversDirectory() const
@@ -914,9 +1025,9 @@ QHash<QString, QString> ReaderController::ListCovers() const
     return Result;
 }
 
-void ReaderController::ReadMetadata(const QVariantList& Pending)
+void ReaderController::ReadMetadata(std::vector<FTPendingBookMetadata> Pending)
 {
-    if (Pending.isEmpty() || bReadingMetadata)
+    if (Pending.empty() || bReadingMetadata)
     {
         return;
     }
@@ -927,28 +1038,45 @@ void ReaderController::ReadMetadata(const QVariantList& Pending)
     {
         qCWarning(LogApp) << "Reader: no folder for book covers at" << Directory;
 
+        ReleaseImportUploads(true);
+
         return;
     }
 
     bReadingMetadata = true;
 
-    qCInfo(LogApp) << "Reader: reading the author and cover of" << Pending.size() << "books";
+    qCInfo(LogApp) << "Reader: reading the author, cover and details of" << Pending.size() << "books";
 
     QPointer<ReaderController> Self{this};
 
-    QThreadPool::globalInstance()->start([Self, Pending, Directory]()
+    QThreadPool::globalInstance()->start([Self, Pending = std::move(Pending), Directory]()
     {
         QVariantMap Authors;
+        std::unordered_map<std::string, FTReaderDocumentDetails> DetailsById;
 
-        for (const QVariant& Item : Pending)
+        for (const FTPendingBookMetadata& Entry : Pending)
         {
-            const QVariantList Pair = Item.toList();
-            const QString Id{Pair.value(0).toString()};
+            Authors.insert(Entry.Id, ReadAuthorAndCover(Entry.FilePath, Entry.Format,
+                                                       Directory + QLatin1Char('/') + Entry.Id));
 
-            Authors.insert(Id, ReadAuthorAndCover(Pair.value(1).toString(), Directory + QLatin1Char('/') + Id));
+            if (!Entry.bNeedsDetails)
+            {
+                continue;
+            }
+
+            const std::optional<FTReaderDocumentDetails> Read{ReadDocumentDetails(Entry.FilePath, Entry.Format)};
+
+            if (!Read.has_value())
+            {
+                qCWarning(LogApp) << "Reader: could not read the details of" << Entry.Id << "after import";
+
+                continue;
+            }
+
+            DetailsById.emplace(Entry.Id.toStdString(), *Read);
         }
 
-        QMetaObject::invokeMethod(qGuiApp, [Self, Authors]()
+        QMetaObject::invokeMethod(qGuiApp, [Self, Authors, DetailsById]()
         {
             if (Self.isNull())
             {
@@ -964,7 +1092,17 @@ void ReaderController::ReadMetadata(const QVariantList& Pending)
                 }
             }
 
+            for (const auto& [Id, Read] : DetailsById)
+            {
+                if (!AppDatabase::Get().GetReaderLibrary().SetDetails(Id, Read))
+                {
+                    qCWarning(LogApp) << "Reader: could not record the details of" << QString::fromStdString(Id)
+                                      << ":" << QString::fromStdString(AppDatabase::Get().GetReaderLibrary().GetLastError());
+                }
+            }
+
             Self->bReadingMetadata = false;
+            Self->ReleaseImportUploads(false);
             Self->refresh();
         }, Qt::QueuedConnection);
     });
@@ -1333,10 +1471,17 @@ void ReaderController::renameDocument(const QString& Id, const QString& Title)
         return;
     }
 
-    if (!Row->CloudId.empty() && !AppDatabase::Get().GetCloudBooks().SetTitle(Row->CloudId, Name.toStdString()))
+    if (!Row->CloudId.empty())
     {
-        qCWarning(LogApp) << "Reader: could not rename the cloud copy of" << Id << ":"
-                          << QString::fromStdString(AppDatabase::Get().GetCloudBooks().GetLastError());
+        if (AppDatabase::Get().GetCloudBooks().SetTitle(Row->CloudId, Name.toStdString()))
+        {
+            AppDatabase::Get().GetReaderLibrary().SetCloudTitle(Row->Id, Name.toStdString());
+        }
+        else
+        {
+            qCWarning(LogApp) << "Reader: could not rename the cloud copy of" << Id << ":"
+                              << QString::fromStdString(AppDatabase::Get().GetCloudBooks().GetLastError());
+        }
     }
 
     qCInfo(LogApp) << "Reader: renamed" << Id << "to" << Name;
@@ -1472,37 +1617,12 @@ void ReaderController::recordAddedCard(const QString& CardId)
 
 QVariantList ReaderController::bookWords(const QString& Key) const
 {
-    QVariantList Result;
-
     if (Key.isEmpty() || !AppDatabase::Get().IsReady())
     {
-        return Result;
+        return {};
     }
 
-    FTCardRepository& Cards{AppDatabase::Get().GetCardRepository()};
-    const std::string Language{Cards.GetTargetLanguage()};
-
-    for (const std::string& CardId : AppDatabase::Get().GetBookShelf().ListBookCards(Key.toStdString()))
-    {
-        const std::optional<FTCardHandle> Handle{Cards.LoadCard(CardId)};
-
-        if (!Handle.has_value() || *Handle == nullptr)
-        {
-            continue;
-        }
-
-        const FTCard& Card{**Handle};
-
-        Result.append(QVariantMap{{QStringLiteral("id"), QString::fromStdString(Card.Id)},
-                                  {QStringLiteral("word"), QString::fromStdString(GetDisplayWord(Card, Language))},
-                                  {QStringLiteral("translation"), QString::fromStdString(Card.Translation)},
-                                  {QStringLiteral("partOfSpeech"), QString::fromStdString(Card.PartOfSpeech)},
-                                  {QStringLiteral("gender"), Card.Gender.value_or(-1)},
-                                  {QStringLiteral("stage"), Card.LeitnerStage},
-                                  {QStringLiteral("completed"), IsCompleted(Card)}});
-    }
-
-    return Result;
+    return AppCards::ListBookWords(Key.toStdString());
 }
 
 QVariantMap ReaderController::GetDetails() const
@@ -1554,8 +1674,22 @@ void ReaderController::LoadReadAloudPlace()
         Row = AppDatabase::Get().GetReaderLibrary().FindDocument(CurrentId.toStdString());
     }
 
-    ReadAloud.SetSavedPlace(Row.has_value() ? static_cast<int>(Row->ReadAloudParagraph) : -1,
-                            Row.has_value() ? static_cast<int>(Row->ReadAloudCharacter) : 0);
+    const int Paragraph{Row.has_value() ? static_cast<int>(Row->ReadAloudParagraph) : -1};
+    const int Character{Row.has_value() ? static_cast<int>(Row->ReadAloudCharacter) : 0};
+
+    if (!bIsPdf)
+    {
+        ReadAloud.SetSavedPlace(Paragraph, Character);
+
+        return;
+    }
+
+    const std::optional<FTPdfUnitPlace> Place{Paragraph >= 0 && PdfNarration.IsAvailable()
+                                                  ? PdfNarration.ToUnitPlace(Paragraph, Character)
+                                                  : std::nullopt};
+
+    ReadAloud.SetSavedPlace(Place.has_value() ? Place->Unit : -1,
+                            Place.has_value() ? static_cast<int>(Place->Character) : 0);
 }
 
 void ReaderController::SaveReadAloudPlace()
@@ -1565,8 +1699,77 @@ void ReaderController::SaveReadAloudPlace()
         return;
     }
 
-    AppDatabase::Get().GetReaderLibrary().SetReadAloudPlace(CurrentId.toStdString(), ReadAloud.GetSavedParagraph(),
-                                                            ReadAloud.GetSavedCharacter());
+    int Paragraph{ReadAloud.GetSavedParagraph()};
+    int Character{ReadAloud.GetSavedCharacter()};
+
+    if (bIsPdf)
+    {
+        const std::optional<FTPdfPagePlace> Place{PdfNarration.ToPagePlace(Paragraph, Character)};
+
+        if (!Place.has_value())
+        {
+            return;
+        }
+
+        Paragraph = Place->Page;
+        Character = static_cast<int>(Place->Character);
+    }
+
+    AppDatabase::Get().GetReaderLibrary().SetReadAloudPlace(CurrentId.toStdString(), Paragraph, Character);
+}
+
+void ReaderController::OnPdfNarrationChanged()
+{
+    ReadAloud.UseParagraphs(PdfNarration.GetUnits());
+    LoadReadAloudPlace();
+}
+
+bool ReaderController::ReadPdfDetailsOnOpen()
+{
+    if (CurrentId.isEmpty() || !AppDatabase::Get().IsReady()
+        || AppDatabase::Get().GetReaderLibrary().FindDetails(CurrentId.toStdString()).has_value())
+    {
+        return false;
+    }
+
+    const QString Id{CurrentId};
+    const QString FilePath{CurrentPath};
+    const QPointer<ReaderController> Self{this};
+
+    qCInfo(LogApp) << "Reader: reading the details of" << Id << "to learn its language";
+
+    QThreadPool::globalInstance()->start([Self, Id, FilePath]()
+    {
+        const std::optional<FTReaderDocumentDetails> Read{ReadPdfDetails(FilePath)};
+
+        QMetaObject::invokeMethod(qGuiApp, [Self, Id, FilePath, Read]()
+        {
+            if (Self.isNull())
+            {
+                return;
+            }
+
+            if (!Read.has_value())
+            {
+                qCWarning(LogApp) << "Reader: could not read the details of" << Id;
+            }
+            else if (!AppDatabase::Get().GetReaderLibrary().SetDetails(Id.toStdString(), *Read))
+            {
+                qCWarning(LogApp) << "Reader: could not record the details of" << Id << ":"
+                                  << QString::fromStdString(AppDatabase::Get().GetReaderLibrary().GetLastError());
+            }
+
+            if (Self->CurrentId != Id || !Self->bIsPdf || !Self->bReading)
+            {
+                return;
+            }
+
+            Self->UpdateBookLanguage();
+            Self->PdfNarration.Load(FilePath);
+        }, Qt::QueuedConnection);
+    });
+
+    return true;
 }
 
 void ReaderController::savePositionCount(int Count)
@@ -1661,7 +1864,7 @@ void ReaderController::OpenFile(const QString& FilePath, const QString& DisplayN
 
     if (bNew)
     {
-        UploadImported(QString::fromStdString(Id), FilePath);
+        UploadImported(QString::fromStdString(Id), FilePath, bPdf);
     }
 
     const std::optional<FTReaderDocumentRow> Recorded{AppDatabase::Get().GetReaderLibrary().FindDocument(Id)};
@@ -1672,6 +1875,8 @@ void ReaderController::OpenFile(const QString& FilePath, const QString& DisplayN
     CurrentPosition = 0;
     CurrentZoom = 0.0;
     CurrentScroll = QPointF();
+
+    emit importedDocumentOpening();
 
     if (bPdf)
     {
@@ -1779,7 +1984,7 @@ void ReaderController::locateDocument(const QString& Id)
 #endif
 }
 
-void ReaderController::UploadImported(const QString& Id, const QString& FilePath)
+void ReaderController::UploadImported(const QString& Id, const QString& FilePath, bool bTitleSettled)
 {
     if (!AppReaderSettings::Get().IsUploadingImportedBooks() || !IsCloudAvailable())
     {
@@ -1800,9 +2005,70 @@ void ReaderController::UploadImported(const QString& Id, const QString& FilePath
         return;
     }
 
-    qCInfo(LogApp) << "Reader: uploading" << FilePath << "on import," << Size << "bytes";
+    qCInfo(LogApp) << "Reader: holding the upload of" << FilePath << "until its title and author are read," << Size
+                   << "bytes";
 
-    uploadDocument(Id);
+    ImportUploads.insert(Id, FTImportUpload{FilePath, bTitleSettled});
+
+    ReleaseImportUploads(false);
+}
+
+void ReaderController::SettleImportTitle(const QString& FilePath)
+{
+    bool bSettled = false;
+
+    for (auto Iterator = ImportUploads.begin(); Iterator != ImportUploads.end(); ++Iterator)
+    {
+        if (Iterator->FilePath == FilePath)
+        {
+            Iterator->bTitleSettled = true;
+            bSettled = true;
+        }
+    }
+
+    if (bSettled)
+    {
+        ReleaseImportUploads(false);
+    }
+}
+
+void ReaderController::ReleaseImportUploads(bool bWithoutAuthor)
+{
+    QStringList Ready;
+
+    for (auto Iterator = ImportUploads.begin(); Iterator != ImportUploads.end();)
+    {
+        if (!Iterator->bTitleSettled)
+        {
+            ++Iterator;
+
+            continue;
+        }
+
+        const std::optional<FTReaderDocumentRow> Row{
+            AppDatabase::Get().GetReaderLibrary().FindDocument(Iterator.key().toStdString())};
+
+        if (Row.has_value() && Row->bExists && !Row->bMetadataRead && !bWithoutAuthor)
+        {
+            ++Iterator;
+
+            continue;
+        }
+
+        if (Row.has_value())
+        {
+            Ready.append(Iterator.key());
+        }
+
+        Iterator = ImportUploads.erase(Iterator);
+    }
+
+    for (const QString& Id : std::as_const(Ready))
+    {
+        qCInfo(LogApp) << "Reader: uploading" << Id << "on import";
+
+        uploadDocument(Id);
+    }
 }
 
 void ReaderController::uploadDocument(const QString& Id)
@@ -1913,7 +2179,13 @@ void ReaderController::StartReflowLoad(quint64 Generation, const QString& FilePa
     QElapsedTimer PipelineTimer;
     PipelineTimer.start();
 
-    QThreadPool::globalInstance()->start([Guard, Generation, FilePath, Format, bRecordTitle,
+    const std::optional<FTReaderDocumentDetails> Stored{AppDatabase::Get().IsReady()
+                                                            ? AppDatabase::Get().GetReaderLibrary().FindDetails(CurrentId.toStdString())
+                                                            : std::nullopt};
+    const bool bNeedsDetails{AppDatabase::Get().IsReady()
+                             && (!Stored.has_value() || Stored->Language.empty() || Stored->WordCount == 0)};
+
+    QThreadPool::globalInstance()->start([Guard, Generation, FilePath, Format, bRecordTitle, bNeedsDetails,
                                           PipelineTimer]()
     {
         QElapsedTimer ExtractTimer;
@@ -1921,6 +2193,9 @@ void ReaderController::StartReflowLoad(quint64 Generation, const QString& FilePa
 
         const std::optional<FTReaderDocument> Extracted = ExtractDocument(FilePath, Format);
         const qint64 ExtractMs = ExtractTimer.elapsed();
+        const std::optional<FTReaderDocumentDetails> Details{bNeedsDetails && Extracted.has_value()
+                                                                 ? std::optional{BuildDetails(*Extracted, FilePath)}
+                                                                 : std::nullopt};
 
         if (!Guard)
         {
@@ -1928,7 +2203,7 @@ void ReaderController::StartReflowLoad(quint64 Generation, const QString& FilePa
         }
 
         QMetaObject::invokeMethod(Guard.data(),
-            [Guard, Generation, FilePath, Format, bRecordTitle, Extracted, ExtractMs, PipelineTimer]()
+            [Guard, Generation, FilePath, Format, bRecordTitle, Extracted, Details, ExtractMs, PipelineTimer]()
         {
             if (Guard)
             {
@@ -1938,7 +2213,7 @@ void ReaderController::StartReflowLoad(quint64 Generation, const QString& FilePa
                                 << "paragraphs" << (Extracted.has_value()
                                     ? qsizetype(Extracted->Paragraphs.size()) : qsizetype(0));
 
-                Guard->OnReflowExtracted(Generation, FilePath, Format, bRecordTitle, Extracted);
+                Guard->OnReflowExtracted(Generation, FilePath, Format, bRecordTitle, Extracted, Details);
             }
         }, Qt::QueuedConnection);
     });
@@ -1946,10 +2221,23 @@ void ReaderController::StartReflowLoad(quint64 Generation, const QString& FilePa
 
 void ReaderController::OnReflowExtracted(quint64 Generation, const QString& FilePath,
                                          EFTDocumentFormat Format, bool bRecordTitle,
-                                         std::optional<FTReaderDocument> Extracted)
+                                         std::optional<FTReaderDocument> Extracted,
+                                         const std::optional<FTReaderDocumentDetails>& Details)
 {
     if (Generation != PendingGeneration)
     {
+        if (bRecordTitle && Extracted.has_value() && !Extracted->Title.empty())
+        {
+            AppDatabase::Get().GetReaderLibrary().AddDocument(
+                FilePath.toStdString(), Extracted->Title, DocumentFormatName(Format));
+            refresh();
+        }
+
+        if (bRecordTitle)
+        {
+            SettleImportTitle(FilePath);
+        }
+
         return;
     }
 
@@ -1963,6 +2251,8 @@ void ReaderController::OnReflowExtracted(quint64 Generation, const QString& File
         emit currentDocumentChanged();
 
         qCWarning(LogApp) << "Reader: no readable text in" << FilePath;
+
+        SettleImportTitle(FilePath);
 
         return;
     }
@@ -2001,6 +2291,16 @@ void ReaderController::OnReflowExtracted(quint64 Generation, const QString& File
         }
 
         refresh();
+
+        SettleImportTitle(FilePath);
+    }
+
+    FTReaderRepository& Library{AppDatabase::Get().GetReaderLibrary()};
+
+    if (Details.has_value() && !Library.SetDetails(CurrentId.toStdString(), *Details))
+    {
+        qCWarning(LogApp) << "Reader: could not record the details of" << CurrentId << ":"
+                          << QString::fromStdString(Library.GetLastError());
     }
 
     bReading = true;
@@ -2068,6 +2368,21 @@ QString ReaderController::GetCurrentTitle() const
     return CurrentTitle;
 }
 
+ReaderBookLanguage* ReaderController::GetBookLanguage()
+{
+    return &BookLanguage;
+}
+
+void ReaderController::UpdateBookLanguage()
+{
+    BookLanguage.Update(CurrentId);
+
+    const std::string Language{BookLanguage.GetLanguage().toStdString()};
+
+    ReadAloud.SetLanguage(Language);
+    Vocabulary.SetLanguage(Language);
+}
+
 QString ReaderController::GetCurrentPath() const
 {
     return CurrentPath;
@@ -2091,6 +2406,11 @@ ReaderVocabulary* ReaderController::GetVocabulary()
 ReaderReadAloud* ReaderController::GetReadAloud()
 {
     return &ReadAloud;
+}
+
+ReaderPdfNarration* ReaderController::GetPdfNarration()
+{
+    return &PdfNarration;
 }
 
 bool ReaderController::IsLoading() const

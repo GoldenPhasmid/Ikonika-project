@@ -8,12 +8,12 @@ Steps to ship a new Android release to Play Console. For the one-time setup this
 
 | | |
 | --- | --- |
-| Git tag | `0.9.1` |
-| Version name | `0.9.1` |
-| Version code | `23` |
-| Built | 2026-11-15 |
+| Git tag | `0.9.2` |
+| Version name | `0.9.2` |
+| Version code | `24` |
+| Built | 2026-11-18 |
 
-The next upload needs a version code above 23.
+The next upload needs a version code above 24.
 
 ## Prerequisites (one-time, not per release)
 

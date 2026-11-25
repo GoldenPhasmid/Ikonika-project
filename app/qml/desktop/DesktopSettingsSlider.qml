@@ -1,5 +1,4 @@
 import QtQuick
-import QtQuick.Controls.Basic
 import QtQuick.Layouts
 
 Item
@@ -69,90 +68,18 @@ Item
             wrapMode: Text.WordWrap
         }
 
-        Slider
+        DesktopSlider
         {
-            id: slider
-
             Layout.fillWidth: true
-            implicitHeight: AppMetrics.chipHeight
 
             from: root.from
             to: root.to
-            stepSize: root.step
-            snapMode: Slider.SnapAlways
-            value: root.value
+            step: root.step
+            current: root.value
             enabled: root.interactive
-            focusPolicy: Qt.StrongFocus
-            hoverEnabled: true
-            padding: 0
+            accessibleTitle: root.title
 
-            Accessible.name: root.title
-
-            onMoved: if (Math.round(slider.value) !== root.value) root.edited(Math.round(slider.value))
-
-            background: Item
-            {
-                x: slider.leftPadding
-                y: slider.topPadding + slider.availableHeight / 2 - height / 2
-                width: slider.availableWidth
-                height: AppMetrics.progressBarHeight
-
-                Rectangle
-                {
-                    anchors.fill: parent
-                    radius: height / 2
-                    color: AppTheme.colourFaint
-                }
-
-                Rectangle
-                {
-                    width: slider.visualPosition * parent.width
-                    height: parent.height
-                    radius: height / 2
-                    color: AppTheme.colourText
-                }
-
-                Repeater
-                {
-                    model: root.step > 0 ? Math.floor((root.to - root.from) / root.step) + 1 : 0
-
-                    delegate: Rectangle
-                    {
-                        required property int index
-
-                        readonly property real ratio: index / Math.max(1, Math.floor((root.to - root.from) / root.step))
-
-                        x: ratio * (parent.width - width)
-                        anchors.verticalCenter: parent.verticalCenter
-                        width: AppMetrics.borderWidth * 2
-                        height: AppMetrics.gapSmall
-                        radius: width / 2
-                        visible: (root.to - root.from) / root.step <= 20
-                                 && parent.width * root.step / (root.to - root.from) >= AppMetrics.sliderTickSpacing
-                        color: ratio <= slider.visualPosition ? AppTheme.colourText : AppTheme.colourBorder
-                    }
-                }
-            }
-
-            handle: Rectangle
-            {
-                x: slider.leftPadding + slider.visualPosition * (slider.availableWidth - width)
-                y: slider.topPadding + slider.availableHeight / 2 - height / 2
-                width: AppMetrics.gapLarge - AppMetrics.gapTight
-                height: width
-                radius: width / 2
-                color: AppTheme.colourPanel
-                border.width: AppMetrics.focusRingWidth
-                border.color: slider.visualFocus ? AppTheme.colourAccent : AppTheme.colourText
-                scale: slider.pressed ? 1.15 : (slider.hovered ? 1.08 : 1.0)
-
-                Behavior on scale { NumberAnimation { duration: AppMetrics.motionFast } }
-            }
-
-            HoverHandler
-            {
-                cursorShape: Qt.PointingHandCursor
-            }
+            onEdited: function(newValue) { root.edited(newValue) }
         }
     }
 

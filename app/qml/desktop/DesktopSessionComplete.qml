@@ -10,6 +10,7 @@ FocusScope
     property int wordCount: 0
     property int elapsedSeconds: 0
     property string countLabel: qsTr("words trained")
+    property string doneText: qsTr("Done")
 
     signal doneClicked()
 
@@ -68,7 +69,6 @@ FocusScope
                 name: "check"
                 width: AppMetrics.completeGlyphSize
                 height: width
-                strokeWidth: AppMetrics.iconStrokeBold
                 color: AppTheme.colourCorrect
             }
         }
@@ -145,7 +145,7 @@ FocusScope
             Layout.fillWidth: true
             large: true
             tone: "primary"
-            text: qsTr("Done")
+            text: root.doneText
             keyHint: qsTr("Enter")
 
             onClicked: root.doneClicked()

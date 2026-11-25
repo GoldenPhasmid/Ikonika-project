@@ -38,6 +38,7 @@ public:
     FEachOnceSelector(int32 Count, bool bInfinite);
 
     void Reset(int32 InCount, bool bInInfinite);
+    void Rewind();
 
     virtual ~FEachOnceSelector() override;
     virtual std::optional<int> Next() override;

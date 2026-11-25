@@ -10,6 +10,7 @@
 
 class AppFileTransfer;
 struct FTCatalogPackage;
+struct FTransferJob;
 
 class AppPackageDownloader : public QObject
 {
@@ -65,6 +66,7 @@ signals:
 
 private:
     bool Begin(const QString& Id);
+    FTransferJob MakeTransferJob(const FTCatalogPackage& Package) const;
     bool Unpack(const FTCatalogPackage& Package, const QString& ArchiveFilePath);
     void FailImport(const QString& Id, const QString& Message);
     void StartNextInQueue();

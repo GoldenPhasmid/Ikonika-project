@@ -9,12 +9,12 @@ Item
     property color iconColour: AppTheme.colourText
     property bool filled: false
     property bool marked: false
-    property real iconSize: AppMetrics.headerActionIconSize
+    property real iconSize: AppMetrics.iconSize
 
     signal clicked()
 
-    implicitWidth: AppMetrics.exerciseActionIconTapWidth
-    implicitHeight: AppMetrics.buttonHeightLarge
+    implicitWidth: AppMetrics.iconTapSize
+    implicitHeight: AppMetrics.iconTapSize
 
     Accessible.role: Accessible.Button
     Accessible.name: root.text

@@ -27,6 +27,7 @@ struct FExerciseSpeech
 {
     QString Text;
     bool bSentence = false;
+    bool bVerbatim = false;
 };
 
 class WrittenProductionController : public ExerciseControllerBase

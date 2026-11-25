@@ -97,7 +97,7 @@ Item
         { key: "training", title: qsTr("Training"),
           description: qsTr("Daily goal and stages") },
         { key: "review", title: qsTr("Review"),
-          description: qsTr("Missed reviews and stages") },
+          description: qsTr("Schedule and stages") },
         { key: "sound", title: qsTr("Sound"),
           description: qsTr("Speech and voice") },
         { key: "reader", title: qsTr("Reader"),
@@ -205,6 +205,7 @@ Item
         anchors.fill: parent
 
         activeTab: "settings"
+        contentMaximumWidth: AppMetrics.shellMaximumWidth
         headerTitle: root.categoryTitle
         showBack: true
         showTabBar: false

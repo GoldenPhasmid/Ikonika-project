@@ -36,7 +36,7 @@ Item
     signal restartRequested()
     signal completeRequested()
     signal wordHeld(string word)
-    signal wordTapped(string word, string sentence)
+    signal wordTapped(string word, string sentence, var place)
 
     function advance()
     {
@@ -278,7 +278,7 @@ Item
                     tapEnabled: true
 
                     onWordHeld: function(word) { root.wordHeld(word) }
-                    onWordTapped: function(word, sentence) { root.wordTapped(word, sentence) }
+                    onWordTapped: function(word, sentence, place) { root.wordTapped(word, sentence, place) }
                 },
                 Text
                 {

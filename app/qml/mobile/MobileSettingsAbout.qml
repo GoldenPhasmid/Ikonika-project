@@ -69,7 +69,10 @@ ColumnLayout
           url: "https://www.qt.io" },
         { title: qsTr("Inter"),
           description: qsTr("The typeface, by Rasmus Andersson and the Inter Project Authors. SIL Open Font License 1.1"),
-          url: "https://rsms.me/inter" }
+          url: "https://rsms.me/inter" },
+        { title: qsTr("EB Garamond"),
+          description: qsTr("The typeface on book covers, by the EB Garamond Project Authors. SIL Open Font License 1.1"),
+          url: "https://github.com/octaviopardo/EBGaramond12" }
     ]
 
     MobileSettingsGroup

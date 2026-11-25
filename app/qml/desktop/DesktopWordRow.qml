@@ -16,7 +16,6 @@ ItemDelegate
     property bool completed: false
     property int maxStage: 1
     property bool selected: false
-    property bool italicPartOfSpeech: true
 
     readonly property bool learning: root.stage >= 0 || root.completed
 
@@ -71,7 +70,6 @@ ItemDelegate
             visible: root.partOfSpeech.length > 0
             text: root.partOfSpeech
             font.pixelSize: AppMetrics.fontSmall
-            font.italic: root.italicPartOfSpeech
             color: AppTheme.colourSubtle
         }
 

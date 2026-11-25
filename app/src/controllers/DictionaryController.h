@@ -7,6 +7,8 @@
 #include <QVariantMap>
 #include <QtQml/qqmlregistration.h>
 
+class AppMachineTranslation;
+
 class DictionaryController : public QObject
 {
     Q_OBJECT
@@ -16,6 +18,8 @@ class DictionaryController : public QObject
     Q_PROPERTY(QVariantList results READ GetResults NOTIFY resultsChanged)
     Q_PROPERTY(QString query READ GetQuery NOTIFY resultsChanged)
     Q_PROPERTY(bool nativeSearch READ IsNativeSearch WRITE SetNativeSearch NOTIFY nativeSearchChanged)
+    Q_PROPERTY(bool separatePartsOfSpeech READ IsSeparatingPartsOfSpeech WRITE SetSeparatePartsOfSpeech)
+    Q_PROPERTY(QString language READ GetLanguage WRITE SetLanguage NOTIFY languagesChanged)
     Q_PROPERTY(QString targetLanguageCode READ GetTargetLanguageCode NOTIFY languagesChanged)
     Q_PROPERTY(QString nativeLanguageCode READ GetNativeLanguageCode NOTIFY languagesChanged)
 
@@ -27,6 +31,7 @@ class DictionaryController : public QObject
 
     Q_PROPERTY(QString machineTranslation READ GetMachineTranslation NOTIFY translationChanged)
     Q_PROPERTY(bool translating READ IsTranslating NOTIFY translationChanged)
+    Q_PROPERTY(QObject* machinePack READ GetMachinePack CONSTANT)
     Q_PROPERTY(QString formTerm READ GetFormTerm NOTIFY translationChanged)
     Q_PROPERTY(QString formReading READ GetFormReading NOTIFY translationChanged)
     Q_PROPERTY(QVariantMap formTranslations READ GetFormTranslations NOTIFY translationChanged)
@@ -51,11 +56,19 @@ public:
     Q_INVOKABLE QString cardMeaningGist(const QString& CardId) const;
     Q_INVOKABLE QString cardHint(const QString& CardId) const;
     Q_INVOKABLE QString sentenceAt(const QString& Text, int Position) const;
+    Q_INVOKABLE bool markKnown(const QString& Word, const QString& PartOfSpeech);
+    Q_INVOKABLE bool unmarkKnown(const QString& Word, const QString& PartOfSpeech);
 
     QVariantList GetResults() const;
     QString GetQuery() const;
     bool IsNativeSearch() const;
     void SetNativeSearch(bool bInNativeSearch);
+    bool IsSeparatingPartsOfSpeech() const;
+    void SetSeparatePartsOfSpeech(bool bInSeparate);
+    /** The foreign language looked up. Empty for the language being learned. */
+    QString GetLanguage() const;
+    void SetLanguage(const QString& Value);
+
     QString GetTargetLanguageCode() const;
     QString GetNativeLanguageCode() const;
     QVariantMap GetEntry() const;
@@ -65,6 +78,7 @@ public:
     QVariantList GetPartsOfSpeech() const;
 
     QString GetMachineTranslation() const;
+    QObject* GetMachinePack() const;
     bool IsTranslating() const;
     QString GetFormTerm() const;
     QString GetFormReading() const;
@@ -78,6 +92,7 @@ signals:
     void translationChanged();
 
 private:
+    bool ChangeKnown(const QString& Word, const QString& PartOfSpeech, bool bKnown);
     void ResetTranslation(const QString& Text);
     void RequestTranslation();
     void RequestFormTranslation(const QString& Form, const QString& Query, const QString& Reading);
@@ -93,8 +108,13 @@ private:
     QString TranslationQuery;
     QString MachineTranslation;
     QString LastSearchText;
+    void RefreshMachinePack();
+
+    QString LookupLanguage;
+    AppMachineTranslation* MachinePack = nullptr;
     bool bTranslating = false;
     bool bNativeSearch = false;
+    bool bSeparatePartsOfSpeech = false;
 
     QVariantList Results;
     QVariantMap Entry;

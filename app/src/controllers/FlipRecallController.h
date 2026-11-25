@@ -21,6 +21,7 @@ public:
     explicit FlipRecallController(QObject* Parent = nullptr);
 
     Q_INVOKABLE void advance() override;
+    Q_INVOKABLE void reveal();
     Q_INVOKABLE void answerYes();
     Q_INVOKABLE void answerNo();
 

@@ -13,7 +13,7 @@ Item
 
     signal done()
     signal editCardRequested(var exercise)
-    signal lookupRequested(string word, string sentence)
+    signal lookupRequested(string word, string sentence, var place)
 
     function resume(sessionKey)
     {

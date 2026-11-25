@@ -11,12 +11,12 @@ GridLayout
 
     signal formClicked(string form)
 
-    readonly property var titles: [qsTr("Singular"), qsTr("Plural")]
+    property var titles: [qsTr("Singular"), qsTr("Plural")]
 
     readonly property var cells:
     {
         const listed = []
-        const placed = [0, 0]
+        const placed = root.titles.map(() => 0)
 
         for (const row of root.forms)
         {
@@ -40,7 +40,7 @@ GridLayout
         return cell.label.length > widest.length ? cell.label : widest
     }, "")
 
-    columns: 2
+    columns: root.titles.length
     rowSpacing: AppMetrics.gapSmall
     columnSpacing: AppMetrics.gapMedium
 

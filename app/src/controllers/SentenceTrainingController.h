@@ -115,7 +115,8 @@ private:
 
     void ApplyAvailability(const FAvailability& Result, const std::string& Revision);
 
-    void FinishRefresh(quint64 Serial, uint64_t Generation, bool bOpened, const FAvailability& Result,
+    void FinishRefresh(quint64 Serial, const std::string& TreeLanguage, uint64_t Generation, bool bOpened,
+                       const FAvailability& Result,
                        const std::shared_ptr<const FTSentenceTree>& Tree);
 
     void AdoptController(ExerciseControllerBase* Controller);

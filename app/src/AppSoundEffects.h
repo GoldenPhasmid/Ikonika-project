@@ -26,6 +26,7 @@ public:
     ~AppSoundEffects() override;
 
     void Prewarm();
+    void Stop();
 
     bool IsEnabled() const;
     void SetEnabled(bool bValue);
