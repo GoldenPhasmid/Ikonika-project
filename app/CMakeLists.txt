@@ -509,8 +509,6 @@ set(IKONIKA_MOBILE_QML_FILES
 )
 
 set(IKONIKA_QML_FILES
-    qml/DictionaryMatchedForm.qml
-    qml/DictionaryBenchmark.qml
     qml/LearnedMark.qml
     qml/LanguageFlag.qml
     qml/RankRuler.qml
@@ -534,7 +532,6 @@ set(IKONIKA_QML_FILES
     qml/TextInsertion.js
     qml/MeaningPicks.js
     qml/WelcomeScreen.qml
-    qml/Main.qml
     qml/SwitchingOverlay.qml
     qml/LoadingScreen.qml
     qml/MetaLabel.qml
@@ -544,18 +541,80 @@ set(IKONIKA_QML_FILES
     qml/TimePickerDigit.qml
     qml/TimePickerSheet.qml
     qml/WireButton.qml
-    qml/desktop/DesktopAccountProfile.qml
-    qml/desktop/DesktopSettingsAccount.qml
-    qml/desktop/DesktopActionBar.qml
-    qml/desktop/DesktopAccentBar.qml
-    qml/desktop/DesktopAnswerField.qml
     qml/desktop/DesktopBookCover.qml
-    qml/desktop/DesktopReaderTransition.qml
     qml/desktop/DesktopButton.qml
     qml/desktop/DesktopCard.qml
     qml/desktop/DesktopCenteredFlow.qml
     qml/desktop/DesktopChip.qml
     qml/desktop/DesktopChipRow.qml
+    qml/desktop/DesktopDashedBox.qml
+    qml/desktop/DesktopVocabularyScreen.qml
+    qml/desktop/DesktopAddCardRow.qml
+    qml/desktop/DesktopDeckHeader.qml
+    qml/desktop/DesktopDictionaryEntry.qml
+    qml/desktop/DesktopDictionaryForms.qml
+    qml/desktop/DesktopDivider.qml
+    qml/desktop/DesktopDropdownButton.qml
+    qml/desktop/DesktopFocusRing.qml
+    qml/desktop/DesktopFormField.qml
+    qml/desktop/DesktopFormsGrid.qml
+    qml/desktop/DesktopGoalRing.qml
+    qml/desktop/DesktopIcon.qml
+    qml/desktop/DesktopIconButton.qml
+    qml/desktop/DesktopKeyHint.qml
+    qml/desktop/DesktopLabel.qml
+    qml/desktop/DesktopLanguageEntry.qml
+    qml/desktop/DesktopLearnedMark.qml
+    qml/desktop/DesktopDeckChip.qml
+    qml/desktop/DesktopLevelBadge.qml
+    qml/desktop/DesktopMenu.qml
+    qml/desktop/DesktopMenuItem.qml
+    qml/desktop/DesktopPage.qml
+    qml/desktop/DesktopPopover.qml
+    qml/desktop/DesktopPopoverRow.qml
+    qml/desktop/DesktopProgressBar.qml
+    qml/desktop/DesktopProgressRing.qml
+    qml/desktop/DesktopPromptLabel.qml
+    qml/desktop/DesktopPaneGrip.qml
+    qml/desktop/DesktopMachineTranslation.qml
+    qml/desktop/DesktopScrollBar.qml
+    qml/desktop/DesktopSearchArea.qml
+    qml/desktop/DesktopSearchField.qml
+    qml/desktop/DesktopSectionLabel.qml
+    qml/desktop/DesktopSelect.qml
+    qml/desktop/DesktopSelectionBackground.qml
+    qml/desktop/DesktopSentenceText.qml
+    qml/desktop/DesktopSidePane.qml
+    qml/desktop/DesktopSlider.qml
+    qml/desktop/DesktopSignalBars.qml
+    qml/desktop/DesktopSwitch.qml
+    qml/desktop/DesktopTab.qml
+    qml/desktop/DesktopTextField.qml
+    qml/desktop/DesktopTranslationChip.qml
+    qml/desktop/DesktopGistBadge.qml
+    qml/desktop/DesktopEntryHeader.qml
+    qml/desktop/DesktopMeaningDetails.qml
+    qml/desktop/DesktopMeaningSummary.qml
+    qml/desktop/DesktopSpeakButton.qml
+    qml/desktop/DesktopDictionaryMeaning.qml
+    qml/desktop/DesktopWiggleAnimation.qml
+    qml/desktop/DesktopCardForm.qml
+    qml/desktop/DesktopCardPane.qml
+    qml/desktop/DesktopWordList.qml
+    qml/desktop/DesktopWordRow.qml
+    qml/desktop/DesktopWordsScreen.qml
+)
+
+set(IKONIKA_DESKTOP_QML_FILES
+    qml/DictionaryMatchedForm.qml
+    qml/DictionaryBenchmark.qml
+    qml/Main.qml
+    qml/desktop/DesktopAccountProfile.qml
+    qml/desktop/DesktopSettingsAccount.qml
+    qml/desktop/DesktopActionBar.qml
+    qml/desktop/DesktopAccentBar.qml
+    qml/desktop/DesktopAnswerField.qml
+    qml/desktop/DesktopReaderTransition.qml
     qml/desktop/DesktopChoiceExercise.qml
     qml/desktop/DesktopChoiceGrid.qml
     qml/desktop/DesktopChoiceTile.qml
@@ -563,13 +622,9 @@ set(IKONIKA_QML_FILES
     qml/desktop/DesktopCountBadge.qml
     qml/desktop/DesktopDueDay.qml
     qml/desktop/DesktopDashedRing.qml
-    qml/desktop/DesktopDashedBox.qml
-    qml/desktop/DesktopVocabularyScreen.qml
     qml/desktop/DesktopDecksScreen.qml
-    qml/desktop/DesktopAddCardRow.qml
     qml/desktop/DesktopDeckCover.qml
     qml/desktop/DesktopDeckDialog.qml
-    qml/desktop/DesktopDeckHeader.qml
     qml/desktop/DesktopDeckTile.qml
     qml/desktop/DesktopCustomDeckTile.qml
     qml/desktop/DesktopDecksPane.qml
@@ -579,8 +634,6 @@ set(IKONIKA_QML_FILES
     qml/desktop/DesktopTileShadow.qml
     qml/desktop/DesktopDeleteDataDialog.qml
     qml/desktop/DesktopDialog.qml
-    qml/desktop/DesktopDictionaryEntry.qml
-    qml/desktop/DesktopDictionaryForms.qml
     qml/desktop/DesktopPackageUpdateCard.qml
     qml/desktop/DesktopAppUpdateCard.qml
     qml/desktop/DesktopUpdateCard.qml
@@ -589,37 +642,21 @@ set(IKONIKA_QML_FILES
     qml/desktop/DesktopPackageDownload.qml
     qml/desktop/DesktopDownloadsButton.qml
     qml/desktop/DesktopReconnectBanner.qml
-    qml/desktop/DesktopDivider.qml
-    qml/desktop/DesktopDropdownButton.qml
     qml/desktop/DesktopExerciseCard.qml
     qml/desktop/DesktopFlashcardExercise.qml
-    qml/desktop/DesktopFocusRing.qml
-    qml/desktop/DesktopFormField.qml
     qml/desktop/DesktopFormPage.qml
     qml/desktop/DesktopFormsStudyExercise.qml
-    qml/desktop/DesktopFormsGrid.qml
     qml/desktop/DesktopMeaningWell.qml
-    qml/desktop/DesktopGoalRing.qml
     qml/desktop/DesktopDoubleRing.qml
     qml/desktop/DesktopDailyRing.qml
     qml/desktop/DesktopWeekDay.qml
     qml/desktop/DesktopWelcomeScreen.qml
-    qml/desktop/DesktopIcon.qml
-    qml/desktop/DesktopIconButton.qml
-    qml/desktop/DesktopKeyHint.qml
-    qml/desktop/DesktopLabel.qml
-    qml/desktop/DesktopLanguageEntry.qml
     qml/desktop/DesktopLanguageDownloads.qml
     qml/desktop/DesktopLanguageTile.qml
     qml/desktop/DesktopLanguagePopover.qml
     qml/desktop/DesktopNativeLanguagePopover.qml
-    qml/desktop/DesktopLearnedMark.qml
-    qml/desktop/DesktopDeckChip.qml
-    qml/desktop/DesktopLevelBadge.qml
     qml/desktop/DesktopMasteryDots.qml
     qml/desktop/DesktopMatchExercise.qml
-    qml/desktop/DesktopMenu.qml
-    qml/desktop/DesktopMenuItem.qml
     qml/desktop/DesktopNavItem.qml
     qml/desktop/DesktopNavigationWalk.qml
     qml/desktop/DesktopOnboardingDownload.qml
@@ -636,14 +673,8 @@ set(IKONIKA_QML_FILES
     qml/desktop/DesktopReminderTimeRow.qml
     qml/desktop/DesktopOnboardingSignIn.qml
     qml/desktop/DesktopOptionGrid.qml
-    qml/desktop/DesktopPage.qml
     qml/desktop/DesktopPlayButton.qml
-    qml/desktop/DesktopPopover.qml
-    qml/desktop/DesktopPopoverRow.qml
     qml/desktop/DesktopPracticeDialog.qml
-    qml/desktop/DesktopProgressBar.qml
-    qml/desktop/DesktopProgressRing.qml
-    qml/desktop/DesktopPromptLabel.qml
     qml/desktop/DesktopReaderBar.qml
     qml/desktop/DesktopReaderPlayBar.qml
     qml/desktop/DesktopReaderVoiceNotice.qml
@@ -654,14 +685,12 @@ set(IKONIKA_QML_FILES
     qml/desktop/DesktopBookOverviewDialog.qml
     qml/desktop/DesktopCoverBar.qml
     qml/desktop/DesktopReaderAppearanceButton.qml
-    qml/desktop/DesktopPaneGrip.qml
     qml/desktop/DesktopReaderContentsPane.qml
     qml/desktop/DesktopLookupPane.qml
     qml/desktop/DesktopQuickLookup.qml
     qml/desktop/DesktopTranslationDownload.qml
     qml/desktop/DesktopResizeFrame.qml
     qml/desktop/DesktopQuickAddResult.qml
-    qml/desktop/DesktopMachineTranslation.qml
     qml/desktop/DesktopReaderAutoscroll.qml
     qml/desktop/DesktopReaderPdfSheet.qml
     qml/desktop/DesktopReaderPdfView.qml
@@ -674,14 +703,7 @@ set(IKONIKA_QML_FILES
     qml/desktop/DesktopReviewExercise.qml
     qml/desktop/DesktopRuledLabel.qml
     qml/desktop/DesktopScreenMorph.qml
-    qml/desktop/DesktopScrollBar.qml
-    qml/desktop/DesktopSearchArea.qml
-    qml/desktop/DesktopSearchField.qml
-    qml/desktop/DesktopSectionLabel.qml
-    qml/desktop/DesktopSelect.qml
-    qml/desktop/DesktopSelectionBackground.qml
     qml/desktop/DesktopSentenceDialog.qml
-    qml/desktop/DesktopSentenceText.qml
     qml/desktop/DesktopSentenceFit.qml
     qml/desktop/DesktopChipArea.qml
     qml/desktop/DesktopSessionBar.qml
@@ -702,15 +724,9 @@ set(IKONIKA_QML_FILES
     qml/desktop/DesktopSettingsSlider.qml
     qml/desktop/DesktopSettingsSound.qml
     qml/desktop/DesktopShakeAnimation.qml
-    qml/desktop/DesktopSidePane.qml
-    qml/desktop/DesktopSlider.qml
-    qml/desktop/DesktopSignalBars.qml
     qml/desktop/DesktopStartDialog.qml
-    qml/desktop/DesktopSwitch.qml
     qml/desktop/DesktopTenseDialog.qml
-    qml/desktop/DesktopTab.qml
     qml/desktop/DesktopTextArea.qml
-    qml/desktop/DesktopTextField.qml
     qml/desktop/DesktopTilesExercise.qml
     qml/desktop/DesktopToast.qml
     qml/desktop/DesktopTodayScreen.qml
@@ -718,28 +734,19 @@ set(IKONIKA_QML_FILES
     qml/desktop/DesktopToggleChip.qml
     qml/desktop/DesktopTopBar.qml
     qml/desktop/DesktopTour.qml
-    qml/desktop/DesktopTranslationChip.qml
     qml/desktop/DesktopTriageMeaning.qml
-    qml/desktop/DesktopGistBadge.qml
-    qml/desktop/DesktopEntryHeader.qml
-    qml/desktop/DesktopMeaningDetails.qml
-    qml/desktop/DesktopMeaningSummary.qml
-    qml/desktop/DesktopSpeakButton.qml
-    qml/desktop/DesktopDictionaryMeaning.qml
     qml/desktop/DesktopTriageScreen.qml
     qml/desktop/DesktopDiscoveryExercise.qml
     qml/desktop/DesktopDiscoverPick.qml
     qml/desktop/DesktopTypedExercise.qml
     qml/desktop/DesktopWaveform.qml
-    qml/desktop/DesktopWiggleAnimation.qml
     qml/desktop/DesktopCardDetailsDialog.qml
-    qml/desktop/DesktopCardForm.qml
-    qml/desktop/DesktopCardPane.qml
-    qml/desktop/DesktopWordList.qml
-    qml/desktop/DesktopWordRow.qml
     qml/desktop/DesktopWordTile.qml
-    qml/desktop/DesktopWordsScreen.qml
 )
+
+if (NOT ANDROID)
+    list(APPEND IKONIKA_QML_FILES ${IKONIKA_DESKTOP_QML_FILES})
+endif()
 
 list(APPEND IKONIKA_QML_FILES ${IKONIKA_MOBILE_QML_FILES})
 
@@ -941,8 +948,8 @@ if (IOS)
         MACOSX_BUNDLE_BUNDLE_VERSION "${IKONIKA_IOS_BUILD_NUMBER}"
         XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER "com.goldenphasmid.ikonika"
         XCODE_ATTRIBUTE_TARGETED_DEVICE_FAMILY "1,2"
-        Swift_LANGUAGE_VERSION 5.0
-        XCODE_ATTRIBUTE_SWIFT_VERSION 5.0
+        Swift_LANGUAGE_VERSION 5
+        XCODE_ATTRIBUTE_SWIFT_VERSION 5
         XCODE_ATTRIBUTE_ASSETCATALOG_COMPILER_APPICON_NAME AppIcon
     )
 
@@ -1110,6 +1117,8 @@ if (WIN32 AND IKONIKA_WINDEPLOYQT)
                     --\$<LOWER_CASE:\$<CONFIG>>
                     --no-compiler-runtime
                     --no-translations
+                    --no-opengl-sw
+                    --no-system-dxc-compiler
                     \"\${CMAKE_INSTALL_PREFIX}/IkonikaApp.exe\"
             RESULT_VARIABLE IkonikaDeployResult)
 

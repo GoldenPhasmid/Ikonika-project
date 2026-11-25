@@ -5,7 +5,7 @@ project(Ikonika VERSION 0.9.3 LANGUAGES C CXX)
 
 # Play Store requires this to strictly increase on every upload, independent of PROJECT_VERSION.
 # Bump it by hand for each Android release.
-set(IKONIKA_ANDROID_VERSION_CODE 25)
+set(IKONIKA_ANDROID_VERSION_CODE 26)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
