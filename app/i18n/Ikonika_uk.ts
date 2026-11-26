@@ -1015,6 +1015,11 @@
         <translation>Відкрити в розділі «Слова»</translation>
     </message>
     <message>
+        <location filename="../qml/desktop/DesktopCardPane.qml" line="305"/>
+        <source>Manage card</source>
+        <translation>Керувати карткою</translation>
+    </message>
+    <message>
         <location filename="../qml/desktop/DesktopCardPane.qml" line="175"/>
         <source>Remove from My Vocabulary</source>
         <translation>Видалити з «Моєї лексики»</translation>
@@ -5813,7 +5818,30 @@
     </message>
 </context>
 <context>
+    <name>MobileCardActionsSheet</name>
+    <message>
+        <location filename="../qml/mobile/MobileCardActionsSheet.qml" line="27"/>
+        <source>Open in Dictionary</source>
+        <translation>Відкрити у словнику</translation>
+    </message>
+</context>
+<context>
     <name>MobileCardDetailsScreen</name>
+    <message>
+        <location filename="../qml/mobile/MobileCardDetailsScreen.qml" line="122"/>
+        <source>Pronounce</source>
+        <translation>Вимовити</translation>
+    </message>
+    <message>
+        <location filename="../qml/mobile/MobileCardDetailsScreen.qml" line="131"/>
+        <source>Open in Dictionary</source>
+        <translation>Відкрити у словнику</translation>
+    </message>
+    <message>
+        <location filename="../qml/mobile/MobileCardDetailsScreen.qml" line="140"/>
+        <source>Search the web</source>
+        <translation>Шукати в інтернеті</translation>
+    </message>
     <message>
         <location filename="../qml/mobile/MobileCardDetailsScreen.qml" line="58"/>
         <source>Masculine</source>

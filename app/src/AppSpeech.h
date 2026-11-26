@@ -4,6 +4,7 @@
 
 #include <QAtomicInteger>
 #include <QJSEngine>
+#include <QList>
 #include <QMutex>
 #include <QObject>
 #include <QQmlEngine>
@@ -17,6 +18,12 @@ struct FSpeechRequest
     QString Text;
     QString LanguageCode;
     float RateScale = 1.0f;
+};
+
+struct FTPlatformVoice
+{
+    QString Id;
+    QString Name;
 };
 
 class AppSpeech : public QObject
@@ -62,7 +69,11 @@ public:
     virtual int GetActiveVoice() const { return 0; }
     virtual int GetSpeakerId() const { return 0; }
     virtual QString GetPreferredVoiceName(const QString& LanguageCode) const { Q_UNUSED(LanguageCode); return {}; }
+    virtual QList<FTPlatformVoice> GetPlatformVoices(const QString& LanguageCode) const { Q_UNUSED(LanguageCode); return {}; }
     virtual float GetSpeed() const { return 1.0f; }
+
+    QString GetPlatformVoiceId(const QString& LanguageCode) const;
+    void SetPlatformVoiceId(const QString& LanguageCode, const QString& Id);
 
     /** Multiplier on the speech rate for whole sentences: sentence training and read aloud. Stored
         beside the speech rate, so it follows the open workspace. */

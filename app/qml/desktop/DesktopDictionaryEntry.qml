@@ -14,6 +14,7 @@ Item
     property string searchText: ""
     property string partOfSpeech: ""
     property bool showAdd: true
+    property bool pinWordActions: false
     property string emptyText: ""
     property int stageCount: 1
 
@@ -221,7 +222,11 @@ Item
         id: page
         objectName: "dictionary_entry_page"
 
-        anchors.fill: parent
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: parent.top
+        anchors.bottom: fixedActions.visible ? fixedActions.top : parent.bottom
+        anchors.bottomMargin: fixedActions.visible ? AppMetrics.gapSmall : 0
         visible: root.word.length > 0
         maximumWidth: AppMetrics.contentWidthNarrow
         spacing: AppMetrics.gapLarge + AppMetrics.gapSmall
@@ -258,55 +263,14 @@ Item
                         visible: actionRow.children.length > 0
                         spacing: AppMetrics.gapSmall
                     },
-                    DesktopButton
+                    Item
                     {
-                        id: editButton
+                        id: inlineActions
 
-                        objectName: "entry_edit"
                         Layout.fillWidth: entryHeader.stacked
-                        Layout.preferredWidth: entryHeader.stacked ? 1 : -1
-                        visible: root.showAdd && root.controller.cards.length > 0
-                        iconName: "edit"
-                        text: qsTr("Edit")
-
-                        onClicked: root.editCards()
-
-                        DesktopMenu
-                        {
-                            id: cardMenu
-
-                            y: editButton.height
-
-                            Instantiator
-                            {
-                                model: root.controller.cards
-
-                                delegate: DesktopMenuItem
-                                {
-                                    required property var modelData
-
-                                    text: modelData.translation
-                                    stage: modelData.stage
-                                    completed: modelData.completed
-
-                                    onTriggered: root.editCard(modelData)
-                                }
-
-                                onObjectAdded: function(index, object) { cardMenu.insertItem(index, object) }
-                                onObjectRemoved: function(index, object) { cardMenu.removeItem(object) }
-                            }
-                        }
-                    },
-                    DesktopButton
-                    {
-                        Layout.fillWidth: entryHeader.stacked
-                        Layout.preferredWidth: entryHeader.stacked ? 1 : -1
-                        visible: root.showAdd
-                        tone: root.addedTranslation ? "secondary" : "primary"
-                        iconName: "plus"
-                        text: qsTr("Add word")
-
-                        onClicked: root.addWordRequested(root.headword, "", root.shownPartOfSpeech, "")
+                        visible: root.showAdd && !root.pinWordActions
+                        implicitWidth: wordActions.implicitWidth
+                        implicitHeight: wordActions.implicitHeight
                     }
                 ]
 
@@ -532,6 +496,7 @@ Item
                     meaning: modelData
                     number: index + 1
                     stageCount: root.stageCount
+                    showAdd: !root.pinWordActions
                     collapsible: root.meanings.length >= 3
                     expanded: !collapsible || index === 0
                     columns: page.columnWidth >= AppMetrics.twoColumnMinimumWidth ? 3 : 2
@@ -733,6 +698,80 @@ Item
                     }
                 }
             }
+        }
+    }
+
+    Item
+    {
+        id: fixedActions
+
+        anchors.bottom: parent.bottom
+        anchors.bottomMargin: AppMetrics.contentPadding
+        anchors.horizontalCenter: parent.horizontalCenter
+        width: page.columnWidth
+        height: wordActions.implicitHeight
+        visible: root.pinWordActions && root.showAdd && root.word.length > 0
+    }
+
+    RowLayout
+    {
+        id: wordActions
+
+        readonly property bool stretch: root.pinWordActions || entryHeader.stacked
+
+        parent: root.pinWordActions ? fixedActions : inlineActions
+        anchors.fill: parent
+        spacing: AppMetrics.gapSmall
+
+        DesktopButton
+        {
+            id: editButton
+
+            objectName: "entry_edit"
+            Layout.fillWidth: wordActions.stretch
+            Layout.preferredWidth: wordActions.stretch ? 1 : -1
+            visible: root.controller.cards.length > 0
+            iconName: "edit"
+            text: qsTr("Edit")
+
+            onClicked: root.editCards()
+
+            DesktopMenu
+            {
+                id: cardMenu
+
+                y: root.pinWordActions ? -implicitHeight : editButton.height
+
+                Instantiator
+                {
+                    model: root.controller.cards
+
+                    delegate: DesktopMenuItem
+                    {
+                        required property var modelData
+
+                        text: modelData.translation
+                        stage: modelData.stage
+                        completed: modelData.completed
+
+                        onTriggered: root.editCard(modelData)
+                    }
+
+                    onObjectAdded: function(index, object) { cardMenu.insertItem(index, object) }
+                    onObjectRemoved: function(index, object) { cardMenu.removeItem(object) }
+                }
+            }
+        }
+
+        DesktopButton
+        {
+            Layout.fillWidth: wordActions.stretch
+            Layout.preferredWidth: wordActions.stretch ? 1 : -1
+            tone: root.addedTranslation ? "secondary" : "primary"
+            iconName: "plus"
+            text: qsTr("Add word")
+
+            onClicked: root.addWordRequested(root.headword, "", root.shownPartOfSpeech, "")
         }
     }
 }

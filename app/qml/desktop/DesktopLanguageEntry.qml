@@ -17,12 +17,22 @@ QtObject
                 && !(AppOnboarding.dictionaryReady && AppOnboarding.voiceReady)))
     readonly property bool actionable: root.entry.compatible && !root.fetching && !root.active
 
-    readonly property real fetchProgress: AppPackageDownloader.totalBytes > 0
+    readonly property bool receiving: AppPackageDownloader.activeId.length > 0
+        && (AppPackageDownloader.activeId === root.entry.id
+            || (AppOnboarding.chosenLanguage === root.entry.code
+                && AppPackageDownloader.activeId === AppOnboarding.voiceId))
+
+    readonly property real fetchProgress: root.receiving && AppPackageDownloader.totalBytes > 0
         ? AppPackageDownloader.receivedBytes / AppPackageDownloader.totalBytes
         : 0
 
     readonly property string status:
     {
+        if (root.fetching && !root.receiving)
+        {
+            return qsTr("Waiting")
+        }
+
         if (root.fetching)
         {
             return root.entry.outdated

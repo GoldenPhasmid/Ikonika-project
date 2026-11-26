@@ -817,6 +817,17 @@ Item
 
                 onClicked: root.reader.setFavorite(bookPage.book.key, !on)
             }
+
+            MobileIconButton
+            {
+                objectName: "book_page_open_with_header"
+
+                visible: bookPage.visible && bookPage.canOpenWith && bookPage.openWithInHeader
+                iconName: "external_link"
+                text: bookPage.openWithText
+
+                onClicked: bookPage.openWith()
+            }
         }
 
         onBackRequested:
@@ -980,6 +991,7 @@ Item
 
             anchors.fill: parent
             controller: root.reader
+            openWithInHeader: root.height > root.width
 
             onReadRequested: function(book) { root.openBookAt(book) }
             onChapterRequested: function(book, position) { root.openBookAt(book, position) }
@@ -1937,14 +1949,12 @@ Item
         stageCount: root.stageCount
 
         anchors.fill: parent
-        readAloudOffered: root.readAloudOffered && root.reader.readAloud.available && root.lookupPlace !== null
+        readerMode: true
 
         onAddWordRequested: function(word, translation, partOfSpeech, hint)
         {
             root.addWordRequested(word, translation, partOfSpeech, hint)
         }
-
-        onReadAloudRequested: root.readFromPlace(root.lookupPlace)
 
         onEntryOpened: function(headword, partOfSpeech, hint) { root.entryOpened(headword, partOfSpeech, hint) }
     }

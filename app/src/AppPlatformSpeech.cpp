@@ -6,6 +6,7 @@
 #include <QSettings>
 #include <QThreadPool>
 #include <QtCore/qcoreapplication_platform.h>
+#include <QtCore/qjniarray.h>
 #include <QtCore/qjnienvironment.h>
 #include <QtCore/qjniobject.h>
 
@@ -25,14 +26,10 @@ namespace
             "(Landroid/content/Context;)V", Activity.object<jobject>());
     }
 
-    void PlatformSpeak(const QString& Text, const QString& Language, float RateScale)
+    void PlatformSpeak(const FSpeechRequest& Request, const QString& VoiceId)
     {
-        QJniObject JniText = QJniObject::fromString(Text);
-        QJniObject JniLanguage = QJniObject::fromString(Language);
-
         QJniObject::callStaticMethod<void>(PlatformSpeechClass, "speak",
-            "(Ljava/lang/String;Ljava/lang/String;F)V",
-            JniText.object<jstring>(), JniLanguage.object<jstring>(), RateScale);
+            Request.Text, Request.LanguageCode, Request.RateScale, VoiceId);
     }
 
     void PlatformStop()
@@ -45,14 +42,10 @@ namespace
         QJniObject::callStaticMethod<void>(PlatformSpeechClass, "setRate", "(F)V", Rate);
     }
 
-    void PlatformNarrate(int Id, const QString& Text, const QString& Language, float RateScale)
+    void PlatformNarrate(int Id, const QString& Text, const QString& Language, float RateScale, const QString& VoiceId)
     {
-        QJniObject JniText = QJniObject::fromString(Text);
-        QJniObject JniLanguage = QJniObject::fromString(Language);
-
         QJniObject::callStaticMethod<void>(PlatformSpeechClass, "narrate",
-            "(ILjava/lang/String;Ljava/lang/String;F)V",
-            static_cast<jint>(Id), JniText.object<jstring>(), JniLanguage.object<jstring>(), RateScale);
+            static_cast<jint>(Id), Text, Language, RateScale, VoiceId);
     }
 
     void PlatformStopNarration()
@@ -101,6 +94,11 @@ namespace
         AppSpeech::Get().ReportSpeaking(Speaking == JNI_TRUE);
     }
 
+    void NativeOnVoicesChanged(JNIEnv*, jclass)
+    {
+        QMetaObject::invokeMethod(&AppSpeech::Get(), &AppSpeech::ready, Qt::QueuedConnection);
+    }
+
     void NativeOnNarrationStarted(JNIEnv*, jclass, jint Id)
     {
         AppSpeech::Get().ReportNarrationStarted(static_cast<int>(Id));
@@ -128,6 +126,7 @@ namespace
               reinterpret_cast<void*>(&NativeOnDiagnostic) },
             { "nativeOnSpeakingChanged", "(Z)V",
               reinterpret_cast<void*>(&NativeOnSpeakingChanged) },
+            { "nativeOnVoicesChanged", "()V", reinterpret_cast<void*>(&NativeOnVoicesChanged) },
             { "nativeOnNarrationStarted", "(I)V",
               reinterpret_cast<void*>(&NativeOnNarrationStarted) },
             { "nativeOnNarrationFinished", "(I)V",
@@ -193,9 +192,10 @@ void AppPlatformSpeech::SpeakNow(const FSpeechRequest& Request)
         return;
     }
 
-    QThreadPool::globalInstance()->start([Request]()
+    const QString VoiceId{GetPlatformVoiceId(Request.LanguageCode)};
+    QThreadPool::globalInstance()->start([Request, VoiceId]()
     {
-        PlatformSpeak(Request.Text, Request.LanguageCode, Request.RateScale);
+        PlatformSpeak(Request, VoiceId);
     });
 }
 
@@ -239,6 +239,22 @@ float AppPlatformSpeech::GetSpeed() const
     return Speed;
 }
 
+QList<FTPlatformVoice> AppPlatformSpeech::GetPlatformVoices(const QString& LanguageCode) const
+{
+    const auto Options = QJniObject::callStaticMethod<QJniArray<QString>>(
+        PlatformSpeechClass, "getVoiceOptions", LanguageCode);
+    const qsizetype Count{Options.size()};
+    QList<FTPlatformVoice> Voices;
+    Voices.reserve(Count / 2);
+
+    for (qsizetype Index = 0; Index + 1 < Count; Index += 2)
+    {
+        Voices.append(FTPlatformVoice{Options.at(Index), Options.at(Index + 1)});
+    }
+
+    return Voices;
+}
+
 bool AppPlatformSpeech::CanNarrate() const
 {
     return bEnabled;
@@ -247,8 +263,12 @@ bool AppPlatformSpeech::CanNarrate() const
 void AppPlatformSpeech::QueueNarration(int Id, const QString& Text, const QString& LanguageCode)
 {
     const float RateScale{GetSentenceSpeed()};
+    const QString VoiceId{GetPlatformVoiceId(LanguageCode)};
 
-    NarrationPool.start([Id, Text, LanguageCode, RateScale]() { PlatformNarrate(Id, Text, LanguageCode, RateScale); });
+    NarrationPool.start([Id, Text, LanguageCode, RateScale, VoiceId]()
+    {
+        PlatformNarrate(Id, Text, LanguageCode, RateScale, VoiceId);
+    });
 }
 
 void AppPlatformSpeech::StopNarration()

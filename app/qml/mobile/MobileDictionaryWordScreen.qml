@@ -51,6 +51,7 @@ Item
 
             controller: root.controller
             stageCount: root.stageCount
+            pinWordActions: root.height > root.width
 
             onAddWordRequested: function(word, translation, partOfSpeech, meaningGist)
             {

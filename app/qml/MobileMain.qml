@@ -117,6 +117,11 @@ Page
             return true
         }
 
+        if (window.screen === "dictionaryaddword" && dictionaryAddWordDialogMobile.item?.dismissPortraitSheet())
+        {
+            return true
+        }
+
         if (window.screen === "settings" && settingsMobile.item && settingsMobile.item.closeCategory())
         {
             return true
@@ -1041,9 +1046,9 @@ Page
 
             onDone: window.popScreen()
 
-            onAddWordRequested: function(word, translation, partOfSpeech, hint)
+            onAddWordRequested: function(word, translation, partOfSpeech, customAdd)
             {
-                dictionaryAddWordDialogMobile.openWith(word, translation, partOfSpeech, "", hint)
+                dictionaryAddWordDialogMobile.openWith(word, translation, partOfSpeech, "", "", "", customAdd)
                 window.pushScreen("dictionaryaddword")
             }
 
@@ -1887,17 +1892,19 @@ Page
         asynchronous: false
         sourceComponent: dictionaryAddWordDialogComponent
 
-        function openWith(word, translation, partOfSpeech, meaningGist, hint, language)
+        function openWith(word, translation, partOfSpeech, meaningGist, hint, language, customAdd)
         {
             dictionaryAddWordDialogMobile.active = true
+            dictionaryAddWordDialogMobile.item.dictionaryForm = window.screen === "dictionary" || window.screen === "dictionaryword"
             dictionaryAddWordDialogMobile.item.controller = vocabularyMobile.vocabulary
             dictionaryAddWordDialogMobile.item.openWith(word, translation, partOfSpeech || "", meaningGist || "", hint || "",
-                                                        language || "")
+                                                        language || "", !!customAdd)
         }
 
         function openInDeck()
         {
             dictionaryAddWordDialogMobile.active = true
+            dictionaryAddWordDialogMobile.item.dictionaryForm = false
             dictionaryAddWordDialogMobile.item.controller = deckMobile.item.vocabulary
             dictionaryAddWordDialogMobile.item.openWith("", "", "", "", "", "")
             window.pushScreen("dictionaryaddword")
@@ -1906,6 +1913,7 @@ Page
         function openForCard(exercise, cardId, word, translation, gender, partOfSpeech, box)
         {
             dictionaryAddWordDialogMobile.active = true
+            dictionaryAddWordDialogMobile.item.dictionaryForm = false
             dictionaryAddWordDialogMobile.item.controller = exercise
             dictionaryAddWordDialogMobile.item.openForEdit(
                 cardId, word, translation, gender, partOfSpeech, box)
@@ -1914,6 +1922,7 @@ Page
         function openForEdit(cardId, word, translation, gender, partOfSpeech, box, language)
         {
             dictionaryAddWordDialogMobile.active = true
+            dictionaryAddWordDialogMobile.item.dictionaryForm = window.screen === "dictionary" || window.screen === "dictionaryword"
             dictionaryAddWordDialogMobile.item.controller = vocabularyMobile.vocabulary
             dictionaryAddWordDialogMobile.item.openForEdit(
                 cardId, word, translation, gender, partOfSpeech, box, language)

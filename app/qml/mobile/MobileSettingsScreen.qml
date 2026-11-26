@@ -491,6 +491,7 @@ Item
                         visible: root.shownCategory === "sound"
 
                         store: root.store
+                        optionPicker: picker
                     }
 
                     MobileSettingsReader

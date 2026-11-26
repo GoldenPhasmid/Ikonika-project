@@ -166,7 +166,7 @@ void AppDictionary::Discover()
 
     // The saved pair was accepted unchecked while nothing was known to be installed, so it is
     // checked now that the files have been seen.
-    const FTLanguageRules& Saved = FTSettings::Get().GetLanguageRules();
+    const FTLanguageRules Saved{FTSettings::Get().GetLanguageRules()};
 
     if (!IsOutdated(Saved.TargetLanguage, Saved.NativeLanguage))
     {
@@ -174,6 +174,17 @@ void AppDictionary::Discover()
     }
 
     AppDatabase::Get().ApplyActiveLanguages();
+
+    const FTLanguageRules& Revalidated{FTSettings::Get().GetLanguageRules()};
+
+    if (Revalidated.TargetLanguage != Saved.TargetLanguage || Revalidated.NativeLanguage != Saved.NativeLanguage)
+    {
+        qCInfo(LogDatabase) << "The saved language pair changed to" << QString::fromStdString(Revalidated.TargetLanguage)
+                            << "->" << QString::fromStdString(Revalidated.NativeLanguage)
+                            << "after the dictionaries were scanned";
+
+        emit Notifier().languagesChanged();
+    }
 }
 
 AppLanguageDictionary& AppDictionary::Find(const std::string& TargetLanguage)

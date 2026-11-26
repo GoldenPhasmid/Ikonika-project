@@ -11,6 +11,7 @@
 #include "controllers/AppSyncController.h"
 #include "controllers/PlacementTestController.h"
 
+#include "core/FTCatalog.h"
 #include "core/FTLog.h"
 #include "core/FTSettings.h"
 
@@ -76,6 +77,49 @@ namespace
         const std::string& TargetLanguage = FTSettings::Get().GetLanguageRules().TargetLanguage;
 
         return CardRepository.FindPlacementCutoff(TargetLanguage).has_value() || CardRepository.CountCards() > 0;
+    }
+
+    QString ResolveNativeLanguage(const QString& LanguageCode, const QString& PreferredNative)
+    {
+        const std::string Target{LanguageCode.toStdString()};
+        const std::string Preferred{PreferredNative.toStdString()};
+        const AppDictionary& Dictionaries{AppDictionary::Get()};
+        const FTCatalog* Catalog{AppCatalog::Get().GetCatalog()};
+
+        if (Dictionaries.IsInstalled(Target, Preferred))
+        {
+            return PreferredNative;
+        }
+
+        const auto InstalledPackage = std::ranges::find_if(Dictionaries.GetPackages(),
+            [&Target](const FTDictionaryPackage& Package)
+            {
+                return Package.TargetLanguage == Target && !Package.NativeLanguages.empty();
+            });
+
+        if (InstalledPackage != Dictionaries.GetPackages().end())
+        {
+            return QString::fromStdString(InstalledPackage->NativeLanguages.front());
+        }
+
+        if (Catalog == nullptr || Catalog->FindCompatibleDictionary(Target, Preferred) != nullptr)
+        {
+            return PreferredNative;
+        }
+
+        const auto PublishedPackage = std::ranges::find_if(Catalog->Packages,
+            [&Target](const FTCatalogPackage& Package)
+            {
+                return Package.Kind == CatalogKindDictionary && Package.TargetLanguage == Target
+                    && Package.IsCompatible() && !Package.NativeLanguages.empty();
+            });
+
+        if (PublishedPackage == Catalog->Packages.end())
+        {
+            return PreferredNative;
+        }
+
+        return QString::fromStdString(PublishedPackage->NativeLanguages.front());
     }
 
     bool IsChosenLanguageMissing()
@@ -170,7 +214,7 @@ void AppOnboarding::choose(const QString& LanguageCode, const QString& NativeCod
 
     ChosenLanguage = LanguageCode;
     ChosenNative = NativeCode.isEmpty()
-        ? QString::fromStdString(FTSettings::Get().GetLanguageRules().NativeLanguage)
+        ? ResolveNativeLanguage(LanguageCode, QString::fromStdString(FTSettings::Get().GetLanguageRules().NativeLanguage))
         : NativeCode;
 
     RequestPackages();

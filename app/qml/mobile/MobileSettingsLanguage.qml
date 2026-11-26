@@ -26,7 +26,12 @@ ColumnLayout
             || (AppOnboarding.chosenLanguage === root.languageCode
                 && !(AppOnboarding.dictionaryReady && AppOnboarding.voiceReady)))
 
-    readonly property int fetchPercent: AppPackageDownloader.totalBytes > 0
+    readonly property bool receiving: root.entry !== null && AppPackageDownloader.activeId.length > 0
+        && (AppPackageDownloader.activeId === root.entry.id
+            || (AppOnboarding.chosenLanguage === root.languageCode
+                && AppPackageDownloader.activeId === AppOnboarding.voiceId))
+
+    readonly property int fetchPercent: root.receiving && AppPackageDownloader.totalBytes > 0
         ? Math.round(AppPackageDownloader.receivedBytes / AppPackageDownloader.totalBytes * 100)
         : 0
 
@@ -114,6 +119,11 @@ ColumnLayout
                 if (root.entry === null)
                 {
                     return ""
+                }
+
+                if (root.fetching && !root.receiving)
+                {
+                    return qsTr("Waiting")
                 }
 
                 if (root.fetching)

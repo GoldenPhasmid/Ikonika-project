@@ -8,7 +8,7 @@ Item
     required property var store
 
     signal done()
-    signal addWordRequested(string word, string translation, string partOfSpeech)
+    signal addWordRequested(string word, string translation, string partOfSpeech, bool customAdd)
     signal entryOpened(string headword, string partOfSpeech, string searchText)
     signal tabSelected(string key)
 
@@ -97,7 +97,7 @@ Item
             {
                 const row = root.controller.results[index]
                 root.addWordRequested(row.word, row.translation.split(", ")[0] || "",
-                                       row.partOfSpeech)
+                                       row.partOfSpeech, false)
             }
         }
 
@@ -116,7 +116,7 @@ Item
             lookup: root.controller
             term: (shell.searchFieldText + shell.searchFieldPreeditText).trim()
 
-            onAddRequested: function(word, translation) { root.addWordRequested(word, translation, "") }
+            onAddRequested: function(word, translation) { root.addWordRequested(word, translation, "", true) }
         }
 
         MobileFloatingButton
@@ -125,7 +125,7 @@ Item
             anchors.bottom: parent.bottom
             anchors.margins: AppMetrics.contentPadding
 
-            onClicked: root.addWordRequested(shell.searchFieldText, "", "")
+            onClicked: root.addWordRequested(shell.searchFieldText, "", "", true)
         }
     }
 }

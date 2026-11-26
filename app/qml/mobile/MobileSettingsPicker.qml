@@ -66,6 +66,23 @@ MobileBottomSheet
                     Layout.fillWidth: true
                     Layout.preferredHeight: root.rowHeight
 
+                    Accessible.role: Accessible.RadioButton
+                    Accessible.name: choice.modelData
+                    Accessible.description: root.descriptions[choice.index] || ""
+                    Accessible.checkable: true
+                    Accessible.checked: choice.index === root.currentIndex
+                    Accessible.onPressAction: choice.choose()
+
+                    function choose()
+                    {
+                        if (root.chosen)
+                        {
+                            root.chosen(choice.index)
+                        }
+
+                        root.close()
+                    }
+
                     Column
                     {
                         anchors.left: parent.left
@@ -152,15 +169,7 @@ MobileBottomSheet
 
                         anchors.fill: parent
 
-                        onClicked:
-                        {
-                            if (root.chosen)
-                            {
-                                root.chosen(choice.index)
-                            }
-
-                            root.close()
-                        }
+                        onClicked: choice.choose()
                     }
                 }
             }

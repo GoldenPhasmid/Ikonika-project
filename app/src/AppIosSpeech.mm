@@ -4,6 +4,7 @@
 #include "core/FTSettings.h"
 
 #include <QHash>
+#include <QLocale>
 #include <QSettings>
 
 #include <algorithm>
@@ -165,6 +166,15 @@ namespace
         return false;
     }
 
+    bool IsVoiceForLanguage(AVSpeechSynthesisVoice* Voice, const QString& LanguageCode)
+    {
+        const QString Language{QString::fromNSString(Voice.language)};
+
+        return !LanguageCode.isEmpty()
+            && (Language == LanguageCode || Language.startsWith(LanguageCode + QLatin1Char('-')))
+            && !IsCharacterVoice(Voice);
+    }
+
     QString FindVoiceIdentifier(const QString& LanguageCode)
     {
         const QString Preferred = PreferredRegions.value(LanguageCode);
@@ -175,18 +185,12 @@ namespace
 
         for (AVSpeechSynthesisVoice* Voice in [AVSpeechSynthesisVoice speechVoices])
         {
-            const QString Language = QString::fromNSString(Voice.language);
-
-            if (Language != LanguageCode && !Language.startsWith(LanguageCode + QLatin1Char('-')))
+            if (!IsVoiceForLanguage(Voice, LanguageCode))
             {
                 continue;
             }
 
-            if (IsCharacterVoice(Voice))
-            {
-                continue;
-            }
-
+            const QString Language{QString::fromNSString(Voice.language)};
             const bool bSystemDefault = SystemDefault != nil && [Voice.identifier isEqualToString:SystemDefault.identifier];
             const int Score = static_cast<int>(Voice.quality) * 10 + (Language == Preferred ? 5 : 0)
                 + (bSystemDefault ? 2 : 0);
@@ -247,26 +251,42 @@ struct AppIosSpeech::Impl
         [NarrationDelegate release];
     }
 
-    QString VoiceFor(const QString& LanguageCode)
+    AVSpeechSynthesisVoice* DefaultVoiceFor(const QString& LanguageCode)
     {
         const auto Found = VoiceIdentifiers.constFind(LanguageCode);
 
         if (Found != VoiceIdentifiers.constEnd())
         {
-            return Found.value();
+            AVSpeechSynthesisVoice* Voice = [AVSpeechSynthesisVoice voiceWithIdentifier:Found.value().toNSString()];
+
+            if (Voice != nil)
+            {
+                return Voice;
+            }
         }
 
         const QString Identifier = FindVoiceIdentifier(LanguageCode);
-        VoiceIdentifiers.insert(LanguageCode, Identifier);
-
-        return Identifier;
-    }
-
-    AVSpeechUtterance* MakeUtterance(const QString& Text, const QString& LanguageCode, float Rate)
-    {
-        const QString Identifier = VoiceFor(LanguageCode);
 
         if (Identifier.isEmpty())
+        {
+            return nil;
+        }
+
+        VoiceIdentifiers.insert(LanguageCode, Identifier);
+
+        return [AVSpeechSynthesisVoice voiceWithIdentifier:Identifier.toNSString()];
+    }
+
+    AVSpeechUtterance* MakeUtterance(const QString& Text, const QString& LanguageCode, float Rate, const QString& VoiceId)
+    {
+        AVSpeechSynthesisVoice* Voice = VoiceId.isEmpty() ? nil : [AVSpeechSynthesisVoice voiceWithIdentifier:VoiceId.toNSString()];
+
+        if (Voice == nil || !IsVoiceForLanguage(Voice, LanguageCode))
+        {
+            Voice = DefaultVoiceFor(LanguageCode);
+        }
+
+        if (Voice == nil)
         {
             qCWarning(LogSpeech) << "No installed voice speaks" << LanguageCode;
 
@@ -274,16 +294,16 @@ struct AppIosSpeech::Impl
         }
 
         AVSpeechUtterance* Utterance = [AVSpeechUtterance speechUtteranceWithString:Text.toNSString()];
-        Utterance.voice = [AVSpeechSynthesisVoice voiceWithIdentifier:Identifier.toNSString()];
+        Utterance.voice = Voice;
         Utterance.rate = std::clamp(AVSpeechUtteranceDefaultSpeechRate * Rate, AVSpeechUtteranceMinimumSpeechRate,
                                     AVSpeechUtteranceMaximumSpeechRate);
 
         return Utterance;
     }
 
-    void Speak(const QString& Text, const QString& LanguageCode, float Rate)
+    void Speak(const QString& Text, const QString& LanguageCode, float Rate, const QString& VoiceId)
     {
-        AVSpeechUtterance* Utterance = MakeUtterance(Text, LanguageCode, Rate);
+        AVSpeechUtterance* Utterance = MakeUtterance(Text, LanguageCode, Rate, VoiceId);
 
         if (Utterance == nil)
         {
@@ -294,9 +314,9 @@ struct AppIosSpeech::Impl
         [Synthesizer speakUtterance:Utterance];
     }
 
-    bool Narrate(int Id, const QString& Text, const QString& LanguageCode, float Rate)
+    bool Narrate(int Id, const QString& Text, const QString& LanguageCode, float Rate, const QString& VoiceId)
     {
-        AVSpeechUtterance* Utterance = MakeUtterance(Text, LanguageCode, Rate);
+        AVSpeechUtterance* Utterance = MakeUtterance(Text, LanguageCode, Rate, VoiceId);
 
         if (Utterance == nil)
         {
@@ -362,7 +382,7 @@ void AppIosSpeech::SpeakNow(const FSpeechRequest& Request)
         return;
     }
 
-    Native->Speak(Request.Text, Request.LanguageCode, Speed * Request.RateScale);
+    Native->Speak(Request.Text, Request.LanguageCode, Speed * Request.RateScale, GetPlatformVoiceId(Request.LanguageCode));
 }
 
 void AppIosSpeech::SetSpeed(float Value)
@@ -404,6 +424,46 @@ float AppIosSpeech::GetSpeed() const
     return Speed;
 }
 
+QList<FTPlatformVoice> AppIosSpeech::GetPlatformVoices(const QString& LanguageCode) const
+{
+    QList<FTPlatformVoice> Voices;
+
+    for (AVSpeechSynthesisVoice* Voice in [AVSpeechSynthesisVoice speechVoices])
+    {
+        if (!IsVoiceForLanguage(Voice, LanguageCode))
+        {
+            continue;
+        }
+
+        QString Name{QString::fromNSString(Voice.name)};
+
+        if (Voice.quality == AVSpeechSynthesisVoiceQualityEnhanced)
+        {
+            Name = tr("%1 (Enhanced)").arg(Name);
+        }
+        else if (Voice.quality == AVSpeechSynthesisVoiceQualityPremium)
+        {
+            Name = tr("%1 (Premium)").arg(Name);
+        }
+
+        const QLocale Locale{QString::fromNSString(Voice.language)};
+
+        if (!Locale.nativeTerritoryName().isEmpty())
+        {
+            Name = QStringLiteral("%1 · %2").arg(Name, Locale.nativeTerritoryName());
+        }
+
+        Voices.append(FTPlatformVoice{QString::fromNSString(Voice.identifier), Name});
+    }
+
+    std::sort(Voices.begin(), Voices.end(), [](const FTPlatformVoice& Left, const FTPlatformVoice& Right)
+    {
+        return Left.Name.localeAwareCompare(Right.Name) < 0;
+    });
+
+    return Voices;
+}
+
 bool AppIosSpeech::CanNarrate() const
 {
     return bEnabled;
@@ -411,7 +471,7 @@ bool AppIosSpeech::CanNarrate() const
 
 void AppIosSpeech::QueueNarration(int Id, const QString& Text, const QString& LanguageCode)
 {
-    if (!Native->Narrate(Id, Text, LanguageCode, Speed * GetSentenceSpeed()))
+    if (!Native->Narrate(Id, Text, LanguageCode, Speed * GetSentenceSpeed(), GetPlatformVoiceId(LanguageCode)))
     {
         ReportNarrationFailed();
     }

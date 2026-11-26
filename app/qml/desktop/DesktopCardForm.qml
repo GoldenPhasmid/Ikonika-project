@@ -10,6 +10,9 @@ ColumnLayout
 
     property var controller: null
     property bool expanded: false
+    property bool portrait: false
+    property var selectionPicker: null
+    property bool dictionaryWord: false
 
     property string language: ""
     property string editingCardId: ""
@@ -51,6 +54,7 @@ ColumnLayout
     readonly property string enteredTranslation: (translationField.text + translationField.preeditText).trim()
     readonly property bool canCommit: root.enteredWord.length > 0 && root.enteredTranslation.length > 0
     readonly property bool stacked: root.width < AppMetrics.twoColumnMinimumWidth
+    readonly property bool genderApplies: root.editingPartOfSpeech === "noun"
     readonly property bool typing: wordField.activeFocus || translationField.activeFocus || hintField.activeFocus
 
     readonly property bool changed: root.enteredWord !== root.savedWord
@@ -75,7 +79,7 @@ ColumnLayout
     Layout.fillWidth: true
     spacing: AppMetrics.gapMedium
 
-    function openWith(word, translation, partOfSpeech, gist, hint, language)
+    function openWith(word, translation, partOfSpeech, gist, hint, language, customAdd)
     {
         root.language = language || ""
         root.dictionary.language = root.language
@@ -86,6 +90,7 @@ ColumnLayout
         root.readingChosen = false
         root.adoptedCardId = ""
         root.meaningGist = ""
+        root.dictionaryWord = false
 
         wordField.text = word
         translationField.text = translation
@@ -96,6 +101,8 @@ ColumnLayout
         if (word.length > 0)
         {
             root.dictionary.openEntry(word, partOfSpeech || "")
+            root.dictionaryWord = !customAdd && !!root.dictionary.entry.inDictionary
+                && (root.dictionary.entry.headword || "").toLowerCase() === root.enteredWord.toLowerCase()
             root.adoptDictionaryReading(partOfSpeech)
             root.meaningGist = gist || root.findMeaningFor(translation)
             root.followMeaningCard()
@@ -312,6 +319,10 @@ ColumnLayout
         }
 
         root.suggestions = result
+        if (root.portrait)
+        {
+            suggestionFlick.contentY = 0
+        }
     }
 
     function commit()
@@ -333,117 +344,58 @@ ColumnLayout
 
     GridLayout
     {
+        id: standardFields
+
         Layout.fillWidth: true
+        visible: !root.portrait
         columns: root.stacked ? 1 : 2
         columnSpacing: AppMetrics.gapMedium
         rowSpacing: AppMetrics.gapMedium
+    }
 
-        DesktopFormField
+    GridLayout
+    {
+        id: portraitFields
+
+        Layout.fillWidth: true
+        visible: root.portrait
+        columns: 2
+        uniformCellWidths: true
+        columnSpacing: AppMetrics.gapMedium
+        rowSpacing: AppMetrics.gapMedium
+    }
+
+    DesktopFormField
+    {
+        parent: root.portrait ? portraitFields : standardFields
+        Layout.row: 0
+        Layout.column: 0
+        Layout.columnSpan: root.portrait ? portraitFields.columns : 1
+        Layout.preferredWidth: 1
+        visible: !root.portrait || !root.dictionaryWord
+        label: qsTr("Word")
+
+        DesktopTextField
         {
-            Layout.preferredWidth: 1
-            label: qsTr("Word")
+            id: wordField
 
-            DesktopTextField
+            objectName: "word_dialog_word"
+
+            Layout.fillWidth: true
+            placeholderText: qsTr("Word")
+            maximumLength: AppMetrics.maximumCardFieldLength
+
+            onAccepted:
             {
-                id: wordField
+                root.openWordEntry()
+                translationField.forceActiveFocus()
+            }
 
-                objectName: "word_dialog_word"
-
-                Layout.fillWidth: true
-                placeholderText: qsTr("Word")
-                maximumLength: AppMetrics.maximumCardFieldLength
-
-                onAccepted:
+            onEditingFinished:
+            {
+                if ((root.dictionary.entry.headword || "") !== root.enteredWord)
                 {
                     root.openWordEntry()
-                    translationField.forceActiveFocus()
-                }
-
-                onEditingFinished:
-                {
-                    if ((root.dictionary.entry.headword || "") !== root.enteredWord)
-                    {
-                        root.openWordEntry()
-                    }
-                }
-            }
-        }
-
-        DesktopFormField
-        {
-            Layout.preferredWidth: 1
-            label: qsTr("Translation")
-
-            DesktopTextField
-            {
-                id: translationField
-
-                objectName: "word_dialog_translation"
-
-                Layout.fillWidth: true
-                placeholderText: qsTr("Translation")
-                maximumLength: AppMetrics.maximumCardFieldLength
-
-                onAccepted: root.accepted()
-            }
-        }
-
-        DesktopFormField
-        {
-            Layout.preferredWidth: 1
-            Layout.alignment: Qt.AlignTop
-            label: qsTr("Part of speech")
-
-            DesktopSelect
-            {
-                objectName: "word_dialog_part_of_speech"
-
-                heading: qsTr("Part of speech")
-                options: root.dictionary.partsOfSpeech.map(Option => Option.label)
-                currentIndex: root.dictionary.partsOfSpeech.findIndex(Option => Option.value === root.editingPartOfSpeech)
-
-                onChosen: function(index)
-                {
-                    root.editingPartOfSpeech = root.dictionary.partsOfSpeech[index].value
-                    root.readingChosen = true
-
-                    root.dictionary.openEntry(root.enteredWord, root.editingPartOfSpeech)
-
-                    if (root.editingPartOfSpeech !== "noun" || root.editingGender < 0)
-                    {
-                        root.editingGender = root.dictionaryGender()
-                    }
-
-                    if (!root.hasMeaning)
-                    {
-                        root.meaningGist = ""
-                    }
-
-                    root.rebuildSuggestions()
-                }
-            }
-        }
-
-        DesktopFormField
-        {
-            Layout.preferredWidth: 1
-            Layout.alignment: Qt.AlignTop
-            label: qsTr("Gender")
-            opacity: root.editingPartOfSpeech === "noun" ? 1.0 : AppTheme.opacityDisabled
-            enabled: root.editingPartOfSpeech === "noun"
-
-            DesktopSelect
-            {
-                objectName: "word_dialog_gender"
-
-                heading: qsTr("Gender")
-                options: root.genderOptions.map(Option => Option.label)
-                currentIndex: root.genderOptions.findIndex(Option => Option.value === root.editingGender)
-
-                onChosen: function(index)
-                {
-                    root.editingGender = root.genderOptions[index].value
-                    root.readingChosen = true
                 }
             }
         }
@@ -451,6 +403,103 @@ ColumnLayout
 
     DesktopFormField
     {
+        parent: root.portrait ? portraitFields : standardFields
+        Layout.row: root.portrait || root.stacked ? 1 : 0
+        Layout.column: root.portrait || root.stacked ? 0 : 1
+        Layout.columnSpan: root.portrait ? portraitFields.columns : 1
+        Layout.preferredWidth: 1
+        label: qsTr("Translation")
+
+        DesktopTextField
+        {
+            id: translationField
+
+            objectName: "word_dialog_translation"
+
+            Layout.fillWidth: true
+            placeholderText: qsTr("Translation")
+            maximumLength: AppMetrics.maximumCardFieldLength
+
+            onAccepted: root.accepted()
+        }
+    }
+
+    DesktopFormField
+    {
+        parent: root.portrait ? portraitFields : standardFields
+        Layout.row: root.portrait ? 4 : root.stacked ? 2 : 1
+        Layout.column: 0
+        Layout.columnSpan: root.portrait && !root.genderApplies ? portraitFields.columns : 1
+        Layout.preferredWidth: 1
+        Layout.alignment: Qt.AlignTop
+        label: qsTr("Part of speech")
+
+        DesktopSelect
+        {
+            objectName: "word_dialog_part_of_speech"
+
+            picker: root.selectionPicker
+            heading: qsTr("Part of speech")
+            options: root.dictionary.partsOfSpeech.map(Option => Option.label)
+            currentIndex: root.dictionary.partsOfSpeech.findIndex(Option => Option.value === root.editingPartOfSpeech)
+
+            onChosen: function(index)
+            {
+                root.editingPartOfSpeech = root.dictionary.partsOfSpeech[index].value
+                root.readingChosen = true
+
+                root.dictionary.openEntry(root.enteredWord, root.editingPartOfSpeech)
+
+                if (root.editingPartOfSpeech !== "noun" || root.editingGender < 0)
+                {
+                    root.editingGender = root.dictionaryGender()
+                }
+
+                if (!root.hasMeaning)
+                {
+                    root.meaningGist = ""
+                }
+
+                root.rebuildSuggestions()
+            }
+        }
+    }
+
+    DesktopFormField
+    {
+        parent: root.portrait ? portraitFields : standardFields
+        Layout.row: root.portrait ? 4 : root.stacked ? 3 : 1
+        Layout.column: root.portrait || !root.stacked ? 1 : 0
+        Layout.preferredWidth: 1
+        Layout.alignment: Qt.AlignTop
+        label: qsTr("Gender")
+        visible: !root.portrait || root.genderApplies
+        opacity: root.genderApplies ? 1.0 : AppTheme.opacityDisabled
+        enabled: root.genderApplies
+
+        DesktopSelect
+        {
+            objectName: "word_dialog_gender"
+
+            picker: root.selectionPicker
+            heading: qsTr("Gender")
+            options: root.genderOptions.map(Option => Option.label)
+            currentIndex: root.genderOptions.findIndex(Option => Option.value === root.editingGender)
+
+            onChosen: function(index)
+            {
+                root.editingGender = root.genderOptions[index].value
+                root.readingChosen = true
+            }
+        }
+    }
+
+    DesktopFormField
+    {
+        parent: root.portrait ? portraitFields : root
+        Layout.row: 3
+        Layout.column: 0
+        Layout.columnSpan: portraitFields.columns
         visible: root.meanings.length > 0
         label: qsTr("Meaning")
 
@@ -458,6 +507,7 @@ ColumnLayout
         {
             objectName: "word_dialog_meaning"
 
+            picker: root.selectionPicker
             heading: qsTr("Meaning")
             visibleRows: 5
             options: root.meaningOptions.map(Gist => Gist.length > 0 ? Gist : qsTr("Any meaning"))
@@ -535,6 +585,10 @@ ColumnLayout
 
     DesktopFormField
     {
+        parent: root.portrait ? portraitFields : root
+        Layout.row: 5
+        Layout.column: 0
+        Layout.columnSpan: portraitFields.columns
         label: qsTr("Hint")
 
         DesktopTextField
@@ -553,8 +607,13 @@ ColumnLayout
 
         readonly property int reservedRows: 3
 
-        visible: !root.expanded || root.suggestions.length > 0
+        parent: root.portrait ? portraitFields : root
+        Layout.row: 2
+        Layout.column: 0
+        Layout.columnSpan: portraitFields.columns
+        visible: (!root.expanded && !root.portrait) || root.suggestions.length > 0
         opacity: root.suggestions.length > 0 ? 1 : 0
+        showLabel: !root.portrait
         label: qsTr("Translations")
         trailingLabel: root.suggestions.length
 
@@ -565,25 +624,29 @@ ColumnLayout
             objectName: "word_dialog_translations"
 
             readonly property real ringMargin: AppMetrics.focusRingWidth * 2
-            readonly property real scrollGutter: root.expanded ? 0 : AppMetrics.scrollBarWidth + AppMetrics.gapSmall
+            readonly property real scrollGutter: root.expanded && !root.portrait
+                ? 0 : AppMetrics.scrollBarWidth + AppMetrics.gapSmall
+            readonly property real mobileHeight: AppMetrics.buttonHeightLarge * 2.5
+                + suggestionGrid.spacing * 2 + suggestionFlick.ringMargin * 2
 
             Layout.fillWidth: true
             Layout.leftMargin: -suggestionFlick.ringMargin
             Layout.rightMargin: -suggestionFlick.ringMargin - suggestionFlick.scrollGutter
             Layout.topMargin: -suggestionFlick.ringMargin
             Layout.bottomMargin: -suggestionFlick.ringMargin
-            Layout.preferredHeight: root.expanded
+            Layout.preferredHeight: root.portrait ? Math.min(suggestionFlick.contentHeight, suggestionFlick.mobileHeight)
+                : root.expanded
                 ? suggestionFlick.contentHeight
                 : AppMetrics.buttonHeightLarge * suggestionSection.reservedRows
                   + suggestionGrid.spacing * (suggestionSection.reservedRows - 1)
                   + suggestionFlick.ringMargin * 2
             contentWidth: width
             contentHeight: suggestionGrid.implicitHeight + suggestionFlick.ringMargin * 2
-            interactive: !root.expanded
+            interactive: root.portrait || !root.expanded
             boundsBehavior: Flickable.StopAtBounds
             clip: true
 
-            ScrollBar.vertical: DesktopScrollBar { visible: !root.expanded }
+            ScrollBar.vertical: DesktopScrollBar { visible: root.portrait || !root.expanded }
 
             Flow
             {

@@ -11,16 +11,17 @@ MobileBottomSheet
     property bool shown: false
     property bool pending: false
     property bool focusWanted: false
+    property bool readerMode: false
 
     readonly property string term: (lookupField.text + lookupField.preeditText).trim()
     readonly property DictionaryController dictionary: root.lookup
+    readonly property bool hasFormTranslation: AppMachineTranslation.enabled
+        && root.dictionary.results.length > 0 && root.dictionary.formTerm.length > 0
 
     property string sourceSentence: ""
-    property bool readAloudOffered: false
 
     signal addWordRequested(string word, string translation, string partOfSpeech, string hint)
     signal entryOpened(string headword, string partOfSpeech, string hint)
-    signal readAloudRequested()
 
     function openFor(word, focusField, sentence)
     {
@@ -58,7 +59,8 @@ MobileBottomSheet
     z: 50
     visible: root.shown
 
-    heading: qsTr("Dictionary")
+    heading: root.readerMode ? "" : qsTr("Dictionary")
+    showClose: !root.readerMode
     bottomInset: root.SafeArea.margins.bottom
     enabled: !grace.running
 
@@ -78,6 +80,42 @@ MobileBottomSheet
         interval: Qt.styleHints.mouseDoubleClickInterval
     }
 
+    Component
+    {
+        id: machineTranslationResult
+
+        MobileMachineTranslation
+        {
+            lookup: root.dictionary
+            term: root.term
+
+            onAddRequested: function(word, translation)
+            {
+                root.close()
+                root.addWordRequested(word, translation, "", root.sourceSentence)
+            }
+        }
+    }
+
+    Component
+    {
+        id: machineTranslationHeader
+
+        Item
+        {
+            width: ListView.view.width
+            height: translationLoader.height + AppMetrics.gapCompact
+
+            Loader
+            {
+                id: translationLoader
+
+                width: parent.width
+                sourceComponent: machineTranslationResult
+            }
+        }
+    }
+
     MobileSearchField
     {
         id: lookupField
@@ -88,15 +126,20 @@ MobileBottomSheet
 
     Item
     {
-        readonly property real matchListHeight: 56 * 2 + AppMetrics.gapCompact
-        readonly property real resultsHeight: root.lookup.results.length > 0
-            ? matchListHeight : Math.max(matchListHeight, emptyResults.implicitHeight)
+        readonly property real rowHeight: 56
+        readonly property int matchCount: root.lookup.results.length
+        readonly property real matchListHeight: root.readerMode
+            ? Math.min(rowHeight * 3.2 + AppMetrics.gapCompact * 3,
+                       rowHeight * matchCount + AppMetrics.gapCompact * Math.max(0, matchCount - 1) + matches.headerHeight)
+            : rowHeight * 2 + AppMetrics.gapCompact
+        readonly property real resultsHeight: matchCount > 0 ? matchListHeight
+            : root.readerMode ? emptyResults.implicitHeight : Math.max(matchListHeight, emptyResults.implicitHeight)
 
         Layout.fillWidth: true
         Layout.preferredHeight: Math.min(resultsHeight,
             Math.max(0, root.maximumBodyHeight - lookupField.Layout.preferredHeight - AppMetrics.gapWide))
 
-        MobileMachineTranslation
+        Loader
         {
             id: formTranslation
 
@@ -104,25 +147,22 @@ MobileBottomSheet
             anchors.right: parent.right
             anchors.top: parent.top
 
-            visible: AppMachineTranslation.enabled && root.lookup.results.length > 0 && root.dictionary.formTerm.length > 0
-            lookup: root.dictionary
-            term: root.term
-
-            onAddRequested: function(word, translation)
-            {
-                root.close()
-                root.addWordRequested(word, translation, "", root.sourceSentence)
-            }
+            active: !root.readerMode && root.hasFormTranslation
+            visible: active
+            sourceComponent: machineTranslationResult
         }
 
         MobileWordCardList
         {
+            id: matches
+
             anchors.fill: parent
             anchors.topMargin: formTranslation.visible ? formTranslation.height + AppMetrics.gapSmall : 0
             visible: root.lookup.results.length > 0
 
             model: root.lookup.results
             maxStage: root.stageCount
+            header: root.readerMode && root.hasFormTranslation ? machineTranslationHeader : null
 
             showAddAction: true
             showEditAction: false
@@ -164,18 +204,12 @@ MobileBottomSheet
                 width: parent.width
                 spacing: AppMetrics.gapWide
 
-                MobileMachineTranslation
+                Loader
                 {
                     Layout.fillWidth: true
-                    visible: AppMachineTranslation.enabled && root.lookup.results.length === 0 && root.term.length > 0
-                    lookup: root.dictionary
-                    term: root.term
-
-                    onAddRequested: function(word, translation)
-                    {
-                        root.close()
-                        root.addWordRequested(word, translation, "", root.sourceSentence)
-                    }
+                    active: AppMachineTranslation.enabled && root.lookup.results.length === 0 && root.term.length > 0
+                    visible: active
+                    sourceComponent: machineTranslationResult
                 }
 
                 MobileWideButton
@@ -194,18 +228,5 @@ MobileBottomSheet
                 }
             }
         }
-    }
-
-    MobileWideButton
-    {
-        objectName: "lookup_read_aloud"
-
-        Layout.fillWidth: true
-        visible: root.readAloudOffered
-
-        label: qsTr("Read aloud from here")
-        filled: false
-
-        onClicked: root.readAloudRequested()
     }
 }

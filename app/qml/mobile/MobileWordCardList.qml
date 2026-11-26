@@ -26,6 +26,8 @@ Item
     property real bottomInset: 0
 
     property alias contentY: list.contentY
+    property alias header: list.header
+    readonly property real headerHeight: list.headerItem?.height ?? 0
 
     signal wordClicked(int index)
     signal voicePlayRequested(int index)

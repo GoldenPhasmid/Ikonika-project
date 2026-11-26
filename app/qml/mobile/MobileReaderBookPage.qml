@@ -9,6 +9,7 @@ Item
     property var controller: null
     property string documentId: ""
     property int tab: 0
+    property bool openWithInHeader: false
 
     readonly property var book:
     {
@@ -37,7 +38,8 @@ Item
     readonly property bool loading: root.details.loading === true
     readonly property int addedWords: root.book !== null && root.book.addedWords !== undefined ? root.book.addedWords : 0
     readonly property var words: root.tab === 2 && root.book !== null && root.controller ? root.controller.bookWords(root.book.key) : []
-    readonly property bool mobilePlatform: Qt.platform.os === "android" || Qt.platform.os === "ios"
+    readonly property bool canOpenWith: root.exists && (Qt.platform.os === "android" || Qt.platform.os === "ios")
+    readonly property string openWithText: qsTr("Open with")
 
     signal readRequested(var book)
     signal chapterRequested(var book, int position)
@@ -57,6 +59,11 @@ Item
     {
         root.visible = false
         root.documentId = ""
+    }
+
+    function openWith()
+    {
+        root.controller.showOnDevice(root.documentId)
     }
 
     function count(value)
@@ -333,11 +340,11 @@ Item
                 {
                     objectName: "book_page_open_with"
 
-                    visible: root.exists && root.mobilePlatform
+                    visible: root.canOpenWith && !root.openWithInHeader
                     iconName: "external_link"
-                    label: qsTr("Open with")
+                    label: root.openWithText
 
-                    onClicked: root.controller.showOnDevice(root.documentId)
+                    onClicked: root.openWith()
                 }
 
                 MobileActionTile

@@ -7,6 +7,7 @@ Button
     id: root
 
     property Popup popover: null
+    property var openPicker: null
 
     readonly property bool open: !!root.popover && root.popover.visible
 
@@ -26,6 +27,12 @@ Button
 
     onClicked:
     {
+        if (root.openPicker)
+        {
+            root.openPicker()
+            return
+        }
+
         if (!root.popover)
         {
             return

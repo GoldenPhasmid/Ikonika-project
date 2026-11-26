@@ -118,8 +118,14 @@ MobileBottomSheet
                                 || (AppOnboarding.chosenLanguage === languageRow.modelData.code
                                     && !(AppOnboarding.dictionaryReady && AppOnboarding.voiceReady))
 
+                            readonly property bool receiving:
+                                AppPackageDownloader.activeId.length > 0
+                                    && (AppPackageDownloader.activeId === languageRow.modelData.id
+                                        || (AppOnboarding.chosenLanguage === languageRow.modelData.code
+                                            && AppPackageDownloader.activeId === AppOnboarding.voiceId))
+
                             readonly property real fetchProgress:
-                                AppPackageDownloader.totalBytes > 0
+                                languageRow.receiving && AppPackageDownloader.totalBytes > 0
                                     ? AppPackageDownloader.receivedBytes / AppPackageDownloader.totalBytes
                                     : 0
 
@@ -195,7 +201,7 @@ MobileBottomSheet
                                 {
                                     Layout.fillWidth: true
 
-                                    text: Math.round(languageRow.fetchProgress * 100) + "%"
+                                    text: languageRow.receiving ? Math.round(languageRow.fetchProgress * 100) + "%" : qsTr("Waiting")
                                     font.pixelSize: AppMetrics.fontMicro
                                     font.family: AppMetrics.fontFamily
                                     color: AppTheme.colourMuted

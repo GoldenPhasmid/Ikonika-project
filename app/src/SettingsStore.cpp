@@ -63,6 +63,16 @@ namespace
             return SettingsStore::tr("Il cagnolino mangia una mela rossa e beve acqua fredda dal vecchio pozzo.");
         }
 
+        if (TargetLanguage == "de")
+        {
+            return QStringLiteral("Der kleine Hund frisst einen roten Apfel und trinkt frisches Wasser.");
+        }
+
+        if (TargetLanguage == "uk")
+        {
+            return QStringLiteral("Маленький пес їсть червоне яблуко і п'є свіжу воду.");
+        }
+
         return {};
     }
 }
@@ -87,6 +97,8 @@ SettingsStore::SettingsStore(QObject* Parent)
             &SettingsStore::audioSettingsChanged);
     connect(&AppCatalog::Get(), &AppCatalog::catalogChanged, this,
             &SettingsStore::webSearchChanged);
+    connect(&AppDictionary::Notifier(), &AppDictionaryNotifier::languagesChanged, this,
+            &SettingsStore::languagesChanged);
     connect(this, &SettingsStore::languagesChanged, this, &SettingsStore::languageNamesChanged);
     connect(this, &SettingsStore::languagesChanged, this, &SettingsStore::audioSettingsChanged);
     connect(this, &SettingsStore::languagesChanged, this, &SettingsStore::webSearchChanged);
@@ -190,6 +202,58 @@ void SettingsStore::OnSettingsApplied()
     emit webSearchChanged();
 
     SessionSettings::NotifyDisplayChanged();
+}
+
+QVariantList SettingsStore::GetPlatformSpeechVoices() const
+{
+    const QString LanguageCode{GetTargetLanguageCode()};
+    const AppSpeech& Speech{AppSpeech::Get()};
+    const QList<FTPlatformVoice> Voices{Speech.GetPlatformVoices(LanguageCode)};
+
+    if (Voices.isEmpty())
+    {
+        return {};
+    }
+
+    const QString SelectedId{Speech.GetPlatformVoiceId(LanguageCode)};
+    QVariantList Options;
+    bool bHasSelection{false};
+
+    for (const FTPlatformVoice& Voice : Voices)
+    {
+        const bool bSelected{Voice.Id == SelectedId};
+        bHasSelection |= bSelected;
+        Options.append(QVariantMap{{QStringLiteral("id"), Voice.Id},
+                                   {QStringLiteral("name"), Voice.Name},
+                                   {QStringLiteral("selected"), bSelected}});
+    }
+
+    Options.prepend(QVariantMap{{QStringLiteral("id"), QString()},
+                                {QStringLiteral("name"), tr("Default")},
+                                {QStringLiteral("selected"), !bHasSelection}});
+
+    return Options;
+}
+
+void SettingsStore::selectPlatformSpeechVoice(const QString& LanguageCode, const QString& Id)
+{
+    if (LanguageCode != GetTargetLanguageCode())
+    {
+        return;
+    }
+
+    AppSpeech& Speech{AppSpeech::Get()};
+    const QList<FTPlatformVoice> Voices{Speech.GetPlatformVoices(LanguageCode)};
+
+    if (!Id.isEmpty() && std::ranges::find(Voices, Id, &FTPlatformVoice::Id) == Voices.end())
+    {
+        return;
+    }
+
+    Speech.SetPlatformVoiceId(LanguageCode, Id);
+    qCInfo(LogApp) << "Setting changed: platform voice for" << LanguageCode << "->" << Id;
+    emit audioSettingsChanged();
+    playVoiceSampleNow();
 }
 
 int SettingsStore::GetSpeakerCount() const

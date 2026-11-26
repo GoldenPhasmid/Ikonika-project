@@ -12,7 +12,8 @@ Item
 
     readonly property real footerSpace: footerHolder.visible ? footerHolder.implicitHeight + sheetColumn.spacing : 0
     readonly property real maximumBodyHeight: Math.max(0, height * maxHeightFraction
-        - headingRow.implicitHeight - sheetColumn.spacing - AppMetrics.contentPadding * 3 - bottomInset - root.footerSpace)
+        - (headingRow.visible ? headingRow.implicitHeight + sheetColumn.spacing : 0)
+        - AppMetrics.contentPadding * 3 - bottomInset - root.footerSpace)
 
     default property alias content: body.data
     property alias footer: footerHolder.data
@@ -212,6 +213,7 @@ Item
                 id: headingRow
 
                 Layout.fillWidth: true
+                visible: headingLabel.text.length > 0 || root.showClose
                 spacing: AppMetrics.gapSmall
 
                 Text

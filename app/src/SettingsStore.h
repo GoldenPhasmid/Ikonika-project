@@ -27,6 +27,7 @@ class SettingsStore : public QObject
 
     Q_PROPERTY(bool audioAvailable READ IsAudioAvailable NOTIFY audioSettingsChanged)
     Q_PROPERTY(bool audioEnabled READ IsAudioEnabled WRITE SetAudioEnabled NOTIFY audioSettingsChanged)
+    Q_PROPERTY(QVariantList platformSpeechVoices READ GetPlatformSpeechVoices NOTIFY audioSettingsChanged)
 
     Q_PROPERTY(int speakerCount READ GetSpeakerCount NOTIFY audioSettingsChanged)
     Q_PROPERTY(int speakerId READ GetSpeakerId WRITE SetSpeakerId NOTIFY audioSettingsChanged)
@@ -146,6 +147,8 @@ public:
     bool IsAudioAvailable() const;
     bool IsAudioEnabled() const;
     void SetAudioEnabled(bool bValue);
+    QVariantList GetPlatformSpeechVoices() const;
+    Q_INVOKABLE void selectPlatformSpeechVoice(const QString& LanguageCode, const QString& Id);
 
     int GetSpeakerCount() const;
     int GetSpeakerId() const;

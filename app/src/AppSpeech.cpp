@@ -37,6 +37,31 @@ void AppSpeech::Speak(const QString& Text, const QString& LanguageCode)
     SpeakAtRate(Text, LanguageCode, IsSentence(Text) ? GetSentenceSpeed() : 1.0f);
 }
 
+static QString PlatformVoiceKey(const QString& LanguageCode)
+{
+    return QStringLiteral("audio/platformVoice/") + LanguageCode;
+}
+
+QString AppSpeech::GetPlatformVoiceId(const QString& LanguageCode) const
+{
+    return FTSettings::Get().OpenStore().value(PlatformVoiceKey(LanguageCode)).toString();
+}
+
+void AppSpeech::SetPlatformVoiceId(const QString& LanguageCode, const QString& Id)
+{
+    QSettings Settings{FTSettings::Get().OpenStore()};
+    const QString Key{PlatformVoiceKey(LanguageCode)};
+
+    if (Id.isEmpty())
+    {
+        Settings.remove(Key);
+    }
+    else
+    {
+        Settings.setValue(Key, Id);
+    }
+}
+
 float AppSpeech::GetSentenceSpeed() const
 {
     const QSettings Settings(FTSettings::Get().OpenStore());

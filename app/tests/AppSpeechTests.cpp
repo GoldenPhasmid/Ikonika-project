@@ -4,6 +4,10 @@
 #include "CatchQtTypes.h"
 
 #include "TestAppSpeech.h"
+#include "core/FTSettings.h"
+
+#include <QScopeGuard>
+#include <QTemporaryDir>
 
 TEST_CASE("Text of four or more words is a sentence", "[appspeech]")
 {
@@ -27,4 +31,30 @@ TEST_CASE("Plain speech uses the speech rate for short text and the sentence spe
 
     AppSpeech::Get().Speak("Je mange une pomme rouge.", "fr");
     CHECK(SpeechGuard.Mock.LastRateScale == Catch::Approx(0.7f));
+}
+
+TEST_CASE("Platform voice preferences are local and independent for each language", "[appspeech]")
+{
+    QTemporaryDir Directory;
+    REQUIRE(Directory.isValid());
+
+    const QString FileName{Directory.filePath(QStringLiteral("settings.ini"))};
+    FTSettings Workspace{FileName};
+    FTSettings::SetActive(&Workspace);
+    const auto ResetSettings{qScopeGuard([] { FTSettings::SetActive(nullptr); })};
+
+    AppSpeech& Speech{AppSpeech::Get()};
+    CHECK(Speech.GetPlatformVoiceId(QStringLiteral("fr")).isEmpty());
+    Speech.SetPlatformVoiceId(QStringLiteral("fr"), QStringLiteral("fr-ca-x-caa-local"));
+    Speech.SetPlatformVoiceId(QStringLiteral("en"), QStringLiteral("en-US-language"));
+
+    FTSettings Reopened{FileName};
+    FTSettings::SetActive(&Reopened);
+    CHECK(Speech.GetPlatformVoiceId(QStringLiteral("fr")) == QStringLiteral("fr-ca-x-caa-local"));
+    CHECK(Speech.GetPlatformVoiceId(QStringLiteral("en")) == QStringLiteral("en-US-language"));
+    CHECK(Reopened.ReadSyncedValues().empty());
+
+    Speech.SetPlatformVoiceId(QStringLiteral("fr"), QString());
+    CHECK(Speech.GetPlatformVoiceId(QStringLiteral("fr")).isEmpty());
+    CHECK(Speech.GetPlatformVoiceId(QStringLiteral("en")) == QStringLiteral("en-US-language"));
 }

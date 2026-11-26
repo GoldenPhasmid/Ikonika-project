@@ -16,9 +16,12 @@ Item
     property bool quiet: false
     property bool compact: false
     property bool actionsButtonShown: true
+    property var selectionPicker: null
 
     readonly property bool unsaved: root.card !== null && form.canCommit && form.changed
     readonly property bool typing: form.typing
+    readonly property bool portraitForm: root.selectionPicker !== null
+    readonly property string actionWord: root.card ? (root.portraitForm ? form.enteredWord : root.card.targetWord) : ""
 
     property string shownKey: ""
 
@@ -83,7 +86,7 @@ Item
         else
         {
             form.openWith(card.targetWord, card.translation, card.partOfSpeech, card.gist || "", card.hint || "",
-                          card.language || "")
+                          card.language || "", !!card.customAdd)
         }
 
         page.contentY = 0
@@ -148,19 +151,19 @@ Item
 
     function openInWords()
     {
-        root.dictionaryRequested(root.card.targetWord, root.card.partOfSpeech)
+        root.dictionaryRequested(root.actionWord, root.portraitForm ? form.editingPartOfSpeech : root.card.partOfSpeech)
     }
 
     function searchWeb()
     {
-        form.dictionary.openWebSearch(root.card.targetWord)
+        form.dictionary.openWebSearch(root.actionWord)
     }
 
     function speak()
     {
-        if (root.card)
+        if (root.actionWord.length > 0)
         {
-            form.dictionary.speak(root.card.word)
+            form.dictionary.speak(root.actionWord === root.card.targetWord ? root.card.word : root.actionWord)
         }
     }
 
@@ -207,6 +210,7 @@ Item
             phonetic: root.entry.phonetic || ""
             frequencyBucket: root.entry.frequencyBucket || ""
             cefrLevel: root.entry.cefrLevel || ""
+            speakShown: !root.portraitForm
             webSearchShown: !root.compact
 
             onSpeakRequested: root.speak()
@@ -291,6 +295,17 @@ Item
 
                 onClicked: root.resetProgress()
             }
+
+            DesktopButton
+            {
+                objectName: "card_pane_manage"
+
+                visible: root.portraitForm && (root.canComplete || root.canReset || root.canRemove)
+                tone: "ghost"
+                text: qsTr("Manage card")
+
+                onClicked: root.actionsRequested()
+            }
         }
 
         DesktopCardForm
@@ -301,6 +316,8 @@ Item
 
             controller: root.controller
             expanded: true
+            portrait: root.portraitForm
+            selectionPicker: root.selectionPicker
 
             onAccepted: root.commit()
             onWordClicked: function(word) { root.dictionaryRequested(word, "") }

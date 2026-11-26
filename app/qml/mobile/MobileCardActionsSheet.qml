@@ -6,6 +6,7 @@ MobileBottomSheet
     id: root
 
     required property var pane
+    property bool showLookupActions: true
 
     function run(action)
     {
@@ -22,7 +23,8 @@ MobileBottomSheet
         {
             objectName: "card_action_dictionary"
 
-            title: qsTr("Open in Words")
+            visible: root.showLookupActions
+            title: root.height > root.width ? qsTr("Open in Dictionary") : qsTr("Open in Words")
 
             onClicked: root.run(root.pane.openInWords)
 
@@ -33,6 +35,7 @@ MobileBottomSheet
         {
             objectName: "card_action_web"
 
+            visible: root.showLookupActions
             title: qsTr("Search the web")
             lastRow: !root.pane.canComplete && !root.pane.canReset && !root.pane.canRemove
 

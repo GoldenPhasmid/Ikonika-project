@@ -13,10 +13,16 @@ DesktopDropdownButton
     property int visibleRows: 0
     property int currentIndex: 0
     property string heading: ""
+    property var picker: null
 
     signal chosen(int index)
 
     popover: optionsPopover
+    openPicker: root.picker ? function()
+    {
+        root.picker.open(root.heading, root.options, root.currentIndex,
+                         function(index) { root.chosen(index) }, root.descriptions, root.trailingTexts)
+    } : null
     text: root.currentIndex >= 0 && root.currentIndex < root.options.length ? root.options[root.currentIndex] : ""
 
     Accessible.name: root.heading.length > 0 ? qsTr("%1: %2").arg(root.heading).arg(root.text) : root.text

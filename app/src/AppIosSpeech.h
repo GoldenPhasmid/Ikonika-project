@@ -20,6 +20,7 @@ public:
     bool IsAvailable() const override;
     bool IsEnabled() const override;
     float GetSpeed() const override;
+    QList<FTPlatformVoice> GetPlatformVoices(const QString& LanguageCode) const override;
 
     bool CanNarrate() const override;
     void QueueNarration(int Id, const QString& Text, const QString& LanguageCode) override;

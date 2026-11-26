@@ -32,6 +32,7 @@ object ReaderWindow {
                     WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
                 insetsController.hide(WindowInsetsCompat.Type.systemBars())
             } else {
+                insetsController.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_DEFAULT
                 insetsController.show(WindowInsetsCompat.Type.systemBars())
             }
         }

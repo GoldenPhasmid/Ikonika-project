@@ -11,6 +11,7 @@ ColumnLayout
     property string frequencyBucket: ""
     property string cefrLevel: ""
     property bool centred: false
+    property bool speakShown: true
     property bool webSearchShown: true
     property int headwordSize: AppMetrics.dictionaryFontHeadline
     property int gender: -1
@@ -96,6 +97,7 @@ ColumnLayout
             {
                 id: speakButton
 
+                visible: root.speakShown
                 text: qsTr("Pronounce (Ctrl+Space)")
 
                 onSpeakRequested: root.speakRequested()

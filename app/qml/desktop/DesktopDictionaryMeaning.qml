@@ -10,6 +10,7 @@ DesktopCard
     property var translations: []
     property int columns: 3
     property int stageCount: 1
+    property bool showAdd: true
     property bool collapsible: false
     property bool expanded: !root.collapsible
 
@@ -136,6 +137,7 @@ DesktopCard
             Layout.column: root.narrow ? 0 : 4
             Layout.columnSpan: root.narrow ? 6 : 1
             Layout.fillWidth: root.narrow
+            visible: root.learned || root.showAdd
             iconName: root.learned ? "edit" : "plus"
             text: root.learned ? qsTr("Edit") : qsTr("Add")
 

@@ -8,6 +8,7 @@ ColumnLayout
     property string label: ""
     property string trailingLabel: ""
     property string hint: ""
+    property bool showLabel: true
     default property alias field: fieldSlot.data
 
     Layout.fillWidth: true
@@ -16,6 +17,7 @@ ColumnLayout
     RowLayout
     {
         Layout.fillWidth: true
+        visible: root.showLabel
         spacing: AppMetrics.gapSmall
 
         DesktopLabel

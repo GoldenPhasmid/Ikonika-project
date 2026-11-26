@@ -23,6 +23,9 @@ object PlatformSpeech {
     external fun nativeOnSpeakingChanged(speaking: Boolean)
 
     @JvmStatic
+    external fun nativeOnVoicesChanged()
+
+    @JvmStatic
     external fun nativeOnNarrationStarted(id: Int)
 
     @JvmStatic
@@ -44,15 +47,17 @@ object PlatformSpeech {
     @Volatile private var consecutiveRebinds = 0
     @Volatile private var engineStartedAt = 0L
     @Volatile private var applicationContext: Context? = null
+    @Volatile private var selectableVoices: Map<String, Voice> = emptyMap()
     private val voiceByLanguage = ConcurrentHashMap<String, Voice>()
     private val preferredRegions = mapOf("pt" to "PT")
     private val mainHandler = Handler(Looper.getMainLooper())
 
-    private class Request(val text: String, val languageCode: String, val rateScale: Float)
+    private class Request(val text: String, val languageCode: String, val rateScale: Float, val voiceId: String)
 
-    private class Narration(val id: Int, val text: String, val languageCode: String, val rateScale: Float)
+    private class Narration(val id: Int, val text: String, val languageCode: String, val rateScale: Float, val voiceId: String)
 
     private val requestLock = Any()
+    private val playbackLock = Any()
     private var heldRequest: Request? = null
     private val heldNarration = ArrayList<Narration>()
     private val spokenNarration = ArrayList<Narration>()
@@ -134,6 +139,8 @@ object PlatformSpeech {
             val old = engine
             engine = null
             voiceByLanguage.clear()
+            selectableVoices = emptyMap()
+            nativeOnVoicesChanged()
 
             try {
                 old?.shutdown()
@@ -164,6 +171,11 @@ object PlatformSpeech {
 
             return
         }
+
+        selectableVoices = engine?.voices.orEmpty().filter {
+            !it.isNetworkConnectionRequired && TextToSpeech.Engine.KEY_FEATURE_NOT_INSTALLED !in it.features.orEmpty()
+        }.associateBy { it.name }
+        nativeOnVoicesChanged()
 
         engine?.setSpeechRate(rate)
         engine?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
@@ -305,15 +317,40 @@ object PlatformSpeech {
         report("warm-up complete after ${sinceEngineStart()}ms, held request = ${held != null}")
 
         if (held != null) {
-            speak(held.text, held.languageCode, held.rateScale)
+            speak(held.text, held.languageCode, held.rateScale, held.voiceId)
         }
 
         for (narration in narrations) {
-            narrate(narration.id, narration.text, narration.languageCode, narration.rateScale)
+            narrate(narration.id, narration.text, narration.languageCode, narration.rateScale, narration.voiceId)
         }
     }
 
-    private fun applyVoice(tts: TextToSpeech, languageCode: String) {
+    @JvmStatic
+    fun getVoiceOptions(languageCode: String): Array<String> {
+        return selectableVoices.values.filter { it.locale.language == languageCode }
+            .groupBy { it.locale.toLanguageTag() }.toSortedMap().values.flatMap { voices ->
+                voices.sortedBy { it.name }.flatMapIndexed { index, voice ->
+                    val localeName = voice.locale.displayName
+                    val name = if (voices.size == 1) localeName else "$localeName ${index + 1}"
+                    listOf(voice.name, name)
+                }
+            }.toTypedArray()
+    }
+
+    private fun applyVoice(tts: TextToSpeech, languageCode: String, voiceId: String) {
+        val selected = selectableVoices[voiceId]
+
+        if (selected != null && selected.locale.language == languageCode) {
+            if (tts.voice == selected) {
+                return
+            }
+
+            if (tts.setVoice(selected) == TextToSpeech.SUCCESS) {
+                report("selected voice for $languageCode: ${selected.name}")
+                return
+            }
+        }
+
         val voice = voiceFor(tts, languageCode)
 
         if (voice != null) {
@@ -392,11 +429,11 @@ object PlatformSpeech {
     }
 
     @JvmStatic
-    fun speak(text: String, languageCode: String, rateScale: Float) {
+    fun speak(text: String, languageCode: String, rateScale: Float, voiceId: String) {
         synchronized(requestLock) {
             if (!warmupComplete) {
                 report("engine is not ready, holding the request")
-                heldRequest = Request(text, languageCode, rateScale)
+                heldRequest = Request(text, languageCode, rateScale, voiceId)
 
                 return
             }
@@ -405,31 +442,30 @@ object PlatformSpeech {
         val tts = engine
 
         if (tts == null || !ready) {
-            holdAndRebind(Request(text, languageCode, rateScale), "speak without a ready engine")
+            holdAndRebind(Request(text, languageCode, rateScale, voiceId), "speak without a ready engine")
 
             return
         }
 
-        applyVoice(tts, languageCode)
-
-        tts.setSpeechRate(rate * rateScale)
-
         val utteranceId = "ikonika-${System.nanoTime()}"
-        callTimestamps[utteranceId] = System.nanoTime()
-        currentUtterance = utteranceId
-
-        val result = tts.speak(text, TextToSpeech.QUEUE_FLUSH, Bundle(), utteranceId)
+        val result = synchronized(playbackLock) {
+            applyVoice(tts, languageCode, voiceId)
+            tts.setSpeechRate(rate * rateScale)
+            callTimestamps[utteranceId] = System.nanoTime()
+            currentUtterance = utteranceId
+            tts.speak(text, TextToSpeech.QUEUE_FLUSH, Bundle(), utteranceId)
+        }
 
         if (result != TextToSpeech.SUCCESS) {
             callTimestamps.remove(utteranceId)
             report("speak was rejected, result=$result")
-            holdAndRebind(Request(text, languageCode, rateScale), "speak rejected with $result")
+            holdAndRebind(Request(text, languageCode, rateScale, voiceId), "speak rejected with $result")
         }
     }
 
     @JvmStatic
-    fun narrate(id: Int, text: String, languageCode: String, rateScale: Float) {
-        val narration = Narration(id, text, languageCode, rateScale)
+    fun narrate(id: Int, text: String, languageCode: String, rateScale: Float, voiceId: String) {
+        val narration = Narration(id, text, languageCode, rateScale, voiceId)
 
         synchronized(requestLock) {
             if (!warmupComplete) {
@@ -458,10 +494,11 @@ object PlatformSpeech {
             return false
         }
 
-        applyVoice(tts, narration.languageCode)
-        tts.setSpeechRate(rate * narration.rateScale)
-
-        val result = tts.speak(narration.text, TextToSpeech.QUEUE_ADD, Bundle(), "$NARRATION_PREFIX${narration.id}")
+        val result = synchronized(playbackLock) {
+            applyVoice(tts, narration.languageCode, narration.voiceId)
+            tts.setSpeechRate(rate * narration.rateScale)
+            tts.speak(narration.text, TextToSpeech.QUEUE_ADD, Bundle(), "$NARRATION_PREFIX${narration.id}")
+        }
 
         if (result != TextToSpeech.SUCCESS) {
             report("narration speak was rejected, result=$result")
@@ -526,7 +563,8 @@ object PlatformSpeech {
             val offset = narrationOffsets.remove(first.id) ?: 0
 
             if (offset > 0 && offset < first.text.length) {
-                spokenNarration[0] = Narration(first.id, first.text.substring(offset), first.languageCode, first.rateScale)
+                spokenNarration[0] = Narration(first.id, first.text.substring(offset), first.languageCode,
+                    first.rateScale, first.voiceId)
             }
 
             ArrayList(spokenNarration)
